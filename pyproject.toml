@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "the-doctor-lives"
+version = "0.1.0"
+description = "Renderer-neutral persistent cognitive brain for Doctor Septimus Pretorius"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "scipy>=1.11"]
+
+[project.scripts]
+doctor-lives = "doctor_lives.cli:main"
+
+[tool.setuptools]
+packages = ["doctor_lives"]
+
+[tool.setuptools.package-data]
+doctor_lives = ["data/*.json"]
