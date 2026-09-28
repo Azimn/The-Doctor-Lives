@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "agent_pretorius": {
+    "repository": "Azimn/Agent-Pretorius",
+    "commit": "40837ba0093cff044644844c07098450587b968d",
+    "soul_blob": "8605abd3153d134ad3bc092766690536d5ec53be",
+    "master_persona_framework_blob": "8c5c7a7c4239ae2a6c9477eead7a641a3159fca9",
+    "character_invariants_blob": "86f264e7faafe1d18a462b548b972637c6fea400",
+    "persona_connectome_blob": "4a3bf5ab4fd6158710a6706877c4dfc60f819291",
+    "persona_connectome_nodes": 70,
+    "persona_connectome_edges": 243
+  },
+  "pretorius_neural_network": {
+    "repository": "Azimn/Pretorius-Neural-Network",
+    "commit": "f53f8226b97f20cc9811db4aea81206989917841",
+    "network_blob": "953055ea3e5be748b9a7e514c7c8721b5439b30e",
+    "encoding_blob": "3ae77e124328bef89c6ace0f48f44cd842c75ac2",
+    "phenotype_profile_blob": "0b52b12420ba4291844c49cd73b19a8eefc528ff",
+    "mature_checkpoint_committed": false
+  },
+  "calibos_mind": {
+    "repository": "Azimn/calibos-mind",
+    "commit": "0b8d0d552125a6c9ac736fbc09e62c50ee4c18af"
+  }
+}
