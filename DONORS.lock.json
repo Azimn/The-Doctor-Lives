@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "assembly_repo": "Azimn/The-Doctor-Lives",
+  "assembly_base_sha": "73c4bdc196b6df9b2a72d71e0626f191eecbdf75",
+  "donors": {
+    "calibos_mind": {
+      "repository": "Azimn/calibos-mind",
+      "sha": "0b8d0d552125a6c9ac736fbc09e62c50ee4c18af",
+      "role": "cognitive substrate donor",
+      "include": [
+        "workspace and salience mechanics",
+        "interoceptive gap",
+        "unresolved concern handling",
+        "sleep and offline cognition",
+        "consolidation discipline",
+        "drift accounting",
+        "provenance and external-attribution invariants"
+      ],
+      "exclude": [
+        "Calibos identity",
+        "Calibos autobiographical memory",
+        "Calibos private runtime sidecars"
+      ]
+    },
+    "pretorius_neural_network": {
+      "repository": "Azimn/Pretorius-Neural-Network",
+      "sha": "f53f8226b97f20cc9811db4aea81206989917841",
+      "role": "recurrent phenotype donor",
+      "include": [
+        "persona_net encoding",
+        "plastic recurrent substrate",
+        "generic ten-action behavior space",
+        "phenotype profile as an external validation artifact"
+      ]
+    },
+    "agent_pretorius": {
+      "repository": "Azimn/Agent-Pretorius",
+      "sha": "40837ba0093cff044644844c07098450587b968d",
+      "role": "durable Pretorius state and identity evidence donor",
+      "include": [
+        "SOUL identity rules",
+        "SQLite autobiography, relationships, self-model, agenda and research state",
+        "contextual recall and evidence-class separation"
+      ]
+    }
+  },
+  "notes": [
+    "The current public Azimn/Jelly-Psiduck main branch contains only its README, so this assembly does not depend on an unavailable transitive runtime.",
+    "The assembly reimplements the required Calibos mechanisms behind stable local interfaces and retains the donor pin for provenance and regression comparison.",
+    "The language renderer is explicitly outside the identity boundary."
+  ]
+}
