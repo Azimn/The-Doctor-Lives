@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "source": "Azimn/Pretorius-Neural-Network data/phenotype_battery/pretorius_profile_v1.json",
+  "source_blob_sha": "0b52b12420ba4291844c49cd73b19a8eefc528ff",
+  "persona": "Doctor Septimus Pretorius",
+  "action_space": ["explore","challenge","approach","avoid","cooperate","dominate","create","persist","conceal","comply"],
+  "domains": [
+    "sovereignty_help", "recognition", "mentorship", "creation_relation", "creation_autonomy",
+    "continuity", "legacy", "precision", "active_inquiry", "cooperation", "consent", "sacrifice",
+    "authority_law", "compassion", "knowledge_preservation", "creator_duty", "mercy", "immortality",
+    "failure", "love_control"
+  ],
+  "use_policy": "Validation and interpretive reference. This file is not used as a hidden trait vector inside the organism."
+}
