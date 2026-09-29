@@ -5,11 +5,6 @@ on:
   push:
     branches:
       - feature/pretorius-deep-history-v2
-    paths:
-      - "doctor_lives/**"
-      - "tests/**"
-      - "tools/validate_deep_history_v2.py"
-      - ".github/workflows/deep-history-v2-validation.yml"
 
 permissions:
   contents: read
