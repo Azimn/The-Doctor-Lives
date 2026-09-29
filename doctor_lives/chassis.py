@@ -53,6 +53,7 @@ class PretoriusBrainPort:
         self.brain.save()
         return {
             "schema": self.SCHEMA,
+            "port_schema": self.SCHEMA,
             "tick": self.brain.store.tick,
             "state_version": self.brain.store.state_version,
             "state_digest": self.brain.store.digest(),
