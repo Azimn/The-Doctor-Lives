@@ -357,6 +357,7 @@ def _classify_existing_history(store: BrainStore, conn, curated: dict[str, Any],
         row = dict(raw)
         key = str(row["history_key"])
         prior = str(row["evidence_class"])
+        replacement_text = None
         if key.startswith("connectome:"):
             node_id = key.split(":", 1)[1]
             evidence_class, classification = _node_classification(
@@ -365,10 +366,12 @@ def _classify_existing_history(store: BrainStore, conn, curated: dict[str, Any],
             )
         elif key.startswith("curated:"):
             curated_key = key.split(":", 1)[1]
+            curated_item = curated_by_key[curated_key]
             evidence_class, classification = _curated_classification(
-                curated_by_key[curated_key], predecessor_memory_id=str(row["id"]),
+                curated_item, predecessor_memory_id=str(row["id"]),
                 prior_evidence_class=prior,
             )
+            replacement_text = str(curated_item["text"])
         elif key.startswith("agenda:"):
             parts = key.split(":", 2)
             index = int(parts[1])
@@ -383,7 +386,13 @@ def _classify_existing_history(store: BrainStore, conn, curated: dict[str, Any],
             "SELECT 1 FROM memory_classifications WHERE memory_id=?", (row["id"],)
         ).fetchone() is None:
             _archive_reclassification_snapshot(conn, row, store.tick)
-        conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (evidence_class, row["id"]))
+        if replacement_text is not None:
+            conn.execute(
+                "UPDATE memories SET text=?,evidence_class=? WHERE id=?",
+                (replacement_text, evidence_class, row["id"]),
+            )
+        else:
+            conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (evidence_class, row["id"]))
         store.set_classification(conn, str(row["id"]), classification)
 
 
@@ -400,7 +409,13 @@ def _classify_bootstrap_and_runtime(store: BrainStore, conn) -> None:
         if prior in {"lived_experience", "lived_action_outcome"}:
             _archive_reclassification_snapshot(conn, row, store.tick)
             new_class = "lived_runtime_memory"
-            conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (new_class, row["id"]))
+            if "Ingolstadt" in text:
+                conn.execute(
+                    "UPDATE memories SET text=?,evidence_class=? WHERE id=?",
+                    ("Ingolstadt appears in my reconstructed preawakening evidence.", new_class, row["id"]),
+                )
+            else:
+                conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (new_class, row["id"]))
             store.set_classification(conn, str(row["id"]), _classification(
                 autobiographical_class=new_class,
                 event_subtype=str(row["kind"]),
