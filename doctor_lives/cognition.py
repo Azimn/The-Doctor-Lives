@@ -139,6 +139,26 @@ class PretoriusBrain:
                 (actual, felt, tick, key),
             )
 
+    def _relax_needs(self, conn, tick: int) -> None:
+        rows = conn.execute("SELECT key,actual,felt FROM needs ORDER BY key").fetchall()
+        for row in rows:
+            key = str(row["key"])
+            actual = float(row["actual"])
+            target = 0.5
+            if key == "fatigue":
+                target = 0.42
+            elif key == "curiosity":
+                target = 0.56
+            actual = clamp(actual + 0.08 * (target - actual), 0.05, 0.95)
+            felt = float(row["felt"])
+            away = abs(actual - 0.5) > abs(felt - 0.5)
+            rate = 0.35 if away else 0.12
+            felt = clamp(felt + rate * (actual - felt) + self._noise(tick, key), 0.05, 0.95)
+            conn.execute(
+                "UPDATE needs SET actual=?,felt=?,last_tick=? WHERE key=?",
+                (actual, felt, tick, key),
+            )
+
     def _felt_state(self) -> dict[str, str]:
         with closing(self.store.connect()) as conn:
             rows = conn.execute("SELECT key,felt FROM needs ORDER BY key").fetchall()
@@ -240,7 +260,30 @@ class PretoriusBrain:
             abs(exp.valence) + abs(exp.arousal) + max(exp.threat, 0.0)
             + max(exp.novelty, 0.0) + max(exp.authority - exp.autonomy, 0.0)
         )
-        return pressure >= 1.0 or bool(self.store.open_concerns())
+        felt = self._felt_state()
+        fatigue = felt.get("fatigue", "settled")
+        threshold = 1.35 if fatigue.startswith("urgent") or fatigue.startswith("pressing") else 1.0
+        urgent_threat = exp.threat >= 0.8
+        return urgent_threat or pressure >= threshold or bool(self.store.open_concerns())
+
+    def heartbeat(self, ticks: int = 1) -> dict[str, Any]:
+        ticks = max(0, int(ticks))
+        thoughts = []
+        for _ in range(ticks):
+            with self.store.transaction() as conn:
+                tick = self.store.advance_tick(conn)
+                self._relax_needs(conn, tick)
+                self._update_commitments_due(conn, tick)
+            overdue = any(c["status"] == "overdue" for c in self.store.open_commitments())
+            if overdue or self.store.open_concerns():
+                thoughts.append(self.think("heartbeat"))
+        self.neural.save(self.neural_path)
+        return {
+            "ticks": ticks,
+            "tick": self.store.tick,
+            "thoughts": thoughts,
+            "felt_state": self._felt_state(),
+        }
 
     def ingest(self, exp: Experience) -> dict[str, Any]:
         if not exp.text.strip():
