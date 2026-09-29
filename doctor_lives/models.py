@@ -15,6 +15,7 @@ class Provenance:
     canon_rank: int | None = None
     continuity: str | None = None
     material_category: str | None = None
+    wording: str | None = None
     classification_reasoning: dict[str, Any] | None = None
 
 
