@@ -549,7 +549,7 @@ class PretoriusBrain:
     def think(self, trigger: str = "voluntary") -> dict[str, Any]:
         scores = self.neural.action_scores()
         tendency = max(scores, key=scores.get)
-        ranked_all = self._ranked_memories(48, query=trigger, audit=True)
+        ranked_all = self._ranked_memories(48, audit=True)
         candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
         if not candidates:
             candidates = ranked_all
