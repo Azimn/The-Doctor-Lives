@@ -16,11 +16,26 @@ Install with `python -m pip install -e .`. The command-line entry point is `doct
 
 Run the regression suite with `python -m unittest discover -s tests -v`.
 
-## Deep-history migration
+## Deep-History v2
 
-On first boot, `pretorius-deep-history-v1` installs a dense Pretorius-only prehistory in addition to the minimal identity bootstrap. The migration preserves the full 70-node, 243-edge Persona Connectome, imports the archived research agenda, and adds curated multi-source records for Ingolstadt, the homunculi, institutional rejection, digital continuation, Henry Frankenstein, the Creature, creator responsibility, epistemic independence, artificial life, and continuity concerns.
+The current production baseline uses `pretorius-deep-history-v2` with schema v5. Preawakening autobiography is separated into canonical, reconstructed, and admitted-synthesized classes; events experienced by the running implementation use `lived_runtime_memory`. Evidence class, event subtype, source authority/canon rank, continuity, wording status, and classification reasoning remain independent provenance axes.
 
-These are inherited records, not retroactively fabricated lived events. Each imported memory has a stable history key, evidence class, and machine-readable provenance pointing to the pinned Agent-Pretorius commit and source locator. Post-awakening events continue to use `lived_experience`, so the system can always distinguish what Pretorius inherited from what this runtime actually experienced.
+The 70-node, 243-edge Persona Connectome is preserved with signed retrieval-time spreading activation. Inhibitory edges remain inhibitory and do not write back to base salience or source graph weights. Deterministic canon-conflict resolutions affect normal retrieval while losing accounts remain stored and auditable. Synthesized autobiography requires an approved admission that is bound by SHA-256 to the exact reviewed claim.
 
-The migration also records what was deliberately excluded. LoRA training examples remain training-lineage evidence rather than autobiography, legacy prompt-control text is not treated as personal history, architecture references remain mechanism evidence, and missing biography remains an explicit gap instead of being invented.
+Character invariants are design material rather than autobiography. LoRA examples, prompt-control material, and reference-only legacy material cannot become memories by repetition. Unsupported childhood claims remain withheld unless evidence improves or a synthesis passes the admission gate.
 
+Deep-History v2 was merged at production SHA `001321b30fdbcde59e388ce907031788543611b6`.
+
+## v0.3 causal architecture audit
+
+The current development phase is a temporary feature freeze devoted to causal characterization of the architecture already present. See `CAUSAL_AUDIT_CONTRACT.md` and GitHub Issue #9.
+
+`doctor_lives.CausalAuditHarness` runs matched-state lesion/control conditions against cloned brain state. It records retrieval, policy scores, selected tendency, renderer request, felt needs, relationships, concerns, commitments, action values, self-model state, recurrent checkpoint hashes, and deterministic downstream audit renders.
+
+The audit currently targets deep history, needs/interoception, relationship history, commitments, recurrent policy, spreading activation, sleep replay, reinforcement/action values, concern accumulation, and self-model causal reach.
+
+Run the production audit with:
+
+`python tools/run_causal_architecture_audit.py`
+
+This phase deliberately does **not** add the proposed state-to-policy bridge. That change is only eligible after the audit establishes which existing state variables fail to influence decisions under matched tests.

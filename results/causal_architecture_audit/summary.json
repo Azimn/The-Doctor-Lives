@@ -1,0 +1,144 @@
+{
+  "concern_accumulation": {
+    "distinct_pressures": 5,
+    "heartbeat_thoughts": 4,
+    "heartbeat_ticks": 4,
+    "neutral_probe_warrants_cognition": true,
+    "open_concerns_after_pressures": 5,
+    "open_concerns_before": 0,
+    "public_resolve_concern_method": false,
+    "schema": "the-doctor-lives.concern-characterization.v1",
+    "thoughts_added_during_heartbeat": 4
+  },
+  "memory_action_gap_mechanisms": [
+    "deep_history",
+    "needs",
+    "relationships",
+    "commitments"
+  ],
+  "pair_measures": [
+    {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": true,
+      "mechanism": "deep_history",
+      "memory_action_gap_flag": true,
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 0.6875,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 0.3333333333333333,
+      "spontaneous_cognition_diverged": false
+    },
+    {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": true,
+      "mechanism": "needs",
+      "memory_action_gap_flag": true,
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": true,
+      "mechanism": "relationships",
+      "memory_action_gap_flag": true,
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": true,
+      "mechanism": "commitments",
+      "memory_action_gap_flag": true,
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 0.8666666666666667,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 0.6,
+      "spontaneous_cognition_diverged": false
+    },
+    {
+      "action_score_l1": 0.02856991059850507,
+      "deterministic_render_changed": true,
+      "mechanism": "recurrent_policy",
+      "memory_action_gap_flag": false,
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": true,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": false,
+      "mechanism": "spreading_activation",
+      "memory_action_gap_flag": false,
+      "renderer_request_changed": false,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": false,
+      "mechanism": "action_values",
+      "memory_action_gap_flag": false,
+      "renderer_request_changed": false,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": false,
+      "mechanism": "self_model",
+      "memory_action_gap_flag": false,
+      "renderer_request_changed": false,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    }
+  ],
+  "reinforcement": {
+    "intact_vs_neutral_action_values": {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": false,
+      "renderer_request_changed": false,
+      "renderer_request_raw_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    "intact_vs_no_neural": {
+      "action_score_l1": 0.1187711398200195,
+      "deterministic_render_changed": true,
+      "renderer_request_changed": true,
+      "renderer_request_raw_changed": true,
+      "retrieval_jaccard": 0.8666666666666667,
+      "selected_action_diverged": true,
+      "selected_memory_jaccard": 0.6,
+      "spontaneous_cognition_diverged": false
+    }
+  },
+  "selected_action_divergence_mechanisms": [
+    "recurrent_policy"
+  ],
+  "sleep_replay": {
+    "action_score_l1": 0.0006832368811603012,
+    "deterministic_render_changed": true,
+    "renderer_request_changed": true,
+    "renderer_request_raw_changed": true,
+    "retrieval_jaccard": 1.0,
+    "selected_action_diverged": false,
+    "selected_memory_jaccard": 1.0,
+    "spontaneous_cognition_diverged": false
+  }
+}
