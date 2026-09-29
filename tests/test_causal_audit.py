@@ -161,7 +161,7 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertGreaterEqual(result["open_concerns_after_pressures"], 3)
         self.assertTrue(result["neutral_probe_warrants_cognition"])
         self.assertEqual(result["heartbeat_thoughts"], 2)
-        self.assertFalse(result["public_resolve_concern_method"])
+        self.assertTrue(result["public_resolve_concern_method"])
 
 
 if __name__ == "__main__":
