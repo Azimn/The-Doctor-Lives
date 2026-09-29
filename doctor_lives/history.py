@@ -409,13 +409,7 @@ def _classify_bootstrap_and_runtime(store: BrainStore, conn) -> None:
         if prior in {"lived_experience", "lived_action_outcome"}:
             _archive_reclassification_snapshot(conn, row, store.tick)
             new_class = "lived_runtime_memory"
-            if "Ingolstadt" in text:
-                conn.execute(
-                    "UPDATE memories SET text=?,evidence_class=? WHERE id=?",
-                    ("Ingolstadt appears in my reconstructed preawakening evidence.", new_class, row["id"]),
-                )
-            else:
-                conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (new_class, row["id"]))
+            conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (new_class, row["id"]))
             store.set_classification(conn, str(row["id"]), _classification(
                 autobiographical_class=new_class,
                 event_subtype=str(row["kind"]),
@@ -446,7 +440,13 @@ def _classify_bootstrap_and_runtime(store: BrainStore, conn) -> None:
                 autobio = None
                 subtype = "bootstrap_design"
                 reasoning = "Bootstrap identity/self-model material is authoritative for behavior but is not autobiography."
-            conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (new_class, row["id"]))
+            if "Ingolstadt" in text:
+                conn.execute(
+                    "UPDATE memories SET text=?,evidence_class=? WHERE id=?",
+                    ("Ingolstadt appears in my reconstructed preawakening evidence.", new_class, row["id"]),
+                )
+            else:
+                conn.execute("UPDATE memories SET evidence_class=? WHERE id=?", (new_class, row["id"]))
             store.set_classification(conn, str(row["id"]), _classification(
                 autobiographical_class=autobio,
                 event_subtype=subtype,
