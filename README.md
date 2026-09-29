@@ -26,6 +26,18 @@ Character invariants are design material rather than autobiography. LoRA example
 
 Deep-History v2 was merged at production SHA `001321b30fdbcde59e388ce907031788543611b6`.
 
+## v0.4 bounded state-to-policy bridge
+
+The v0.3 causal audit demonstrated that deep history, felt needs, relationship state, and commitments could change downstream context without changing action selection. v0.4 introduces the smallest correction justified by that result.
+
+The recurrent action distribution remains Pretorius's baseline policy contribution. A deterministic state-to-policy bridge can apply bounded pressure from felt needs, relevant relationship state, open commitments, relevant autobiographical history, and open concerns before the winning tendency is selected. Each state family is capped independently, the combined correction is capped, and every policy decision preserves the recurrent base scores, per-family pressure, final scores, and selected action.
+
+Concerns now have an explicit durable resolution lifecycle. Resolved concerns no longer remain in the open-concern set, no longer drive open-term salience, and no longer create permanent heartbeat cognition merely because they once existed.
+
+The self-model and spreading activation are deliberately excluded from the bridge pending stronger causal evidence. Durable action values also remain outside the bridge for now because recurrent reinforcement already demonstrated a causal learning path and double-counting the same outcome signal is not justified.
+
+No chassis/body integration is part of v0.4.
+
 ## v0.3 causal architecture audit
 
 The current development phase is a temporary feature freeze devoted to causal characterization of the architecture already present. See `CAUSAL_AUDIT_CONTRACT.md` and GitHub Issue #9.
