@@ -51,6 +51,15 @@ def _stable_sha256(value: Any) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _behavioral_request_sha256(render_request: dict[str, Any]) -> str:
+    """Fingerprint renderer-visible content while ignoring audit bookkeeping."""
+    normalized = json.loads(json.dumps(render_request, sort_keys=True, default=str))
+    metadata = normalized.get("metadata")
+    if isinstance(metadata, dict):
+        metadata.pop("private_state_version", None)
+    return _stable_sha256(normalized)
+
+
 def deterministic_audit_render(
     render_request: dict[str, Any],
     selected_action: str,
@@ -288,6 +297,7 @@ class CausalAuditHarness:
             "retrieval": retrieval,
             "renderer_request": request,
             "renderer_request_sha256": _stable_sha256(request),
+            "renderer_request_behavior_sha256": _behavioral_request_sha256(request),
             "deterministic_audit_render": audit_render,
             "state_before_stimulus": before,
             "state_after_stimulus": after,
@@ -324,6 +334,10 @@ class CausalAuditHarness:
             "retrieval_jaccard": retrieval_jaccard,
             "selected_memory_jaccard": selected_jaccard,
             "renderer_request_changed": (
+                intact["renderer_request_behavior_sha256"]
+                != lesion["renderer_request_behavior_sha256"]
+            ),
+            "renderer_request_raw_changed": (
                 intact["renderer_request_sha256"] != lesion["renderer_request_sha256"]
             ),
             "deterministic_render_changed": (
