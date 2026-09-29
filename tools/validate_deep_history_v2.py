@@ -85,6 +85,7 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
         assert status["connectome_nodes"] == 70
         assert status["connectome_edges"] == 243
         assert status["withheld_claims"] == 3
+        assert brain.store.meta("schema_version") == "4"
         assert status["source_custody"][0]["custody_status"] == "custody_known"
         assert status["source_custody"][0]["original_author"] is None
 
@@ -146,8 +147,26 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
             dark_refs = conn.execute(
                 "SELECT COUNT(*) FROM reference_material WHERE continuity='dark_universe'"
             ).fetchone()[0]
+            bad_wording = conn.execute(
+                """SELECT COUNT(*) FROM memory_classifications
+                WHERE wording NOT IN ('quoted','paraphrased','reconstructed','synthesized')"""
+            ).fetchone()[0]
+            laundering = conn.execute(
+                """SELECT COUNT(*) FROM memories m
+                JOIN memory_classifications c ON c.memory_id=m.id
+                WHERE c.autobiographical_class IN
+                ('reconstructed_preawakening_memory','synthesized_preawakening_memory')
+                AND (
+                    lower(trim(m.text)) LIKE 'i remember %'
+                    OR lower(trim(m.text)) LIKE 'i recall %'
+                    OR lower(trim(m.text)) LIKE 'i witnessed %'
+                    OR lower(trim(m.text)) LIKE 'i experienced %'
+                )"""
+            ).fetchone()[0]
         assert int(insect_memory_count) == 0
         assert int(dark_refs) == 0
+        assert int(bad_wording) == 0
+        assert int(laundering) == 0
 
         output["fresh_v2"] = {
             "status": "pass",
@@ -162,6 +181,9 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
             "relationship_recovered": True,
             "withheld_insect_claim_not_memory": True,
             "dark_universe_empty": True,
+            "schema_version": 4,
+            "all_classifications_have_valid_wording": True,
+            "reconstructed_or_synthesized_direct_recollection_leaks": 0,
         }
 
 
@@ -221,9 +243,27 @@ def migrate_v1_validation(v1_root: Path, output: dict[str, Any]) -> None:
                 WHERE evidence_class LIKE 'inherited_%'
                    OR evidence_class IN ('lived_experience','lived_action_outcome')"""
             ).fetchone()[0])
+            invalid_wording = int(conn.execute(
+                """SELECT COUNT(*) FROM memory_classifications
+                WHERE wording NOT IN ('quoted','paraphrased','reconstructed','synthesized')"""
+            ).fetchone()[0])
+            migrated_laundering = int(conn.execute(
+                """SELECT COUNT(*) FROM memories m
+                JOIN memory_classifications c ON c.memory_id=m.id
+                WHERE c.autobiographical_class IN
+                ('reconstructed_preawakening_memory','synthesized_preawakening_memory')
+                AND (
+                    lower(trim(m.text)) LIKE 'i remember %'
+                    OR lower(trim(m.text)) LIKE 'i recall %'
+                    OR lower(trim(m.text)) LIKE 'i witnessed %'
+                    OR lower(trim(m.text)) LIKE 'i experienced %'
+                )"""
+            ).fetchone()[0])
         assert snapshot_count > 0
         assert unclassified_autobio == 0
         assert legacy_classes == 0
+        assert invalid_wording == 0
+        assert migrated_laundering == 0
 
         migrated.save()
         digest = migrated.store.digest()
@@ -243,6 +283,9 @@ def migrate_v1_validation(v1_root: Path, output: dict[str, Any]) -> None:
             "external_statement_preserved": True,
             "commitment_preserved": True,
             "restart_idempotent": True,
+            "schema_version": int(restarted.store.meta("schema_version") or 0),
+            "invalid_wording_records": invalid_wording,
+            "direct_recollection_leaks_after_migration": migrated_laundering,
         }
 
 
