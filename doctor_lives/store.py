@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+
+WORDING_KINDS = frozenset({"quoted", "paraphrased", "reconstructed", "synthesized"})
 
 AUTOBIOGRAPHICAL_CLASSES = frozenset({
     "canonical_preawakening_memory",
@@ -126,6 +128,7 @@ CREATE TABLE IF NOT EXISTS memory_classifications (
  canon_rank INTEGER,
  continuity TEXT NOT NULL,
  material_category TEXT NOT NULL,
+ wording TEXT NOT NULL,
  classification_reasoning_json TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'active',
  predecessor_memory_id TEXT,
@@ -158,7 +161,23 @@ CREATE TABLE IF NOT EXISTS synthesis_admissions (
  status TEXT NOT NULL,
  created_at TEXT NOT NULL,
  reviewed_at TEXT,
+ retracted_at TEXT,
+ retracted_by TEXT,
+ retraction_reason TEXT,
+ retraction_note TEXT NOT NULL DEFAULT 'Synthesis admission is retractable, not reversible: retraction removes the active memory but cannot undo cognition that already occurred.',
  FOREIGN KEY(memory_id) REFERENCES memories(id)
+);
+CREATE TABLE IF NOT EXISTS conflict_resolutions (
+ id TEXT PRIMARY KEY,
+ conflict_key TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ candidate_memory_ids_json TEXT NOT NULL,
+ candidate_ranks_json TEXT NOT NULL,
+ winner_memory_id TEXT NOT NULL,
+ rule TEXT NOT NULL,
+ rationale TEXT NOT NULL,
+ resolution_json TEXT NOT NULL,
+ FOREIGN KEY(winner_memory_id) REFERENCES memories(id)
 );
 CREATE TABLE IF NOT EXISTS source_custody (
  source_key TEXT PRIMARY KEY,
@@ -246,9 +265,43 @@ class BrainStore:
         finally:
             conn.close()
 
+    @staticmethod
+    def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+        return {str(row["name"]) for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+
+    def _migrate_schema(self, conn: sqlite3.Connection) -> None:
+        classification_columns = self._table_columns(conn, "memory_classifications")
+        if "wording" not in classification_columns:
+            conn.execute(
+                "ALTER TABLE memory_classifications ADD COLUMN wording TEXT NOT NULL DEFAULT 'paraphrased'"
+            )
+            conn.execute(
+                """UPDATE memory_classifications SET wording=
+                CASE
+                  WHEN autobiographical_class='reconstructed_preawakening_memory' THEN 'reconstructed'
+                  WHEN autobiographical_class='synthesized_preawakening_memory' THEN 'synthesized'
+                  WHEN autobiographical_class='lived_runtime_memory' THEN 'quoted'
+                  ELSE 'paraphrased'
+                END"""
+            )
+
+        admission_columns = self._table_columns(conn, "synthesis_admissions")
+        if "retracted_at" not in admission_columns:
+            conn.execute("ALTER TABLE synthesis_admissions ADD COLUMN retracted_at TEXT")
+        if "retracted_by" not in admission_columns:
+            conn.execute("ALTER TABLE synthesis_admissions ADD COLUMN retracted_by TEXT")
+        if "retraction_reason" not in admission_columns:
+            conn.execute("ALTER TABLE synthesis_admissions ADD COLUMN retraction_reason TEXT")
+        if "retraction_note" not in admission_columns:
+            conn.execute(
+                """ALTER TABLE synthesis_admissions ADD COLUMN retraction_note TEXT NOT NULL
+                DEFAULT 'Synthesis admission is retractable, not reversible: retraction removes the active memory but cannot undo cognition that already occurred.'"""
+            )
+
     def init(self) -> None:
         with closing(self.connect()) as conn:
             conn.executescript(SCHEMA)
+            self._migrate_schema(conn)
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('schema_version',?)", (str(SCHEMA_VERSION),))
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('tick','0')")
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('state_version','0')")
@@ -317,6 +370,12 @@ class BrainStore:
             raise ValueError(
                 f"autobiographical memory {evidence_class!r} requires classification reasoning"
             )
+        if evidence_class in {"reconstructed_preawakening_memory", "synthesized_preawakening_memory"}:
+            normalized = " ".join(text.strip().lower().split())
+            if normalized.startswith(("i remember ", "i recall ", "i witnessed ", "i experienced ")):
+                raise ValueError(
+                    f"{evidence_class} cannot use unqualified direct-recollection wording"
+                )
         if evidence_class == "synthesized_preawakening_memory":
             if not synthesis_admission_id:
                 raise ValueError("synthesized memory requires an approved synthesis admission")
@@ -355,6 +414,13 @@ class BrainStore:
         canon_rank = classification.get("canon_rank")
         if canon_rank is not None and not 0 <= int(canon_rank) <= 5:
             raise ValueError("canon_rank must be between 0 and 5")
+        wording = str(classification.get("wording") or "")
+        if wording not in WORDING_KINDS:
+            raise ValueError(
+                "classification wording must be one of: quoted, paraphrased, reconstructed, synthesized"
+            )
+        if autobiographical_class == "synthesized_preawakening_memory" and wording != "synthesized":
+            raise ValueError("synthesized preawakening memory must use synthesized wording")
         reasoning = classification.get("classification_reasoning")
         if not isinstance(reasoning, dict) or not reasoning:
             raise ValueError("classification_reasoning must be a non-empty mapping")
@@ -367,9 +433,9 @@ class BrainStore:
         conn.execute(
             """INSERT OR REPLACE INTO memory_classifications
             (memory_id,autobiographical_class,event_subtype,canon_rank,continuity,
-             material_category,classification_reasoning_json,status,predecessor_memory_id,
+             material_category,wording,classification_reasoning_json,status,predecessor_memory_id,
              classifier,classified_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 memory_id,
                 autobiographical_class,
@@ -379,6 +445,7 @@ class BrainStore:
                 str(classification.get("material_category") or (
                     "autobiography" if autobiographical_class else "uncategorized"
                 )),
+                wording,
                 json.dumps(reasoning, sort_keys=True),
                 str(classification.get("status") or "active"),
                 classification.get("predecessor_memory_id"),
@@ -400,7 +467,7 @@ class BrainStore:
 
     def memories_with_classification(self, active_only: bool = True) -> list[dict[str, Any]]:
         sql = """SELECT m.*,c.autobiographical_class,c.event_subtype,c.canon_rank,
-                 c.continuity,c.material_category,c.classification_reasoning_json,
+                 c.continuity,c.material_category,c.wording,c.classification_reasoning_json,
                  c.status AS classification_status,c.predecessor_memory_id,c.classifier,c.classified_at
                  FROM memories m LEFT JOIN memory_classifications c ON c.memory_id=m.id"""
         if active_only:
@@ -501,7 +568,7 @@ class BrainStore:
             for table in ["meta","events","memories","relationships","relationship_events","concerns",
                           "commitments","self_model","thoughts","policy_decisions","associations","needs","action_values",
                           "sleep_fragments","archive","memory_provenance","memory_classifications",
-                          "canon_authority","synthesis_admissions","source_custody","withheld_claims",
+                          "canon_authority","synthesis_admissions","conflict_resolutions","source_custody","withheld_claims",
                           "reference_material","history_nodes","history_edges"]:
                 rows = conn.execute(f"SELECT * FROM {table} ORDER BY rowid").fetchall()
                 for row in rows:
