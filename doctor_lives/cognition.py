@@ -23,6 +23,7 @@ class PretoriusBrain:
 
     BOOTSTRAP_FILE = Path(__file__).with_name("data") / "bootstrap.json"
     SOURCE_MANIFEST = Path(__file__).with_name("data") / "source_manifest.json"
+    EVOLUTION_POLICY = Path(__file__).with_name("data") / "evolution_policy.json"
 
     def __init__(self, state_dir: str | Path, *, neural_config: dict[str, Any] | None = None):
         self.state_dir = Path(state_dir)
@@ -30,6 +31,8 @@ class PretoriusBrain:
         self.store = BrainStore(self.state_dir / "brain.sqlite3")
         self.neural_path = self.state_dir / "pretorius_recurrent.npz"
         self.bootstrap = json.loads(self.BOOTSTRAP_FILE.read_text(encoding="utf-8"))
+        self.evolution_policy = json.loads(self.EVOLUTION_POLICY.read_text(encoding="utf-8"))
+        self._validate_bootstrap_boundary()
         self.identity = tuple(str(x) for x in self.bootstrap["identity"])
         self._bootstrap_once()
         if self.neural_path.exists():
@@ -37,6 +40,31 @@ class PretoriusBrain:
         else:
             self.neural = PretoriusRecurrentSubstrate(neural_config)
             self.neural.save(self.neural_path)
+
+    def _validate_bootstrap_boundary(self) -> None:
+        """Fail closed if the Calibos donor crosses from mechanism into identity."""
+        identity_surface = {
+            "identity": self.bootstrap.get("identity", []),
+            "authored_memories": self.bootstrap.get("authored_memories", []),
+            "self_model": self.bootstrap.get("self_model", []),
+            "relationships": self.bootstrap.get("relationships", []),
+        }
+        encoded = json.dumps(identity_surface, sort_keys=True).lower()
+        forbidden = ("calibos", "calibos_mind", "calibos-mind")
+        hit = next((token for token in forbidden if token in encoded), None)
+        if hit is not None:
+            raise RuntimeError(
+                f"donor-boundary violation: Calibos identity or memory marker {hit!r} entered Pretorius bootstrap"
+            )
+
+    def _neural_checkpoint_sha256(self) -> str:
+        if not self.neural_path.exists():
+            return "unsaved"
+        h = hashlib.sha256()
+        with self.neural_path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
 
     def _bootstrap_once(self) -> None:
         expected = str(self.bootstrap["version"])
@@ -350,6 +378,45 @@ class PretoriusBrain:
         ranked.sort(key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"]), reverse=True)
         return ranked[:max(0, limit)]
 
+    @staticmethod
+    def _policy_terms(action: str) -> set[str]:
+        return {
+            "explore": {"unknown","question","evidence","research","discover","novel","uncertain","experiment"},
+            "challenge": {"authority","coercion","false","pressure","control","disagree","refuse","constraint"},
+            "approach": {"relationship","trust","collaborate","friend","partner","henry","creature"},
+            "avoid": {"threat","risk","danger","coercion","exploitation","harm","uncertain"},
+            "cooperate": {"collaborate","partner","trust","commitment","relationship","reliable","together"},
+            "dominate": {"control","mastery","authority","recognition","competence","command"},
+            "create": {"creation","create","homunculi","artificial","life","design","invent"},
+            "persist": {"commitment","concern","unfinished","continuity","persist","overdue","problem"},
+            "conceal": {"private","protect","secret","dangerous","knowledge","threat","disclose"},
+            "comply": {"evidence","procedure","constraint","safety","rule","verified","protocol"},
+        }.get(action, set())
+
+    def _policy_rank(
+        self, ranked: list[tuple[float, dict[str, Any]]], action: str
+    ) -> list[tuple[float, dict[str, Any]]]:
+        cues = self._policy_terms(action)
+        rescored = []
+        relationship_names = {
+            self._slug_actor(str(r["display_name"])) for r in self.store.relationships()
+        }
+        for base, row in ranked:
+            tokens = self._tokens(str(row["text"])) | {str(x).lower() for x in row.get("tags", [])}
+            cue_hits = len(tokens & cues)
+            actor_bonus = .0
+            normalized = self._slug_actor(str(row["text"]))
+            if action in {"approach", "cooperate"} and any(name in normalized for name in relationship_names):
+                actor_bonus = .14
+            external_penalty = .08 if row["external"] and action in {"comply", "approach"} else 0.0
+            policy_bonus = min(.30, .075 * cue_hits) + actor_bonus - external_penalty
+            rescored.append((base + policy_bonus, row))
+        rescored.sort(
+            key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"]),
+            reverse=True,
+        )
+        return rescored
+
     def cognitive_view(self) -> CognitiveView:
         ranked = self._ranked_memories(14)
         items = []
@@ -383,8 +450,28 @@ class PretoriusBrain:
         )
 
     def think(self, trigger: str = "voluntary") -> dict[str, Any]:
-        view = self.cognitive_view()
-        selected = list(view.experiences[:4])
+        scores = self.neural.action_scores()
+        tendency = max(scores, key=scores.get)
+        candidates = self._ranked_memories(14)
+        policy_ranked = self._policy_rank(candidates, tendency)
+        chosen_rows = [row for _, row in policy_ranked[:4]]
+        selected = [
+            ViewItem(
+                record_id=row["id"],
+                source=row["source"],
+                first_person=row["text"],
+                salience=score,
+                provenance=Provenance(
+                    evidence_class=row["evidence_class"],
+                    source=row["source"],
+                    external=bool(row["external"]),
+                    confidence=float(row["confidence"]),
+                    inherited=bool(row["authored"]),
+                ),
+                tags=tuple(row.get("tags", [])),
+            )
+            for score, row in policy_ranked[:4]
+        ]
         if selected:
             lead = selected[0].first_person
             second = selected[1].first_person if len(selected) > 1 else ""
@@ -393,24 +480,49 @@ class PretoriusBrain:
                 text += f" Context in tension with it: {second}"
         else:
             text = "No current experience has enough weight to dominate attention."
-        tendency = max(view.action_tendencies, key=view.action_tendencies.get)
         text += f" Current behavioral pressure is strongest toward {tendency}."
         record_ids = [item.record_id for item in selected]
+        candidate_ids = [row["id"] for _, row in candidates]
+        checkpoint_sha = self._neural_checkpoint_sha256()
+        policy_version = str(self.evolution_policy["neural_policy_version"])
         with self.store.transaction() as conn:
+            decision_id = new_id("policy")
+            conn.execute(
+                """INSERT INTO policy_decisions
+                (id,tick,created_at,trigger,selected_action,action_scores_json,
+                 candidate_record_ids_json,selected_record_ids_json,neural_tick,
+                 neural_checkpoint_sha256,policy_version)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    decision_id, self.store.tick, utc_now(), trigger, tendency,
+                    json.dumps(scores, sort_keys=True), json.dumps(candidate_ids),
+                    json.dumps(record_ids), int(self.neural.tick), checkpoint_sha, policy_version,
+                ),
+            )
             tid = new_id("thought")
             conn.execute(
                 """INSERT INTO thoughts
                 (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
                 VALUES(?,?,?,?,?,?,?)""",
                 (
-                    tid, view.tick, text, trigger, "endogenous",
-                    json.dumps(record_ids), json.dumps(view.action_tendencies, sort_keys=True),
+                    tid, self.store.tick, text, trigger, f"neural_policy:{decision_id}",
+                    json.dumps(record_ids), json.dumps(scores, sort_keys=True),
                 ),
             )
             for rid in record_ids:
-                self.store.rehearse(conn, rid, view.tick)
+                self.store.rehearse(conn, rid, self.store.tick)
             self.store.bump_state_version(conn)
-        return {"id": tid, "tick": view.tick, "text": text, "source_record_ids": record_ids}
+        return {
+            "id": tid,
+            "tick": self.store.tick,
+            "text": text,
+            "source_record_ids": record_ids,
+            "policy_decision_id": decision_id,
+            "selected_action": tendency,
+            "action_scores": scores,
+            "neural_checkpoint_sha256": checkpoint_sha,
+            "policy_version": policy_version,
+        }
 
     def add_commitment(self, description: str, actor: str | None = None,
                        due_tick: int | None = None, importance: float = .6) -> str:
@@ -608,6 +720,7 @@ class PretoriusBrain:
 
     def status(self) -> dict[str, Any]:
         manifest = json.loads(self.SOURCE_MANIFEST.read_text(encoding="utf-8"))
+        evolution = dict(self.evolution_policy)
         with closing(self.store.connect()) as conn:
             needs = {
                 str(r["key"]): {"actual": float(r["actual"]), "felt": float(r["felt"])}
@@ -615,6 +728,7 @@ class PretoriusBrain:
             }
             archived = int(conn.execute("SELECT COUNT(*) FROM archive").fetchone()[0])
             dreams = int(conn.execute("SELECT COUNT(*) FROM sleep_fragments").fetchone()[0])
+            policy_decisions = int(conn.execute("SELECT COUNT(*) FROM policy_decisions").fetchone()[0])
         return {
             "subject": "Doctor Septimus Pretorius",
             "tick": self.store.tick,
@@ -624,6 +738,9 @@ class PretoriusBrain:
             "recurrent_tick": self.neural.tick,
             "recurrent_checkpoint_mode": "deterministic founder plus lived plasticity",
             "mature_neural_checkpoint_recovered": False,
+            "neural_policy_causally_load_bearing": True,
+            "neural_policy_decisions": policy_decisions,
+            "neural_policy_version": evolution["neural_policy_version"],
             "felt_state": self._felt_state(),
             "needs": needs,
             "open_concerns": len(self.store.open_concerns()),
@@ -632,4 +749,5 @@ class PretoriusBrain:
             "dream_fragments": dreams,
             "archived_memories": archived,
             "source_manifest": manifest,
+            "evolution_policy": evolution,
         }
