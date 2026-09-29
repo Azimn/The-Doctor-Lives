@@ -158,7 +158,7 @@ class BrainAssemblyTests(unittest.TestCase):
             tags=("relationship", "trust"),
         ))
         ranked = brain._ranked_memories(20, query="Morgan", audit=False)
-        _, _, audit = brain._state_policy_scores(ranked)
+        _, _, audit = brain._state_policy_scores(ranked, decision_text="Morgan asks to work together.")
         self.assertGreater(audit["families"]["relationships"]["cooperate"], 0.0)
         self.assertGreater(audit["families"]["relationships"]["approach"], 0.0)
 
@@ -166,7 +166,7 @@ class BrainAssemblyTests(unittest.TestCase):
         temp, brain = self.make_brain()
         self.addCleanup(temp.cleanup)
         brain.add_commitment("Complete the continuity experiment.", importance=.9)
-        result = brain.think("test")
+        result = brain.think("test", decision_text="Complete the continuity experiment.")
         self.assertIn("base_action_scores", result)
         self.assertIn("state_pressure", result)
         self.assertIn("action_scores", result)
@@ -180,6 +180,84 @@ class BrainAssemblyTests(unittest.TestCase):
         self.assertEqual(json.loads(row["base_action_scores_json"]), result["base_action_scores"])
         self.assertEqual(json.loads(row["state_pressure_json"]), result["state_pressure"])
         self.assertEqual(json.loads(row["action_scores_json"]), result["action_scores"])
+
+    def test_irrelevant_relationship_and_commitment_do_not_apply_global_pressure(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        brain.ingest(Experience(
+            "Morgan returned the apparatus intact and kept the agreement.",
+            actor="Morgan", kind="social", social=.8, valence=.8,
+        ))
+        brain.add_commitment("Meet Morgan to inspect the apparatus.", actor="Morgan", importance=.9)
+        ranked = brain._ranked_memories(20, query="weather", audit=False)
+        _, _, audit = brain._state_policy_scores(
+            ranked, decision_text="The rain strikes the laboratory windows."
+        )
+        self.assertTrue(all(abs(v) < 1e-12 for v in audit["families"]["relationships"].values()))
+        self.assertTrue(all(abs(v) < 1e-12 for v in audit["families"]["commitments"].values()))
+
+    def test_resolved_commitment_loses_policy_pressure(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        cid = brain.add_commitment(
+            "Complete the continuity experiment with Morgan.", actor="Morgan", importance=.9
+        )
+        ranked = brain._ranked_memories(20, query="continuity Morgan", audit=False)
+        _, _, active = brain._state_policy_scores(
+            ranked, decision_text="Continue the continuity experiment with Morgan."
+        )
+        self.assertGreater(active["families"]["commitments"]["persist"], 0.0)
+        brain.resolve_commitment(cid, "Experiment completed.", kept=True)
+        _, _, resolved = brain._state_policy_scores(
+            ranked, decision_text="Continue the continuity experiment with Morgan."
+        )
+        self.assertTrue(all(abs(v) < 1e-12 for v in resolved["families"]["commitments"].values()))
+
+    def test_bridge_lesion_restores_raw_recurrent_distribution(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        with brain.store.transaction() as conn:
+            conn.execute("UPDATE needs SET actual=.9,felt=.9 WHERE key='autonomy'")
+            brain.store.bump_state_version(conn)
+        base, adjusted, audit = brain._state_policy_scores(
+            [], decision_text="An authority orders compliance.", bridge_enabled=False
+        )
+        self.assertEqual(base, adjusted)
+        self.assertFalse(audit["enabled"])
+        self.assertTrue(all(abs(v) < 1e-12 for v in audit["combined"].values()))
+
+    def test_concern_release_and_recurrence_reopen_same_record(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        event = Experience(
+            "The municipal inspector orders the laboratory sealed immediately.",
+            actor="Inspector", authority=.95, autonomy=.0, threat=.8, control=-.6,
+        )
+        brain.ingest(event)
+        first = brain.store.open_concerns()
+        self.assertEqual(len(first), 1)
+        cid = first[0]["id"]
+        brain.release_concern(cid, "Inspection order withdrawn.")
+        self.assertEqual(brain.store.open_concerns(), [])
+        brain.ingest(event)
+        reopened = brain.store.open_concerns()
+        self.assertEqual(len(reopened), 1)
+        self.assertEqual(reopened[0]["id"], cid)
+        self.assertIsNone(reopened[0]["resolved_tick"])
+        self.assertIsNone(reopened[0]["resolution"])
+
+    def test_policy_audit_records_source_ids_clipping_and_normalization(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        cid = brain.add_commitment(
+            "Complete the continuity experiment.", importance=.9
+        )
+        result = brain.think("test", decision_text="Complete the continuity experiment.")
+        audit = result["state_pressure"]
+        self.assertIn(cid, audit["source_ids"]["commitments"])
+        self.assertIn("clipping", audit)
+        self.assertEqual(audit["normalization"]["method"], "positive_floor_then_sum_to_one")
+        self.assertAlmostEqual(sum(result["action_scores"].values()), 1.0, places=12)
 
     def test_sleep_replays_without_advancing_waking_time(self):
         temp, brain = self.make_brain()
