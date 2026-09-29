@@ -111,13 +111,21 @@ def _source_string(provenance: dict[str, Any]) -> str:
 
 def _classification(*, autobiographical_class: str | None, event_subtype: str,
                     canon_rank: int | None, continuity: str, material_category: str,
-                    reasoning: dict[str, Any], predecessor_memory_id: str | None = None) -> dict[str, Any]:
+                    reasoning: dict[str, Any], predecessor_memory_id: str | None = None,
+                    wording: str | None = None) -> dict[str, Any]:
+    if wording is None:
+        wording = {
+            "reconstructed_preawakening_memory": "reconstructed",
+            "synthesized_preawakening_memory": "synthesized",
+            "lived_runtime_memory": "quoted",
+        }.get(autobiographical_class, "paraphrased")
     return {
         "autobiographical_class": autobiographical_class,
         "event_subtype": event_subtype,
         "canon_rank": canon_rank,
         "continuity": continuity,
         "material_category": material_category,
+        "wording": wording,
         "classification_reasoning": reasoning,
         "predecessor_memory_id": predecessor_memory_id,
         "classifier": "pretorius-deep-history-v2",
@@ -400,6 +408,7 @@ def _classify_bootstrap_and_runtime(store: BrainStore, conn) -> None:
                 continuity="runtime",
                 material_category="autobiography",
                 predecessor_memory_id=str(row["id"]),
+                wording="paraphrased" if str(row["kind"]) == "action_outcome" else "quoted",
                 reasoning={
                     "decision": new_class,
                     "basis": "The event was experienced by this running Pretorius instance and is migrated from the legacy lived-memory class.",
@@ -486,6 +495,132 @@ def review_synthesis_proposal(store: BrainStore, admission_id: str, *, approved:
                 WHERE id=?""",
                 (status, utc_now(), json.dumps(exclusion_rulings, sort_keys=True), admission_id),
             )
+
+
+def resolve_canon_conflict(store: BrainStore, *, conflict_key: str,
+                           memory_ids: list[str], rationale: str = "") -> dict[str, Any]:
+    candidates = sorted(set(str(x) for x in memory_ids))
+    if len(candidates) < 2:
+        raise ValueError("canon conflict resolution requires at least two distinct memories")
+    with store.transaction() as conn:
+        placeholders = ",".join("?" for _ in candidates)
+        rows = conn.execute(
+            f"""SELECT m.id,m.evidence_class,m.active,c.autobiographical_class,
+            c.canon_rank,c.continuity,c.wording
+            FROM memories m JOIN memory_classifications c ON c.memory_id=m.id
+            WHERE m.id IN ({placeholders})""",
+            tuple(candidates),
+        ).fetchall()
+        if len(rows) != len(candidates):
+            found = {str(row["id"]) for row in rows}
+            missing = sorted(set(candidates) - found)
+            raise ValueError(f"unclassified or missing conflict candidates: {missing!r}")
+        decoded = [dict(row) for row in rows]
+        if any(not bool(row["active"]) for row in decoded):
+            raise ValueError("canon conflict candidates must be active memories")
+        if any(row["canon_rank"] is None for row in decoded):
+            raise ValueError("canon conflict candidates require non-null canon ranks")
+        allowed = {
+            "canonical_preawakening_memory",
+            "reconstructed_preawakening_memory",
+            "synthesized_preawakening_memory",
+        }
+        if any(str(row["autobiographical_class"]) not in allowed for row in decoded):
+            raise ValueError("canon conflict resolution is limited to preawakening autobiography")
+        continuities = {str(row["continuity"]) for row in decoded}
+        if len(continuities) != 1:
+            raise ValueError(
+                "records from different continuities coexist; resolve conflicts only within one continuity"
+            )
+
+        ordered = sorted(decoded, key=lambda row: (int(row["canon_rank"]), str(row["id"])))
+        winner = ordered[0]
+        resolution = {
+            "conflict_key": conflict_key,
+            "rule": "lowest_canon_rank_then_lexicographic_memory_id",
+            "rank_direction": "lower_is_stronger",
+            "continuity": next(iter(continuities)),
+            "winner_memory_id": str(winner["id"]),
+            "winner_canon_rank": int(winner["canon_rank"]),
+            "winner_autobiographical_class": str(winner["autobiographical_class"]),
+            "class_upgrade_performed": False,
+            "candidates": [
+                {
+                    "memory_id": str(row["id"]),
+                    "canon_rank": int(row["canon_rank"]),
+                    "autobiographical_class": str(row["autobiographical_class"]),
+                    "wording": str(row["wording"]),
+                }
+                for row in ordered
+            ],
+        }
+        audit_id = new_id("conflict")
+        conn.execute(
+            """INSERT INTO conflict_resolutions
+            (id,conflict_key,created_at,candidate_memory_ids_json,candidate_ranks_json,
+             winner_memory_id,rule,rationale,resolution_json)
+            VALUES(?,?,?,?,?,?,?,?,?)""",
+            (
+                audit_id, conflict_key, utc_now(),
+                json.dumps(candidates),
+                json.dumps(
+                    {str(row["id"]): int(row["canon_rank"]) for row in decoded},
+                    sort_keys=True,
+                ),
+                str(winner["id"]),
+                "lowest_canon_rank_then_lexicographic_memory_id",
+                rationale,
+                json.dumps(resolution, sort_keys=True),
+            ),
+        )
+    return {"audit_id": audit_id, **resolution}
+
+
+def retract_synthesis_admission(store: BrainStore, admission_id: str, *,
+                                retracted_by: str, reason: str) -> dict[str, Any]:
+    if not retracted_by.strip():
+        raise ValueError("retracted_by is required")
+    if not reason.strip():
+        raise ValueError("retraction reason is required")
+    note = (
+        "Synthesis admission is retractable, not reversible: retraction removes the active "
+        "memory but cannot undo cognition that already occurred."
+    )
+    with store.transaction() as conn:
+        row = conn.execute(
+            """SELECT id,status,memory_id,retraction_note FROM synthesis_admissions
+            WHERE id=?""",
+            (admission_id,),
+        ).fetchone()
+        if row is None:
+            raise KeyError(admission_id)
+        if str(row["status"]) != "approved":
+            raise ValueError("only an approved synthesis admission can be retracted")
+        memory_id = None if row["memory_id"] is None else str(row["memory_id"])
+        if memory_id is not None:
+            store.archive_memory(
+                conn, memory_id, store.tick,
+                f"synthesis admission {admission_id} retracted: {reason.strip()}",
+            )
+            conn.execute(
+                "UPDATE memory_classifications SET status='retracted' WHERE memory_id=?",
+                (memory_id,),
+            )
+        conn.execute(
+            """UPDATE synthesis_admissions
+            SET status='retracted',retracted_at=?,retracted_by=?,retraction_reason=?,
+                retraction_note=?
+            WHERE id=?""",
+            (utc_now(), retracted_by.strip(), reason.strip(), note, admission_id),
+        )
+        store.bump_state_version(conn)
+    return {
+        "admission_id": admission_id,
+        "memory_id": memory_id,
+        "status": "retracted",
+        "retraction_note": note,
+        "retroactive_cognition_undone": False,
+    }
 
 
 def install_deep_history(store: BrainStore) -> dict[str, Any]:
@@ -792,7 +927,6 @@ def history_status(store: BrainStore) -> dict[str, Any]:
         "connectome_edges": edge_count,
         "provenanced_memories": provenance_count,
         "preawakening_memories": preawakening_count,
-        "inherited_memories": preawakening_count,
         "lived_memories": lived_count,
         "project_records": project_count,
         "evidence_classes": classes,
