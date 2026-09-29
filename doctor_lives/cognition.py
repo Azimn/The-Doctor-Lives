@@ -821,7 +821,12 @@ class PretoriusBrain:
                 str(r["key"]): {"actual": float(r["actual"]), "felt": float(r["felt"])}
                 for r in conn.execute("SELECT * FROM needs ORDER BY key").fetchall()
             }
-            archived = int(conn.execute("SELECT COUNT(*) FROM archive").fetchone()[0])
+            archived = int(conn.execute(
+                "SELECT COUNT(*) FROM archive WHERE reason!='deep-history-v2 pre-reclassification snapshot'"
+            ).fetchone()[0])
+            migration_snapshots = int(conn.execute(
+                "SELECT COUNT(*) FROM archive WHERE reason='deep-history-v2 pre-reclassification snapshot'"
+            ).fetchone()[0])
             dreams = int(conn.execute("SELECT COUNT(*) FROM sleep_fragments").fetchone()[0])
             policy_decisions = int(conn.execute("SELECT COUNT(*) FROM policy_decisions").fetchone()[0])
         return {
@@ -845,6 +850,7 @@ class PretoriusBrain:
             "relationships": len(self.store.relationships()),
             "dream_fragments": dreams,
             "archived_memories": archived,
+            "deep_history_migration_snapshots": migration_snapshots,
             "source_manifest": manifest,
             "evolution_policy": evolution,
         }
