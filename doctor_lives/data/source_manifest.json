@@ -8,7 +8,10 @@
     "character_invariants_blob": "86f264e7faafe1d18a462b548b972637c6fea400",
     "persona_connectome_blob": "4a3bf5ab4fd6158710a6706877c4dfc60f819291",
     "persona_connectome_nodes": 70,
-    "persona_connectome_edges": 243
+    "persona_connectome_edges": 243,
+    "seed_agenda_blob": "5325dbfa13d0059b32acd4125f3e652b6e89d8fd",
+    "manifest_blob": "d5b4aba379af959172bfdd499e0212d5c93d01ef",
+    "readme_blob": "94d08a513c4632a1cf3d4b918918daa9cc7918f2"
   },
   "pretorius_neural_network": {
     "repository": "Azimn/Pretorius-Neural-Network",
@@ -26,5 +29,11 @@
     "repository": "Azimn/Pretorius-Neural-Network",
     "commit": "a3af4d2433d9df95b2476c556e9e2b9b308944a4",
     "phenotype_profile_blob": "0b52b12420ba4291844c49cd73b19a8eefc528ff"
+  },
+  "deep_history": {
+    "migration_version": "pretorius-deep-history-v1",
+    "source_rule": "Pretorius-only inherited evidence remains distinct from lived experience",
+    "connectome_nodes": 70,
+    "connectome_edges": 243
   }
 }
