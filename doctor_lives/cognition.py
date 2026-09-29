@@ -301,14 +301,33 @@ class PretoriusBrain:
                     resolution=NULL,importance=MIN(1.0,importance+0.05) WHERE id=?""",
                     (tick, row["id"]),
                 )
+                conn.execute(
+                    """INSERT INTO concern_events
+                    (id,concern_id,tick,created_at,transition,outcome,actor,source)
+                    VALUES(?,?,?,?,?,?,?,?)""",
+                    (
+                        new_id("concern_event"), row["id"], tick, utc_now(), "reopened",
+                        exp.text[:400], exp.actor, exp.source,
+                    ),
+                )
             return
+        concern_id = new_id("concern")
         conn.execute(
             """INSERT INTO concerns
             (id,created_tick,updated_tick,description,status,importance,uncertainty,actor,source)
             VALUES(?,?,?,?,'open',?,?,?,?)""",
             (
-                new_id("concern"), tick, tick, exp.text[:400], clamp(.45 + .2 * pressure),
+                concern_id, tick, tick, exp.text[:400], clamp(.45 + .2 * pressure),
                 clamp(.35 + .25 * abs(exp.valence)), exp.actor, exp.source,
+            ),
+        )
+        conn.execute(
+            """INSERT INTO concern_events
+            (id,concern_id,tick,created_at,transition,outcome,actor,source)
+            VALUES(?,?,?,?,?,?,?,?)""",
+            (
+                new_id("concern_event"), concern_id, tick, utc_now(), "opened",
+                exp.text[:400], exp.actor, exp.source,
             ),
         )
 
@@ -839,7 +858,15 @@ class PretoriusBrain:
             )
             self.store.bump_state_version(conn)
 
-    def close_concern(self, concern_id: str, outcome: str, *, status: str = "resolved") -> None:
+    def close_concern(
+        self,
+        concern_id: str,
+        outcome: str,
+        *,
+        status: str = "resolved",
+        actor: str = "PretoriusBrain",
+        source: str = "runtime_concern_lifecycle",
+    ) -> None:
         if status not in {"resolved", "released"}:
             raise ValueError("concern status must be resolved or released")
         if not outcome.strip():
@@ -856,6 +883,15 @@ class PretoriusBrain:
                 """UPDATE concerns SET status=?,updated_tick=?,resolved_tick=?,
                 resolution=? WHERE id=?""",
                 (status, self.store.tick, self.store.tick, outcome.strip(), concern_id),
+            )
+            conn.execute(
+                """INSERT INTO concern_events
+                (id,concern_id,tick,created_at,transition,outcome,actor,source)
+                VALUES(?,?,?,?,?,?,?,?)""",
+                (
+                    new_id("concern_event"), concern_id, self.store.tick, utc_now(), status,
+                    outcome.strip(), actor, source,
+                ),
             )
             self.store.bump_state_version(conn)
 
