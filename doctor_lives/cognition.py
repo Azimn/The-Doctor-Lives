@@ -497,6 +497,123 @@ class PretoriusBrain:
             "comply": {"evidence","procedure","constraint","safety","rule","verified","protocol"},
         }.get(action, set())
 
+    def _state_policy_scores(
+        self, ranked: list[tuple[float, dict[str, Any]]]
+    ) -> tuple[dict[str, float], dict[str, float], dict[str, Any]]:
+        """Apply bounded state pressure to the recurrent action distribution.
+
+        The recurrent substrate remains the baseline phenotype contribution.
+        Each state family contributes a small deterministic delta, recorded
+        separately so the bridge is inspectable and ablatable.
+        """
+        base = {action: float(self.neural.action_scores()[action]) for action in ACTIONS}
+        cfg = dict(self.evolution_policy.get("state_policy_bridge", {}))
+        family_cap = float(cfg.get("family_cap", 0.05))
+        total_cap = float(cfg.get("total_cap", 0.12))
+
+        families: dict[str, dict[str, float]] = {
+            key: {action: 0.0 for action in ACTIONS}
+            for key in ("needs", "relationships", "commitments", "history", "concerns")
+        }
+
+        def add(family: str, action: str, delta: float) -> None:
+            families[family][action] += float(delta)
+
+        with closing(self.store.connect()) as conn:
+            needs = {
+                str(row["key"]): float(row["felt"])
+                for row in conn.execute("SELECT key,felt FROM needs ORDER BY key").fetchall()
+            }
+
+        def high(key: str) -> float:
+            return max(0.0, needs.get(key, 0.5) - 0.5) / 0.45
+
+        fatigue = high("fatigue")
+        curiosity = high("curiosity")
+        autonomy = high("autonomy")
+        affiliation = high("affiliation")
+        competence = high("competence")
+        continuity = high("continuity")
+
+        add("needs", "avoid", 0.035 * fatigue)
+        add("needs", "explore", -0.030 * fatigue + 0.035 * curiosity)
+        add("needs", "create", -0.025 * fatigue + 0.030 * curiosity + 0.018 * competence)
+        add("needs", "challenge", 0.045 * autonomy)
+        add("needs", "comply", -0.045 * autonomy)
+        add("needs", "approach", 0.030 * affiliation)
+        add("needs", "cooperate", 0.030 * affiliation)
+        add("needs", "persist", 0.020 * competence + 0.025 * continuity)
+        add("needs", "conceal", 0.018 * continuity)
+
+        top_text = " ".join(str(row["text"]).lower() for _, row in ranked[:12])
+        for rel in self.store.relationships():
+            name = str(rel["display_name"])
+            if self._slug_actor(name) not in self._slug_actor(top_text):
+                continue
+            trust = float(rel["trust"]) - 0.5
+            reliability = float(rel["reliability"]) - 0.5
+            positive = max(0.0, trust) + 0.5 * max(0.0, reliability)
+            negative = max(0.0, -trust) + 0.5 * max(0.0, -reliability)
+            add("relationships", "cooperate", 0.050 * positive)
+            add("relationships", "approach", 0.035 * positive)
+            add("relationships", "challenge", 0.035 * negative)
+            add("relationships", "avoid", 0.025 * negative)
+
+        for item in self.store.open_commitments():
+            importance = clamp(float(item["importance"]))
+            add("commitments", "persist", 0.045 * importance)
+            if item.get("actor"):
+                add("commitments", "cooperate", 0.018 * importance)
+
+        for score, row in ranked[:8]:
+            autobiographical_class = row.get("autobiographical_class")
+            if autobiographical_class is None or bool(row.get("external")):
+                continue
+            tokens = self._tokens(str(row["text"])) | {
+                str(tag).lower() for tag in row.get("tags", [])
+            }
+            weight = min(1.0, max(0.0, float(score)) / 2.0)
+            for action in ACTIONS:
+                cue_hits = len(tokens & self._policy_terms(action))
+                if cue_hits:
+                    add("history", action, 0.006 * min(cue_hits, 3) * weight)
+
+        for concern in self.store.open_concerns():
+            importance = clamp(float(concern["importance"]))
+            tokens = self._tokens(str(concern["description"]))
+            add("concerns", "persist", 0.025 * importance)
+            if tokens & {"authority", "coercion", "control", "forced", "order", "orders"}:
+                add("concerns", "challenge", 0.025 * importance)
+                add("concerns", "comply", -0.020 * importance)
+            if tokens & {"threat", "danger", "harm", "unsafe"}:
+                add("concerns", "avoid", 0.020 * importance)
+
+        for family in families.values():
+            for action in ACTIONS:
+                family[action] = max(-family_cap, min(family_cap, family[action]))
+
+        combined = {action: 0.0 for action in ACTIONS}
+        for action in ACTIONS:
+            combined[action] = max(
+                -total_cap,
+                min(total_cap, sum(family[action] for family in families.values())),
+            )
+
+        adjusted_raw = {
+            action: max(1e-9, base[action] + combined[action])
+            for action in ACTIONS
+        }
+        total = sum(adjusted_raw.values())
+        adjusted = {action: adjusted_raw[action] / total for action in ACTIONS}
+        audit = {
+            "version": str(cfg.get("version", "state-policy-bridge-v0.4")),
+            "family_cap": family_cap,
+            "total_cap": total_cap,
+            "families": families,
+            "combined": combined,
+        }
+        return base, adjusted, audit
+
     def _policy_rank(
         self, ranked: list[tuple[float, dict[str, Any]]], action: str
     ) -> list[tuple[float, dict[str, Any]]]:
@@ -547,6 +664,7 @@ class PretoriusBrain:
     def cognitive_view(self, query: str | None = None) -> CognitiveView:
         ranked = self._ranked_memories(14, query=query, audit=True)
         items = [self._view_item(score, row) for score, row in ranked]
+        _, action_tendencies, _ = self._state_policy_scores(ranked)
         return CognitiveView(
             tick=self.store.tick,
             identity=self.identity,
@@ -555,14 +673,14 @@ class PretoriusBrain:
             relationships=tuple(self.store.relationships()),
             concerns=tuple(self.store.open_concerns()),
             commitments=tuple(self.store.open_commitments()),
-            action_tendencies=self.neural.action_scores(),
+            action_tendencies=action_tendencies,
             private_state_version=self.store.state_version,
         )
 
     def think(self, trigger: str = "voluntary") -> dict[str, Any]:
-        scores = self.neural.action_scores()
-        tendency = max(scores, key=scores.get)
         ranked_all = self._ranked_memories(48, audit=True)
+        base_scores, scores, state_pressure = self._state_policy_scores(ranked_all)
+        tendency = max(scores, key=scores.get)
         candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
         if not candidates:
             candidates = ranked_all
@@ -586,12 +704,14 @@ class PretoriusBrain:
             decision_id = new_id("policy")
             conn.execute(
                 """INSERT INTO policy_decisions
-                (id,tick,created_at,trigger,selected_action,action_scores_json,
-                 candidate_record_ids_json,selected_record_ids_json,neural_tick,
-                 neural_checkpoint_sha256,policy_version)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (id,tick,created_at,trigger,selected_action,base_action_scores_json,
+                 state_pressure_json,action_scores_json,candidate_record_ids_json,
+                 selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     decision_id, self.store.tick, utc_now(), trigger, tendency,
+                    json.dumps(base_scores, sort_keys=True),
+                    json.dumps(state_pressure, sort_keys=True),
                     json.dumps(scores, sort_keys=True), json.dumps(candidate_ids),
                     json.dumps(record_ids), int(self.neural.tick), checkpoint_sha, policy_version,
                 ),
@@ -616,6 +736,8 @@ class PretoriusBrain:
             "source_record_ids": record_ids,
             "policy_decision_id": decision_id,
             "selected_action": tendency,
+            "base_action_scores": base_scores,
+            "state_pressure": state_pressure,
             "action_scores": scores,
             "neural_checkpoint_sha256": checkpoint_sha,
             "policy_version": policy_version,
@@ -646,6 +768,24 @@ class PretoriusBrain:
             conn.execute(
                 "UPDATE commitments SET status=?,updated_tick=?,outcome=? WHERE id=?",
                 (status, self.store.tick, outcome.strip(), commitment_id),
+            )
+            self.store.bump_state_version(conn)
+
+    def resolve_concern(self, concern_id: str, resolution: str) -> None:
+        if not resolution.strip():
+            raise ValueError("concern resolution is required")
+        with self.store.transaction() as conn:
+            row = conn.execute(
+                "SELECT id,status FROM concerns WHERE id=?", (concern_id,)
+            ).fetchone()
+            if row is None:
+                raise KeyError(concern_id)
+            if str(row["status"]) != "open":
+                raise ValueError("concern is not open")
+            conn.execute(
+                """UPDATE concerns SET status='resolved',updated_tick=?,resolved_tick=?,
+                resolution=? WHERE id=?""",
+                (self.store.tick, self.store.tick, resolution.strip(), concern_id),
             )
             self.store.bump_state_version(conn)
 
