@@ -1,0 +1,40 @@
+{
+  "schema": "the-doctor-lives.deep-history-v2-validation-record.v1",
+  "governing_issue": "Azimn/The-Doctor-Lives#4",
+  "validated_candidate_sha": "a013173cea016ed9e8579b3c030986fccb041f3a",
+  "workflow_run_id": 36519208482,
+  "artifact": {
+    "id": 11012182834,
+    "name": "deep-history-v2-validation-a013173cea016ed9e8579b3c030986fccb041f3a-36519208482",
+    "sha256": "28f8238c4866e96df9f08719a90773bbb44d7186b096fa486ca2bbde431f6eb6",
+    "size_bytes": 602
+  },
+  "fresh_v2": {
+    "status": "pass",
+    "deep_history_version": "pretorius-deep-history-v2",
+    "connectome_nodes": 70,
+    "connectome_edges": 243,
+    "lived_memory_class": "lived_runtime_memory",
+    "lived_autobiographical_class": "lived_runtime_memory",
+    "renderer_read_only_digest_preserved": true,
+    "restart_digest_preserved": true,
+    "commitment_recovered": true,
+    "relationship_recovered": true,
+    "withheld_insect_claim_not_memory": true,
+    "dark_universe_empty": true
+  },
+  "v1_to_v2_migration": {
+    "status": "pass",
+    "source_sha": "7be60ed46add7c74359b322cc033aa7dfabb08e8",
+    "source_deep_history_version": "pretorius-deep-history-v1",
+    "target_deep_history_version": "pretorius-deep-history-v2",
+    "migration_snapshots": 102,
+    "legacy_autobiographical_classes_remaining": 0,
+    "unclassified_autobiographical_memories": 0,
+    "lived_memory_migrated_to": "lived_runtime_memory",
+    "external_statement_preserved": true,
+    "commitment_preserved": true,
+    "restart_idempotent": true
+  },
+  "note": "This file preserves the first green clean-install and exact-v1-migration validation record. The validation workflow is configured to rerun on every subsequent candidate head."
+}
