@@ -381,15 +381,21 @@ class PretoriusBrain:
             self._maybe_add_concern(conn, tick, exp)
             self._update_commitments_due(conn, tick)
 
-        tendencies = self.neural.step(exp.text, exp.scalars(), reward=0.0, learn=True)
+        recurrent_tendencies = self.neural.step(exp.text, exp.scalars(), reward=0.0, learn=True)
         self.neural.save(self.neural_path)
         thought = self.think("event") if self._warrants_cognition(exp) else None
+        if thought is not None:
+            action_tendencies = dict(thought["action_scores"])
+        else:
+            ranked = self._ranked_memories(14, audit=False)
+            _, action_tendencies, _ = self._state_policy_scores(ranked)
         return {
             "tick": self.store.tick,
             "event_id": event_id,
             "memory_id": memory_id,
             "thought": thought,
-            "action_tendencies": tendencies,
+            "recurrent_action_tendencies": recurrent_tendencies,
+            "action_tendencies": action_tendencies,
             "felt_state": self._felt_state(),
         }
 
@@ -506,7 +512,8 @@ class PretoriusBrain:
         Each state family contributes a small deterministic delta, recorded
         separately so the bridge is inspectable and ablatable.
         """
-        base = {action: float(self.neural.action_scores()[action]) for action in ACTIONS}
+        recurrent_scores = self.neural.action_scores()
+        base = {action: float(recurrent_scores[action]) for action in ACTIONS}
         cfg = dict(self.evolution_policy.get("state_policy_bridge", {}))
         family_cap = float(cfg.get("family_cap", 0.05))
         total_cap = float(cfg.get("total_cap", 0.12))
@@ -546,9 +553,11 @@ class PretoriusBrain:
         add("needs", "conceal", 0.018 * continuity)
 
         top_text = " ".join(str(row["text"]).lower() for _, row in ranked[:12])
+        top_tokens = self._tokens(top_text)
         for rel in self.store.relationships():
             name = str(rel["display_name"])
-            if self._slug_actor(name) not in self._slug_actor(top_text):
+            name_tokens = self._tokens(name)
+            if name_tokens and not name_tokens.issubset(top_tokens):
                 continue
             trust = float(rel["trust"]) - 0.5
             reliability = float(rel["reliability"]) - 0.5
