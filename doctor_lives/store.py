@@ -140,6 +140,7 @@ class BrainStore:
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('tick','0')")
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('state_version','0')")
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('bootstrap_version','')")
+            conn.commit()
 
     def meta(self, key: str, default: str | None = None) -> str | None:
         with closing(self.connect()) as conn:
