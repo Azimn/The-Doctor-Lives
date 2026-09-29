@@ -14,9 +14,18 @@ The Jelly-Psiduck v0.2 engine is a frozen reference protocol, not a mutable depe
 
 ## Pretorius deep-history boundary
 
-Pretorius may begin with inherited prehistory assembled from pinned Pretorius evidence, including canonical memory nodes, relationship evidence, beliefs, motives, wounds, goals, research lineage, and project agenda. Every imported memory carries a stable history key and machine-readable source provenance. Inherited records remain authored evidence and may influence cognition, but they are never silently reclassified as `lived_experience`.
+Pretorius begins with provenance-bearing preawakening history assembled from accepted Pretorius evidence. Autobiographical representations use four explicit classes: `canonical_preawakening_memory`, `reconstructed_preawakening_memory`, `synthesized_preawakening_memory`, and `lived_runtime_memory`. Source authority/canon rank, continuity, wording status, event subtype, and classification reasoning are independent axes.
 
-The complete preserved Persona Connectome is imported as 70 source nodes and 243 typed weighted edges. Connectome activation values are retained as source metadata and are not treated as truth confidence. Curated multi-source history is explicitly labeled as synthesis. Training examples, legacy prompt-control text, and architecture references are not promoted to autobiography merely because they exist in the archive.
+Reconstructed or synthesized history may participate in first-person cognition but cannot be silently rendered or reclassified as lived-runtime certainty. Character invariants are `design_material`, not memory. Reference-only and training material remain outside autobiography. New syntheses require an approved admission bound to the exact reviewed claim; retraction is possible, retroactive reversal of prior cognition is not.
 
-Known source gaps remain visible. Missing developmental biography is represented as a provenance gap rather than filled with plausible fiction. New post-awakening experiences can grow alongside inherited history without overwriting the distinction.
+The complete Persona Connectome remains 70 source nodes and 243 typed weighted edges. Connectome activation is source metadata, not truth confidence. Spreading activation is deterministic, bounded, signed, distance-decayed, retrieval-time only, and nonpersistent. Negative edges provide inhibitory retrieval pressure rather than being converted to positive association. Canon conflict resolutions affect standard retrieval while preserving losing source records for audit.
 
+Known gaps and withheld claims remain visible rather than being filled by convenience.
+
+## Causal-audit freeze
+
+Version 0.3 is governed by `CAUSAL_AUDIT_CONTRACT.md` and Issue #9. The feature freeze permits correctness fixes and measurement instrumentation but prohibits adding a planner, another neural substrate, a new memory architecture, reflection LLM, BDI/global-workspace system, or chassis integration during characterization.
+
+The audit instrumentation is not part of Pretorius's production decision path unless explicitly invoked against cloned audit state. Default `PretoriusBrain` behavior must remain unchanged.
+
+A state-to-policy bridge is a post-audit candidate only. It must not be introduced until the lesion/control results demonstrate which existing states lack causal leverage over action selection.
