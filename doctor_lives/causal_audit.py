@@ -51,13 +51,43 @@ def _stable_sha256(value: Any) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _behavioral_request_sha256(render_request: dict[str, Any]) -> str:
-    """Fingerprint renderer-visible content while ignoring audit bookkeeping."""
+def _behavioral_request_payload(render_request: dict[str, Any]) -> dict[str, Any]:
+    """Remove identity/timestamp bookkeeping that differs across matched clones.
+
+    Random record/event UUIDs are provenance handles, not behavioral content.
+    The raw request is still retained in every trace.
+    """
     normalized = json.loads(json.dumps(render_request, sort_keys=True, default=str))
     metadata = normalized.get("metadata")
     if isinstance(metadata, dict):
         metadata.pop("private_state_version", None)
-    return _stable_sha256(normalized)
+        epistemic = metadata.get("epistemic_items")
+        if isinstance(epistemic, list):
+            for item in epistemic:
+                if isinstance(item, dict):
+                    item.pop("record_id", None)
+
+    relationships = normalized.get("relationship_context")
+    if isinstance(relationships, list):
+        for rel in relationships:
+            if isinstance(rel, dict):
+                evidence = rel.pop("evidence", None)
+                if isinstance(evidence, list):
+                    rel["evidence_count"] = len(evidence)
+
+    unresolved = normalized.get("unresolved_context")
+    if isinstance(unresolved, list):
+        for item in unresolved:
+            if isinstance(item, dict):
+                item.pop("id", None)
+                item.pop("source_event_id", None)
+
+    return normalized
+
+
+def _behavioral_request_sha256(render_request: dict[str, Any]) -> str:
+    """Fingerprint semantic renderer-visible content, excluding clone UUID noise."""
+    return _stable_sha256(_behavioral_request_payload(render_request))
 
 
 def deterministic_audit_render(
@@ -70,13 +100,14 @@ def deterministic_audit_render(
     It exists so audit conditions can compare a deterministic downstream
     observable without allowing a renderer to mutate or reinterpret brain state.
     """
+    normalized = _behavioral_request_payload(render_request)
     payload = {
         "selected_action": selected_action,
-        "first_person_context": list(render_request.get("first_person_context", ()))[:4],
-        "felt_state": dict(render_request.get("metadata", {}).get("felt_state", {})),
-        "relationship_context": list(render_request.get("relationship_context", ())),
-        "unresolved_context": list(render_request.get("unresolved_context", ()))[:6],
-        "provenance_summary": dict(render_request.get("provenance_summary", {})),
+        "first_person_context": list(normalized.get("first_person_context", ()))[:4],
+        "felt_state": dict(normalized.get("metadata", {}).get("felt_state", {})),
+        "relationship_context": list(normalized.get("relationship_context", ())),
+        "unresolved_context": list(normalized.get("unresolved_context", ()))[:6],
+        "provenance_summary": dict(normalized.get("provenance_summary", {})),
     }
     text = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return {"text": text, "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()}
@@ -143,6 +174,30 @@ class CausalAuditHarness:
             "action_values": action_values,
             "self_model": self_model,
         }
+
+    @staticmethod
+    def _memory_signature_map(brain: PretoriusBrain) -> dict[str, str]:
+        """Map runtime UUIDs to stable semantic memory signatures for matched comparisons."""
+        out: dict[str, str] = {}
+        for row in brain.store.memories_with_classification(active_only=False):
+            payload = {
+                "created_tick": int(row["created_tick"]),
+                "kind": str(row["kind"]),
+                "text": str(row["text"]),
+                "source": str(row["source"]),
+                "evidence_class": str(row["evidence_class"]),
+                "external": bool(row["external"]),
+                "authored": bool(row["authored"]),
+                "tags": sorted(str(x) for x in row.get("tags", [])),
+                "autobiographical_class": row.get("autobiographical_class"),
+                "event_subtype": row.get("event_subtype"),
+                "canon_rank": row.get("canon_rank"),
+                "continuity": row.get("continuity"),
+                "material_category": row.get("material_category"),
+                "wording": row.get("wording"),
+            }
+            out[str(row["id"])] = _stable_sha256(payload)
+        return out
 
     @staticmethod
     def _decode_policy_decision(brain: PretoriusBrain, decision_id: str) -> dict[str, Any]:
@@ -277,6 +332,25 @@ class CausalAuditHarness:
         request = brain.render_request(stimulus.text).to_dict()
         retrieval = self._latest_retrieval_audit(brain)
         policy = self._decode_policy_decision(brain, decision["policy_decision_id"])
+        signatures = self._memory_signature_map(brain)
+        policy["candidate_memory_signatures"] = [
+            signatures.get(str(record_id), f"missing:{record_id}")
+            for record_id in policy["candidate_record_ids"]
+        ]
+        policy["selected_memory_signatures"] = [
+            signatures.get(str(record_id), f"missing:{record_id}")
+            for record_id in policy["selected_record_ids"]
+        ]
+        for id_key, signature_key in (
+            ("direct_memory_ids", "direct_memory_signatures"),
+            ("activated_memory_ids", "activated_memory_signatures"),
+            ("ranked_memory_ids", "ranked_memory_signatures"),
+        ):
+            if id_key in retrieval:
+                retrieval[signature_key] = [
+                    signatures.get(str(record_id), f"missing:{record_id}")
+                    for record_id in retrieval[id_key]
+                ]
         after = self._state_snapshot(brain)
         final_state_digest = brain.store.digest()
         final_neural_sha256 = self._neural_sha(brain)
@@ -312,13 +386,33 @@ class CausalAuditHarness:
         keys = sorted(set(a_scores) | set(b_scores))
         score_l1 = sum(abs(float(a_scores.get(k, 0.0)) - float(b_scores.get(k, 0.0))) for k in keys)
 
-        a_retrieved = set(intact.get("retrieval", {}).get("ranked_memory_ids", []))
-        b_retrieved = set(lesion.get("retrieval", {}).get("ranked_memory_ids", []))
+        a_retrieved = set(
+            intact.get("retrieval", {}).get(
+                "ranked_memory_signatures",
+                intact.get("retrieval", {}).get("ranked_memory_ids", []),
+            )
+        )
+        b_retrieved = set(
+            lesion.get("retrieval", {}).get(
+                "ranked_memory_signatures",
+                lesion.get("retrieval", {}).get("ranked_memory_ids", []),
+            )
+        )
         union = a_retrieved | b_retrieved
         retrieval_jaccard = 1.0 if not union else len(a_retrieved & b_retrieved) / len(union)
 
-        a_selected = set(intact["policy_decision"]["selected_record_ids"])
-        b_selected = set(lesion["policy_decision"]["selected_record_ids"])
+        a_selected = set(
+            intact["policy_decision"].get(
+                "selected_memory_signatures",
+                intact["policy_decision"]["selected_record_ids"],
+            )
+        )
+        b_selected = set(
+            lesion["policy_decision"].get(
+                "selected_memory_signatures",
+                lesion["policy_decision"]["selected_record_ids"],
+            )
+        )
         selected_union = a_selected | b_selected
         selected_jaccard = (
             1.0 if not selected_union
