@@ -21,5 +21,10 @@
   "calibos_mind": {
     "repository": "Azimn/calibos-mind",
     "commit": "0b8d0d552125a6c9ac736fbc09e62c50ee4c18af"
+  },
+  "pretorius_neural_network_v04": {
+    "repository": "Azimn/Pretorius-Neural-Network",
+    "commit": "a3af4d2433d9df95b2476c556e9e2b9b308944a4",
+    "phenotype_profile_blob": "0b52b12420ba4291844c49cd73b19a8eefc528ff"
   }
 }
