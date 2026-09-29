@@ -87,14 +87,27 @@ class PretoriusBrain:
             tick = self.store.tick
             for text in self.identity:
                 self.store.add_memory(
-                    conn, tick, text, "bootstrap", "identity_root", "identity",
+                    conn, tick, text, "bootstrap", "identity_root", "design_material",
                     False, 1.0, True, 1.0, ("identity", "pinned"),
+                    classification={
+                        "autobiographical_class": None,
+                        "event_subtype": "identity_root",
+                        "canon_rank": 3,
+                        "continuity": "project_reconstruction",
+                        "material_category": "design_material",
+                        "classification_reasoning": {
+                            "decision": "design_material",
+                            "basis": "Pinned character invariant is authoritative for behavior but is not autobiography.",
+                        },
+                        "classifier": "PretoriusBrain._bootstrap_once",
+                    },
                 )
             for item in self.bootstrap.get("authored_memories", []):
                 self.store.add_memory(
                     conn, tick, str(item["text"]), str(item["source"]), str(item["kind"]),
                     str(item["evidence_class"]), False, float(item["confidence"]), True,
                     float(item["salience"]), tuple(item.get("tags", [])),
+                    classification=item.get("classification"),
                 )
             for key, value in self.bootstrap["needs"].items():
                 conn.execute(
