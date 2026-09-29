@@ -85,7 +85,7 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
         assert status["connectome_nodes"] == 70
         assert status["connectome_edges"] == 243
         assert status["withheld_claims"] == 3
-        assert brain.store.meta("schema_version") == "4"
+        assert brain.store.meta("schema_version") == "5"
         assert status["source_custody"][0]["custody_status"] == "custody_known"
         assert status["source_custody"][0]["original_author"] is None
 
@@ -181,7 +181,7 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
             "relationship_recovered": True,
             "withheld_insect_claim_not_memory": True,
             "dark_universe_empty": True,
-            "schema_version": 4,
+            "schema_version": 5,
             "all_classifications_have_valid_wording": True,
             "reconstructed_or_synthesized_direct_recollection_leaks": 0,
         }
