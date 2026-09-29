@@ -1,5 +1,5 @@
 {
-  "schema": "the-doctor-lives.evolution-policy.v1",
+  "schema": "the-doctor-lives.evolution-policy.v2",
   "frozen": [
     "calibos_structure_only_no_identity_or_memory",
     "pretorius_donor_provenance",
@@ -26,5 +26,23 @@
     "accepted_consolidation_archives"
   ],
   "migration_rule": "Changing a frozen surface requires a named schema or protocol version change plus regression tests.",
-  "neural_policy_version": "neural-cognitive-policy-v1"
+  "neural_policy_version": "neural-cognitive-policy-v2-state-bridge",
+  "state_policy_bridge": {
+    "version": "state-policy-bridge-v0.4",
+    "family_cap": 0.05,
+    "total_cap": 0.12,
+    "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+    "enabled_families": [
+      "needs",
+      "relationships",
+      "commitments",
+      "history",
+      "concerns"
+    ],
+    "excluded_pending_evidence": [
+      "self_model",
+      "spreading_activation"
+    ],
+    "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal"
+  }
 }
