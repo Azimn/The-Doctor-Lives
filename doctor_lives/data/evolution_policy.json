@@ -43,6 +43,9 @@
       "self_model",
       "spreading_activation"
     ],
-    "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal"
+    "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+    "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+    "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+    "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights"
   }
 }
