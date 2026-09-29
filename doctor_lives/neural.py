@@ -96,6 +96,7 @@ class PretoriusRecurrentSubstrate:
         self.post_idx = np.repeat(np.arange(self.n, dtype=np.int32), np.diff(self.W.indptr))
         self.pre_idx = self.W.indices.astype(np.int32, copy=False)
         self.eligibility = np.zeros_like(self.W.data, dtype=np.float32)
+        self.action_populations = self._make_action_populations()
         self.Win = self._make_input_matrix()
         self.motor_w = self.rng.normal(0.0, 0.01, size=(len(ACTIONS), self.n)).astype(np.float32)
         self.motor_b = np.zeros(len(ACTIONS), dtype=np.float32)
@@ -119,13 +120,50 @@ class PretoriusRecurrentSubstrate:
         W.sum_duplicates()
         return W
 
+    def _make_action_populations(self) -> dict[str, np.ndarray]:
+        size = min(
+            int(self.cfg["action_population_size"]),
+            max(8, self.n // (len(ACTIONS) * 2)),
+        )
+        available = np.arange(self.n, dtype=np.int32)
+        self.rng.shuffle(available)
+        populations = {}
+        cursor = 0
+        for action in ACTIONS:
+            if cursor + size > len(available):
+                available = np.arange(self.n, dtype=np.int32)
+                self.rng.shuffle(available)
+                cursor = 0
+            populations[action] = np.sort(available[cursor:cursor + size])
+            cursor += size
+        return populations
+
     def _make_input_matrix(self) -> sparse.csr_matrix:
         k = int(self.cfg["input_degree"])
         m = self.n * k
         rows = np.repeat(np.arange(self.n, dtype=np.int32), k)
         cols = self.rng.integers(0, self.encoder.input_dim, size=m, dtype=np.int32)
-        data = self.rng.normal(0.0, float(self.cfg["input_scale"])/np.sqrt(max(k,1)), size=m).astype(np.float32)
-        W = sparse.csr_matrix((data, (rows, cols)), shape=(self.n, self.encoder.input_dim), dtype=np.float32)
+        data = self.rng.normal(
+            0.0, float(self.cfg["input_scale"]) / np.sqrt(max(k, 1)), size=m
+        ).astype(np.float32)
+
+        extra_rows = []
+        extra_cols = []
+        extra_data = []
+        teaching = float(self.cfg["action_teaching_scale"])
+        for index, action in enumerate(ACTIONS):
+            column = self.encoder.action_offset + index
+            population = self.action_populations[action]
+            extra_rows.extend(population.tolist())
+            extra_cols.extend([column] * len(population))
+            extra_data.extend([teaching] * len(population))
+
+        rows = np.concatenate([rows, np.asarray(extra_rows, dtype=np.int32)])
+        cols = np.concatenate([cols, np.asarray(extra_cols, dtype=np.int32)])
+        data = np.concatenate([data, np.asarray(extra_data, dtype=np.float32)])
+        W = sparse.csr_matrix(
+            (data, (rows, cols)), shape=(self.n, self.encoder.input_dim), dtype=np.float32
+        )
         W.sum_duplicates()
         return W
 
