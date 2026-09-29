@@ -224,6 +224,14 @@ class DeepHistoryMigrationTests(unittest.TestCase):
         self.assertEqual(audit["winner_memory_id"], stronger)
         self.assertEqual(audit["rule"], "lowest_canon_rank_then_lexicographic_memory_id")
         self.assertFalse(json.loads(audit["resolution_json"])["class_upgrade_performed"])
+        ranked_ids = [
+            row["id"] for _, row in brain._ranked_memories(
+                200, query="reconstructed account"
+            )
+        ]
+        self.assertIn(stronger, ranked_ids)
+        self.assertNotIn(weaker, ranked_ids)
+        self.assertTrue(brain.store.get_memory(weaker)["active"])
 
     def test_synthesis_retraction_is_archival_not_reversible(self):
         _, brain = self.make_brain()
@@ -384,6 +392,42 @@ class DeepHistoryMigrationTests(unittest.TestCase):
         self.assertEqual(item.provenance.autobiographical_class, "synthesized_preawakening_memory")
         self.assertIn("not canonical or lived memory", item.first_person)
 
+    def test_approved_synthesis_is_bound_to_exact_reviewed_claim(self):
+        _, brain = self.make_brain()
+        admitted = create_synthesis_proposal(
+            brain.store,
+            claim_key="test.bound",
+            author="author",
+            reviewer="reviewer",
+            proposed_claim="The exact reviewed synthesis.",
+            sources=[{"source": "test"}],
+            reasoning="Exercise exact claim binding.",
+            causal_leverage="Test only.",
+            evidence_strength="test_fixture",
+            alternatives=["leave gap"],
+            exclusion_rulings=[],
+        )
+        review_synthesis_proposal(brain.store, admitted, approved=True, reviewer="reviewer")
+        with brain.store.connect() as conn:
+            row = conn.execute(
+                "SELECT proposed_claim,claim_sha256 FROM synthesis_admissions WHERE id=?",
+                (admitted,),
+            ).fetchone()
+        self.assertEqual(
+            row["claim_sha256"],
+            __import__("hashlib").sha256(
+                row["proposed_claim"].encode("utf-8")
+            ).hexdigest(),
+        )
+        with brain.store.transaction() as conn:
+            with self.assertRaises(ValueError):
+                brain.store.add_memory(
+                    conn, brain.store.tick, "The exact reviewed synthesis, but altered.",
+                    "test", "formative_history", "synthesized_preawakening_memory",
+                    False, .5, True, .3, classification=synth_classification(),
+                    synthesis_admission_id=admitted,
+                )
+
     def test_workspace_exposes_reconstructed_status(self):
         _, brain = self.make_brain()
         view = brain.cognitive_view(query="Ingolstadt")
@@ -435,6 +479,36 @@ class DeepHistoryMigrationTests(unittest.TestCase):
             ]
         self.assertEqual(edge_before, edge_after)
         self.assertEqual(salience_before, salience_after)
+
+    def test_negative_connectome_edge_is_inhibitory_not_positive_activation(self):
+        _, brain = self.make_brain()
+        with brain.store.connect() as conn:
+            seed = conn.execute(
+                """SELECT n.memory_id FROM history_nodes n
+                WHERE n.node_id='motive.resist_servility'"""
+            ).fetchone()["memory_id"]
+            target = conn.execute(
+                """SELECT n.memory_id FROM history_nodes n
+                WHERE n.node_id='behavior.collaborate'"""
+            ).fetchone()["memory_id"]
+            edge = conn.execute(
+                """SELECT weight,kind FROM history_edges
+                WHERE source_node_id='motive.resist_servility'
+                  AND target_node_id='behavior.collaborate'"""
+            ).fetchone()
+        self.assertLess(float(edge["weight"]), 0.0)
+        self.assertEqual(str(edge["kind"]), "inhibits")
+        bonuses, paths = spreading_activation(
+            brain.store, [seed], decay=.55, max_depth=1, max_bonus=.28
+        )
+        matching = [
+            path for path in paths
+            if path["target_memory_id"] == target
+        ]
+        self.assertTrue(matching)
+        self.assertTrue(all(path["polarity"] == "inhibitory" for path in matching))
+        self.assertTrue(all(path["contribution"] < 0.0 for path in matching))
+        self.assertLess(bonuses[target], 0.0)
 
     def test_retrieval_audit_is_noncanonical(self):
         _, brain = self.make_brain()
