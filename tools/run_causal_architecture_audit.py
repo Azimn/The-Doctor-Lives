@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -233,6 +234,7 @@ def main() -> int:
             "schema": "the-doctor-lives.causal-architecture-audit.v1",
             "issue": "Azimn/The-Doctor-Lives#9",
             "production_base": "001321b30fdbcde59e388ce907031788543611b6",
+            "audit_code_sha": os.environ.get("GITHUB_SHA", "local-unpinned"),
             "feature_freeze": True,
             "interpretation_boundary": (
                 "Production causal characterization only. These lesions measure software-level "
