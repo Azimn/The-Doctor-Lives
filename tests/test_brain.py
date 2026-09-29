@@ -45,7 +45,7 @@ class BrainAssemblyTests(unittest.TestCase):
         restarted = PretoriusBrain(Path(temp.name))
         row = restarted.store.get_memory(mid)
         self.assertIsNotNone(row)
-        self.assertEqual(row["evidence_class"], "lived_experience")
+        self.assertEqual(row["evidence_class"], "lived_runtime_memory")
         self.assertFalse(row["external"])
         self.assertEqual(restarted.neural.tick, brain.neural.tick)
 
