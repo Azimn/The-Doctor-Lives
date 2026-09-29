@@ -80,6 +80,13 @@ CREATE TABLE IF NOT EXISTS thoughts (
  trigger TEXT NOT NULL, generated_by TEXT NOT NULL,
  source_record_ids_json TEXT NOT NULL, action_tendencies_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS policy_decisions (
+ id TEXT PRIMARY KEY, tick INTEGER NOT NULL, created_at TEXT NOT NULL,
+ trigger TEXT NOT NULL, selected_action TEXT NOT NULL,
+ action_scores_json TEXT NOT NULL, candidate_record_ids_json TEXT NOT NULL,
+ selected_record_ids_json TEXT NOT NULL, neural_tick INTEGER NOT NULL,
+ neural_checkpoint_sha256 TEXT NOT NULL, policy_version TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS associations (
  a TEXT NOT NULL, b TEXT NOT NULL, strength REAL NOT NULL,
  updated_tick INTEGER NOT NULL, PRIMARY KEY(a,b)
@@ -287,7 +294,7 @@ class BrainStore:
         h = hashlib.sha256()
         with closing(self.connect()) as conn:
             for table in ["meta","events","memories","relationships","relationship_events","concerns",
-                          "commitments","self_model","thoughts","associations","needs","action_values",
+                          "commitments","self_model","thoughts","policy_decisions","associations","needs","action_values",
                           "sleep_fragments","archive"]:
                 rows = conn.execute(f"SELECT * FROM {table} ORDER BY rowid").fetchall()
                 for row in rows:
