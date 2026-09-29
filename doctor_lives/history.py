@@ -468,16 +468,20 @@ def create_synthesis_proposal(store: BrainStore, *, claim_key: str, author: str,
                               causal_leverage: str, evidence_strength: str,
                               alternatives: list[str], exclusion_rulings: list[str],
                               conflict_notes: str = "") -> str:
+    claim = proposed_claim.strip()
+    if not claim:
+        raise ValueError("proposed_claim is required")
+    claim_sha256 = hashlib.sha256(claim.encode("utf-8")).hexdigest()
     admission_id = new_id("synth")
     with store.transaction() as conn:
         conn.execute(
             """INSERT INTO synthesis_admissions
-            (id,claim_key,memory_id,author,reviewer,proposed_claim,sources_json,reasoning,
+            (id,claim_key,memory_id,author,reviewer,proposed_claim,claim_sha256,sources_json,reasoning,
              causal_leverage,evidence_strength,alternatives_json,exclusion_rulings_json,
              conflict_notes,status,created_at,reviewed_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
-                admission_id, claim_key, None, author, reviewer, proposed_claim,
+                admission_id, claim_key, None, author, reviewer, claim, claim_sha256,
                 json.dumps(sources, sort_keys=True), reasoning, causal_leverage, evidence_strength,
                 json.dumps(alternatives, sort_keys=True), json.dumps(exclusion_rulings, sort_keys=True),
                 conflict_notes, "proposed", utc_now(), None,
@@ -490,7 +494,8 @@ def review_synthesis_proposal(store: BrainStore, admission_id: str, *, approved:
                               reviewer: str, exclusion_rulings: list[str] | None = None) -> None:
     with store.transaction() as conn:
         row = conn.execute(
-            "SELECT reviewer,status FROM synthesis_admissions WHERE id=?", (admission_id,)
+            """SELECT reviewer,status,proposed_claim,claim_sha256
+            FROM synthesis_admissions WHERE id=?""", (admission_id,)
         ).fetchone()
         if row is None:
             raise KeyError(admission_id)
@@ -498,6 +503,11 @@ def review_synthesis_proposal(store: BrainStore, admission_id: str, *, approved:
             raise ValueError("synthesis proposal is not pending review")
         if str(row["reviewer"]) != reviewer:
             raise ValueError("reviewer does not match the recorded independent reviewer")
+        expected_hash = hashlib.sha256(
+            str(row["proposed_claim"]).encode("utf-8")
+        ).hexdigest()
+        if str(row["claim_sha256"]) != expected_hash:
+            raise ValueError("synthesis proposal changed after claim binding")
         status = "approved" if approved else "rejected"
         if exclusion_rulings is None:
             conn.execute(
@@ -588,6 +598,7 @@ def resolve_canon_conflict(store: BrainStore, *, conflict_key: str,
                 json.dumps(resolution, sort_keys=True),
             ),
         )
+        store.bump_state_version(conn)
     return {"audit_id": audit_id, **resolution}
 
 
@@ -816,7 +827,7 @@ def spreading_activation(store: BrainStore, seed_memory_ids: list[str], *,
     adjacency: dict[str, list[tuple[str, float, str]]] = defaultdict(list)
     for row in edges:
         a, b = str(row["source_node_id"]), str(row["target_node_id"])
-        w, edge_id = abs(float(row["weight"])), str(row["edge_id"])
+        w, edge_id = float(row["weight"]), str(row["edge_id"])
         adjacency[a].append((b, w, edge_id))
         adjacency[b].append((a, w, edge_id))
     for key in adjacency:
@@ -838,27 +849,38 @@ def spreading_activation(store: BrainStore, seed_memory_ids: list[str], *,
                 next_depth = depth + 1
                 next_product = product * weight
                 key = (target, next_depth)
-                if next_product <= best.get(key, -1.0):
+                magnitude = abs(next_product)
+                if magnitude <= best.get(key, -1.0):
                     continue
-                best[key] = next_product
-                contribution = min(max_bonus, max_bonus * (decay ** next_depth) * next_product)
+                best[key] = magnitude
+                raw_contribution = max_bonus * (decay ** next_depth) * next_product
+                contribution = max(-max_bonus, min(max_bonus, raw_contribution))
                 target_memory = node_to_memory.get(target)
                 if target_memory and target_memory != seed_memory:
-                    bonuses[target_memory] = min(max_bonus, bonuses[target_memory] + contribution)
+                    bonuses[target_memory] = max(
+                        -max_bonus,
+                        min(max_bonus, bonuses[target_memory] + contribution),
+                    )
                     paths.append({
                         "seed_memory_id": seed_memory,
                         "target_memory_id": target_memory,
                         "distance": next_depth,
                         "edge_product": next_product,
+                        "edge_weight": weight,
+                        "polarity": "inhibitory" if weight < 0 else "excitatory",
                         "decay": decay,
                         "contribution": contribution,
                         "node_path": list(path_nodes + (target,)),
                         "edge_path": list(path_edges + (edge_id,)),
                     })
-                queue.append((
-                    target, next_depth, next_product,
-                    path_nodes + (target,), path_edges + (edge_id,),
-                ))
+                # Inhibitory edges apply a bounded negative retrieval pressure but
+                # terminate propagation. This prevents double-negative paths from
+                # reappearing as positive activation.
+                if weight > 0:
+                    queue.append((
+                        target, next_depth, next_product,
+                        path_nodes + (target,), path_edges + (edge_id,),
+                    ))
     paths.sort(key=lambda x: (
         x["seed_memory_id"], x["distance"], x["target_memory_id"], x["edge_path"]
     ))
