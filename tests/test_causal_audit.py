@@ -95,7 +95,7 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertAlmostEqual(comparison["action_score_l1"], 0.0, places=12)
         self.assertFalse(comparison["selected_action_diverged"])
 
-    def test_self_model_lesion_is_currently_behaviorally_inert(self):
+    def test_self_model_lesion_does_not_prejudge_downstream_null_effects(self):
         harness = self.make_harness()
         result = harness.run_pair(
             self.probe(),
@@ -104,8 +104,13 @@ class CausalAuditHarnessTests(unittest.TestCase):
         comparison = result["comparison"]
         self.assertAlmostEqual(comparison["action_score_l1"], 0.0, places=12)
         self.assertFalse(comparison["selected_action_diverged"])
-        self.assertFalse(comparison["renderer_request_changed"])
-        self.assertFalse(comparison["deterministic_render_changed"])
+        self.assertEqual(
+            result["lesion"]["state_before_stimulus"]["self_model"],
+            [],
+        )
+        self.assertTrue(result["intact"]["state_before_stimulus"]["self_model"])
+        self.assertIn("renderer_request_changed", comparison)
+        self.assertIn("deterministic_render_changed", comparison)
 
     def test_recurrent_policy_lesion_changes_policy_scores(self):
         harness = self.make_harness()
