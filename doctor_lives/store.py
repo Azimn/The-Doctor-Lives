@@ -75,6 +75,12 @@ CREATE TABLE IF NOT EXISTS concerns (
  uncertainty REAL NOT NULL, actor TEXT, source TEXT NOT NULL,
  resolved_tick INTEGER, resolution TEXT
 );
+CREATE TABLE IF NOT EXISTS concern_events (
+ id TEXT PRIMARY KEY, concern_id TEXT NOT NULL, tick INTEGER NOT NULL,
+ created_at TEXT NOT NULL, transition TEXT NOT NULL, outcome TEXT,
+ actor TEXT, source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_concern_events_concern ON concern_events(concern_id,tick);
 CREATE TABLE IF NOT EXISTS commitments (
  id TEXT PRIMARY KEY, created_tick INTEGER NOT NULL, updated_tick INTEGER NOT NULL,
  description TEXT NOT NULL, status TEXT NOT NULL, due_tick INTEGER,
@@ -652,7 +658,7 @@ class BrainStore:
     def digest(self) -> str:
         h = hashlib.sha256()
         with closing(self.connect()) as conn:
-            for table in ["meta","events","memories","relationships","relationship_events","concerns",
+            for table in ["meta","events","memories","relationships","relationship_events","concerns","concern_events",
                           "commitments","self_model","thoughts","policy_decisions","associations","needs","action_values",
                           "sleep_fragments","archive","memory_provenance","memory_classifications",
                           "canon_authority","synthesis_admissions","conflict_resolutions","source_custody","withheld_claims",
