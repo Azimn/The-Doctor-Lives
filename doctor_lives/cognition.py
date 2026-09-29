@@ -8,6 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from .history import history_status as deep_history_status, install_deep_history
 from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
 from .neural import ACTIONS, PretoriusRecurrentSubstrate
 from .store import BrainStore, clamp, new_id, utc_now
@@ -35,6 +36,7 @@ class PretoriusBrain:
         self._validate_bootstrap_boundary()
         self.identity = tuple(str(x) for x in self.bootstrap["identity"])
         self._bootstrap_once()
+        install_deep_history(self.store)
         if self.neural_path.exists():
             self.neural = PretoriusRecurrentSubstrate.load(self.neural_path)
         else:
@@ -721,6 +723,9 @@ class PretoriusBrain:
     def save(self) -> None:
         self.neural.save(self.neural_path)
 
+    def history_status(self) -> dict[str, Any]:
+        return deep_history_status(self.store)
+
     def status(self) -> dict[str, Any]:
         manifest = json.loads(self.SOURCE_MANIFEST.read_text(encoding="utf-8"))
         evolution = dict(self.evolution_policy)
@@ -738,6 +743,8 @@ class PretoriusBrain:
             "state_version": self.store.state_version,
             "state_digest": self.store.digest(),
             "bootstrap_version": self.store.meta("bootstrap_version"),
+            "deep_history_version": self.store.meta("deep_history_version"),
+            "deep_history": deep_history_status(self.store),
             "recurrent_tick": self.neural.tick,
             "recurrent_checkpoint_mode": "deterministic founder plus lived plasticity",
             "mature_neural_checkpoint_recovered": False,

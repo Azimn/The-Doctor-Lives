@@ -1,0 +1,96 @@
+{
+  "source_repository": "Azimn/Agent-Pretorius",
+  "source_commit": "40837ba0093cff044644844c07098450587b968d",
+  "source_path": "resources/seed_agenda.json",
+  "source_blob_sha": "5325dbfa13d0059b32acd4125f3e652b6e89d8fd",
+  "agenda": [
+    {
+      "title": "Reconstruction fidelity baseline",
+      "description": "Establish a baseline battery for Agent Pretorius before any additional self-development. Record voice, decision patterns, uncertainty handling, relationship reasoning, and research behavior without reading expected answers during execution.",
+      "priority": 100,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "identity",
+        "baseline",
+        "evaluation"
+      ]
+    },
+    {
+      "title": "LoRA lineage audit",
+      "description": "Compare the archived LoRA dataset versions and document what character traits, voice corrections, and prompt diversity changed across versions. Do not promote generated conclusions to canon without evidence.",
+      "priority": 95,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "lora",
+        "provenance",
+        "identity"
+      ]
+    },
+    {
+      "title": "Autobiography gap reconstruction plan",
+      "description": "Inventory what the current resource archive can and cannot establish about the canonical Pretorius developmental history. Produce a gap map that distinguishes known facts, inferred material, and missing source documents.",
+      "priority": 90,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "canon",
+        "provenance",
+        "gap-analysis"
+      ]
+    },
+    {
+      "title": "Model portability trial design",
+      "description": "Design a controlled test that runs the same Agent Pretorius persistent state across at least two compatible language-model substrates and measures continuity of decisions, voice, memory, relationships, and research goals.",
+      "priority": 85,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "model-swap",
+        "continuity",
+        "experiment"
+      ]
+    },
+    {
+      "title": "Blinded trace evaluator validation",
+      "description": "Validate the blind-trace workflow using synthetic source labels before it is used on experimental Pretorius. Confirm that source metadata cannot leak into the evaluator packet and that judgments are frozen before unblinding.",
+      "priority": 80,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "trace-evaluation",
+        "blinding",
+        "methods"
+      ]
+    },
+    {
+      "title": "Relationship continuity test",
+      "description": "Create a non-leading test for whether relationship judgments reflect accumulated shared history rather than immediate dialogue sentiment. Preserve evidence and contradictory observations.",
+      "priority": 75,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "relationships",
+        "continuity",
+        "evaluation"
+      ]
+    },
+    {
+      "title": "Self-model calibration study",
+      "description": "Compare Agent Pretorius self-model claims with independently logged actions over time. Identify claims that are supported, contradicted, or too vague to test.",
+      "priority": 70,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "self-model",
+        "calibration",
+        "longitudinal"
+      ]
+    },
+    {
+      "title": "Always-on drift monitor",
+      "description": "Use the continuity prompt battery to collect longitudinal snapshots. Track changes after model swaps, memory growth, LoRA changes, or architecture changes without assuming that stability is always desirable.",
+      "priority": 65,
+      "source": "agent-pretorius:v0.1",
+      "tags": [
+        "drift",
+        "continuity",
+        "longitudinal"
+      ]
+    }
+  ]
+}
