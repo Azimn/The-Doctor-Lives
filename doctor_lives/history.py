@@ -451,12 +451,12 @@ def create_synthesis_proposal(store: BrainStore, *, claim_key: str, author: str,
             (id,claim_key,memory_id,author,reviewer,proposed_claim,sources_json,reasoning,
              causal_leverage,evidence_strength,alternatives_json,exclusion_rulings_json,
              conflict_notes,status,created_at,reviewed_at)
-            VALUES(?,?,NULL,?,?,?,?,?,?,?,?,?,?,?,'proposed',?,NULL)""",
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
-                admission_id, claim_key, author, reviewer, proposed_claim,
+                admission_id, claim_key, None, author, reviewer, proposed_claim,
                 json.dumps(sources, sort_keys=True), reasoning, causal_leverage, evidence_strength,
                 json.dumps(alternatives, sort_keys=True), json.dumps(exclusion_rulings, sort_keys=True),
-                conflict_notes, utc_now(),
+                conflict_notes, "proposed", utc_now(), None,
             ),
         )
     return admission_id
