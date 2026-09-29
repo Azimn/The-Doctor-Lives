@@ -424,9 +424,19 @@ class BrainStore:
         reasoning = classification.get("classification_reasoning")
         if not isinstance(reasoning, dict) or not reasoning:
             raise ValueError("classification_reasoning must be a non-empty mapping")
-        row = conn.execute("SELECT evidence_class,kind FROM memories WHERE id=?", (memory_id,)).fetchone()
+        row = conn.execute(
+            "SELECT evidence_class,kind,text FROM memories WHERE id=?", (memory_id,)
+        ).fetchone()
         if row is None:
             raise KeyError(memory_id)
+        if autobiographical_class in {
+            "reconstructed_preawakening_memory", "synthesized_preawakening_memory"
+        }:
+            normalized = " ".join(str(row["text"]).strip().lower().split())
+            if normalized.startswith(("i remember ", "i recall ", "i witnessed ", "i experienced ")):
+                raise ValueError(
+                    f"{autobiographical_class} cannot use unqualified direct-recollection wording"
+                )
         if str(row["evidence_class"]) in AUTOBIOGRAPHICAL_CLASSES:
             if autobiographical_class != str(row["evidence_class"]):
                 raise ValueError("memory evidence_class and autobiographical_class disagree")
