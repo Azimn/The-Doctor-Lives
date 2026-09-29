@@ -9,7 +9,9 @@
     "tool_authority_outside_brain",
     "archive_never_delete",
     "sleep_does_not_advance_waking_tick",
-    "neural_policy_decision_audit"
+    "neural_policy_decision_audit",
+    "inherited_history_never_promoted_to_lived_experience",
+    "deep_history_source_provenance"
   ],
   "mutable": [
     "recurrent_weights_and_fast_state",
