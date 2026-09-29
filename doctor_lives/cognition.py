@@ -424,7 +424,7 @@ class PretoriusBrain:
                     str(x).lower() for x in row.get("tags", [])
                 }
                 overlap = len(query_tokens & row_tokens) / max(1, len(query_tokens))
-                score += min(.24, .24 * overlap)
+                score += min(1.0, 1.0 * overlap)
             direct_ranked.append((score, row))
         direct_ranked.sort(
             key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]),
