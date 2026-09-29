@@ -13,8 +13,8 @@
   "pretorius_neural_network": {
     "repository": "Azimn/Pretorius-Neural-Network",
     "commit": "f53f8226b97f20cc9811db4aea81206989917841",
-    "network_blob": "953055ea3e5be748b9a7e514c7c8721b5439b30e",
-    "encoding_blob": "3ae77e124328bef89c6ace0f48f44cd842c75ac2",
+    "network_blob": "9530efdff4e56dbcd5bb76f08f1768a620d5bee6",
+    "encoding_blob": "3ae7d1c2a68e3340b9b27b91863845500274785a",
     "phenotype_profile_blob": "0b52b12420ba4291844c49cd73b19a8eefc528ff",
     "mature_checkpoint_committed": false
   },
