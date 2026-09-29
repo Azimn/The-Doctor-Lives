@@ -1,0 +1,28 @@
+{
+  "schema": "the-doctor-lives.evolution-policy.v1",
+  "frozen": [
+    "calibos_structure_only_no_identity_or_memory",
+    "pretorius_donor_provenance",
+    "evidence_class_semantics",
+    "external_attribution_boundary",
+    "renderer_neutral_identity_boundary",
+    "tool_authority_outside_brain",
+    "archive_never_delete",
+    "sleep_does_not_advance_waking_tick",
+    "neural_policy_decision_audit"
+  ],
+  "mutable": [
+    "recurrent_weights_and_fast_state",
+    "action_values",
+    "salience_rehearsal_and_decay",
+    "felt_interoception",
+    "lived_autobiographical_memory",
+    "relationships",
+    "concerns",
+    "commitments",
+    "self_model_hypotheses",
+    "accepted_consolidation_archives"
+  ],
+  "migration_rule": "Changing a frozen surface requires a named schema or protocol version change plus regression tests.",
+  "neural_policy_version": "neural-cognitive-policy-v1"
+}

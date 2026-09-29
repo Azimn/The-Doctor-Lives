@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "assembly_repo": "Azimn/The-Doctor-Lives",
+  "assembly_base_sha": "73c4bdc196b6df9b2a72d71e0626f191eecbdf75",
+  "donors": {
+    "calibos_mind": {
+      "repository": "Azimn/calibos-mind",
+      "sha": "0b8d0d552125a6c9ac736fbc09e62c50ee4c18af",
+      "role": "cognitive substrate donor",
+      "include": [
+        "workspace and salience mechanics",
+        "interoceptive gap",
+        "unresolved concern handling",
+        "sleep and offline cognition",
+        "consolidation discipline",
+        "drift accounting",
+        "provenance and external-attribution invariants"
+      ],
+      "exclude": [
+        "Calibos identity",
+        "Calibos autobiographical memory",
+        "Calibos private runtime sidecars"
+      ],
+      "boundary_enforcement": {
+        "runtime_bootstrap_validation": true,
+        "regression_test": "tests/test_brain_integration.py::BrainIntegrationTests.test_calibos_is_structure_only",
+        "rule": "No Calibos identity, autobiographical memory, relationships, preferences, values, or private sidecar state may enter Pretorius runtime state."
+      }
+    },
+    "pretorius_neural_network": {
+      "repository": "Azimn/Pretorius-Neural-Network",
+      "sha": "f53f8226b97f20cc9811db4aea81206989917841",
+      "role": "recurrent phenotype donor",
+      "include": [
+        "persona_net encoding",
+        "plastic recurrent substrate",
+        "generic ten-action behavior space",
+        "phenotype profile as an external validation artifact"
+      ]
+    },
+    "agent_pretorius": {
+      "repository": "Azimn/Agent-Pretorius",
+      "sha": "40837ba0093cff044644844c07098450587b968d",
+      "role": "durable Pretorius state and identity evidence donor",
+      "include": [
+        "SOUL identity rules",
+        "SQLite autobiography, relationships, self-model, agenda and research state",
+        "contextual recall and evidence-class separation"
+      ]
+    },
+    "pretorius_neural_v04": {
+      "repository": "Azimn/Pretorius-Neural-Network",
+      "sha": "a3af4d2433d9df95b2476c556e9e2b9b308944a4",
+      "role": "supplementary recurrent persona evidence donor",
+      "include": [
+        "20-domain Pretorius phenotype profile",
+        "v0.4 recurrent persona status and stress-test lineage"
+      ],
+      "note": "Pinned separately because these artifacts are not present on main at f53f8226b97f20cc9811db4aea81206989917841."
+    }
+  },
+  "notes": [
+    "The current public Azimn/Jelly-Psiduck main branch contains only its README, so this assembly does not depend on an unavailable transitive runtime.",
+    "The assembly reimplements the required Calibos mechanisms behind stable local interfaces and retains the donor pin for provenance and regression comparison.",
+    "The language renderer is explicitly outside the identity boundary.",
+    "The recurrent network is causally load-bearing through neural-cognitive-policy-v1 and every endogenous policy decision is audited.",
+    "Frozen and mutable surfaces are declared in ARCHITECTURE_CONTRACT.md and doctor_lives/data/evolution_policy.json."
+  ]
+}
