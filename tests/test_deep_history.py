@@ -8,6 +8,8 @@ from pathlib import Path
 from doctor_lives import Experience, PretoriusBrain
 from doctor_lives.history import (
     create_synthesis_proposal,
+    resolve_canon_conflict,
+    retract_synthesis_admission,
     review_synthesis_proposal,
     spreading_activation,
 )
@@ -34,6 +36,7 @@ def synth_classification():
         "canon_rank": 4,
         "continuity": "project_synthesis",
         "material_category": "autobiography",
+        "wording": "synthesized",
         "classification_reasoning": {
             "decision": "synthesized_preawakening_memory",
             "basis": "test-only admitted synthesis",
@@ -119,8 +122,153 @@ class DeepHistoryMigrationTests(unittest.TestCase):
             ).fetchone()
         self.assertEqual(row["custody_status"], "custody_known")
         self.assertIsNone(row["original_author"])
-        self.assertEqual(row["content_status"], "text_not_present_in_repository")
+        self.assertEqual(
+            row["content_status"], "full_manuscript_resupplied_2026_09_29_project_files"
+        )
         self.assertEqual(int(row["canon_rank"]), 4)
+        provenance = json.loads(row["provenance_json"])
+        self.assertEqual(provenance["resupplied_at"], "2026-09-29")
+        self.assertFalse(provenance["pinned_agent_pretorius_repository_presence"])
+
+    def test_reconstructed_seed_wording_cannot_claim_direct_recollection(self):
+        _, brain = self.make_brain()
+        with brain.store.connect() as conn:
+            rows = conn.execute(
+                """SELECT m.text,c.autobiographical_class,c.wording
+                FROM memories m JOIN memory_classifications c ON c.memory_id=m.id
+                WHERE c.autobiographical_class='reconstructed_preawakening_memory'"""
+            ).fetchall()
+        self.assertTrue(rows)
+        self.assertTrue(all(row["wording"] == "reconstructed" for row in rows))
+        direct = ("i remember ", "i recall ", "i witnessed ", "i experienced ")
+        self.assertFalse(any(str(row["text"]).strip().lower().startswith(direct) for row in rows))
+
+        with brain.store.transaction() as conn:
+            with self.assertRaises(ValueError):
+                brain.store.add_memory(
+                    conn, brain.store.tick,
+                    "I remember an unsupported reconstructed scene.",
+                    "test", "episode", "reconstructed_preawakening_memory",
+                    False, .5, True, .3,
+                    classification={
+                        "autobiographical_class": "reconstructed_preawakening_memory",
+                        "event_subtype": "test",
+                        "canon_rank": 3,
+                        "continuity": "project_reconstruction",
+                        "material_category": "autobiography",
+                        "wording": "reconstructed",
+                        "classification_reasoning": {
+                            "decision": "reconstructed_preawakening_memory",
+                            "basis": "test guard",
+                        },
+                        "classifier": "test",
+                    },
+                )
+
+    def test_every_classification_has_machine_readable_wording_status(self):
+        _, brain = self.make_brain()
+        with brain.store.connect() as conn:
+            rows = conn.execute(
+                "SELECT wording FROM memory_classifications ORDER BY memory_id"
+            ).fetchall()
+        self.assertTrue(rows)
+        allowed = {"quoted", "paraphrased", "reconstructed", "synthesized"}
+        self.assertTrue(all(str(row["wording"]) in allowed for row in rows))
+
+    def test_canon_rank_resolves_conflict_without_upgrading_class(self):
+        _, brain = self.make_brain()
+        def classification(rank):
+            return {
+                "autobiographical_class": "reconstructed_preawakening_memory",
+                "event_subtype": "conflict_fixture",
+                "canon_rank": rank,
+                "continuity": "project_reconstruction",
+                "material_category": "autobiography",
+                "wording": "reconstructed",
+                "classification_reasoning": {
+                    "decision": "reconstructed_preawakening_memory",
+                    "basis": f"rank-{rank} conflict fixture",
+                },
+                "classifier": "test",
+            }
+        with brain.store.transaction() as conn:
+            weaker = brain.store.add_memory(
+                conn, brain.store.tick, "A weaker reconstructed account.", "test-rank-4",
+                "episode", "reconstructed_preawakening_memory", False, .7, True, .4,
+                classification=classification(4),
+            )
+            stronger = brain.store.add_memory(
+                conn, brain.store.tick, "A stronger reconstructed account.", "test-rank-2",
+                "episode", "reconstructed_preawakening_memory", False, .7, True, .4,
+                classification=classification(2),
+            )
+        result = resolve_canon_conflict(
+            brain.store,
+            conflict_key="test.same_event",
+            memory_ids=[weaker, stronger],
+            rationale="exercise deterministic authority resolution",
+        )
+        self.assertEqual(result["winner_memory_id"], stronger)
+        self.assertEqual(result["winner_canon_rank"], 2)
+        self.assertEqual(result["winner_autobiographical_class"], "reconstructed_preawakening_memory")
+        self.assertFalse(result["class_upgrade_performed"])
+        self.assertEqual(
+            brain.store.classification(stronger)["autobiographical_class"],
+            "reconstructed_preawakening_memory",
+        )
+        with brain.store.connect() as conn:
+            audit = conn.execute(
+                "SELECT rule,winner_memory_id,resolution_json FROM conflict_resolutions WHERE id=?",
+                (result["audit_id"],),
+            ).fetchone()
+        self.assertEqual(audit["winner_memory_id"], stronger)
+        self.assertEqual(audit["rule"], "lowest_canon_rank_then_lexicographic_memory_id")
+        self.assertFalse(json.loads(audit["resolution_json"])["class_upgrade_performed"])
+
+    def test_synthesis_retraction_is_archival_not_reversible(self):
+        _, brain = self.make_brain()
+        admitted = create_synthesis_proposal(
+            brain.store,
+            claim_key="test.retractable",
+            author="author",
+            reviewer="reviewer",
+            proposed_claim="A retractable synthesized event.",
+            sources=[{"source": "test"}],
+            reasoning="Exercise retraction semantics.",
+            causal_leverage="Test only.",
+            evidence_strength="test_fixture",
+            alternatives=["leave gap"],
+            exclusion_rulings=[],
+        )
+        review_synthesis_proposal(brain.store, admitted, approved=True, reviewer="reviewer")
+        with brain.store.transaction() as conn:
+            mid = brain.store.add_memory(
+                conn, brain.store.tick, "A retractable synthesized event.", "test",
+                "formative_history", "synthesized_preawakening_memory",
+                False, .5, True, .3, classification=synth_classification(),
+                synthesis_admission_id=admitted,
+            )
+        result = retract_synthesis_admission(
+            brain.store, admitted, retracted_by="reviewer",
+            reason="The synthesis is no longer admitted.",
+        )
+        self.assertEqual(result["status"], "retracted")
+        self.assertFalse(result["retroactive_cognition_undone"])
+        self.assertIn("retractable, not reversible", result["retraction_note"])
+        self.assertFalse(brain.store.get_memory(mid)["active"])
+        self.assertEqual(brain.store.classification(mid)["status"], "retracted")
+        with brain.store.connect() as conn:
+            admission = conn.execute(
+                """SELECT status,retracted_by,retraction_reason,retraction_note
+                FROM synthesis_admissions WHERE id=?""", (admitted,)
+            ).fetchone()
+            archived = conn.execute(
+                "SELECT COUNT(*) FROM archive WHERE record_id=?", (mid,)
+            ).fetchone()[0]
+        self.assertEqual(admission["status"], "retracted")
+        self.assertEqual(admission["retracted_by"], "reviewer")
+        self.assertIn("not reversible", admission["retraction_note"])
+        self.assertEqual(int(archived), 1)
 
     def test_withheld_childhood_claims_are_not_memories(self):
         _, brain = self.make_brain()
