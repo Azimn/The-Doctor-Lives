@@ -20,7 +20,12 @@
         "Calibos identity",
         "Calibos autobiographical memory",
         "Calibos private runtime sidecars"
-      ]
+      ],
+      "boundary_enforcement": {
+        "runtime_bootstrap_validation": true,
+        "regression_test": "tests/test_brain_integration.py::BrainIntegrationTests.test_calibos_is_structure_only",
+        "rule": "No Calibos identity, autobiographical memory, relationships, preferences, values, or private sidecar state may enter Pretorius runtime state."
+      }
     },
     "pretorius_neural_network": {
       "repository": "Azimn/Pretorius-Neural-Network",
@@ -57,6 +62,8 @@
   "notes": [
     "The current public Azimn/Jelly-Psiduck main branch contains only its README, so this assembly does not depend on an unavailable transitive runtime.",
     "The assembly reimplements the required Calibos mechanisms behind stable local interfaces and retains the donor pin for provenance and regression comparison.",
-    "The language renderer is explicitly outside the identity boundary."
+    "The language renderer is explicitly outside the identity boundary.",
+    "The recurrent network is causally load-bearing through neural-cognitive-policy-v1 and every endogenous policy decision is audited.",
+    "Frozen and mutable surfaces are declared in ARCHITECTURE_CONTRACT.md and doctor_lives/data/evolution_policy.json."
   ]
 }
