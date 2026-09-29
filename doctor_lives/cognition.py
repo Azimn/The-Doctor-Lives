@@ -416,7 +416,11 @@ class PretoriusBrain:
                          audit: bool = False) -> list[tuple[float, dict[str, Any]]]:
         now = self.store.tick
         open_terms = self._open_terms()
-        rows = self.store.memories_with_classification()
+        suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
+        rows = [
+            row for row in self.store.memories_with_classification()
+            if row["id"] not in suppressed_by_canon
+        ]
         query_tokens = self._tokens(query or "")
         direct_ranked: list[tuple[float, dict[str, Any]]] = []
         for row in rows:
@@ -466,7 +470,13 @@ class PretoriusBrain:
                 activated_memory_ids=sorted(bonuses),
                 paths=paths,
                 ranked_memory_ids=[row["id"] for _, row in selected],
-                config={"decay": .55, "max_depth": 2, "max_bonus": .28},
+                config={
+                    "decay": .55,
+                    "max_depth": 2,
+                    "max_bonus": .28,
+                    "signed_inhibition": "terminal_negative_pressure",
+                    "canon_conflict_suppressed_memory_ids": sorted(suppressed_by_canon),
+                },
                 state_digest_before=state_before,
                 state_digest_after=state_after,
             )
