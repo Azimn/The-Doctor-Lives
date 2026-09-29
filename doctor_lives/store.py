@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 WORDING_KINDS = frozenset({"quoted", "paraphrased", "reconstructed", "synthesized"})
 
@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS synthesis_admissions (
  author TEXT NOT NULL,
  reviewer TEXT NOT NULL,
  proposed_claim TEXT NOT NULL,
+ claim_sha256 TEXT NOT NULL,
  sources_json TEXT NOT NULL,
  reasoning TEXT NOT NULL,
  causal_leverage TEXT NOT NULL,
@@ -286,6 +287,21 @@ class BrainStore:
             )
 
         admission_columns = self._table_columns(conn, "synthesis_admissions")
+        if "claim_sha256" not in admission_columns:
+            conn.execute(
+                "ALTER TABLE synthesis_admissions ADD COLUMN claim_sha256 TEXT NOT NULL DEFAULT ''"
+            )
+            rows = conn.execute(
+                "SELECT id,proposed_claim FROM synthesis_admissions"
+            ).fetchall()
+            for row in rows:
+                claim_hash = hashlib.sha256(
+                    str(row["proposed_claim"]).encode("utf-8")
+                ).hexdigest()
+                conn.execute(
+                    "UPDATE synthesis_admissions SET claim_sha256=? WHERE id=?",
+                    (claim_hash, row["id"]),
+                )
         if "retracted_at" not in admission_columns:
             conn.execute("ALTER TABLE synthesis_admissions ADD COLUMN retracted_at TEXT")
         if "retracted_by" not in admission_columns:
@@ -380,13 +396,22 @@ class BrainStore:
             if not synthesis_admission_id:
                 raise ValueError("synthesized memory requires an approved synthesis admission")
             admission = conn.execute(
-                "SELECT status,memory_id FROM synthesis_admissions WHERE id=?",
+                """SELECT status,memory_id,proposed_claim,claim_sha256
+                FROM synthesis_admissions WHERE id=?""",
                 (synthesis_admission_id,),
             ).fetchone()
             if admission is None or str(admission["status"]) != "approved":
                 raise ValueError("synthesis admission is missing or not approved")
             if admission["memory_id"] is not None:
                 raise ValueError("synthesis admission is already bound to a memory")
+            approved_claim = str(admission["proposed_claim"])
+            approved_hash = hashlib.sha256(approved_claim.encode("utf-8")).hexdigest()
+            if str(admission["claim_sha256"]) != approved_hash:
+                raise ValueError("synthesis admission claim hash does not match reviewed claim")
+            if text.strip() != approved_claim:
+                raise ValueError(
+                    "synthesized memory text must exactly match the reviewed admission claim"
+                )
 
         rid = record_id or new_id("mem")
         conn.execute(
@@ -494,6 +519,36 @@ class BrainStore:
             )
             out.append(item)
         return out
+
+    def canon_conflict_suppressed_memory_ids(self) -> set[str]:
+        """Return active losing candidates from the latest resolution of each conflict.
+
+        Resolved lower-authority accounts remain stored and auditable, but standard
+        autobiographical retrieval yields the active winner while it remains active.
+        """
+        with closing(self.connect()) as conn:
+            rows = conn.execute(
+                """SELECT id,conflict_key,created_at,candidate_memory_ids_json,winner_memory_id
+                FROM conflict_resolutions ORDER BY created_at DESC,id DESC"""
+            ).fetchall()
+            active = {
+                str(row["id"]) for row in conn.execute(
+                    "SELECT id FROM memories WHERE active=1"
+                ).fetchall()
+            }
+        latest: dict[str, sqlite3.Row] = {}
+        for row in rows:
+            latest.setdefault(str(row["conflict_key"]), row)
+        suppressed: set[str] = set()
+        for row in latest.values():
+            winner = str(row["winner_memory_id"])
+            if winner not in active:
+                continue
+            candidates = {
+                str(item) for item in json.loads(str(row["candidate_memory_ids_json"]))
+            }
+            suppressed.update((candidates - {winner}) & active)
+        return suppressed
 
     def memories(self, active_only: bool = True) -> list[dict[str, Any]]:
         sql = "SELECT * FROM memories"
