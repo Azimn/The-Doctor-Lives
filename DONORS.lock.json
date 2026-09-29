@@ -42,6 +42,16 @@
         "SQLite autobiography, relationships, self-model, agenda and research state",
         "contextual recall and evidence-class separation"
       ]
+    },
+    "pretorius_neural_v04": {
+      "repository": "Azimn/Pretorius-Neural-Network",
+      "sha": "a3af4d2433d9df95b2476c556e9e2b9b308944a4",
+      "role": "supplementary recurrent persona evidence donor",
+      "include": [
+        "20-domain Pretorius phenotype profile",
+        "v0.4 recurrent persona status and stress-test lineage"
+      ],
+      "note": "Pinned separately because these artifacts are not present on main at f53f8226b97f20cc9811db4aea81206989917841."
     }
   },
   "notes": [
