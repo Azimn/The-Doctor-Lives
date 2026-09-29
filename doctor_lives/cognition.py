@@ -95,6 +95,7 @@ class PretoriusBrain:
                         "canon_rank": 3,
                         "continuity": "project_reconstruction",
                         "material_category": "design_material",
+                        "wording": "paraphrased",
                         "classification_reasoning": {
                             "decision": "design_material",
                             "basis": "Pinned character invariant is authoritative for behavior but is not autobiography.",
@@ -335,13 +336,14 @@ class PretoriusBrain:
         }
 
     @staticmethod
-    def _runtime_classification(kind: str, source: str) -> dict[str, Any]:
+    def _runtime_classification(kind: str, source: str, *, wording: str = "quoted") -> dict[str, Any]:
         return {
             "autobiographical_class": "lived_runtime_memory",
             "event_subtype": kind,
             "canon_rank": None,
             "continuity": "runtime",
             "material_category": "autobiography",
+            "wording": wording,
             "classification_reasoning": {
                 "decision": "lived_runtime_memory",
                 "basis": "The event was ingested as a non-external experience of this running Pretorius instance.",
@@ -526,6 +528,7 @@ class PretoriusBrain:
                 canon_rank=row.get("canon_rank"),
                 continuity=row.get("continuity"),
                 material_category=row.get("material_category"),
+                wording=row.get("wording"),
                 classification_reasoning=row.get("classification_reasoning"),
             ),
             tags=tuple(row.get("tags", [])),
@@ -651,7 +654,9 @@ class PretoriusBrain:
             self.store.add_memory(
                 conn, tick, text, "self", "action_outcome", "lived_runtime_memory",
                 False, 1.0, False, .72, ("action", action), event_id,
-                classification=self._runtime_classification("action_outcome", "self"),
+                classification=self._runtime_classification(
+                    "action_outcome", "self", wording="paraphrased"
+                ),
             )
             row = conn.execute("SELECT value,uses,successes FROM action_values WHERE action=?", (action,)).fetchone()
             value = .5 if row is None else float(row["value"])
@@ -780,6 +785,8 @@ class PretoriusBrain:
                 details.append(f"continuity={item.provenance.continuity}")
             if item.provenance.material_category:
                 details.append(f"material_category={item.provenance.material_category}")
+            if item.provenance.wording:
+                details.append(f"wording={item.provenance.wording}")
             context.append(f"[{'; '.join(details)}] {item.first_person}")
         unresolved = tuple(list(view.concerns) + list(view.commitments))
         return RenderRequest(
@@ -814,6 +821,7 @@ class PretoriusBrain:
                         "canon_rank": item.provenance.canon_rank,
                         "continuity": item.provenance.continuity,
                         "material_category": item.provenance.material_category,
+                        "wording": item.provenance.wording,
                     }
                     for item in view.experiences
                 ],
