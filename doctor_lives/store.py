@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def utc_now() -> str:
@@ -107,11 +107,28 @@ CREATE TABLE IF NOT EXISTS archive (
  id TEXT PRIMARY KEY, archived_tick INTEGER NOT NULL, record_id TEXT NOT NULL,
  reason TEXT NOT NULL, record_json TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS memory_provenance (
+ memory_id TEXT PRIMARY KEY, history_key TEXT NOT NULL UNIQUE,
+ provenance_json TEXT NOT NULL,
+ FOREIGN KEY(memory_id) REFERENCES memories(id)
+);
+CREATE TABLE IF NOT EXISTS history_nodes (
+ node_id TEXT PRIMARY KEY, label TEXT NOT NULL, node_type TEXT NOT NULL,
+ activation REAL NOT NULL, memory_id TEXT NOT NULL, provenance_json TEXT NOT NULL,
+ FOREIGN KEY(memory_id) REFERENCES memories(id)
+);
+CREATE TABLE IF NOT EXISTS history_edges (
+ edge_id TEXT PRIMARY KEY, source_node_id TEXT NOT NULL, target_node_id TEXT NOT NULL,
+ weight REAL NOT NULL, kind TEXT NOT NULL, provenance_json TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_events_tick ON events(tick);
 CREATE INDEX IF NOT EXISTS idx_memories_active_tick ON memories(active, updated_tick DESC);
 CREATE INDEX IF NOT EXISTS idx_thoughts_tick ON thoughts(tick DESC);
 CREATE INDEX IF NOT EXISTS idx_concerns_status ON concerns(status, importance DESC);
 CREATE INDEX IF NOT EXISTS idx_commitments_status ON commitments(status, importance DESC);
+CREATE INDEX IF NOT EXISTS idx_memory_provenance_history_key ON memory_provenance(history_key);
+CREATE INDEX IF NOT EXISTS idx_history_edges_source ON history_edges(source_node_id);
+CREATE INDEX IF NOT EXISTS idx_history_edges_target ON history_edges(target_node_id);
 """
 
 
@@ -147,6 +164,8 @@ class BrainStore:
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('tick','0')")
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('state_version','0')")
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('bootstrap_version','')")
+            conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('deep_history_version','')")
+            conn.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),))
             conn.commit()
 
     def meta(self, key: str, default: str | None = None) -> str | None:
@@ -295,7 +314,7 @@ class BrainStore:
         with closing(self.connect()) as conn:
             for table in ["meta","events","memories","relationships","relationship_events","concerns",
                           "commitments","self_model","thoughts","policy_decisions","associations","needs","action_values",
-                          "sleep_fragments","archive"]:
+                          "sleep_fragments","archive","memory_provenance","history_nodes","history_edges"]:
                 rows = conn.execute(f"SELECT * FROM {table} ORDER BY rowid").fetchall()
                 for row in rows:
                     h.update(table.encode())
