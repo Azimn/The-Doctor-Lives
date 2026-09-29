@@ -1,0 +1,149 @@
+{
+  "version": "pretorius-deep-history-v2",
+  "governing_issue": "Azimn/The-Doctor-Lives#4",
+  "authority_axis": [
+    {
+      "rank": 0,
+      "label": "primary_film_continuity",
+      "description": "Bride of Frankenstein (1935) primary film continuity.",
+      "reserved": false
+    },
+    {
+      "rank": 1,
+      "label": "universal_supplemental",
+      "description": "Universal-era supplemental and production-era documentary sources accepted into the project.",
+      "reserved": false
+    },
+    {
+      "rank": 2,
+      "label": "licensed_continuations",
+      "description": "Licensed continuations, continuity-scoped and explicitly marked when alternate.",
+      "reserved": false
+    },
+    {
+      "rank": 3,
+      "label": "project_reconstruction",
+      "description": "Project reconstructions grounded in archived Pretorius evidence such as the Persona Connectome and SOUL materials.",
+      "reserved": false
+    },
+    {
+      "rank": 4,
+      "label": "provenance_limited_supplied_material",
+      "description": "Custody-known or supplied material with incomplete authorship or source-chain evidence.",
+      "reserved": false
+    },
+    {
+      "rank": 5,
+      "label": "reference_only_derivative",
+      "description": "Legacy, derivative, novel, theme-park, training, or similar material retained only as reference unless separately admitted.",
+      "reserved": false
+    }
+  ],
+  "reserved_continuities": [
+    {
+      "continuity": "dark_universe",
+      "status": "reserved_empty",
+      "records": []
+    }
+  ],
+  "source_custody": [
+    {
+      "source_key": "user_supplied_autobiography_2026_07_10",
+      "custody_status": "custody_known",
+      "original_author": null,
+      "original_author_status": "unknown",
+      "content_status": "text_not_present_in_repository",
+      "canon_rank": 4,
+      "continuity": "provenance_limited_supplied_material",
+      "provenance": {
+        "statement": "User supplied an autobiography on 2026-07-10; repository search recovered no stronger authorship evidence and no autobiography text.",
+        "governing_issue": "Azimn/The-Doctor-Lives#4",
+        "no_fabrication": true
+      }
+    }
+  ],
+  "withheld_claims": [
+    {
+      "claim_key": "withheld.birth_1842",
+      "claim_text": "Pretorius was born in 1842.",
+      "status": "withheld_synthesized_reference",
+      "reason": "No source evidence recovered in The-Doctor-Lives sufficient for autobiographical admission.",
+      "source_refs": [
+        "Azimn/The-Doctor-Lives#4"
+      ],
+      "anti_promotion": {
+        "requires_synthesis_gate_or_stronger_source": true
+      }
+    },
+    {
+      "claim_key": "withheld.magistrate_father",
+      "claim_text": "Pretorius's father was a magistrate.",
+      "status": "withheld_synthesized_reference",
+      "reason": "No source evidence recovered in The-Doctor-Lives sufficient for autobiographical admission.",
+      "source_refs": [
+        "Azimn/The-Doctor-Lives#4"
+      ],
+      "anti_promotion": {
+        "requires_synthesis_gate_or_stronger_source": true
+      }
+    },
+    {
+      "claim_key": "withheld.insect_dissection_childhood",
+      "claim_text": "Pretorius dissected insects in childhood.",
+      "status": "withheld_synthesized_reference",
+      "reason": "The claim is replicated in LoRA/training lineage but repetition in training material is not autobiographical provenance.",
+      "source_refs": [
+        "Azimn/The-Doctor-Lives#4",
+        "resources/lora/*"
+      ],
+      "anti_promotion": {
+        "requires_synthesis_gate_or_stronger_source": true,
+        "training_frequency_is_not_provenance": true,
+        "silent_promotion_forbidden": true
+      }
+    }
+  ],
+  "reference_only": [
+    {
+      "reference_key": "reference.part_five_legacy",
+      "label": "Part Five legacy material",
+      "continuity": "reference_only",
+      "canon_rank": 5,
+      "status": "reference_only",
+      "provenance": {
+        "governing_issue": "Azimn/The-Doctor-Lives#4"
+      }
+    },
+    {
+      "reference_key": "reference.novels",
+      "label": "Novel material",
+      "continuity": "reference_only",
+      "canon_rank": 5,
+      "status": "reference_only",
+      "provenance": {
+        "governing_issue": "Azimn/The-Doctor-Lives#4"
+      }
+    },
+    {
+      "reference_key": "reference.theme_park",
+      "label": "Theme-park material",
+      "continuity": "reference_only",
+      "canon_rank": 5,
+      "status": "reference_only",
+      "provenance": {
+        "governing_issue": "Azimn/The-Doctor-Lives#4"
+      }
+    },
+    {
+      "reference_key": "reference.lora_training",
+      "label": "LoRA and training exemplars",
+      "continuity": "training_lineage",
+      "canon_rank": 5,
+      "status": "reference_only",
+      "provenance": {
+        "governing_issue": "Azimn/The-Doctor-Lives#4",
+        "rule": "Training exemplars are reconstruction/design evidence, never autobiographical facts by frequency."
+      }
+    }
+  ]
+}
