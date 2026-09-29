@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -93,6 +94,92 @@ class BrainAssemblyTests(unittest.TestCase):
         self.assertEqual(rows[cid]["status"], "overdue")
         brain.resolve_commitment(cid, "Reviewed and recorded.", kept=True)
         self.assertNotIn(cid, {r["id"] for r in brain.store.open_commitments()})
+
+    def test_resolved_concern_stops_persistent_heartbeat_cognition(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        brain.ingest(Experience(
+            "A containment fault threatens the laboratory.",
+            threat=.9,
+            control=-.5,
+            arousal=.6,
+        ))
+        concerns = brain.store.open_concerns()
+        self.assertEqual(len(concerns), 1)
+        concern_id = concerns[0]["id"]
+        brain.resolve_concern(concern_id, "Containment restored and independently verified.")
+        self.assertEqual(brain.store.open_concerns(), [])
+        result = brain.heartbeat(3)
+        self.assertEqual(result["thoughts"], [])
+
+    def test_state_policy_bridge_is_neutral_when_state_inputs_are_neutral(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        with brain.store.transaction() as conn:
+            conn.execute("UPDATE needs SET actual=.5,felt=.5")
+            conn.execute("DELETE FROM relationships")
+            conn.execute("DELETE FROM commitments")
+            conn.execute("DELETE FROM concerns")
+            brain.store.bump_state_version(conn)
+        base, adjusted, audit = brain._state_policy_scores([])
+        for action in base:
+            self.assertAlmostEqual(base[action], adjusted[action], places=12)
+        self.assertTrue(all(
+            abs(value) < 1e-12
+            for family in audit["families"].values()
+            for value in family.values()
+        ))
+
+    def test_autonomy_pressure_changes_policy_direction_without_replacing_recurrent_base(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        with brain.store.transaction() as conn:
+            conn.execute("UPDATE needs SET actual=.5,felt=.5")
+            conn.execute("UPDATE needs SET actual=.9,felt=.9 WHERE key='autonomy'")
+            conn.execute("DELETE FROM relationships")
+            conn.execute("DELETE FROM commitments")
+            conn.execute("DELETE FROM concerns")
+            brain.store.bump_state_version(conn)
+        base, adjusted, audit = brain._state_policy_scores([])
+        self.assertGreater(adjusted["challenge"], base["challenge"])
+        self.assertLess(adjusted["comply"], base["comply"])
+        self.assertGreater(audit["families"]["needs"]["challenge"], 0.0)
+        self.assertLess(audit["families"]["needs"]["comply"], 0.0)
+
+    def test_relevant_trusted_relationship_adds_cooperation_pressure(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        brain.ingest(Experience(
+            "Morgan returned the apparatus intact and kept the agreement.",
+            actor="Morgan",
+            kind="social",
+            social=.8,
+            valence=.8,
+            tags=("relationship", "trust"),
+        ))
+        ranked = brain._ranked_memories(20, query="Morgan", audit=False)
+        _, _, audit = brain._state_policy_scores(ranked)
+        self.assertGreater(audit["families"]["relationships"]["cooperate"], 0.0)
+        self.assertGreater(audit["families"]["relationships"]["approach"], 0.0)
+
+    def test_policy_audit_preserves_recurrent_base_state_pressure_and_final_scores(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        brain.add_commitment("Complete the continuity experiment.", importance=.9)
+        result = brain.think("test")
+        self.assertIn("base_action_scores", result)
+        self.assertIn("state_pressure", result)
+        self.assertIn("action_scores", result)
+        self.assertGreater(result["state_pressure"]["families"]["commitments"]["persist"], 0.0)
+        with brain.store.connect() as conn:
+            row = conn.execute(
+                """SELECT base_action_scores_json,state_pressure_json,action_scores_json
+                FROM policy_decisions WHERE id=?""",
+                (result["policy_decision_id"],),
+            ).fetchone()
+        self.assertEqual(json.loads(row["base_action_scores_json"]), result["base_action_scores"])
+        self.assertEqual(json.loads(row["state_pressure_json"]), result["state_pressure"])
+        self.assertEqual(json.loads(row["action_scores_json"]), result["action_scores"])
 
     def test_sleep_replays_without_advancing_waking_time(self):
         temp, brain = self.make_brain()
