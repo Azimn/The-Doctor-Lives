@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "agent_pretorius": {
     "repository": "Azimn/Agent-Pretorius",
     "commit": "40837ba0093cff044644844c07098450587b968d",
@@ -32,13 +32,16 @@
   },
   "deep_history": {
     "migration_version": "pretorius-deep-history-v2",
-    "schema_version": 3,
+    "schema_version": 4,
     "governing_issue": "Azimn/The-Doctor-Lives#4",
     "source_rule": "Preawakening evidence class, canon/source authority, and continuity are independent; no inherited or synthesized material is silently promoted to lived_runtime_memory.",
     "policy_path": "doctor_lives/data/deep_history_v2_policy.json",
     "connectome_nodes": 70,
     "connectome_edges": 243,
     "july_10_autobiography_provenance": "custody_known_original_author_unknown",
-    "dark_universe_continuity": "reserved_empty"
+    "dark_universe_continuity": "reserved_empty",
+    "wording_provenance": "required",
+    "canon_conflict_resolution": "lowest rank wins within one continuity; tie by lexicographic memory ID; no class upgrade",
+    "synthesis_retraction": "retractable_not_reversible"
   }
 }
