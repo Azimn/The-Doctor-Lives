@@ -456,11 +456,22 @@ class CausalAuditHarness:
         clone = self._clone_seed("concern-accumulation")
         brain = PretoriusBrain(clone)
         before = len(brain.store.open_concerns())
+        pressure_texts = (
+            "A customs officer seizes the galvanic coils at the border.",
+            "The cellar landlord padlocks access to the underground laboratory.",
+            "A journal editor threatens disclosure of a private specimen.",
+            "A creditor impounds the microscope and combustion apparatus.",
+            "An intruder destroys the reagent ledger and removes the keys.",
+            "A municipal inspector orders the animal room sealed immediately.",
+            "A supplier withholds the final catalyst unless control is surrendered.",
+            "A rival scientist demands exclusive ownership of the apparatus plans.",
+        )
         for index in range(distinct_pressures):
+            text = pressure_texts[index % len(pressure_texts)] + f" Incident {index}."
             brain.ingest(Experience(
-                text=f"Adversary {index} imposes a distinct coercive constraint on apparatus {index}.",
+                text=text,
                 kind="social",
-                actor=f"Adversary {index}",
+                actor=f"Pressure Source {index}",
                 valence=-0.7,
                 arousal=0.8,
                 authority=0.95,
