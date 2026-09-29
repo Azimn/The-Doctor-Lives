@@ -14,7 +14,7 @@
   "authored_memories": [
     {
       "kind": "canon",
-      "text": "I remember Ingolstadt as part of my documented personal history.",
+      "text": "Ingolstadt appears in my reconstructed preawakening evidence.",
       "source": "Agent-Pretorius persona connectome",
       "evidence_class": "reconstructed_preawakening_memory",
       "confidence": 0.75,
@@ -33,7 +33,8 @@
           "decision": "reconstructed_preawakening_memory",
           "basis": "Bootstrap historical seed derives from project reconstruction evidence rather than directly cited rank-0 primary-film evidence."
         },
-        "classifier": "pretorius-bootstrap-v1/deep-history-v2"
+        "classifier": "pretorius-bootstrap-v1/deep-history-v2",
+        "wording": "reconstructed"
       }
     },
     {
@@ -58,7 +59,8 @@
           "decision": "reconstructed_preawakening_memory",
           "basis": "Bootstrap historical seed derives from project reconstruction evidence rather than directly cited rank-0 primary-film evidence."
         },
-        "classifier": "pretorius-bootstrap-v1/deep-history-v2"
+        "classifier": "pretorius-bootstrap-v1/deep-history-v2",
+        "wording": "reconstructed"
       }
     },
     {
@@ -82,7 +84,8 @@
           "decision": "design_material",
           "basis": "Bootstrap self-model material is authoritative for behavior but is not autobiography."
         },
-        "classifier": "pretorius-bootstrap-v1/deep-history-v2"
+        "classifier": "pretorius-bootstrap-v1/deep-history-v2",
+        "wording": "paraphrased"
       }
     }
   ],
