@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "agent_pretorius": {
     "repository": "Azimn/Agent-Pretorius",
     "commit": "40837ba0093cff044644844c07098450587b968d",
@@ -31,9 +31,14 @@
     "phenotype_profile_blob": "0b52b12420ba4291844c49cd73b19a8eefc528ff"
   },
   "deep_history": {
-    "migration_version": "pretorius-deep-history-v1",
-    "source_rule": "Pretorius-only inherited evidence remains distinct from lived experience",
+    "migration_version": "pretorius-deep-history-v2",
+    "schema_version": 3,
+    "governing_issue": "Azimn/The-Doctor-Lives#4",
+    "source_rule": "Preawakening evidence class, canon/source authority, and continuity are independent; no inherited or synthesized material is silently promoted to lived_runtime_memory.",
+    "policy_path": "doctor_lives/data/deep_history_v2_policy.json",
     "connectome_nodes": 70,
-    "connectome_edges": 243
+    "connectome_edges": 243,
+    "july_10_autobiography_provenance": "custody_known_original_author_unknown",
+    "dark_universe_continuity": "reserved_empty"
   }
 }
