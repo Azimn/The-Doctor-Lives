@@ -52,13 +52,25 @@
       "custody_status": "custody_known",
       "original_author": null,
       "original_author_status": "unknown",
-      "content_status": "text_not_present_in_repository",
+      "content_status": "full_manuscript_resupplied_2026_09_29_project_files",
       "canon_rank": 4,
       "continuity": "provenance_limited_supplied_material",
       "provenance": {
-        "statement": "User supplied an autobiography on 2026-07-10; repository search recovered no stronger authorship evidence and no autobiography text.",
+        "statement": "The project owner supplied the autobiography on 2026-07-10 and re-supplied a full copy on 2026-09-29 (Preface, Parts One-Five, Epilogue, Appendix). Custody is known; original authorship remains unknown. The manuscript is present in project files but absent from the pinned Agent-Pretorius repositories.",
         "governing_issue": "Azimn/The-Doctor-Lives#4",
-        "no_fabrication": true
+        "no_fabrication": true,
+        "resupplied_at": "2026-09-29",
+        "resupplied_sections": [
+          "Preface",
+          "Part One",
+          "Part Two",
+          "Part Three",
+          "Part Four",
+          "Part Five",
+          "Epilogue",
+          "Appendix"
+        ],
+        "pinned_agent_pretorius_repository_presence": false
       }
     }
   ],
