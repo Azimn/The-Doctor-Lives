@@ -1,0 +1,59 @@
+name: deep-history-matched-control
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/pretorius-deep-history-v2
+    paths:
+      - "tools/deep_history_matched_control.py"
+      - ".github/workflows/deep-history-matched-control.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  matched-control:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout v2 harness
+        uses: actions/checkout@v4
+
+      - name: Checkout pre-deep-history baseline
+        uses: actions/checkout@v4
+        with:
+          ref: 88e36ba354b8d55f196c47f7dd0358b3b8bf9297
+          path: _control/pre
+          fetch-depth: 1
+
+      - name: Checkout deep-history v1 baseline
+        uses: actions/checkout@v4
+        with:
+          ref: 7be60ed46add7c74359b322cc033aa7dfabb08e8
+          path: _control/deep
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install shared runtime dependencies
+        run: python -m pip install "numpy>=1.26" "scipy>=1.11"
+
+      - name: Run exact matched-stimuli control
+        run: |
+          python tools/deep_history_matched_control.py \
+            --pre-root _control/pre \
+            --deep-root _control/deep \
+            --output-dir artifacts/deep-history-matched-control
+
+      - name: Display bounded summary
+        run: cat artifacts/deep-history-matched-control/RESULTS.md
+
+      - name: Upload immutable control artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-history-matched-control-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/deep-history-matched-control/
+          if-no-files-found: error

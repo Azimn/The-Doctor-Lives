@@ -10,7 +10,16 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 5
+
+WORDING_KINDS = frozenset({"quoted", "paraphrased", "reconstructed", "synthesized"})
+
+AUTOBIOGRAPHICAL_CLASSES = frozenset({
+    "canonical_preawakening_memory",
+    "reconstructed_preawakening_memory",
+    "synthesized_preawakening_memory",
+    "lived_runtime_memory",
+})
 
 
 def utc_now() -> str:
@@ -112,6 +121,106 @@ CREATE TABLE IF NOT EXISTS memory_provenance (
  provenance_json TEXT NOT NULL,
  FOREIGN KEY(memory_id) REFERENCES memories(id)
 );
+CREATE TABLE IF NOT EXISTS memory_classifications (
+ memory_id TEXT PRIMARY KEY,
+ autobiographical_class TEXT,
+ event_subtype TEXT NOT NULL,
+ canon_rank INTEGER,
+ continuity TEXT NOT NULL,
+ material_category TEXT NOT NULL,
+ wording TEXT NOT NULL,
+ classification_reasoning_json TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'active',
+ predecessor_memory_id TEXT,
+ classifier TEXT NOT NULL,
+ classified_at TEXT NOT NULL,
+ CHECK(canon_rank IS NULL OR (canon_rank >= 0 AND canon_rank <= 5)),
+ FOREIGN KEY(memory_id) REFERENCES memories(id)
+);
+CREATE TABLE IF NOT EXISTS canon_authority (
+ rank INTEGER PRIMARY KEY,
+ label TEXT NOT NULL,
+ description TEXT NOT NULL,
+ reserved INTEGER NOT NULL DEFAULT 0,
+ CHECK(rank >= 0 AND rank <= 5)
+);
+CREATE TABLE IF NOT EXISTS synthesis_admissions (
+ id TEXT PRIMARY KEY,
+ claim_key TEXT NOT NULL UNIQUE,
+ memory_id TEXT,
+ author TEXT NOT NULL,
+ reviewer TEXT NOT NULL,
+ proposed_claim TEXT NOT NULL,
+ claim_sha256 TEXT NOT NULL,
+ sources_json TEXT NOT NULL,
+ reasoning TEXT NOT NULL,
+ causal_leverage TEXT NOT NULL,
+ evidence_strength TEXT NOT NULL,
+ alternatives_json TEXT NOT NULL,
+ exclusion_rulings_json TEXT NOT NULL,
+ conflict_notes TEXT NOT NULL,
+ status TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ reviewed_at TEXT,
+ retracted_at TEXT,
+ retracted_by TEXT,
+ retraction_reason TEXT,
+ retraction_note TEXT NOT NULL DEFAULT 'Synthesis admission is retractable, not reversible: retraction removes the active memory but cannot undo cognition that already occurred.',
+ FOREIGN KEY(memory_id) REFERENCES memories(id)
+);
+CREATE TABLE IF NOT EXISTS conflict_resolutions (
+ id TEXT PRIMARY KEY,
+ conflict_key TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ candidate_memory_ids_json TEXT NOT NULL,
+ candidate_ranks_json TEXT NOT NULL,
+ winner_memory_id TEXT NOT NULL,
+ rule TEXT NOT NULL,
+ rationale TEXT NOT NULL,
+ resolution_json TEXT NOT NULL,
+ FOREIGN KEY(winner_memory_id) REFERENCES memories(id)
+);
+CREATE TABLE IF NOT EXISTS source_custody (
+ source_key TEXT PRIMARY KEY,
+ custody_status TEXT NOT NULL,
+ original_author TEXT,
+ content_status TEXT NOT NULL,
+ canon_rank INTEGER,
+ continuity TEXT NOT NULL,
+ provenance_json TEXT NOT NULL,
+ CHECK(canon_rank IS NULL OR (canon_rank >= 0 AND canon_rank <= 5))
+);
+CREATE TABLE IF NOT EXISTS withheld_claims (
+ claim_key TEXT PRIMARY KEY,
+ claim_text TEXT NOT NULL,
+ status TEXT NOT NULL,
+ reason TEXT NOT NULL,
+ source_refs_json TEXT NOT NULL,
+ anti_promotion_json TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reference_material (
+ reference_key TEXT PRIMARY KEY,
+ label TEXT NOT NULL,
+ continuity TEXT NOT NULL,
+ canon_rank INTEGER NOT NULL,
+ status TEXT NOT NULL,
+ provenance_json TEXT NOT NULL,
+ CHECK(canon_rank >= 0 AND canon_rank <= 5)
+);
+CREATE TABLE IF NOT EXISTS retrieval_audits (
+ id TEXT PRIMARY KEY,
+ tick INTEGER NOT NULL,
+ query TEXT NOT NULL,
+ config_json TEXT NOT NULL,
+ direct_memory_ids_json TEXT NOT NULL,
+ activated_memory_ids_json TEXT NOT NULL,
+ path_contributions_json TEXT NOT NULL,
+ ranked_memory_ids_json TEXT NOT NULL,
+ state_digest_before TEXT NOT NULL,
+ state_digest_after TEXT NOT NULL,
+ created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS history_nodes (
  node_id TEXT PRIMARY KEY, label TEXT NOT NULL, node_type TEXT NOT NULL,
  activation REAL NOT NULL, memory_id TEXT NOT NULL, provenance_json TEXT NOT NULL,
@@ -157,9 +266,58 @@ class BrainStore:
         finally:
             conn.close()
 
+    @staticmethod
+    def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+        return {str(row["name"]) for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+
+    def _migrate_schema(self, conn: sqlite3.Connection) -> None:
+        classification_columns = self._table_columns(conn, "memory_classifications")
+        if "wording" not in classification_columns:
+            conn.execute(
+                "ALTER TABLE memory_classifications ADD COLUMN wording TEXT NOT NULL DEFAULT 'paraphrased'"
+            )
+            conn.execute(
+                """UPDATE memory_classifications SET wording=
+                CASE
+                  WHEN autobiographical_class='reconstructed_preawakening_memory' THEN 'reconstructed'
+                  WHEN autobiographical_class='synthesized_preawakening_memory' THEN 'synthesized'
+                  WHEN autobiographical_class='lived_runtime_memory' THEN 'quoted'
+                  ELSE 'paraphrased'
+                END"""
+            )
+
+        admission_columns = self._table_columns(conn, "synthesis_admissions")
+        if "claim_sha256" not in admission_columns:
+            conn.execute(
+                "ALTER TABLE synthesis_admissions ADD COLUMN claim_sha256 TEXT NOT NULL DEFAULT ''"
+            )
+            rows = conn.execute(
+                "SELECT id,proposed_claim FROM synthesis_admissions"
+            ).fetchall()
+            for row in rows:
+                claim_hash = hashlib.sha256(
+                    str(row["proposed_claim"]).encode("utf-8")
+                ).hexdigest()
+                conn.execute(
+                    "UPDATE synthesis_admissions SET claim_sha256=? WHERE id=?",
+                    (claim_hash, row["id"]),
+                )
+        if "retracted_at" not in admission_columns:
+            conn.execute("ALTER TABLE synthesis_admissions ADD COLUMN retracted_at TEXT")
+        if "retracted_by" not in admission_columns:
+            conn.execute("ALTER TABLE synthesis_admissions ADD COLUMN retracted_by TEXT")
+        if "retraction_reason" not in admission_columns:
+            conn.execute("ALTER TABLE synthesis_admissions ADD COLUMN retraction_reason TEXT")
+        if "retraction_note" not in admission_columns:
+            conn.execute(
+                """ALTER TABLE synthesis_admissions ADD COLUMN retraction_note TEXT NOT NULL
+                DEFAULT 'Synthesis admission is retractable, not reversible: retraction removes the active memory but cannot undo cognition that already occurred.'"""
+            )
+
     def init(self) -> None:
         with closing(self.connect()) as conn:
             conn.executescript(SCHEMA)
+            self._migrate_schema(conn)
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('schema_version',?)", (str(SCHEMA_VERSION),))
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('tick','0')")
             conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('state_version','0')")
@@ -220,8 +378,42 @@ class BrainStore:
     def add_memory(self, conn: sqlite3.Connection, tick: int, text: str, source: str,
                    kind: str, evidence_class: str, external: bool, confidence: float,
                    authored: bool, base_salience: float, tags: Iterable[str] = (),
-                   source_event_id: str | None = None) -> str:
-        rid = new_id("mem")
+                   source_event_id: str | None = None,
+                   classification: dict[str, Any] | None = None,
+                   synthesis_admission_id: str | None = None,
+                   record_id: str | None = None) -> str:
+        if evidence_class in AUTOBIOGRAPHICAL_CLASSES and classification is None:
+            raise ValueError(
+                f"autobiographical memory {evidence_class!r} requires classification reasoning"
+            )
+        if evidence_class in {"reconstructed_preawakening_memory", "synthesized_preawakening_memory"}:
+            normalized = " ".join(text.strip().lower().split())
+            if normalized.startswith(("i remember ", "i recall ", "i witnessed ", "i experienced ")):
+                raise ValueError(
+                    f"{evidence_class} cannot use unqualified direct-recollection wording"
+                )
+        if evidence_class == "synthesized_preawakening_memory":
+            if not synthesis_admission_id:
+                raise ValueError("synthesized memory requires an approved synthesis admission")
+            admission = conn.execute(
+                """SELECT status,memory_id,proposed_claim,claim_sha256
+                FROM synthesis_admissions WHERE id=?""",
+                (synthesis_admission_id,),
+            ).fetchone()
+            if admission is None or str(admission["status"]) != "approved":
+                raise ValueError("synthesis admission is missing or not approved")
+            if admission["memory_id"] is not None:
+                raise ValueError("synthesis admission is already bound to a memory")
+            approved_claim = str(admission["proposed_claim"])
+            approved_hash = hashlib.sha256(approved_claim.encode("utf-8")).hexdigest()
+            if str(admission["claim_sha256"]) != approved_hash:
+                raise ValueError("synthesis admission claim hash does not match reviewed claim")
+            if text.strip() != approved_claim:
+                raise ValueError(
+                    "synthesized memory text must exactly match the reviewed admission claim"
+                )
+
+        rid = record_id or new_id("mem")
         conn.execute(
             """INSERT INTO memories
             (id,created_tick,updated_tick,kind,text,source,evidence_class,external,confidence,
@@ -230,7 +422,133 @@ class BrainStore:
             (rid,tick,tick,kind,text.strip(),source,evidence_class,int(bool(external)),clamp(confidence),
              int(bool(authored)),clamp(base_salience),json.dumps(sorted(set(tags))),source_event_id),
         )
+        if classification is not None:
+            self.set_classification(conn, rid, classification)
+        if synthesis_admission_id is not None:
+            conn.execute(
+                "UPDATE synthesis_admissions SET memory_id=? WHERE id=?",
+                (rid, synthesis_admission_id),
+            )
         return rid
+
+    def set_classification(self, conn: sqlite3.Connection, memory_id: str,
+                           classification: dict[str, Any]) -> None:
+        autobiographical_class = classification.get("autobiographical_class")
+        if autobiographical_class is not None and autobiographical_class not in AUTOBIOGRAPHICAL_CLASSES:
+            raise ValueError(f"unknown autobiographical class {autobiographical_class!r}")
+        canon_rank = classification.get("canon_rank")
+        if canon_rank is not None and not 0 <= int(canon_rank) <= 5:
+            raise ValueError("canon_rank must be between 0 and 5")
+        wording = str(classification.get("wording") or "")
+        if wording not in WORDING_KINDS:
+            raise ValueError(
+                "classification wording must be one of: quoted, paraphrased, reconstructed, synthesized"
+            )
+        if autobiographical_class == "synthesized_preawakening_memory" and wording != "synthesized":
+            raise ValueError("synthesized preawakening memory must use synthesized wording")
+        reasoning = classification.get("classification_reasoning")
+        if not isinstance(reasoning, dict) or not reasoning:
+            raise ValueError("classification_reasoning must be a non-empty mapping")
+        row = conn.execute(
+            "SELECT evidence_class,kind,text FROM memories WHERE id=?", (memory_id,)
+        ).fetchone()
+        if row is None:
+            raise KeyError(memory_id)
+        if autobiographical_class in {
+            "reconstructed_preawakening_memory", "synthesized_preawakening_memory"
+        }:
+            normalized = " ".join(str(row["text"]).strip().lower().split())
+            if normalized.startswith(("i remember ", "i recall ", "i witnessed ", "i experienced ")):
+                raise ValueError(
+                    f"{autobiographical_class} cannot use unqualified direct-recollection wording"
+                )
+        if str(row["evidence_class"]) in AUTOBIOGRAPHICAL_CLASSES:
+            if autobiographical_class != str(row["evidence_class"]):
+                raise ValueError("memory evidence_class and autobiographical_class disagree")
+        conn.execute(
+            """INSERT OR REPLACE INTO memory_classifications
+            (memory_id,autobiographical_class,event_subtype,canon_rank,continuity,
+             material_category,wording,classification_reasoning_json,status,predecessor_memory_id,
+             classifier,classified_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                memory_id,
+                autobiographical_class,
+                str(classification.get("event_subtype") or row["kind"]),
+                None if canon_rank is None else int(canon_rank),
+                str(classification.get("continuity") or "runtime"),
+                str(classification.get("material_category") or (
+                    "autobiography" if autobiographical_class else "uncategorized"
+                )),
+                wording,
+                json.dumps(reasoning, sort_keys=True),
+                str(classification.get("status") or "active"),
+                classification.get("predecessor_memory_id"),
+                str(classification.get("classifier") or "doctor_lives"),
+                str(classification.get("classified_at") or utc_now()),
+            ),
+        )
+
+    def classification(self, memory_id: str) -> dict[str, Any] | None:
+        with closing(self.connect()) as conn:
+            row = conn.execute(
+                "SELECT * FROM memory_classifications WHERE memory_id=?", (memory_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        out = dict(row)
+        out["classification_reasoning"] = json.loads(out.pop("classification_reasoning_json"))
+        return out
+
+    def memories_with_classification(self, active_only: bool = True) -> list[dict[str, Any]]:
+        sql = """SELECT m.*,c.autobiographical_class,c.event_subtype,c.canon_rank,
+                 c.continuity,c.material_category,c.wording,c.classification_reasoning_json,
+                 c.status AS classification_status,c.predecessor_memory_id,c.classifier,c.classified_at
+                 FROM memories m LEFT JOIN memory_classifications c ON c.memory_id=m.id"""
+        if active_only:
+            sql += " WHERE m.active=1"
+        sql += " ORDER BY m.updated_tick DESC,m.created_tick DESC"
+        with closing(self.connect()) as conn:
+            rows = conn.execute(sql).fetchall()
+        out = []
+        for row in rows:
+            item = self._decode_memory(row)
+            raw_reasoning = item.pop("classification_reasoning_json", None)
+            item["classification_reasoning"] = (
+                None if raw_reasoning is None else json.loads(raw_reasoning)
+            )
+            out.append(item)
+        return out
+
+    def canon_conflict_suppressed_memory_ids(self) -> set[str]:
+        """Return active losing candidates from the latest resolution of each conflict.
+
+        Resolved lower-authority accounts remain stored and auditable, but standard
+        autobiographical retrieval yields the active winner while it remains active.
+        """
+        with closing(self.connect()) as conn:
+            rows = conn.execute(
+                """SELECT id,conflict_key,created_at,candidate_memory_ids_json,winner_memory_id
+                FROM conflict_resolutions ORDER BY created_at DESC,id DESC"""
+            ).fetchall()
+            active = {
+                str(row["id"]) for row in conn.execute(
+                    "SELECT id FROM memories WHERE active=1"
+                ).fetchall()
+            }
+        latest: dict[str, sqlite3.Row] = {}
+        for row in rows:
+            latest.setdefault(str(row["conflict_key"]), row)
+        suppressed: set[str] = set()
+        for row in latest.values():
+            winner = str(row["winner_memory_id"])
+            if winner not in active:
+                continue
+            candidates = {
+                str(item) for item in json.loads(str(row["candidate_memory_ids_json"]))
+            }
+            suppressed.update((candidates - {winner}) & active)
+        return suppressed
 
     def memories(self, active_only: bool = True) -> list[dict[str, Any]]:
         sql = "SELECT * FROM memories"
@@ -314,7 +632,9 @@ class BrainStore:
         with closing(self.connect()) as conn:
             for table in ["meta","events","memories","relationships","relationship_events","concerns",
                           "commitments","self_model","thoughts","policy_decisions","associations","needs","action_values",
-                          "sleep_fragments","archive","memory_provenance","history_nodes","history_edges"]:
+                          "sleep_fragments","archive","memory_provenance","memory_classifications",
+                          "canon_authority","synthesis_admissions","conflict_resolutions","source_custody","withheld_claims",
+                          "reference_material","history_nodes","history_edges"]:
                 rows = conn.execute(f"SELECT * FROM {table} ORDER BY rowid").fetchall()
                 for row in rows:
                     h.update(table.encode())

@@ -11,6 +11,12 @@ class Provenance:
     external: bool = False
     confidence: float = 1.0
     inherited: bool = False
+    autobiographical_class: str | None = None
+    canon_rank: int | None = None
+    continuity: str | None = None
+    material_category: str | None = None
+    wording: str | None = None
+    classification_reasoning: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)

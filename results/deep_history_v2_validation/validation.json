@@ -1,0 +1,59 @@
+{
+  "schema": "the-doctor-lives.deep-history-v2-validation-record.v2",
+  "governing_issue": "Azimn/The-Doctor-Lives#4",
+  "record_role": "historical_validation_snapshot_plus_attestation_policy",
+  "latest_completed_snapshot": {
+    "validated_source_sha": "f164d9adb6224fad4e19ee1bd34f334703f6b208",
+    "workflow_run_id": 36520784587,
+    "artifact": {
+      "id": 11012746398,
+      "name": "deep-history-v2-validation-f164d9adb6224fad4e19ee1bd34f334703f6b208-36520784587",
+      "sha256": "7b7ee8570768b90e15bedd0730690810259b2331079092cc58c922f3e3eb3491",
+      "size_bytes": 684
+    },
+    "fresh_v2": {
+      "status": "pass",
+      "schema_version": 4,
+      "deep_history_version": "pretorius-deep-history-v2",
+      "connectome_nodes": 70,
+      "connectome_edges": 243,
+      "lived_memory_class": "lived_runtime_memory",
+      "lived_autobiographical_class": "lived_runtime_memory",
+      "renderer_read_only_digest_preserved": true,
+      "restart_digest_preserved": true,
+      "commitment_recovered": true,
+      "relationship_recovered": true,
+      "withheld_insect_claim_not_memory": true,
+      "dark_universe_empty": true,
+      "all_classifications_have_valid_wording": true,
+      "reconstructed_or_synthesized_direct_recollection_leaks": 0
+    },
+    "v1_to_v2_migration": {
+      "status": "pass",
+      "source_sha": "7be60ed46add7c74359b322cc033aa7dfabb08e8",
+      "source_deep_history_version": "pretorius-deep-history-v1",
+      "target_deep_history_version": "pretorius-deep-history-v2",
+      "schema_version": 4,
+      "migration_snapshots": 102,
+      "legacy_autobiographical_classes_remaining": 0,
+      "unclassified_autobiographical_memories": 0,
+      "invalid_wording_records": 0,
+      "direct_recollection_leaks_after_migration": 0,
+      "lived_memory_migrated_to": "lived_runtime_memory",
+      "external_statement_preserved": true,
+      "commitment_preserved": true,
+      "restart_idempotent": true
+    }
+  },
+  "exact_head_attestation_policy": {
+    "authoritative_sources": [
+      "GitHub Actions brain-tests run on the exact PR head",
+      "GitHub Actions deep-history-v2-validation run on the exact PR head",
+      "PR #5 repair/re-review comment naming that exact head and both run IDs",
+      "Issue #4 checkpoint comment when posted"
+    ],
+    "reason": "A tracked validation.json cannot contain the SHA of the commit that creates or updates validation.json without changing that SHA. Therefore this file is a durable historical snapshot, while exact-current-head attestation is supplied by CI and the PR/Issue review record.",
+    "workflow": "deep-history-v2-validation",
+    "pr": "Azimn/The-Doctor-Lives#5"
+  }
+}
