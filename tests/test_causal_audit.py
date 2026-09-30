@@ -79,11 +79,30 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertEqual(intact["source_state_digest"], lesion["source_state_digest"])
         self.assertEqual(intact["source_neural_sha256"], lesion["source_neural_sha256"])
         self.assertIn("policy_decision", intact)
+        self.assertIn("base_action_scores", intact["policy_decision"])
+        self.assertIn("state_pressure", intact["policy_decision"])
+        self.assertIn("families", intact["policy_decision"]["state_pressure"])
         self.assertIn("retrieval", intact)
         self.assertIn("renderer_request", intact)
         self.assertIn("deterministic_audit_render", intact)
         self.assertEqual(lesion["disabled_mechanisms"], ["deep_history"])
         self.assertLess(result["comparison"]["retrieval_jaccard"], 1.0)
+
+    def test_bridge_lesion_restores_recurrent_only_path(self):
+        harness = self.make_harness()
+        result = harness.run_pair(
+            self.probe(),
+            AuditIntervention("state_policy_bridge", ("state_policy_bridge",)),
+        )
+        lesion = result["lesion"]["policy_decision"]
+        self.assertEqual(lesion["base_action_scores"], lesion["action_scores"])
+        self.assertFalse(lesion["state_pressure"]["enabled"])
+        self.assertTrue(all(
+            abs(float(value)) < 1e-12
+            for family in lesion["state_pressure"]["families"].values()
+            for value in family.values()
+        ))
+        self.assertGreater(result["comparison"]["action_score_l1"], 0.0)
 
     def test_action_values_are_currently_not_a_decision_variable(self):
         harness = self.make_harness()
