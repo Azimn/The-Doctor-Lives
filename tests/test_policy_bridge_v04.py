@@ -146,6 +146,63 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
         self.assertTrue(relevant["source_ids"]["history"])
         self.assertEqual(neutral["source_ids"]["history"], [])
 
+    def test_renderer_observation_is_policy_independent_and_nonmutating(self):
+        brain = self.make_brain()
+        self.neutralize(brain)
+        with brain.store.transaction() as conn:
+            conn.execute("UPDATE needs SET actual=.91,felt=.91 WHERE key='autonomy'")
+            brain.store.bump_state_version(conn)
+        decision_text = "An authority orders immediate surrender of the procedure."
+        base_before, adjusted_before, audit_before = brain._state_policy_scores(
+            [], decision_text=decision_text
+        )
+        digest_before = brain.store.digest()
+        request_a = brain.render_request(decision_text).to_dict()
+        request_b = brain.render_request("Render this state in a completely different voice.").to_dict()
+        digest_after = brain.store.digest()
+        base_after, adjusted_after, audit_after = brain._state_policy_scores(
+            [], decision_text=decision_text
+        )
+        self.assertEqual(digest_before, digest_after)
+        self.assertEqual(base_before, base_after)
+        self.assertEqual(adjusted_before, adjusted_after)
+        self.assertEqual(audit_before, audit_after)
+        self.assertEqual(request_a["schema"], request_b["schema"])
+
+    def test_history_bridge_preserves_source_provenance_and_archive_state(self):
+        brain = self.make_brain()
+        self.neutralize(brain)
+        ingested = brain.ingest(Experience(
+            "The council used coercion and authority to force control of my procedure.",
+            kind="interaction", valence=-.7, authority=.9, autonomy=.05,
+            tags=("council", "coercion", "authority", "control"),
+        ))
+        memory_id = ingested["memory_id"]
+        before_memory = brain.store.get_memory(memory_id)
+        before_classification = brain.store.classification(memory_id)
+        with brain.store.connect() as conn:
+            before_archive = conn.execute(
+                "SELECT COUNT(*) FROM archive WHERE record_id=?", (memory_id,)
+            ).fetchone()[0]
+        ranked = brain._ranked_memories(
+            30, query="council coercion authority procedure", audit=False
+        )
+        _, _, audit = brain._state_policy_scores(
+            ranked,
+            decision_text="The council again uses coercion and authority over the procedure.",
+        )
+        after_memory = brain.store.get_memory(memory_id)
+        after_classification = brain.store.classification(memory_id)
+        with brain.store.connect() as conn:
+            after_archive = conn.execute(
+                "SELECT COUNT(*) FROM archive WHERE record_id=?", (memory_id,)
+            ).fetchone()[0]
+        self.assertIn(memory_id, audit["source_ids"]["history"])
+        self.assertEqual(before_memory, after_memory)
+        self.assertEqual(before_classification, after_classification)
+        self.assertEqual(before_archive, after_archive)
+        self.assertTrue(after_memory["active"])
+
     def test_recurrent_phenotype_remains_load_bearing_under_max_bridge_pressure(self):
         brain = self.make_brain()
         self.neutralize(brain)
