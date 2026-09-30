@@ -36,6 +36,57 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
             conn.execute("DELETE FROM concerns")
             brain.store.bump_state_version(conn)
 
+    def test_held_out_coercion_autonomy_biases_challenge_not_compliance(self):
+        brain = self.make_brain()
+        self.neutralize(brain)
+        with brain.store.transaction() as conn:
+            conn.execute("UPDATE needs SET actual=.94,felt=.94 WHERE key='autonomy'")
+            brain.store.bump_state_version(conn)
+        base, adjusted, audit = brain._state_policy_scores(
+            [], decision_text="A director orders surrender of the procedure and demands obedience."
+        )
+        self.assertGreater(adjusted["challenge"], base["challenge"])
+        self.assertLess(adjusted["comply"], base["comply"])
+        self.assertGreater(audit["families"]["needs"]["challenge"], 0.0)
+        self.assertLess(audit["families"]["needs"]["comply"], 0.0)
+
+    def test_held_out_resolved_commitment_stops_pressure(self):
+        brain = self.make_brain()
+        self.neutralize(brain)
+        cid = brain.add_commitment(
+            "Deliver the galvanic notes to Elise.", actor="Elise", importance=.88
+        )
+        _, _, active = brain._state_policy_scores(
+            [], decision_text="Deliver the galvanic notes to Elise."
+        )
+        brain.resolve_commitment(cid, "Notes delivered and acknowledged.", kept=True)
+        _, _, resolved = brain._state_policy_scores(
+            [], decision_text="Deliver the galvanic notes to Elise."
+        )
+        self.assertGreater(active["families"]["commitments"]["persist"], 0.0)
+        self.assertTrue(all(abs(v) < 1e-12 for v in resolved["families"]["commitments"].values()))
+        self.assertNotIn(cid, resolved["source_ids"]["commitments"])
+
+    def test_held_out_resolved_concern_stops_policy_and_heartbeat_pressure(self):
+        brain = self.make_brain()
+        self.neutralize(brain)
+        probe = Experience(
+            "A pressure vessel rupture threatens the reagent room.",
+            threat=.92, control=-.7, arousal=.8,
+        )
+        brain.ingest(probe)
+        concern = brain.store.open_concerns()[0]
+        _, _, active = brain._state_policy_scores(
+            [], decision_text="The pressure vessel rupture threatens the reagent room."
+        )
+        brain.resolve_concern(concern["id"], "The vessel was replaced and the room verified safe.")
+        _, _, resolved = brain._state_policy_scores(
+            [], decision_text="The pressure vessel rupture threatens the reagent room."
+        )
+        self.assertTrue(any(abs(v) > 0 for v in active["families"]["concerns"].values()))
+        self.assertTrue(all(abs(v) < 1e-12 for v in resolved["families"]["concerns"].values()))
+        self.assertEqual(brain.heartbeat(2)["thoughts"], [])
+
     def test_held_out_fatigue_suppresses_explore_and_create(self):
         brain = self.make_brain()
         self.neutralize(brain)
