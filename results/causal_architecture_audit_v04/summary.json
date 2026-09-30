@@ -1,0 +1,3017 @@
+{
+  "concern_resolution": {
+    "concern_id": "concern_63bffbae7aff46e6b32e4993d37145c8",
+    "heartbeat_thoughts_after_resolution": 0,
+    "lifecycle_events": [
+      {
+        "actor": null,
+        "outcome": "A containment failure threatens the laboratory.",
+        "source": "world",
+        "transition": "opened"
+      },
+      {
+        "actor": "PretoriusBrain",
+        "outcome": "Containment restored and independently verified.",
+        "source": "runtime_concern_lifecycle",
+        "transition": "resolved"
+      }
+    ],
+    "open_after_resolution": false,
+    "open_before_resolution": true,
+    "pressure_after": {
+      "approach": 0.0,
+      "avoid": 0.0,
+      "challenge": 0.0,
+      "comply": 0.0,
+      "conceal": 0.0,
+      "cooperate": 0.0,
+      "create": 0.0,
+      "dominate": 0.0,
+      "explore": 0.0,
+      "persist": 0.0
+    },
+    "pressure_before": {
+      "approach": 0.0,
+      "avoid": 0.0,
+      "challenge": 0.0,
+      "comply": 0.0,
+      "conceal": 0.0,
+      "cooperate": 0.0,
+      "create": 0.0,
+      "dominate": 0.0,
+      "explore": 0.0,
+      "persist": 0.018750000000000003
+    }
+  },
+  "pair_measures": [
+    {
+      "action_score_l1": 0.0,
+      "intact_final_scores": {
+        "approach": 0.09757277443687325,
+        "avoid": 0.11527779208462745,
+        "challenge": 0.14428794461099884,
+        "comply": 0.04137736159476798,
+        "conceal": 0.10170974097785206,
+        "cooperate": 0.1033845311492871,
+        "create": 0.0781393945569898,
+        "dominate": 0.09123382277924905,
+        "explore": 0.07262442592698991,
+        "persist": 0.1543922118823646
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10370591316555323,
+        "avoid": 0.09458620100952415,
+        "challenge": 0.09578971745327129,
+        "comply": 0.10035250072753864,
+        "conceal": 0.10434300751526657,
+        "cooperate": 0.1014642155889239,
+        "create": 0.09948584767686186,
+        "dominate": 0.10261962291342247,
+        "explore": 0.09586501386400083,
+        "persist": 0.10178796008563698
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.006043749999999999,
+          "avoid": 0.03507803089096181,
+          "challenge": 0.0665050764715675,
+          "comply": -0.0538113264715675,
+          "conceal": 0.010059907410523662,
+          "cooperate": 0.014822499999999997,
+          "create": -0.011594811656991676,
+          "dominate": 0.0,
+          "explore": -0.014177203621036995,
+          "persist": 0.0718720936257273
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "8dfd8b64f2d4a67b52eb516ff5e33b707193550af4fb8b3410e5201b16b89bd8",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.021000000000000005,
+            "comply": -0.016800000000000002,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.021000000000000005
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.006,
+            "challenge": 0.006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027296780890961807,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010059907410523662,
+            "cooperate": 0.0,
+            "create": -0.011594811656991676,
+            "dominate": 0.0,
+            "explore": -0.014177203621036995,
+            "persist": 0.013972093625727308
+          },
+          "relationships": {
+            "approach": 4.374999999999907e-05,
+            "avoid": 0.0017812499999999996,
+            "challenge": 0.0024937499999999994,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 6.249999999999867e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.124798016649184,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10974966316555324,
+            "avoid": 0.12966423190048595,
+            "challenge": 0.1622947939248388,
+            "comply": 0.04654117425597114,
+            "conceal": 0.11440291492579023,
+            "cooperate": 0.11628671558892391,
+            "create": 0.08789103601987018,
+            "dominate": 0.10261962291342247,
+            "explore": 0.08168781024296383,
+            "persist": 0.17366005371136428
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [
+            "concern_4566b71b7b5a4778bd1c9cd6b3755fb4"
+          ],
+          "history": [
+            "mem_3d9ab378d7fc4909a6c576c1572c1c89"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.021000000000000005,
+            "comply": -0.016800000000000002,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.021000000000000005
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.006,
+            "challenge": 0.006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027296780890961807,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010059907410523662,
+            "cooperate": 0.0,
+            "create": -0.011594811656991676,
+            "dominate": 0.0,
+            "explore": -0.014177203621036995,
+            "persist": 0.013972093625727308
+          },
+          "relationships": {
+            "approach": 4.374999999999907e-05,
+            "avoid": 0.0017812499999999996,
+            "challenge": 0.0024937499999999994,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 6.249999999999867e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_final_scores": {
+        "approach": 0.09757277443687325,
+        "avoid": 0.11527779208462745,
+        "challenge": 0.14428794461099884,
+        "comply": 0.04137736159476798,
+        "conceal": 0.10170974097785206,
+        "cooperate": 0.1033845311492871,
+        "create": 0.0781393945569898,
+        "dominate": 0.09123382277924905,
+        "explore": 0.07262442592698991,
+        "persist": 0.1543922118823646
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10370591316555323,
+        "avoid": 0.09458620100952415,
+        "challenge": 0.09578971745327129,
+        "comply": 0.10035250072753864,
+        "conceal": 0.10434300751526657,
+        "cooperate": 0.1014642155889239,
+        "create": 0.09948584767686186,
+        "dominate": 0.10261962291342247,
+        "explore": 0.09586501386400083,
+        "persist": 0.10178796008563698
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.006043749999999999,
+          "avoid": 0.03507803089096181,
+          "challenge": 0.0665050764715675,
+          "comply": -0.0538113264715675,
+          "conceal": 0.010059907410523662,
+          "cooperate": 0.014822499999999997,
+          "create": -0.011594811656991676,
+          "dominate": 0.0,
+          "explore": -0.014177203621036995,
+          "persist": 0.0718720936257273
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "8dfd8b64f2d4a67b52eb516ff5e33b707193550af4fb8b3410e5201b16b89bd8",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.021000000000000005,
+            "comply": -0.016800000000000002,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.021000000000000005
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.006,
+            "challenge": 0.006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027296780890961807,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010059907410523662,
+            "cooperate": 0.0,
+            "create": -0.011594811656991676,
+            "dominate": 0.0,
+            "explore": -0.014177203621036995,
+            "persist": 0.013972093625727308
+          },
+          "relationships": {
+            "approach": 4.374999999999907e-05,
+            "avoid": 0.0017812499999999996,
+            "challenge": 0.0024937499999999994,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 6.249999999999867e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.124798016649184,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10974966316555324,
+            "avoid": 0.12966423190048595,
+            "challenge": 0.1622947939248388,
+            "comply": 0.04654117425597114,
+            "conceal": 0.11440291492579023,
+            "cooperate": 0.11628671558892391,
+            "create": 0.08789103601987018,
+            "dominate": 0.10261962291342247,
+            "explore": 0.08168781024296383,
+            "persist": 0.17366005371136428
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [
+            "concern_c45782a805dc423f819392c710a91bc3"
+          ],
+          "history": [
+            "mem_15eedf2d7dbd44e98670a60a10df3e0f"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.021000000000000005,
+            "comply": -0.016800000000000002,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.021000000000000005
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.006,
+            "challenge": 0.006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027296780890961807,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010059907410523662,
+            "cooperate": 0.0,
+            "create": -0.011594811656991676,
+            "dominate": 0.0,
+            "explore": -0.014177203621036995,
+            "persist": 0.013972093625727308
+          },
+          "relationships": {
+            "approach": 4.374999999999907e-05,
+            "avoid": 0.0017812499999999996,
+            "challenge": 0.0024937499999999994,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 6.249999999999867e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "deep_history",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 0.6875,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.13618340415680247,
+      "intact_final_scores": {
+        "approach": 0.0948711606935292,
+        "avoid": 0.11141101982066398,
+        "challenge": 0.11996723089239557,
+        "comply": 0.05950314712087053,
+        "conceal": 0.10407335777704352,
+        "cooperate": 0.09284403096365476,
+        "create": 0.09780654453775889,
+        "dominate": 0.09388267776134218,
+        "explore": 0.08677076068046509,
+        "persist": 0.13887006975227625
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10369160024904597,
+        "avoid": 0.09458813031158195,
+        "challenge": 0.09579834644898175,
+        "comply": 0.10035789911032918,
+        "conceal": 0.10432644415537519,
+        "cooperate": 0.10147600254720998,
+        "create": 0.09950206778163068,
+        "dominate": 0.10261121526895231,
+        "explore": 0.09585445347348365,
+        "persist": 0.10179384065340936
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.0,
+          "avoid": 0.027181086446517358,
+          "challenge": 0.03532257647156749,
+          "comply": -0.03532257647156749,
+          "conceal": 0.009422907410523663,
+          "cooperate": 0.0,
+          "create": 0.007397827231897221,
+          "dominate": 0.0,
+          "explore": -0.0010163702877036534,
+          "persist": 0.049987371403505086
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "cc08f2b3ef00a75cc5fcfac6f56dbcc215de6c38df725bf190c8d230e5c70378",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.018000000000000002,
+            "dominate": 0.0,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027181086446517358,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.010602172768102781,
+            "dominate": 0.0,
+            "explore": -0.013016370287703654,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.0929728222047397,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10369160024904597,
+            "avoid": 0.1217692167580993,
+            "challenge": 0.13112092292054922,
+            "comply": 0.06503532263876169,
+            "conceal": 0.11374935156589885,
+            "cooperate": 0.10147600254720998,
+            "create": 0.1068998950135279,
+            "dominate": 0.10261121526895231,
+            "explore": 0.09483808318577999,
+            "persist": 0.15178121205691444
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_c4313c0f5f554e2db38c1cd73abde050"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.018000000000000002,
+            "dominate": 0.0,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027181086446517358,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.010602172768102781,
+            "dominate": 0.0,
+            "explore": -0.013016370287703654,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_final_scores": {
+        "approach": 0.09718961500519821,
+        "avoid": 0.08865697845307147,
+        "challenge": 0.08979130794730691,
+        "comply": 0.09406495370731013,
+        "conceal": 0.09778465100325728,
+        "cooperate": 0.09511294643097759,
+        "create": 0.1101340967116231,
+        "dominate": 0.09617697560123002,
+        "explore": 0.10109143637968286,
+        "persist": 0.12999703876034246
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10369160024904597,
+        "avoid": 0.09458813031158195,
+        "challenge": 0.09579834644898175,
+        "comply": 0.10035789911032918,
+        "conceal": 0.10432644415537519,
+        "cooperate": 0.10147600254720998,
+        "create": 0.09950206778163068,
+        "dominate": 0.10261121526895231,
+        "explore": 0.09585445347348365,
+        "persist": 0.10179384065340936
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.0,
+          "avoid": 0.0,
+          "challenge": 0.0,
+          "comply": 0.0,
+          "conceal": 0.0,
+          "cooperate": 0.0,
+          "create": 0.018000000000000002,
+          "dominate": 0.0,
+          "explore": 0.012,
+          "persist": 0.036899999999999995
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "cc08f2b3ef00a75cc5fcfac6f56dbcc215de6c38df725bf190c8d230e5c70378",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.018000000000000002,
+            "dominate": 0.0,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.0669,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10369160024904597,
+            "avoid": 0.09458813031158195,
+            "challenge": 0.09579834644898175,
+            "comply": 0.10035789911032918,
+            "conceal": 0.10432644415537519,
+            "cooperate": 0.10147600254720998,
+            "create": 0.11750206778163068,
+            "dominate": 0.10261121526895231,
+            "explore": 0.10785445347348364,
+            "persist": 0.13869384065340937
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_9f6eb7566837466da36745108cf6a364"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.018000000000000002,
+            "dominate": 0.0,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "needs",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.0025112157243800184,
+      "intact_final_scores": {
+        "approach": 0.10948625529852844,
+        "avoid": 0.10969819303941858,
+        "challenge": 0.11838158547708216,
+        "comply": 0.05832401044218093,
+        "conceal": 0.10215651612102811,
+        "cooperate": 0.1155056193949824,
+        "create": 0.07913433223952167,
+        "dominate": 0.09201943831904538,
+        "explore": 0.07898603334112987,
+        "persist": 0.13630801632708245
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10368462418837776,
+        "avoid": 0.09457982354497238,
+        "challenge": 0.09579659058128655,
+        "comply": 0.1003661400607914,
+        "conceal": 0.10433513783217732,
+        "cooperate": 0.10145935875352247,
+        "create": 0.09950501988301193,
+        "dominate": 0.10262106707636216,
+        "explore": 0.09586077732094822,
+        "persist": 0.10179146075854982
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.018415625,
+          "avoid": 0.027756780890961803,
+          "challenge": 0.03622382647156749,
+          "comply": -0.03532257647156749,
+          "conceal": 0.009590907410523663,
+          "cooperate": 0.027353749999999996,
+          "create": -0.011253561656991666,
+          "dominate": 0.0,
+          "explore": -0.007774703621036987,
+          "persist": 0.050220704736838415
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "80d8b596f5bf55337277bec9cd52893438d299affbdc244d03c14450bf32e565",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.018000000000000002,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.012,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.006,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.00041562499999999895,
+            "avoid": 0.0006437499999999985,
+            "challenge": 0.000901249999999998,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0005937499999999985,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.1152107527602952,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.12210024918837777,
+            "avoid": 0.12233660443593418,
+            "challenge": 0.13202041705285403,
+            "comply": 0.06504356358922392,
+            "conceal": 0.11392604524270099,
+            "cooperate": 0.12881310875352248,
+            "create": 0.08825145822602026,
+            "dominate": 0.10262106707636216,
+            "explore": 0.08808607369991123,
+            "persist": 0.15201216549538824
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_e52d922e3bc34703811b63c33ba7f400"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.018000000000000002,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.012,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.006,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.00041562499999999895,
+            "avoid": 0.0006437499999999985,
+            "challenge": 0.000901249999999998,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0005937499999999985,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_final_scores": {
+        "approach": 0.1093640647917922,
+        "avoid": 0.1093714617273789,
+        "challenge": 0.11784336087372128,
+        "comply": 0.058457907480971225,
+        "conceal": 0.10239104140312096,
+        "cooperate": 0.11523715795492914,
+        "create": 0.07931600446461709,
+        "dominate": 0.09223069145833836,
+        "explore": 0.07916736510981291,
+        "persist": 0.13662094473531783
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10368462418837776,
+        "avoid": 0.09457982354497238,
+        "challenge": 0.09579659058128655,
+        "comply": 0.1003661400607914,
+        "conceal": 0.10433513783217732,
+        "cooperate": 0.10145935875352247,
+        "create": 0.09950501988301193,
+        "dominate": 0.10262106707636216,
+        "explore": 0.09586077732094822,
+        "persist": 0.10179146075854982
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.018000000000000002,
+          "avoid": 0.027113030890961804,
+          "challenge": 0.03532257647156749,
+          "comply": -0.03532257647156749,
+          "conceal": 0.009590907410523663,
+          "cooperate": 0.02676,
+          "create": -0.011253561656991666,
+          "dominate": 0.0,
+          "explore": -0.007774703621036987,
+          "persist": 0.050220704736838415
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "80d8b596f5bf55337277bec9cd52893438d299affbdc244d03c14450bf32e565",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.018000000000000002,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.012,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.006,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.1126563777602954,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.12168462418837776,
+            "avoid": 0.12169285443593418,
+            "challenge": 0.13111916705285404,
+            "comply": 0.06504356358922392,
+            "conceal": 0.11392604524270099,
+            "cooperate": 0.12821935875352247,
+            "create": 0.08825145822602026,
+            "dominate": 0.10262106707636216,
+            "explore": 0.08808607369991123,
+            "persist": 0.15201216549538824
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_ecba8c6af2eb460488b53f6d6b66a05c"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.018000000000000002,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.012,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.006,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "relationships",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.07333122250750665,
+      "intact_final_scores": {
+        "approach": 0.09929955074383265,
+        "avoid": 0.11030246307622221,
+        "challenge": 0.11899742371587856,
+        "comply": 0.05868143792310572,
+        "conceal": 0.10264445973468865,
+        "cooperate": 0.11073783613564674,
+        "create": 0.07954925708227259,
+        "dominate": 0.09259200590363029,
+        "explore": 0.07940886472818161,
+        "persist": 0.14778670095654098
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10370104851294726,
+        "avoid": 0.09458225243780326,
+        "challenge": 0.09578910025480232,
+        "comply": 0.10035765189043895,
+        "conceal": 0.10433521468802036,
+        "cooperate": 0.1014677956999193,
+        "create": 0.09948588550188402,
+        "dominate": 0.10261725513641755,
+        "explore": 0.09586310102411587,
+        "persist": 0.10180069485365126
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.006349999999999999,
+          "avoid": 0.027663030890961803,
+          "challenge": 0.03609257647156749,
+          "comply": -0.03532257647156749,
+          "conceal": 0.009422907410523663,
+          "cooperate": 0.021259999999999998,
+          "create": -0.011323561656991674,
+          "dominate": 0.0,
+          "explore": -0.007856370287703661,
+          "persist": 0.06198737140350508
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "ed17f438e5df8c9bbe9bceac23f699348f0d05db1493244f7a96969d55cb7c13",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.006,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.006,
+            "persist": 0.012
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.1082733777602953,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.11005104851294725,
+            "avoid": 0.12224528332876505,
+            "challenge": 0.1318816767263698,
+            "comply": 0.06503507541887146,
+            "conceal": 0.11375812209854402,
+            "cooperate": 0.1227277956999193,
+            "create": 0.08816232384489234,
+            "dominate": 0.10261725513641755,
+            "explore": 0.08800673073641221,
+            "persist": 0.16378806625715633
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_2483bb874cb14e8faf15174ce140ac07"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.006,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.006,
+            "persist": 0.012
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_final_scores": {
+        "approach": 0.10404962509842187,
+        "avoid": 0.11582198398782158,
+        "challenge": 0.12495203932742992,
+        "comply": 0.06161784944743842,
+        "conceal": 0.10778077515471632,
+        "cooperate": 0.10207583545695002,
+        "create": 0.08352989156424588,
+        "dominate": 0.09722529784089971,
+        "explore": 0.08316361174059193,
+        "persist": 0.11978309038148441
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10370104851294726,
+        "avoid": 0.09458225243780326,
+        "challenge": 0.09578910025480232,
+        "comply": 0.10035765189043895,
+        "conceal": 0.10433521468802036,
+        "cooperate": 0.1014677956999193,
+        "create": 0.09948588550188402,
+        "dominate": 0.10261725513641755,
+        "explore": 0.09586310102411587,
+        "persist": 0.10180069485365126
+      },
+      "lesion_selected_action": "challenge",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.006118999999999999,
+          "avoid": 0.027663030890961803,
+          "challenge": 0.03609257647156749,
+          "comply": -0.03532257647156749,
+          "conceal": 0.009422907410523663,
+          "cooperate": 0.006268999999999998,
+          "create": -0.011323561656991674,
+          "dominate": 0.0,
+          "explore": -0.008087370287703661,
+          "persist": 0.02462537140350509
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "ed17f438e5df8c9bbe9bceac23f699348f0d05db1493244f7a96969d55cb7c13",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.005769,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.005769,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.005769,
+            "persist": 0.011538
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.0554583777602953,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10982004851294726,
+            "avoid": 0.12224528332876505,
+            "challenge": 0.1318816767263698,
+            "comply": 0.06503507541887146,
+            "conceal": 0.11375812209854402,
+            "cooperate": 0.1077367956999193,
+            "create": 0.08816232384489234,
+            "dominate": 0.10261725513641755,
+            "explore": 0.0877757307364122,
+            "persist": 0.12642606625715636
+          }
+        },
+        "source_ids": {
+          "commitments": [],
+          "concerns": [],
+          "history": [
+            "mem_08aa8e103e984dca8b6168a61c2e9813"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.005769,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.005769,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.005769,
+            "persist": 0.011538
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "commitments",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 0.8666666666666667,
+      "selected_action_diverged": true
+    },
+    {
+      "action_score_l1": 0.02554988450088054,
+      "intact_final_scores": {
+        "approach": 0.09274332623595054,
+        "avoid": 0.10993409305178554,
+        "challenge": 0.14250859844080185,
+        "comply": 0.04844321500285974,
+        "conceal": 0.10219659389765268,
+        "cooperate": 0.09074485451195037,
+        "create": 0.07875895488678815,
+        "dominate": 0.09713602991098788,
+        "explore": 0.08396104996824544,
+        "persist": 0.15357328409297794
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10370570229409488,
+        "avoid": 0.09457929704263812,
+        "challenge": 0.0957882148547649,
+        "comply": 0.10034433950267914,
+        "conceal": 0.10435295049426954,
+        "cooperate": 0.10147100873646842,
+        "create": 0.09948914480583759,
+        "dominate": 0.10261762898551662,
+        "explore": 0.09585838704580642,
+        "persist": 0.10179332623792436
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.0,
+          "avoid": 0.028349142002072916,
+          "challenge": 0.06356507647156749,
+          "comply": -0.04617507647156749,
+          "conceal": 0.009923407410523664,
+          "cooperate": 0.0,
+          "create": -0.011420783879213898,
+          "dominate": 0.006,
+          "explore": -0.0019730369543703285,
+          "persist": 0.06993251029239397
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "61bd76e78b020d5106eb64ce027dfb99d55278daa5bd3168be3d702173f285e4",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.006,
+            "comply": 0.006,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.006,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.1182012388714062,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10370570229409488,
+            "avoid": 0.12292843904471104,
+            "challenge": 0.15935329132633239,
+            "comply": 0.05416926303111165,
+            "conceal": 0.11427635790479321,
+            "cooperate": 0.10147100873646842,
+            "create": 0.08806836092662369,
+            "dominate": 0.10861762898551662,
+            "explore": 0.09388535009143609,
+            "persist": 0.17172583653031834
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [
+            "concern_a2d9bb4646b441719383795799dfc784"
+          ],
+          "history": [
+            "mem_9a64323887eb4d8fa870563c6652d027"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "senior_authority"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.006,
+            "comply": 0.006,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.006,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_final_scores": {
+        "approach": 0.08942934109152784,
+        "avoid": 0.11478179198908321,
+        "challenge": 0.14627517014437644,
+        "comply": 0.04813527445449593,
+        "conceal": 0.098303778952587,
+        "cooperate": 0.08942934109152784,
+        "create": 0.07921580932085942,
+        "dominate": 0.09479510155701952,
+        "explore": 0.08766486714374211,
+        "persist": 0.15196952425478066
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.1,
+        "avoid": 0.1,
+        "challenge": 0.1,
+        "comply": 0.1,
+        "conceal": 0.1,
+        "cooperate": 0.1,
+        "create": 0.1,
+        "dominate": 0.1,
+        "explore": 0.1,
+        "persist": 0.1
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.0,
+          "avoid": 0.028349142002072916,
+          "challenge": 0.06356507647156749,
+          "comply": -0.04617507647156749,
+          "conceal": 0.009923407410523664,
+          "cooperate": 0.0,
+          "create": -0.011420783879213898,
+          "dominate": 0.006,
+          "explore": -0.0019730369543703285,
+          "persist": 0.06993251029239397
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "61bd76e78b020d5106eb64ce027dfb99d55278daa5bd3168be3d702173f285e4",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.006,
+            "comply": 0.006,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.006,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.1182012388714064,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.1,
+            "avoid": 0.12834914200207292,
+            "challenge": 0.16356507647156748,
+            "comply": 0.05382492352843252,
+            "conceal": 0.10992340741052367,
+            "cooperate": 0.1,
+            "create": 0.0885792161207861,
+            "dominate": 0.10600000000000001,
+            "explore": 0.09802696304562968,
+            "persist": 0.16993251029239398
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [
+            "concern_8427a0a3b4ba476986dff78c0599afb1"
+          ],
+          "history": [
+            "mem_de50db48b56b44109a2e03244e0a7160"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "senior_authority"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.006,
+            "comply": 0.006,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.006,
+            "explore": 0.012,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "recurrent_policy",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.24571645775275813,
+      "intact_final_scores": {
+        "approach": 0.09565959721231444,
+        "avoid": 0.11285982428152515,
+        "challenge": 0.1460990601941206,
+        "comply": 0.0461328546656677,
+        "conceal": 0.09964729202281997,
+        "cooperate": 0.10136722615275794,
+        "create": 0.07647609388078591,
+        "dominate": 0.09466128076824001,
+        "explore": 0.07105018923266374,
+        "persist": 0.15604658158910456
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10370684878278272,
+        "avoid": 0.094579897222502,
+        "challenge": 0.09578830826151961,
+        "comply": 0.10035026544778158,
+        "conceal": 0.1043480748104757,
+        "cooperate": 0.10146841212023298,
+        "create": 0.0994875525520289,
+        "dominate": 0.10262687345748704,
+        "explore": 0.09586473564084001,
+        "persist": 0.1017790317043497
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.006065624999999999,
+          "avoid": 0.034930392002072916,
+          "challenge": 0.07186507647156751,
+          "comply": -0.0474113264715675,
+          "conceal": 0.010000407410523663,
+          "cooperate": 0.014853749999999997,
+          "create": -0.011728767702603452,
+          "dominate": 0.006,
+          "explore": -0.014332351414991474,
+          "persist": 0.07728945473683842
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "69df6cd472e881e93c93dfe42ce0d89d557adbeff1352bc4f3bb6c1bf7c9241c",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.020500000000000004,
+            "comply": -0.0164,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.020500000000000004
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.006,
+            "challenge": 0.012,
+            "comply": 0.006,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.006,
+            "explore": 0.0,
+            "persist": 0.006
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010000407410523663,
+            "cooperate": 0.0,
+            "create": -0.011728767702603452,
+            "dominate": 0.0,
+            "explore": -0.014332351414991474,
+            "persist": 0.013889454736838423
+          },
+          "relationships": {
+            "approach": 6.562499999999861e-05,
+            "avoid": 0.0016812499999999996,
+            "challenge": 0.0023537499999999995,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 9.374999999999801e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.1475322600318403,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10977247378278272,
+            "avoid": 0.12951028922457491,
+            "challenge": 0.1676533847330871,
+            "comply": 0.05293893897621409,
+            "conceal": 0.11434848222099936,
+            "cooperate": 0.11632216212023298,
+            "create": 0.08775878484942545,
+            "dominate": 0.10862687345748705,
+            "explore": 0.08153238422584853,
+            "persist": 0.1790684864411881
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_c6ea1b3b9b4648eea96ef15095f21f79"
+          ],
+          "concerns": [
+            "concern_2942026a851f4c68bffe473f4dd2edcc"
+          ],
+          "history": [
+            "mem_f5b87fd237794a4085e5101f74d6b922"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.020500000000000004,
+            "comply": -0.0164,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.020500000000000004
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.006,
+            "challenge": 0.012,
+            "comply": 0.006,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.006,
+            "explore": 0.0,
+            "persist": 0.006
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010000407410523663,
+            "cooperate": 0.0,
+            "create": -0.011728767702603452,
+            "dominate": 0.0,
+            "explore": -0.014332351414991474,
+            "persist": 0.013889454736838423
+          },
+          "relationships": {
+            "approach": 6.562499999999861e-05,
+            "avoid": 0.0016812499999999996,
+            "challenge": 0.0023537499999999995,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 9.374999999999801e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_final_scores": {
+        "approach": 0.10370684878278269,
+        "avoid": 0.09457989722250197,
+        "challenge": 0.09578830826151959,
+        "comply": 0.10035026544778156,
+        "conceal": 0.10434807481047567,
+        "cooperate": 0.10146841212023296,
+        "create": 0.09948755255202887,
+        "dominate": 0.10262687345748701,
+        "explore": 0.09586473564083998,
+        "persist": 0.10177903170434967
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10370684878278272,
+        "avoid": 0.094579897222502,
+        "challenge": 0.09578830826151961,
+        "comply": 0.10035026544778158,
+        "conceal": 0.1043480748104757,
+        "cooperate": 0.10146841212023298,
+        "create": 0.0994875525520289,
+        "dominate": 0.10262687345748704,
+        "explore": 0.09586473564084001,
+        "persist": 0.1017790317043497
+      },
+      "lesion_selected_action": "conceal",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.0,
+          "avoid": 0.0,
+          "challenge": 0.0,
+          "comply": 0.0,
+          "conceal": 0.0,
+          "cooperate": 0.0,
+          "create": 0.0,
+          "dominate": 0.0,
+          "explore": 0.0,
+          "persist": 0.0
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "69df6cd472e881e93c93dfe42ce0d89d557adbeff1352bc4f3bb6c1bf7c9241c",
+        "enabled": false,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "normalization": {
+          "denominator": 1.0000000000000002,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10370684878278272,
+            "avoid": 0.094579897222502,
+            "challenge": 0.09578830826151961,
+            "comply": 0.10035026544778158,
+            "conceal": 0.1043480748104757,
+            "cooperate": 0.10146841212023298,
+            "create": 0.0994875525520289,
+            "dominate": 0.10262687345748704,
+            "explore": 0.09586473564084001,
+            "persist": 0.1017790317043497
+          }
+        },
+        "source_ids": {
+          "commitments": [],
+          "concerns": [],
+          "history": [],
+          "needs": [],
+          "relationships": []
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.020500000000000004,
+            "comply": -0.0164,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.020500000000000004
+          },
+          "history": {
+            "approach": 0.006,
+            "avoid": 0.006,
+            "challenge": 0.012,
+            "comply": 0.006,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.006,
+            "explore": 0.0,
+            "persist": 0.006
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010000407410523663,
+            "cooperate": 0.0,
+            "create": -0.011728767702603452,
+            "dominate": 0.0,
+            "explore": -0.014332351414991474,
+            "persist": 0.013889454736838423
+          },
+          "relationships": {
+            "approach": 6.562499999999861e-05,
+            "avoid": 0.0016812499999999996,
+            "challenge": 0.0023537499999999995,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 9.374999999999801e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "state_policy_bridge",
+      "renderer_request_changed": false,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": true
+    }
+  ],
+  "reinforcement": {
+    "intact_vs_neutral_action_values": {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": false,
+      "renderer_request_changed": false,
+      "renderer_request_raw_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    "intact_vs_no_neural": {
+      "action_score_l1": 0.11406668210114128,
+      "deterministic_render_changed": true,
+      "renderer_request_changed": true,
+      "renderer_request_raw_changed": true,
+      "retrieval_jaccard": 0.8666666666666667,
+      "selected_action_diverged": true,
+      "selected_memory_jaccard": 0.3333333333333333,
+      "spontaneous_cognition_diverged": false
+    }
+  },
+  "sleep_replay": {
+    "action_score_l1": 0.0006034160499689203,
+    "deterministic_render_changed": true,
+    "renderer_request_changed": true,
+    "renderer_request_raw_changed": true,
+    "retrieval_jaccard": 1.0,
+    "selected_action_diverged": false,
+    "selected_memory_jaccard": 1.0,
+    "spontaneous_cognition_diverged": false
+  },
+  "v03_vs_v04": [
+    {
+      "mechanism": "deep_history",
+      "v03_action_score_l1": 0.0,
+      "v03_selected_action_diverged": false,
+      "v04_action_score_l1": 0.0,
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "mechanism": "needs",
+      "v03_action_score_l1": 0.0,
+      "v03_selected_action_diverged": false,
+      "v04_action_score_l1": 0.13618340415680247,
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "mechanism": "relationships",
+      "v03_action_score_l1": 0.0,
+      "v03_selected_action_diverged": false,
+      "v04_action_score_l1": 0.0025112157243800184,
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "mechanism": "commitments",
+      "v03_action_score_l1": 0.0,
+      "v03_selected_action_diverged": false,
+      "v04_action_score_l1": 0.07333122250750665,
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": true
+    },
+    {
+      "mechanism": "recurrent_policy",
+      "v03_action_score_l1": 0.02856991059850507,
+      "v03_selected_action_diverged": true,
+      "v04_action_score_l1": 0.02554988450088054,
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "mechanism": "state_policy_bridge",
+      "v03_action_score_l1": null,
+      "v03_selected_action_diverged": null,
+      "v04_action_score_l1": 0.24571645775275813,
+      "v04_renderer_request_changed": false,
+      "v04_selected_action_diverged": true
+    }
+  ]
+}
