@@ -571,6 +571,8 @@ class PretoriusBrain:
                 for row in conn.execute("SELECT key,felt FROM needs ORDER BY key").fetchall()
             }
 
+        source_ids["needs"] = sorted(needs)
+
         def high(key: str) -> float:
             return max(0.0, needs.get(key, 0.5) - 0.5) / 0.45
 
@@ -675,6 +677,11 @@ class PretoriusBrain:
         adjusted = {action: pre_normalization[action] / total for action in ACTIONS}
         audit = {
             "version": str(cfg.get("version", "state-policy-bridge-v0.4")),
+            "config": cfg,
+            "config_sha256": hashlib.sha256(
+                json.dumps(cfg, sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest(),
+            "source_state_version": self.store.state_version,
             "family_cap": family_cap,
             "total_cap": total_cap,
             "enabled": bool(bridge_enabled),
