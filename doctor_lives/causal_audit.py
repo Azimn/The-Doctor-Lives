@@ -24,6 +24,7 @@ AUDIT_MECHANISMS = frozenset({
     "spreading_activation",
     "action_values",
     "self_model",
+    "state_policy_bridge",
 })
 
 
@@ -288,6 +289,14 @@ class CausalAuditHarness:
     @contextmanager
     def _runtime_patches(brain: PretoriusBrain, disabled: set[str]):
         with ExitStack() as stack:
+            if "state_policy_bridge" in disabled:
+                original_state_policy_scores = brain._state_policy_scores
+                def bridge_lesioned_scores(ranked, **kwargs):
+                    kwargs["bridge_enabled"] = False
+                    return original_state_policy_scores(ranked, **kwargs)
+                stack.enter_context(
+                    patch.object(brain, "_state_policy_scores", bridge_lesioned_scores)
+                )
             if "needs" in disabled:
                 stack.enter_context(
                     patch.object(brain, "_update_needs", lambda conn, tick, exp: None)
