@@ -175,6 +175,50 @@ class CausalAuditHarnessTests(unittest.TestCase):
             0.0,
         )
 
+    def test_v04_recurrent_and_reinforcement_paths_remain_load_bearing(self):
+        harness = self.make_harness()
+        recurrent = harness.run_pair(
+            self.probe(),
+            AuditIntervention("recurrent_policy", ("recurrent_policy",)),
+        )
+        self.assertGreater(recurrent["comparison"]["action_score_l1"], 0.0)
+        self.assertNotEqual(
+            recurrent["intact"]["policy_decision"]["base_action_scores"],
+            recurrent["lesion"]["policy_decision"]["base_action_scores"],
+        )
+
+        harness = self.make_harness()
+        reinforcement = harness.run_reinforcement_triplet(
+            self.probe(), action="create", repetitions=4
+        )
+        self.assertGreater(
+            reinforcement["intact_vs_no_neural"]["action_score_l1"], 0.0
+        )
+        self.assertAlmostEqual(
+            reinforcement["intact_vs_neutral_action_values"]["action_score_l1"],
+            0.0,
+            places=12,
+        )
+
+    def test_v04_sleep_pair_preserves_waking_clock_isolation(self):
+        harness = self.make_harness()
+        result = harness.run_sleep_pair(self.probe(), sleep_ticks=4)
+        intact = result["intact"]
+        absent = result["lesion"]
+        self.assertEqual(
+            intact["state_before_stimulus"]["needs"].keys(),
+            absent["state_before_stimulus"]["needs"].keys(),
+        )
+        self.assertEqual(
+            intact["policy_decision"]["state_pressure"]["version"],
+            absent["policy_decision"]["state_pressure"]["version"],
+        )
+        # Sleep may alter the recurrent checkpoint, but must not consume waking store ticks.
+        self.assertEqual(
+            intact["policy_decision"]["tick"],
+            absent["policy_decision"]["tick"],
+        )
+
     def test_concern_accumulation_characterization_exposes_high_alert_failure_mode(self):
         harness = self.make_harness()
         result = harness.characterize_concern_accumulation(
