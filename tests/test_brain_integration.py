@@ -83,7 +83,7 @@ class BrainIntegrationTests(unittest.TestCase):
                 "FROM policy_decisions ORDER BY rowid"
             ).fetchall()
         self.assertEqual([row[0] for row in rows[-2:]], ["create", "challenge"])
-        self.assertEqual(rows[-1][2], "neural-cognitive-policy-v1")
+        self.assertEqual(rows[-1][2], "neural-cognitive-policy-v2-state-bridge")
 
     def test_sleep_does_not_advance_waking_tick(self):
         brain = self.make_brain()

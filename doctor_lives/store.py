@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 WORDING_KINDS = frozenset({"quoted", "paraphrased", "reconstructed", "synthesized"})
 
@@ -72,8 +72,15 @@ CREATE TABLE IF NOT EXISTS relationship_events (
 CREATE TABLE IF NOT EXISTS concerns (
  id TEXT PRIMARY KEY, created_tick INTEGER NOT NULL, updated_tick INTEGER NOT NULL,
  description TEXT NOT NULL, status TEXT NOT NULL, importance REAL NOT NULL,
- uncertainty REAL NOT NULL, actor TEXT, source TEXT NOT NULL
+ uncertainty REAL NOT NULL, actor TEXT, source TEXT NOT NULL,
+ resolved_tick INTEGER, resolution TEXT
 );
+CREATE TABLE IF NOT EXISTS concern_events (
+ id TEXT PRIMARY KEY, concern_id TEXT NOT NULL, tick INTEGER NOT NULL,
+ created_at TEXT NOT NULL, transition TEXT NOT NULL, outcome TEXT,
+ actor TEXT, source TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_concern_events_concern ON concern_events(concern_id,tick);
 CREATE TABLE IF NOT EXISTS commitments (
  id TEXT PRIMARY KEY, created_tick INTEGER NOT NULL, updated_tick INTEGER NOT NULL,
  description TEXT NOT NULL, status TEXT NOT NULL, due_tick INTEGER,
@@ -92,6 +99,8 @@ CREATE TABLE IF NOT EXISTS thoughts (
 CREATE TABLE IF NOT EXISTS policy_decisions (
  id TEXT PRIMARY KEY, tick INTEGER NOT NULL, created_at TEXT NOT NULL,
  trigger TEXT NOT NULL, selected_action TEXT NOT NULL,
+ base_action_scores_json TEXT NOT NULL DEFAULT '{}',
+ state_pressure_json TEXT NOT NULL DEFAULT '{}',
  action_scores_json TEXT NOT NULL, candidate_record_ids_json TEXT NOT NULL,
  selected_record_ids_json TEXT NOT NULL, neural_tick INTEGER NOT NULL,
  neural_checkpoint_sha256 TEXT NOT NULL, policy_version TEXT NOT NULL
@@ -312,6 +321,25 @@ class BrainStore:
             conn.execute(
                 """ALTER TABLE synthesis_admissions ADD COLUMN retraction_note TEXT NOT NULL
                 DEFAULT 'Synthesis admission is retractable, not reversible: retraction removes the active memory but cannot undo cognition that already occurred.'"""
+            )
+
+        concern_columns = self._table_columns(conn, "concerns")
+        if "resolved_tick" not in concern_columns:
+            conn.execute("ALTER TABLE concerns ADD COLUMN resolved_tick INTEGER")
+        if "resolution" not in concern_columns:
+            conn.execute("ALTER TABLE concerns ADD COLUMN resolution TEXT")
+
+        policy_columns = self._table_columns(conn, "policy_decisions")
+        if "base_action_scores_json" not in policy_columns:
+            conn.execute(
+                "ALTER TABLE policy_decisions ADD COLUMN base_action_scores_json TEXT NOT NULL DEFAULT '{}'"
+            )
+            conn.execute(
+                "UPDATE policy_decisions SET base_action_scores_json=action_scores_json"
+            )
+        if "state_pressure_json" not in policy_columns:
+            conn.execute(
+                "ALTER TABLE policy_decisions ADD COLUMN state_pressure_json TEXT NOT NULL DEFAULT '{}'"
             )
 
     def init(self) -> None:
@@ -630,7 +658,7 @@ class BrainStore:
     def digest(self) -> str:
         h = hashlib.sha256()
         with closing(self.connect()) as conn:
-            for table in ["meta","events","memories","relationships","relationship_events","concerns",
+            for table in ["meta","events","memories","relationships","relationship_events","concerns","concern_events",
                           "commitments","self_model","thoughts","policy_decisions","associations","needs","action_values",
                           "sleep_fragments","archive","memory_provenance","memory_classifications",
                           "canon_authority","synthesis_admissions","conflict_resolutions","source_custody","withheld_claims",

@@ -24,6 +24,7 @@ AUDIT_MECHANISMS = frozenset({
     "spreading_activation",
     "action_values",
     "self_model",
+    "state_policy_bridge",
 })
 
 
@@ -209,6 +210,10 @@ class CausalAuditHarness:
             raise RuntimeError(f"missing policy decision {decision_id}")
         out = dict(row)
         out["action_scores"] = json.loads(out.pop("action_scores_json"))
+        if out.get("base_action_scores_json") is not None:
+            out["base_action_scores"] = json.loads(out.pop("base_action_scores_json"))
+        if out.get("state_pressure_json") is not None:
+            out["state_pressure"] = json.loads(out.pop("state_pressure_json"))
         out["candidate_record_ids"] = json.loads(out.pop("candidate_record_ids_json"))
         out["selected_record_ids"] = json.loads(out.pop("selected_record_ids_json"))
         return out
@@ -284,6 +289,14 @@ class CausalAuditHarness:
     @contextmanager
     def _runtime_patches(brain: PretoriusBrain, disabled: set[str]):
         with ExitStack() as stack:
+            if "state_policy_bridge" in disabled:
+                original_state_policy_scores = brain._state_policy_scores
+                def bridge_lesioned_scores(ranked, **kwargs):
+                    kwargs["bridge_enabled"] = False
+                    return original_state_policy_scores(ranked, **kwargs)
+                stack.enter_context(
+                    patch.object(brain, "_state_policy_scores", bridge_lesioned_scores)
+                )
             if "needs" in disabled:
                 stack.enter_context(
                     patch.object(brain, "_update_needs", lambda conn, tick, exp: None)
@@ -326,7 +339,7 @@ class CausalAuditHarness:
             decision = (
                 ingestion["thought"]
                 if ingestion["thought"] is not None
-                else brain.think("causal_audit_forced")
+                else brain.think("causal_audit_forced", decision_text=stimulus.text)
             )
 
         request = brain.render_request(stimulus.text).to_dict()
