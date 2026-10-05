@@ -19,6 +19,16 @@ from .source_monitoring import (
     finalize_recollection_event,
     monitor_recollection_source,
 )
+from .reconsolidation import (
+    ReconsolidationContext,
+    ReconsolidationDecision,
+    ReconsolidationOperation,
+    ReconsolidationPolicy,
+    TraceVersionLedger,
+    apply_reconsolidation,
+    evaluate_reconsolidation,
+    reconsolidate_and_record,
+)
 from .chassis import PretoriusBrainPort
 from .cognition import PretoriusBrain
 from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
@@ -100,4 +110,12 @@ __all__ = [
     "RecollectionFinalizationContext",
     "monitor_recollection_source",
     "finalize_recollection_event",
+    "ReconsolidationContext",
+    "ReconsolidationPolicy",
+    "ReconsolidationOperation",
+    "ReconsolidationDecision",
+    "TraceVersionLedger",
+    "evaluate_reconsolidation",
+    "apply_reconsolidation",
+    "reconsolidate_and_record",
 ]
