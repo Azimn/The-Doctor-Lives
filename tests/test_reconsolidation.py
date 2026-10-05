@@ -723,6 +723,58 @@ class ReconsolidationTests(unittest.TestCase):
                 decision=decision,
             )
 
+    def test_ledger_rejects_successor_not_described_by_decision_operations(self):
+        trace = self.trace(label="forged-successor")
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:forged-successor",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        valid = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            decision=decision,
+        )
+        assert valid is not None
+
+        forged = MemoryTrace(
+            subject_id=valid.subject_id,
+            version=valid.version,
+            protected_evidence=valid.protected_evidence,
+            gist=valid.gist,
+            details=valid.details,
+            temporal_cues=valid.temporal_cues,
+            actor_refs=valid.actor_refs,
+            object_refs=valid.object_refs,
+            encoding_affect=valid.encoding_affect,
+            source_cues=valid.source_cues,
+            strength=min(1.0, valid.strength + 0.05),
+            accessibility=valid.accessibility,
+            familiarity=valid.familiarity,
+            rehearsal_count=valid.rehearsal_count,
+            retrieval_count=valid.retrieval_count,
+            competing_trace_ids=valid.competing_trace_ids,
+            parent_trace_id=valid.parent_trace_id,
+            reconsolidation_decision_fingerprint=valid.reconsolidation_decision_fingerprint,
+            reconsolidation_event_id=valid.reconsolidation_event_id,
+        )
+        with self.assertRaises(ValueError):
+            ledger.append_successor(
+                parent=trace,
+                successor=forged,
+                decision=decision,
+            )
+
     def test_ledger_restart_round_trip_preserves_exact_history(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
