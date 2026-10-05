@@ -862,8 +862,19 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
         )
         for item in data.get("details", ())
     )
-    detail_states = tuple(
-        TraceDetailState(
+    raw_detail_states = data.get("detail_states")
+    if details and not isinstance(raw_detail_states, list):
+        raise ValueError("persisted detail_states are required for traces with details")
+    if raw_detail_states is None:
+        raw_detail_states = []
+    if not isinstance(raw_detail_states, list):
+        raise ValueError("persisted detail_states must be a list")
+
+    parsed_detail_states: list[TraceDetailState] = []
+    for item in raw_detail_states:
+        if not isinstance(item, dict):
+            raise ValueError("persisted detail state must be an object")
+        state = TraceDetailState(
             detail_id=str(item["detail_id"]),
             retention=_json_number(item.get("retention", 1.0), "detail retention"),
             accessibility=_json_number(
@@ -883,8 +894,14 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
                 "detail parent_state_fingerprint",
             ),
         )
-        for item in data.get("detail_states", ())
-    )
+        persisted_availability = item.get("availability_state")
+        if persisted_availability != state.availability_state.value:
+            raise ValueError("persisted detail availability state is inconsistent")
+        persisted_fingerprint = item.get("state_fingerprint")
+        if persisted_fingerprint != state.state_fingerprint:
+            raise ValueError("persisted detail state fingerprint is inconsistent")
+        parsed_detail_states.append(state)
+    detail_states = tuple(parsed_detail_states)
     subject_id = data.get("subject_id")
     gist = data.get("gist")
     if not isinstance(subject_id, str) or not subject_id.strip():
