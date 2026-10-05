@@ -7,8 +7,6 @@ inspectable. P2 does not yet wire them into PretoriusBrain.
 
 from __future__ import annotations
 
-import hashlib
-import re
 from dataclasses import dataclass
 
 from .phenomenology import (
@@ -16,56 +14,16 @@ from .phenomenology import (
     CertaintyBand,
     IntensityBand,
     ObjectiveProvenance,
+    PhenomenalLeakError,
     PhenomenalEvent,
     PhenomenalMode,
     PrivacyState,
     SubjectiveSourceAttribution,
     SubjectiveSourceKind,
     VividnessBand,
+    assert_subject_text_safe,
+    implementation_leaks,
 )
-
-
-class PhenomenalLeakError(ValueError):
-    pass
-
-
-_IMPLEMENTATION_TOKENS = (
-    "state_pressure",
-    "action_score",
-    "policy_decision_id",
-    "state_version",
-    "recurrent_tick",
-    "memory_id",
-    "source_record_ids",
-    "activation_weight",
-    "bridge_family",
-)
-
-_UUID_RE = re.compile(
-    r"\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b",
-    re.IGNORECASE,
-)
-_RAW_ASSIGNMENT_RE = re.compile(r"\b[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*-?\d+(?:\.\d+)?\b")
-
-
-def implementation_leaks(text: str) -> tuple[str, ...]:
-    """Return conservative implementation artifacts found in subject text."""
-    lowered = text.lower()
-    hits = [token for token in _IMPLEMENTATION_TOKENS if token in lowered]
-    if _UUID_RE.search(text):
-        hits.append("raw_uuid")
-    if _RAW_ASSIGNMENT_RE.search(text):
-        hits.append("raw_numeric_assignment")
-    return tuple(sorted(set(hits)))
-
-
-def assert_subject_text_safe(text: str) -> None:
-    hits = implementation_leaks(text)
-    if hits:
-        raise PhenomenalLeakError(
-            "subject-facing text contains implementation-native artifacts: "
-            + ", ".join(hits)
-        )
 
 
 @dataclass(frozen=True)
@@ -128,20 +86,6 @@ def _certainty(value: float) -> CertaintyBand:
     return CertaintyBand.VERY_HIGH
 
 
-def _event_id(context: ProjectionContext, mode: PhenomenalMode, text: str) -> str:
-    payload = "|".join(
-        (
-            context.subject_id,
-            str(context.tick),
-            context.source_state_digest,
-            context.projection_rule_version,
-            mode.value,
-            text,
-        )
-    )
-    return "phen_" + hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
-
-
 def _event(
     *,
     context: ProjectionContext,
@@ -158,7 +102,6 @@ def _event(
 ) -> PhenomenalEvent:
     assert_subject_text_safe(text)
     return PhenomenalEvent(
-        event_id=_event_id(context, mode, text),
         tick=context.tick,
         subject_id=context.subject_id,
         mode=mode,
