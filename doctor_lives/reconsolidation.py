@@ -959,27 +959,30 @@ def apply_reconsolidation(
     detail_index = {
         state.detail_id: index for index, state in enumerate(detail_states)
     }
-    seen_detail_operations: set[str] = set()
+    seen_detail_operations: set[tuple[str, str]] = set()
     for operation in decision.detail_operations:
-        if operation.detail_id in seen_detail_operations:
-            raise ValueError("duplicate detail-state operation")
-        seen_detail_operations.add(operation.detail_id)
+        operation_key = (operation.detail_id, operation.field_name)
+        if operation_key in seen_detail_operations:
+            raise ValueError("duplicate detail-state field operation")
+        seen_detail_operations.add(operation_key)
         if operation.detail_id not in detail_index:
             raise ValueError("detail-state operation references unknown detail")
         index = detail_index[operation.detail_id]
         old_state = detail_states[index]
         if old_state.state_fingerprint != operation.old_state_fingerprint:
             raise ValueError("detail-state operation old fingerprint mismatch")
-        if abs(old_state.accessibility - operation.old_value) > 1e-12:
+        if abs(float(getattr(old_state, operation.field_name)) - operation.old_value) > 1e-12:
             raise ValueError("detail-state operation old value mismatch")
-        new_state = TraceDetailState(
-            detail_id=old_state.detail_id,
-            retention=old_state.retention,
-            accessibility=operation.new_value,
-            temporal_confidence=old_state.temporal_confidence,
-            association_strength=old_state.association_strength,
-            parent_state_fingerprint=old_state.state_fingerprint,
-        )
+        kwargs = {
+            "detail_id": old_state.detail_id,
+            "retention": old_state.retention,
+            "accessibility": old_state.accessibility,
+            "temporal_confidence": old_state.temporal_confidence,
+            "association_strength": old_state.association_strength,
+            "parent_state_fingerprint": old_state.state_fingerprint,
+        }
+        kwargs[operation.field_name] = operation.new_value
+        new_state = TraceDetailState(**kwargs)
         if new_state.state_fingerprint != operation.new_state_fingerprint:
             raise ValueError("detail-state operation new fingerprint mismatch")
         detail_states[index] = new_state
@@ -1012,7 +1015,7 @@ def apply_reconsolidation(
     if successor.protected_evidence != old_trace.protected_evidence:
         raise AssertionError("reconsolidation changed protected evidence")
     if successor.gist != old_trace.gist or successor.details != old_trace.details:
-        raise AssertionError("P6B may not rewrite gist or retained details")
+        raise AssertionError("P6 may not rewrite gist or retained details")
     return successor
 
 
