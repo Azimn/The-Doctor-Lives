@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from doctor_lives import Experience, PretoriusBrain
+from doctor_lives.history import install_deep_history
 from doctor_lives.neural import DEFAULT_CONFIG
 
 
@@ -145,6 +147,42 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
         self.assertTrue(all(abs(v) < 1e-12 for v in neutral["families"]["history"].values()))
         self.assertTrue(relevant["source_ids"]["history"])
         self.assertEqual(neutral["source_ids"]["history"], [])
+
+    def test_spreading_activation_is_excluded_from_history_policy_pressure(self):
+        brain = self.make_brain()
+        install_deep_history(brain.store)
+        self.neutralize(brain)
+        query = "The homunculi creation invites another artificial-life experiment."
+
+        ranked_with_edges = brain._ranked_memories(48, query=query, audit=True)
+        with brain.store.connect() as conn:
+            row = conn.execute(
+                "SELECT activated_memory_ids_json FROM retrieval_audits ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+        activated = json.loads(row["activated_memory_ids_json"])
+        self.assertTrue(activated, "probe must exercise spreading activation")
+        _, adjusted_with_edges, audit_with_edges = brain._state_policy_scores(
+            ranked_with_edges, decision_text=query
+        )
+        self.assertTrue(audit_with_edges["source_ids"]["history"])
+
+        with brain.store.transaction() as conn:
+            conn.execute("DELETE FROM history_edges")
+            brain.store.bump_state_version(conn)
+        ranked_without_edges = brain._ranked_memories(48, query=query, audit=True)
+        _, adjusted_without_edges, audit_without_edges = brain._state_policy_scores(
+            ranked_without_edges, decision_text=query
+        )
+
+        self.assertEqual(
+            audit_with_edges["source_ids"]["history"],
+            audit_without_edges["source_ids"]["history"],
+        )
+        self.assertEqual(
+            audit_with_edges["families"]["history"],
+            audit_without_edges["families"]["history"],
+        )
+        self.assertEqual(adjusted_with_edges, adjusted_without_edges)
 
     def test_renderer_observation_is_policy_independent_and_nonmutating(self):
         brain = self.make_brain()
