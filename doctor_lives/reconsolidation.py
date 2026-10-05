@@ -754,6 +754,10 @@ class TraceVersionLedger:
             successor.reconsolidation_decision_fingerprint
         ):
             raise ValueError("decision audit fingerprint does not match successor")
+        if str(audit.get("recollection_event_id") or "") != (
+            successor.reconsolidation_event_id
+        ):
+            raise ValueError("decision audit recollection event does not match successor")
         if str(audit.get("old_trace_id") or "") != parent.trace_id:
             raise ValueError("decision audit parent trace mismatch")
         if str(audit.get("old_trace_digest") or "") != parent.snapshot_digest:
