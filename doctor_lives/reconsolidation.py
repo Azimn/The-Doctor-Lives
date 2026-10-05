@@ -1217,20 +1217,26 @@ def _verify_successor_matches_audit(
     expected_detail_states = {
         state.detail_id: state for state in parent.detail_states
     }
-    seen_detail_ids: set[str] = set()
+    seen_detail_fields: set[tuple[str, str]] = set()
     for raw in audit.get("detail_operations", []):
         if not isinstance(raw, dict):
             raise ValueError("detail operation audit must be an object")
         detail_id = raw.get("detail_id")
         if not isinstance(detail_id, str) or not detail_id.strip():
             raise ValueError("detail operation requires detail_id")
-        if detail_id in seen_detail_ids:
-            raise ValueError("decision audit contains duplicate detail operation")
-        seen_detail_ids.add(detail_id)
         if detail_id not in expected_detail_states:
             raise ValueError("detail operation references unknown parent detail")
-        if raw.get("field_name") != "accessibility":
-            raise ValueError("initial P6B supports only detail accessibility")
+        field_name = raw.get("field_name")
+        if field_name not in {
+            "accessibility",
+            "temporal_confidence",
+            "association_strength",
+        }:
+            raise ValueError("decision audit contains unsupported detail field")
+        operation_key = (detail_id, field_name)
+        if operation_key in seen_detail_fields:
+            raise ValueError("decision audit contains duplicate detail field operation")
+        seen_detail_fields.add(operation_key)
         parent_state = expected_detail_states[detail_id]
         old_value = raw.get("old_value")
         new_value = raw.get("new_value")
