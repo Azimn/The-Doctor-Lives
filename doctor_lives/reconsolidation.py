@@ -1,12 +1,14 @@
-"""P6 conservative reconsolidation for UPPB.
+"""P6 versioned reconsolidation for UPPB.
 
 P6 evolves memory by producing immutable successor MemoryTrace snapshots after
 verified recollection and awareness. It never mutates an existing trace.
 
-Initial P6 deliberately changes only bounded trace-strength variables and
-retrieval/rehearsal counters. Gist, retained details, protected evidence,
-source-cue labels, actor/object associations, and temporal content remain
-unchanged. This establishes the causal loop before any later content drift.
+P6A changes only bounded trace-level strength/accessibility/familiarity and
+retrieval/rehearsal counters. P6B adds separately audited accessibility drift
+for existing retained details that were omitted by the exact P4 recollection.
+Semantic TraceDetail content, protected evidence, gist, source cues, and
+structural associations remain unchanged. Constructive distortion is still
+outside this module's active release gate.
 """
 
 from __future__ import annotations
@@ -146,11 +148,11 @@ class ReconsolidationContext:
 
 @dataclass(frozen=True)
 class ReconsolidationPolicy:
-    """Bounded conservative plasticity policy for initial P6.
+    """Bounded P6A/P6B plasticity policy.
 
-    Initial P6 intentionally exposes no switch that can enable blended
-    reconsolidation or consume ungrounded non-neutral content certainty.
-    Those capabilities require a later reviewed schema revision.
+    P6B adds only degradative detail accessibility. The policy intentionally
+    exposes no switch for blended reconsolidation, semantic detail rewriting,
+    or ungrounded non-neutral content certainty.
     """
 
     min_reactivation: float = 0.35
