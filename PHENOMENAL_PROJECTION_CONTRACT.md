@@ -667,7 +667,8 @@ TraceVersionLedger is the P6 version and transition-audit authority for the isol
 - reject appending from a non-latest parent (silent fork);
 - preserve exact ancestry;
 - persist the complete canonical ReconsolidationDecision audit record for every successor;
-- verify the persisted decision fingerprint and parent/lineage binding on load;
+- verify the persisted decision fingerprint and parent/lineage/event binding on append and load;
+- verify the successor's changed fields exactly match the audited ReconsolidationOperations and that blocked structural fields remain identical to the parent;
 - support deterministic serialization and local atomic save/load restart continuity.
 
 Update families must be bounded by per-recall delta caps and absolute ceilings. Repeated identical recall should approach the configured ceiling asymptotically rather than explode.
@@ -685,6 +686,7 @@ P6 acceptance:
 - ledger rejects silent forks and non-monotonic versioning;
 - ledger survives save/load with identical trace IDs, lineage, versions, ancestry, and transition-decision audit records;
 - tampering with a persisted transition decision fails closed on reload;
+- a manually constructed successor whose state is not exactly described by the verified P6 decision is rejected by the ledger;
 - a matched lesion experiment holds the complete P4/P5/phenomenal input chain fixed and shows no trace change when P6 is disabled and a successor only when enabled;
 - a P6 decision made from FOCAL/CONSCIOUS access cannot later be applied using the same occurrence demoted to LATENT/PRECONSCIOUS access;
 - a later P4 retrieval can differ because of the successor trace while protected evidence remains unchanged;
