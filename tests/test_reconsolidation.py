@@ -338,6 +338,21 @@ class ReconsolidationTests(unittest.TestCase):
                 decision=decision,
             )
 
+    def test_p6_rejects_bare_phenomenal_event_in_place_of_p3_decision(self):
+        trace = self.trace(label="bare-event")
+        candidate, source_decision, awareness_decision = self.final_event(
+            trace,
+            episode_id="episode:bare-event",
+        )
+        with self.assertRaises(TypeError):
+            evaluate_reconsolidation(
+                old_trace=trace,
+                candidate=candidate,
+                source_decision=source_decision,
+                awareness_decision=awareness_decision.event,  # type: ignore[arg-type]
+                context=self.eligible_context(),
+            )
+
     def test_initial_p6_ignores_non_neutral_content_certainty(self):
         trace = self.trace()
         candidate, source_decision, event = self.final_event(
@@ -614,7 +629,7 @@ class ReconsolidationTests(unittest.TestCase):
                         persistence=1.0,
                     ),
                 )
-            )[0].event
+            )[0]
 
         lived_event = event_for(lived)
         read_event = event_for(read)
