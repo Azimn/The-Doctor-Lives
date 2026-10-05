@@ -14,7 +14,9 @@ from doctor_lives.phenomenology import (
     SubjectiveSourceKind,
 )
 from doctor_lives.recollection import (
+    ContextAssociation,
     MemoryTrace,
+    OmissionCause,
     ProtectedEvidenceRef,
     ReconstructionConfig,
     RetrievalEpisode,
