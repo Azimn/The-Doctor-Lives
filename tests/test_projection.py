@@ -18,6 +18,9 @@ from doctor_lives.projection import (
     project_bodily_sensation,
     project_impulse,
     project_uncertainty,
+    project_relationship_feeling,
+    project_concern,
+    project_commitment,
 )
 
 
@@ -129,6 +132,50 @@ class DeterministicProjectionTests(unittest.TestCase):
             "I am almost certain that Henry intends to cooperate.",
         )
         self.assertNotIn("0.93", confident.subject_text)
+
+    def test_relationship_projection_can_hold_affiliation_and_distrust_together(self):
+        event = project_relationship_feeling(
+            context=self.context,
+            actor_name="Morgan",
+            trust=0.18,
+            affiliation=0.77,
+            provenance=self.provenance,
+            source_state_refs=("relationship:morgan",),
+        )
+        self.assertEqual(event.mode, PhenomenalMode.FEELING)
+        self.assertEqual(
+            event.subject_text,
+            "I want to remain close to Morgan, but I do not trust them.",
+        )
+        self.assertNotIn("0.18", event.subject_text)
+        self.assertNotIn("0.77", event.subject_text)
+
+    def test_concern_projection_does_not_expose_urgency_value(self):
+        event = project_concern(
+            context=self.context,
+            subject_phrase="the unfinished apparatus",
+            urgency=0.67,
+            provenance=self.provenance,
+            source_state_refs=("concern:apparatus",),
+        )
+        self.assertEqual(event.mode, PhenomenalMode.CONCERN)
+        self.assertEqual(
+            event.subject_text,
+            "I am preoccupied with the unfinished apparatus.",
+        )
+        self.assertNotIn("0.67", event.subject_text)
+
+    def test_commitment_projection_is_intention_not_external_expression(self):
+        event = project_commitment(
+            context=self.context,
+            action_phrase="finish the apparatus",
+            importance=0.74,
+            provenance=self.provenance,
+            source_state_refs=("commitment:apparatus",),
+        )
+        self.assertEqual(event.mode, PhenomenalMode.INTENTION)
+        self.assertEqual(event.privacy, PrivacyState.PRIVATE)
+        self.assertEqual(event.subject_text, "I am determined to finish the apparatus.")
 
     def test_leak_detector_blocks_implementation_native_content(self):
         text = "My state_pressure is 0.4 and memory_id=12."
