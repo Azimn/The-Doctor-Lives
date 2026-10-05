@@ -76,18 +76,18 @@ class SourceMonitoringCues:
     or other privileged provenance signal.
     """
 
-    retrieval_fluency: float = 0.5
-    perceptual_richness: float = 0.5
-    temporal_coherence: float = 0.5
-    spatial_coherence: float = 0.5
-    contextual_compatibility: float = 0.5
-    familiarity: float = 0.5
-    trace_accessibility: float = 0.5
+    retrieval_fluency: float = 0.0
+    perceptual_richness: float = 0.0
+    temporal_coherence: float = 0.0
+    spatial_coherence: float = 0.0
+    contextual_compatibility: float = 0.0
+    familiarity: float = 0.0
+    trace_accessibility: float = 0.0
     rehearsal_frequency: float = 0.0
     imagination_exposure: float = 0.0
     reconstruction_exposure: float = 0.0
     competing_source_strength: float = 0.0
-    cue_match: float = 0.5
+    cue_match: float = 0.0
     social_communication_signature: float = 0.0
     textual_signature: float = 0.0
     inferential_signature: float = 0.0
