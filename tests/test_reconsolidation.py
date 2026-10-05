@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 import tempfile
 import unittest
 from pathlib import Path
@@ -466,6 +467,118 @@ class ReconsolidationTests(unittest.TestCase):
                 finalized_recollection=finalized,
                 awareness_decision=latent_event,
                 decision=decision,
+            )
+
+    def test_p6_rejects_real_p3_decision_over_forged_recollection_content(self):
+        trace = self.trace(label="forged-p5-content")
+        candidate, source_decision, finalized, _ = self.final_event(
+            trace,
+            episode_id="episode:forged-p5-content",
+            focal=False,
+        )
+
+        forged_event = replace(
+            finalized.event,
+            canonical_first_person=(
+                "I can call to mind the following: "
+                "Henry left before the demonstration."
+            ),
+        )
+        self.assertNotEqual(
+            forged_event.canonical_first_person,
+            finalized.event.canonical_first_person,
+        )
+        forged_awareness = AwarenessRouter().route(
+            (
+                AwarenessCandidate(
+                    event=forged_event,
+                    salience=1.0,
+                    change=1.0,
+                    novelty=1.0,
+                    goal_relevance=1.0,
+                    persistence=1.0,
+                ),
+            )
+        )[0]
+
+        with self.assertRaises(ValueError):
+            evaluate_reconsolidation(
+                old_trace=trace,
+                candidate=candidate,
+                source_decision=source_decision,
+                finalized_recollection=finalized,
+                awareness_decision=forged_awareness,
+                context=self.eligible_context(),
+            )
+
+    def test_p6_rejects_routed_event_from_different_p5_finalization_context(self):
+        trace = self.trace(label="altered-p5-context")
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:altered-p5-context",
+        )
+        source_decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.source_cues(),
+        )
+        canonical = finalize_recollection(
+            candidate=candidate,
+            decision=source_decision,
+            context=RecollectionFinalizationContext(
+                tick=62,
+                source_state_digest="sha256:canonical-p5",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="reconstructed_preawakening_memory",
+                    source="archive-a",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+            ),
+        )
+        altered = finalize_recollection(
+            candidate=candidate,
+            decision=source_decision,
+            context=RecollectionFinalizationContext(
+                tick=63,
+                source_state_digest="sha256:altered-p5",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="reconstructed_preawakening_memory",
+                    source="archive-b",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+            ),
+        )
+        self.assertEqual(canonical.candidate_id, altered.candidate_id)
+        self.assertEqual(canonical.candidate_digest, altered.candidate_digest)
+        self.assertEqual(
+            canonical.source_decision_fingerprint,
+            altered.source_decision_fingerprint,
+        )
+        self.assertNotEqual(
+            canonical.finalization_fingerprint,
+            altered.finalization_fingerprint,
+        )
+
+        altered_awareness = AwarenessRouter().route(
+            (
+                AwarenessCandidate(
+                    event=altered.event,
+                    salience=1.0,
+                    change=1.0,
+                    novelty=1.0,
+                    goal_relevance=1.0,
+                    persistence=1.0,
+                ),
+            )
+        )[0]
+
+        with self.assertRaises(ValueError):
+            evaluate_reconsolidation(
+                old_trace=trace,
+                candidate=candidate,
+                source_decision=source_decision,
+                finalized_recollection=canonical,
+                awareness_decision=altered_awareness,
+                context=self.eligible_context(),
             )
 
     def test_p6_rejects_bare_phenomenal_event_in_place_of_p3_decision(self):
