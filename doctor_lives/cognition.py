@@ -451,8 +451,13 @@ class PretoriusBrain:
             + .08 * float(row["confidence"])
         )
 
-    def _ranked_memories(self, limit: int = 12, *, query: str | None = None,
-                         audit: bool = False) -> list[tuple[float, dict[str, Any]]]:
+    def _ranked_memory_sets(
+        self, limit: int = 12, *, query: str | None = None, audit: bool = False
+    ) -> tuple[
+        list[tuple[float, dict[str, Any]]],
+        list[tuple[float, dict[str, Any]]],
+    ]:
+        """Return direct pre-spreading and activated retrieval sets from one retrieval."""
         now = self.store.tick
         open_terms = self._open_terms()
         suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
@@ -500,12 +505,13 @@ class PretoriusBrain:
             key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]),
             reverse=True,
         )
+        direct_selected = direct_ranked[:max(0, limit)]
         selected = ranked[:max(0, limit)]
         if audit:
             record_retrieval_audit(
                 self.store,
                 query=query or "",
-                direct_memory_ids=seed_ids,
+                direct_memory_ids=[row["id"] for _, row in direct_selected],
                 activated_memory_ids=sorted(bonuses),
                 paths=paths,
                 ranked_memory_ids=[row["id"] for _, row in selected],
@@ -513,50 +519,46 @@ class PretoriusBrain:
                     "decay": .55,
                     "max_depth": 2,
                     "max_bonus": .28,
+                    "activation_seed_memory_ids": seed_ids,
+                    "direct_memory_ids_semantics": "pre_spreading_ranked_retrieval",
+                    "ranked_memory_ids_semantics": "post_spreading_ranked_retrieval",
                     "signed_inhibition": "terminal_negative_pressure",
                     "canon_conflict_suppressed_memory_ids": sorted(suppressed_by_canon),
                 },
                 state_digest_before=state_before,
                 state_digest_after=state_after,
             )
+        return direct_selected, selected
+
+    def _ranked_memories(self, limit: int = 12, *, query: str | None = None,
+                         audit: bool = False) -> list[tuple[float, dict[str, Any]]]:
+        """Backward-compatible post-spreading retrieval view."""
+        _, selected = self._ranked_memory_sets(limit, query=query, audit=audit)
         return selected
 
     def _bridge_history_candidates(
-        self, decision_text: str | None
+        self,
+        direct_ranked: list[tuple[float, dict[str, Any]]],
+        decision_text: str | None,
     ) -> list[tuple[float, dict[str, Any]]]:
-        """Return direct, pre-spreading autobiographical evidence for policy use.
+        """Filter the actual direct retrieval set for relevant autobiography.
 
-        v0.4 deliberately excludes spreading activation from the state-policy
-        bridge. This ranking therefore recomputes salience and query relevance
-        directly from canonical memory state and never consumes graph bonuses.
+        The bridge may consume only records that were retrieved by the direct,
+        pre-spreading retrieval operation for this decision. It never scans the
+        full store and never consumes spreading-activation bonuses.
         """
         decision_tokens = self._tokens(decision_text or "")
         if not decision_tokens:
             return []
-        now = self.store.tick
-        open_terms = self._open_terms()
-        suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
         candidates: list[tuple[float, dict[str, Any]]] = []
-        for row in self.store.memories_with_classification():
-            if row["id"] in suppressed_by_canon:
-                continue
+        for score, row in direct_ranked:
             if row.get("autobiographical_class") is None or bool(row.get("external")):
                 continue
             tokens = self._tokens(str(row["text"])) | {
                 str(tag).lower() for tag in row.get("tags", [])
             }
-            if not (tokens & decision_tokens):
-                continue
-            score = self._salience(row, now, open_terms)
-            overlap = len(decision_tokens & tokens) / max(1, len(decision_tokens))
-            score += min(1.0, overlap)
-            candidates.append((score, row))
-        candidates.sort(
-            key=lambda item: (
-                item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]
-            ),
-            reverse=True,
-        )
+            if tokens & decision_tokens:
+                candidates.append((score, row))
         return candidates
 
     @staticmethod
@@ -579,6 +581,7 @@ class PretoriusBrain:
         ranked: list[tuple[float, dict[str, Any]]],
         *,
         decision_text: str | None = None,
+        direct_history_ranked: list[tuple[float, dict[str, Any]]] | None = None,
         bridge_enabled: bool = True,
     ) -> tuple[dict[str, float], dict[str, float], dict[str, Any]]:
         """Apply bounded state pressure to the recurrent action distribution.
@@ -658,7 +661,11 @@ class PretoriusBrain:
             if item.get("actor") and self._tokens(str(item["actor"])) & decision_tokens:
                 add("commitments", "cooperate", 0.018 * importance)
 
-        for score, row in self._bridge_history_candidates(decision_text)[:8]:
+        direct_history_ranked = list(direct_history_ranked or [])
+        history_retrieval_ids = [str(row["id"]) for _, row in direct_history_ranked]
+        for score, row in self._bridge_history_candidates(
+            direct_history_ranked, decision_text
+        )[:8]:
             tokens = self._tokens(str(row["text"])) | {
                 str(tag).lower() for tag in row.get("tags", [])
             }
@@ -668,6 +675,8 @@ class PretoriusBrain:
                 cue_hits = len(tokens & self._policy_terms(action))
                 if cue_hits:
                     add("history", action, 0.006 * min(cue_hits, 3) * weight)
+        if not set(source_ids["history"]).issubset(set(history_retrieval_ids)):
+            raise AssertionError("history policy source escaped direct policy retrieval")
 
         for concern in self.store.open_concerns():
             importance = clamp(float(concern["importance"]))
@@ -720,6 +729,7 @@ class PretoriusBrain:
             "enabled": bool(bridge_enabled),
             "decision_text_sha256": hashlib.sha256((decision_text or "").encode("utf-8")).hexdigest(),
             "source_ids": source_ids,
+            "history_retrieval_ids": history_retrieval_ids,
             "unclipped_families": unclipped_families,
             "families": families,
             "combined": combined,
@@ -781,9 +791,11 @@ class PretoriusBrain:
         )
 
     def cognitive_view(self, query: str | None = None) -> CognitiveView:
-        ranked = self._ranked_memories(14, query=query, audit=True)
+        direct_ranked, ranked = self._ranked_memory_sets(14, query=query, audit=True)
         items = [self._view_item(score, row) for score, row in ranked]
-        _, action_tendencies, _ = self._state_policy_scores(ranked, decision_text=query)
+        _, action_tendencies, _ = self._state_policy_scores(
+            ranked, decision_text=query, direct_history_ranked=direct_ranked
+        )
         return CognitiveView(
             tick=self.store.tick,
             identity=self.identity,
@@ -803,9 +815,14 @@ class PretoriusBrain:
         decision_text: str | None = None,
         bridge_enabled: bool = True,
     ) -> dict[str, Any]:
-        ranked_all = self._ranked_memories(48, query=decision_text, audit=True)
+        direct_ranked_all, ranked_all = self._ranked_memory_sets(
+            48, query=decision_text, audit=True
+        )
         base_scores, scores, state_pressure = self._state_policy_scores(
-            ranked_all, decision_text=decision_text, bridge_enabled=bridge_enabled
+            ranked_all,
+            decision_text=decision_text,
+            direct_history_ranked=direct_ranked_all,
+            bridge_enabled=bridge_enabled,
         )
         tendency = max(scores, key=scores.get)
         candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
