@@ -17,6 +17,20 @@ from .phenomenology import (
     SubjectiveSourceKind,
     VividnessBand,
 )
+from .projection import (
+    BodilySignal,
+    PhenomenalLeakError,
+    ProjectionContext,
+    assert_subject_text_safe,
+    implementation_leaks,
+    project_appraisal_feeling,
+    project_bodily_sensation,
+    project_commitment,
+    project_concern,
+    project_impulse,
+    project_relationship_feeling,
+    project_uncertainty,
+)
 
 __all__ = [
     "PretoriusBrain",
@@ -39,4 +53,16 @@ __all__ = [
     "SubjectiveSourceAttribution",
     "PhenomenalEvent",
     "Recollection",
+    "ProjectionContext",
+    "BodilySignal",
+    "PhenomenalLeakError",
+    "implementation_leaks",
+    "assert_subject_text_safe",
+    "project_bodily_sensation",
+    "project_appraisal_feeling",
+    "project_impulse",
+    "project_uncertainty",
+    "project_relationship_feeling",
+    "project_concern",
+    "project_commitment",
 ]
