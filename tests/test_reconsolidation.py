@@ -1447,6 +1447,43 @@ class ReconsolidationTests(unittest.TestCase):
                 decision=decision,
             )
 
+    def test_p6b_initial_ledger_rejects_detail_state_with_fake_parent(self):
+        base = self.trace_with_two_details()
+        first = base.detail_state("detail:henry")
+        second = base.detail_state("detail:notebook")
+        forged = MemoryTrace(
+            subject_id=base.subject_id,
+            version=0,
+            protected_evidence=base.protected_evidence,
+            gist=base.gist,
+            details=base.details,
+            detail_states=(
+                TraceDetailState(
+                    detail_id=first.detail_id,
+                    retention=first.retention,
+                    accessibility=first.accessibility,
+                    temporal_confidence=first.temporal_confidence,
+                    association_strength=first.association_strength,
+                    parent_state_fingerprint="detail_state_nonexistent_parent",
+                ),
+                second,
+            ),
+            temporal_cues=base.temporal_cues,
+            actor_refs=base.actor_refs,
+            object_refs=base.object_refs,
+            encoding_affect=base.encoding_affect,
+            source_cues=base.source_cues,
+            strength=base.strength,
+            accessibility=base.accessibility,
+            familiarity=base.familiarity,
+            rehearsal_count=base.rehearsal_count,
+            retrieval_count=base.retrieval_count,
+            competing_trace_ids=base.competing_trace_ids,
+        )
+        ledger = TraceVersionLedger()
+        with self.assertRaises(ValueError):
+            ledger.register_initial(forged)
+
     def test_p6b_detail_drift_requires_interference_threshold(self):
         trace = self.trace_with_two_details()
         candidate = self.reconstruct(
