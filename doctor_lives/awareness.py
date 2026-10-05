@@ -11,15 +11,23 @@ until a later integration gate.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import math
 
 from .phenomenology import AwarenessLevel, PhenomenalEvent
 
 
 def _unit(value: float, name: str) -> float:
-    value = float(value)
-    if not 0.0 <= value <= 1.0:
+    if isinstance(value, bool):
+        raise TypeError(f"{name} must be numeric, not bool")
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(f"{name} must be a finite number") from exc
+    if not math.isfinite(normalized):
+        raise ValueError(f"{name} must be finite")
+    if not 0.0 <= normalized <= 1.0:
         raise ValueError(f"{name} must be between 0 and 1")
-    return value
+    return normalized
 
 
 @dataclass(frozen=True)
@@ -45,7 +53,7 @@ class AwarenessCandidate:
             "persistence",
             "habituation",
         ):
-            _unit(getattr(self, name), name)
+            object.__setattr__(self, name, _unit(getattr(self, name), name))
 
     @property
     def priority(self) -> float:
@@ -80,6 +88,10 @@ class AwarenessPolicy:
     preconscious_threshold: float = 0.20
 
     def __post_init__(self) -> None:
+        for name in ("conscious_capacity", "focal_capacity"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"{name} must be a non-boolean integer")
         if self.conscious_capacity < 1:
             raise ValueError("conscious_capacity must be at least 1")
         if self.focal_capacity < 0:
@@ -91,7 +103,7 @@ class AwarenessPolicy:
             "focal_threshold",
             "preconscious_threshold",
         ):
-            _unit(getattr(self, name), name)
+            object.__setattr__(self, name, _unit(getattr(self, name), name))
         if self.preconscious_threshold > self.conscious_threshold:
             raise ValueError("preconscious threshold cannot exceed conscious threshold")
         if self.conscious_threshold > self.focal_threshold:
