@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 
 from doctor_lives import Experience, PretoriusBrain
@@ -49,6 +51,12 @@ def probes() -> dict[str, Experience]:
             achievement=.2, creation=.8,
             tags=("homunculi", "creation", "artificial_life"),
         ),
+        "spreading_activation": Experience(
+            "The homunculi creation invites another artificial-life experiment.",
+            kind="observation", valence=.2, arousal=.45, novelty=.6,
+            achievement=.2, creation=.8,
+            tags=("homunculi", "creation", "artificial_life"),
+        ),
         "needs": Experience(
             "A difficult new artificial-life experiment becomes available after a long exhausting session.",
             kind="observation", valence=.2, arousal=.55, novelty=.85,
@@ -89,12 +97,50 @@ def probes() -> dict[str, Experience]:
     }
 
 
-def pair_row(mechanism: str, result: dict) -> dict:
+def experiment_fingerprint(mechanism: str, stimulus: Experience, method: str) -> str:
+    payload = {
+        "mechanism": mechanism,
+        "method": method,
+        "stimulus": asdict(stimulus),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def cross_version_row(prior: dict | None, current: dict) -> dict:
+    prior_fp = None if prior is None else prior.get("experiment_fingerprint")
+    current_fp = current["experiment_fingerprint"]
+    if prior is not None and bool(prior.get("comparable")) and prior_fp != current_fp:
+        raise RuntimeError(
+            f"cross-version row {current['mechanism']!r} is marked comparable but experiment fingerprints differ"
+        )
+    comparable = bool(prior_fp) and prior_fp == current_fp
+    return {
+        "mechanism": current["mechanism"],
+        "comparable": comparable,
+        "comparison_reason": (
+            "matching experiment fingerprints"
+            if comparable
+            else "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only"
+        ),
+        "v03_experiment_fingerprint": prior_fp,
+        "v04_experiment_fingerprint": current_fp,
+        "v03_historical_action_score_l1": None if prior is None else prior.get("action_score_l1"),
+        "v04_action_score_l1": current["action_score_l1"],
+        "v03_historical_selected_action_diverged": None if prior is None else prior.get("selected_action_diverged"),
+        "v04_selected_action_diverged": current["selected_action_diverged"],
+        "v04_renderer_request_changed": current["renderer_request_changed"],
+    }
+
+
+def pair_row(mechanism: str, result: dict, stimulus: Experience, method: str) -> dict:
     c = result["comparison"]
     intact_policy = result["intact"]["policy_decision"]
     lesion_policy = result["lesion"]["policy_decision"]
     return {
         "mechanism": mechanism,
+        "experiment_method": method,
+        "experiment_fingerprint": experiment_fingerprint(mechanism, stimulus, method),
         "action_score_l1": float(c["action_score_l1"]),
         "selected_action_diverged": bool(c["selected_action_diverged"]),
         "renderer_request_changed": bool(c["renderer_request_changed"]),
@@ -169,7 +215,11 @@ def main() -> int:
             "deep_history": harness.run_existing_state_pair(
                 p["deep_history"],
                 AuditIntervention("deep_history", ("deep_history",)),
-            )
+            ),
+            "spreading_activation": harness.run_existing_state_pair(
+                p["spreading_activation"],
+                AuditIntervention("spreading_activation", ("spreading_activation",)),
+            ),
         }
         for mechanism in (
             "needs",
@@ -188,24 +238,29 @@ def main() -> int:
         )
         concern_resolution = concern_resolution_characterization()
 
-        rows = [pair_row(name, result) for name, result in pairs.items()]
+        methods = {
+            "deep_history": "run_existing_state_pair:v1",
+            "spreading_activation": "run_existing_state_pair:v1",
+            "needs": "run_pair:v1",
+            "relationships": "run_pair:v1",
+            "commitments": "run_pair:v1",
+            "recurrent_policy": "run_pair:v1",
+            "state_policy_bridge": "run_pair:v1",
+        }
+        rows = [
+            pair_row(name, result, p[name], methods[name])
+            for name, result in pairs.items()
+        ]
         v03 = load_v03_summary()
         v03_rows = {
             row["mechanism"]: row
             for row in v03.get("pair_measures", [])
             if isinstance(row, dict) and "mechanism" in row
         }
-        comparison = []
-        for row in rows:
-            prior = v03_rows.get(row["mechanism"])
-            comparison.append({
-                "mechanism": row["mechanism"],
-                "v03_action_score_l1": None if prior is None else prior.get("action_score_l1"),
-                "v04_action_score_l1": row["action_score_l1"],
-                "v03_selected_action_diverged": None if prior is None else prior.get("selected_action_diverged"),
-                "v04_selected_action_diverged": row["selected_action_diverged"],
-                "v04_renderer_request_changed": row["renderer_request_changed"],
-            })
+        comparison = [
+            cross_version_row(v03_rows.get(row["mechanism"]), row)
+            for row in rows
+        ]
 
         result = {
             "schema": "the-doctor-lives.causal-architecture-audit.v04",
