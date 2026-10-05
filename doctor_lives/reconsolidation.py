@@ -650,6 +650,15 @@ def evaluate_reconsolidation(
 
     detail_operations: list[DetailStateOperation] = []
     detail_reasons: list[str] = []
+    current_detail_states = {
+        state.detail_id: state for state in old_trace.detail_states
+    }
+    omission_by_ref = {
+        item.detail_ref: item for item in candidate.detail_omissions
+    }
+
+    # P6B: accepted accessibility weakening remains intentionally broad over
+    # exact P4 omissions, regardless of why the detail was omitted.
     if not context.detail_drift_enabled:
         detail_reasons.append("detail_drift_disabled")
     elif not eligible:
@@ -657,45 +666,126 @@ def evaluate_reconsolidation(
     elif context.interference_strength < policy.min_detail_interference:
         detail_reasons.append("detail_interference_below_threshold")
     else:
-        omitted_refs = set(candidate.omitted_detail_refs)
         for old_state in old_trace.detail_states:
             detail_ref = f"{old_trace.trace_id}:{old_state.detail_id}"
-            if detail_ref not in omitted_refs:
+            if detail_ref not in omission_by_ref:
                 continue
-            available_loss = max(
-                0.0,
-                old_state.accessibility - policy.detail_accessibility_floor,
-            )
-            loss = min(
-                policy.max_detail_accessibility_loss,
-                available_loss * 0.25 * context.interference_strength,
+            current_state = current_detail_states[old_state.detail_id]
+            loss = _bounded_loss(
+                current_state.accessibility,
+                floor=policy.detail_accessibility_floor,
+                max_loss=policy.max_detail_accessibility_loss,
+                drive=context.interference_strength,
             )
             if loss <= 0.0:
                 continue
-            new_state = TraceDetailState(
-                detail_id=old_state.detail_id,
-                retention=old_state.retention,
-                accessibility=old_state.accessibility - loss,
-                temporal_confidence=old_state.temporal_confidence,
-                association_strength=old_state.association_strength,
-                parent_state_fingerprint=old_state.state_fingerprint,
+            operation, new_state = _degrade_detail_state(
+                current_state,
+                field_name="accessibility",
+                loss=loss,
+                reason_code="omitted_detail_interference_weakening",
             )
-            detail_operations.append(
-                DetailStateOperation(
-                    detail_id=old_state.detail_id,
-                    field_name="accessibility",
-                    old_value=old_state.accessibility,
-                    new_value=new_state.accessibility,
-                    delta=-loss,
-                    old_state_fingerprint=old_state.state_fingerprint,
-                    new_state_fingerprint=new_state.state_fingerprint,
-                    reason_code="omitted_detail_interference_weakening",
-                )
-            )
-        if detail_operations:
+            detail_operations.append(operation)
+            current_detail_states[old_state.detail_id] = new_state
+        if any(op.field_name == "accessibility" for op in detail_operations):
             detail_reasons.append("omitted_detail_accessibility_weakened")
         else:
             detail_reasons.append("no_eligible_omitted_detail")
+
+    # P6C: richer degradation explicitly distinguishes omission causes. A
+    # capacity-limited detail was retrievable but lost the reconstruction
+    # contest, so max_details alone cannot silently degrade temporal/contextual
+    # precision.
+    richer_omissions = tuple(
+        item
+        for item in candidate.detail_omissions
+        if item.cause is not OmissionCause.CAPACITY_LIMITED
+    )
+    if any(
+        item.cause is OmissionCause.CAPACITY_LIMITED
+        for item in candidate.detail_omissions
+    ):
+        detail_reasons.append("capacity_limited_omission_excluded_from_p6c")
+
+    if not context.temporal_drift_enabled:
+        detail_reasons.append("temporal_drift_disabled")
+    elif not eligible:
+        detail_reasons.append("temporal_base_reconsolidation_ineligible")
+    elif context.temporal_disorientation < policy.min_temporal_disorientation:
+        detail_reasons.append("temporal_disorientation_below_threshold")
+    else:
+        temporal_changed = False
+        for omission in richer_omissions:
+            prefix = old_trace.trace_id + ":"
+            if not omission.detail_ref.startswith(prefix):
+                continue
+            detail_id = omission.detail_ref[len(prefix):]
+            current_state = current_detail_states[detail_id]
+            loss = _bounded_loss(
+                current_state.temporal_confidence,
+                floor=policy.temporal_confidence_floor,
+                max_loss=policy.max_temporal_confidence_loss,
+                drive=context.temporal_disorientation,
+            )
+            if loss <= 0.0:
+                continue
+            operation, new_state = _degrade_detail_state(
+                current_state,
+                field_name="temporal_confidence",
+                loss=loss,
+                reason_code=(
+                    "temporal_disorientation_after_"
+                    + omission.cause.value
+                ),
+            )
+            detail_operations.append(operation)
+            current_detail_states[detail_id] = new_state
+            temporal_changed = True
+        detail_reasons.append(
+            "omitted_detail_temporal_confidence_weakened"
+            if temporal_changed
+            else "no_p6c_temporal_target"
+        )
+
+    if not context.association_drift_enabled:
+        detail_reasons.append("association_drift_disabled")
+    elif not eligible:
+        detail_reasons.append("association_base_reconsolidation_ineligible")
+    elif context.context_mismatch < policy.min_context_mismatch:
+        detail_reasons.append("context_mismatch_below_threshold")
+    else:
+        association_changed = False
+        for omission in richer_omissions:
+            prefix = old_trace.trace_id + ":"
+            if not omission.detail_ref.startswith(prefix):
+                continue
+            detail_id = omission.detail_ref[len(prefix):]
+            current_state = current_detail_states[detail_id]
+            loss = _bounded_loss(
+                current_state.association_strength,
+                floor=policy.association_strength_floor,
+                max_loss=policy.max_association_strength_loss,
+                drive=context.context_mismatch,
+            )
+            if loss <= 0.0:
+                continue
+            operation, new_state = _degrade_detail_state(
+                current_state,
+                field_name="association_strength",
+                loss=loss,
+                reason_code=(
+                    "context_mismatch_after_"
+                    + omission.cause.value
+                ),
+            )
+            detail_operations.append(operation)
+            current_detail_states[detail_id] = new_state
+            association_changed = True
+        detail_reasons.append(
+            "omitted_detail_association_weakened"
+            if association_changed
+            else "no_p6c_association_target"
+        )
 
     operations_tuple = tuple(operations)
     detail_operations_tuple = tuple(detail_operations)
