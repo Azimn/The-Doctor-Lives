@@ -5,11 +5,14 @@ from dataclasses import FrozenInstanceError
 
 from doctor_lives.phenomenology import PhenomenalEvent
 from doctor_lives.recollection import (
+    ContextAssociation,
     MemoryTrace,
+    OmissionCause,
     ProtectedEvidenceRef,
     ReconstructionConfig,
     RecollectionCandidate,
     RetrievalEpisode,
+    TemporalPrecision,
     TraceDetail,
     TraceDetailState,
     reconstruct_recollection,
