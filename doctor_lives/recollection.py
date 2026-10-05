@@ -16,6 +16,7 @@ import json
 import math
 import re
 from dataclasses import asdict, dataclass, field
+from enum import StrEnum
 from typing import Any, Iterable
 
 from .phenomenology import VividnessBand
@@ -124,6 +125,76 @@ class TraceDetail:
         )
 
 
+class DetailAvailability(StrEnum):
+    """Subject-independent mnemonic availability state for one retained detail."""
+
+    AVAILABLE = "available"
+    WEAKENED = "weakened"
+    SUPPRESSED = "suppressed"
+
+
+@dataclass(frozen=True)
+class TraceDetailState:
+    """Versioned mnemonic state for a stable TraceDetail semantic identity.
+
+    TraceDetail stores the retained semantic content. TraceDetailState stores
+    psychologically plastic availability variables. Reconsolidation may evolve
+    these values without rewriting or deleting the underlying detail.
+    """
+
+    detail_id: str
+    retention: float = 1.0
+    accessibility: float = 1.0
+    temporal_confidence: float = 1.0
+    association_strength: float = 1.0
+    parent_state_fingerprint: str | None = None
+    availability_state: DetailAvailability = field(init=False)
+    state_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.detail_id, str) or not self.detail_id.strip():
+            raise ValueError("detail_id is required")
+        for field_name in (
+            "retention",
+            "accessibility",
+            "temporal_confidence",
+            "association_strength",
+        ):
+            object.__setattr__(
+                self,
+                field_name,
+                _unit(getattr(self, field_name), field_name),
+            )
+        if self.parent_state_fingerprint is not None and (
+            not isinstance(self.parent_state_fingerprint, str)
+            or not self.parent_state_fingerprint.strip()
+        ):
+            raise ValueError(
+                "parent_state_fingerprint must be a non-blank string or None"
+            )
+        if self.accessibility >= 0.55:
+            availability = DetailAvailability.AVAILABLE
+        elif self.accessibility >= 0.20:
+            availability = DetailAvailability.WEAKENED
+        else:
+            availability = DetailAvailability.SUPPRESSED
+        object.__setattr__(self, "availability_state", availability)
+        payload = {
+            "detail_id": self.detail_id,
+            "retention": self.retention,
+            "accessibility": self.accessibility,
+            "temporal_confidence": self.temporal_confidence,
+            "association_strength": self.association_strength,
+            "parent_state_fingerprint": self.parent_state_fingerprint,
+            "availability_state": availability.value,
+        }
+        object.__setattr__(
+            self,
+            "state_fingerprint",
+            "detail_state_" + _stable_sha256(payload)[:24],
+        )
+
+
 @dataclass(frozen=True)
 class MemoryTrace:
     """Immutable/versioned autobiographical trace snapshot."""
@@ -133,6 +204,7 @@ class MemoryTrace:
     protected_evidence: tuple[ProtectedEvidenceRef, ...]
     gist: str
     details: tuple[TraceDetail, ...] = ()
+    detail_states: tuple[TraceDetailState, ...] = ()
     temporal_cues: tuple[str, ...] = ()
     actor_refs: tuple[str, ...] = ()
     object_refs: tuple[str, ...] = ()
@@ -172,6 +244,27 @@ class MemoryTrace:
         if len(set(detail_ids)) != len(detail_ids):
             raise ValueError("detail_id values must be unique within a MemoryTrace")
         object.__setattr__(self, "details", normalized_details)
+
+        normalized_states = _tuple_of_type(
+            self.detail_states,
+            TraceDetailState,
+            "detail_states",
+        )
+        if not normalized_states and normalized_details:
+            normalized_states = tuple(
+                TraceDetailState(detail_id=detail.detail_id)
+                for detail in normalized_details
+            )
+        state_ids = tuple(state.detail_id for state in normalized_states)
+        if len(set(state_ids)) != len(state_ids):
+            raise ValueError(
+                "detail_states detail_id values must be unique within a MemoryTrace"
+            )
+        if state_ids != detail_ids:
+            raise ValueError(
+                "detail_states must exactly match details in canonical detail order"
+            )
+        object.__setattr__(self, "detail_states", normalized_states)
         for field_name in (
             "temporal_cues",
             "actor_refs",
@@ -226,6 +319,7 @@ class MemoryTrace:
             "version": self.version,
             "gist": self.gist,
             "details": [asdict(detail) for detail in self.details],
+            "detail_states": [asdict(state) for state in self.detail_states],
             "temporal_cues": self.temporal_cues,
             "actor_refs": self.actor_refs,
             "object_refs": self.object_refs,
@@ -246,6 +340,14 @@ class MemoryTrace:
             "trace_id",
             "trace_" + _stable_sha256(snapshot_payload)[:24],
         )
+
+    def detail_state(self, detail_id: str) -> TraceDetailState:
+        if not isinstance(detail_id, str) or not detail_id.strip():
+            raise ValueError("detail_id is required")
+        for state in self.detail_states:
+            if state.detail_id == detail_id:
+                return state
+        raise KeyError(detail_id)
 
     @property
     def protected_evidence_digest(self) -> str:
@@ -509,12 +611,16 @@ def _detail_score(detail: TraceDetail, cue_tokens: set[str], trace: MemoryTrace)
         overlap = len(cue_tokens & detail_tokens) / max(1, len(cue_tokens))
     else:
         overlap = 0.0
+    state = trace.detail_state(detail.detail_id)
     base = (
-        0.45 * trace.accessibility
-        + 0.30 * trace.strength
-        + 0.15 * trace.familiarity
-        + 0.10 * overlap
+        0.45 * trace.accessibility * state.accessibility
+        + 0.30 * trace.strength * state.retention
+        + 0.15 * trace.familiarity * state.association_strength
+        + 0.10 * overlap * state.association_strength
     )
+    # Strong matching cues retain a recovery path even after accessibility
+    # weakens. P6B therefore models forgetting as reduced accessibility rather
+    # than destructive deletion of the retained semantic detail.
     return max(0.0, min(1.0, base + 0.35 * overlap))
 
 
