@@ -116,7 +116,20 @@ class CausalAuditHarnessTests(unittest.TestCase):
             result["intact"]["source_neural_sha256"],
             result["lesion"]["source_neural_sha256"],
         )
-        self.assertGreater(result["comparison"]["action_score_l1"], 0.0)
+        intact_history = result["intact"]["policy_decision"]["state_pressure"]["source_ids"]["history"]
+        lesion_history = result["lesion"]["policy_decision"]["state_pressure"]["source_ids"]["history"]
+        self.assertTrue(
+            intact_history,
+            msg=f"intact history sources missing; retrieval={result['intact']['retrieval']!r}",
+        )
+        self.assertEqual(
+            lesion_history, [],
+            msg=f"deep-history lesion leaked policy sources: {lesion_history!r}",
+        )
+        self.assertGreater(
+            result["comparison"]["action_score_l1"], 0.0,
+            msg=f"history sources present but no policy divergence: {intact_history!r}",
+        )
 
     def test_bridge_lesion_restores_recurrent_only_path(self):
         harness = self.make_harness()
