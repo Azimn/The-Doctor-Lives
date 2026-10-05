@@ -398,9 +398,22 @@ class CausalAuditHarness:
                     "causal_audit_existing_state", decision_text=stimulus.text
                 )
 
-        request = brain.render_request(stimulus.text).to_dict()
-        retrieval = self._latest_retrieval_audit(brain)
+        policy_retrieval = self._latest_retrieval_audit(brain)
         policy = self._decode_policy_decision(brain, decision["policy_decision_id"])
+
+        policy_direct_ids = set(policy_retrieval.get("direct_memory_ids", []))
+        pressure = policy.get("state_pressure", {})
+        pressure_retrieval_ids = set(pressure.get("history_retrieval_ids", []))
+        history_source_ids = set(pressure.get("source_ids", {}).get("history", []))
+        if pressure_retrieval_ids != policy_direct_ids:
+            raise AssertionError(
+                "policy history retrieval IDs do not match audited direct policy retrieval"
+            )
+        if not history_source_ids.issubset(policy_direct_ids):
+            raise AssertionError("history pressure source escaped audited direct policy retrieval")
+
+        request = brain.render_request(stimulus.text).to_dict()
+        renderer_retrieval = self._latest_retrieval_audit(brain)
         signatures = self._memory_signature_map(brain)
         policy["candidate_memory_signatures"] = [
             signatures.get(str(record_id), f"missing:{record_id}")
@@ -410,16 +423,17 @@ class CausalAuditHarness:
             signatures.get(str(record_id), f"missing:{record_id}")
             for record_id in policy["selected_record_ids"]
         ]
-        for id_key, signature_key in (
-            ("direct_memory_ids", "direct_memory_signatures"),
-            ("activated_memory_ids", "activated_memory_signatures"),
-            ("ranked_memory_ids", "ranked_memory_signatures"),
-        ):
-            if id_key in retrieval:
-                retrieval[signature_key] = [
-                    signatures.get(str(record_id), f"missing:{record_id}")
-                    for record_id in retrieval[id_key]
-                ]
+        for retrieval in (policy_retrieval, renderer_retrieval):
+            for id_key, signature_key in (
+                ("direct_memory_ids", "direct_memory_signatures"),
+                ("activated_memory_ids", "activated_memory_signatures"),
+                ("ranked_memory_ids", "ranked_memory_signatures"),
+            ):
+                if id_key in retrieval:
+                    retrieval[signature_key] = [
+                        signatures.get(str(record_id), f"missing:{record_id}")
+                        for record_id in retrieval[id_key]
+                    ]
         after = self._state_snapshot(brain)
         final_state_digest = brain.store.digest()
         final_neural_sha256 = self._neural_sha(brain)
@@ -437,7 +451,9 @@ class CausalAuditHarness:
             "spontaneous_cognition": spontaneous,
             "ingestion": ingestion,
             "policy_decision": policy,
-            "retrieval": retrieval,
+            "retrieval": policy_retrieval,
+            "policy_retrieval": policy_retrieval,
+            "renderer_retrieval": renderer_retrieval,
             "renderer_request": request,
             "renderer_request_sha256": _stable_sha256(request),
             "renderer_request_behavior_sha256": _behavioral_request_sha256(request),
