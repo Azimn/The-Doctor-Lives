@@ -187,6 +187,114 @@ class ReconsolidationTests(unittest.TestCase):
         self.assertEqual(trace.snapshot_digest, original_digest)
         self.assertEqual(len(ledger.history(trace.trace_lineage_id)), 1)
 
+    def test_preconscious_recollection_does_not_reconsolidate(self):
+        trace = self.trace(label="preconscious")
+        candidate = self.reconstruct(trace, episode_id="episode:preconscious")
+        source_decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.source_cues(),
+        )
+        latent = finalize_recollection_event(
+            candidate=candidate,
+            decision=source_decision,
+            context=RecollectionFinalizationContext(
+                tick=61,
+                source_state_digest="sha256:p5:preconscious",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="test",
+                    source="audit",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+            ),
+        )
+        awareness_decision = AwarenessRouter().route(
+            (
+                AwarenessCandidate(
+                    event=latent,
+                    salience=1.0,
+                    change=0.0,
+                    novelty=0.0,
+                    goal_relevance=0.0,
+                    conflict=0.0,
+                    persistence=0.0,
+                    habituation=0.0,
+                ),
+            )
+        )[0]
+        self.assertEqual(
+            awareness_decision.awareness.value,
+            "preconscious",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            awareness_decision=awareness_decision,
+            context=self.eligible_context(),
+        )
+        self.assertFalse(decision.eligible)
+        self.assertIn(
+            "recollection_not_consciously_accessible",
+            decision.reason_codes,
+        )
+
+    def test_matched_reconsolidation_lesion_changes_only_enabled_condition(self):
+        trace = self.trace(label="matched-lesion")
+        candidate, source_decision, awareness_decision = self.final_event(
+            trace,
+            episode_id="episode:matched-lesion",
+        )
+        original_digest = trace.snapshot_digest
+
+        disabled_ledger = TraceVersionLedger()
+        disabled_ledger.register_initial(trace)
+        disabled_decision, disabled_successor = reconsolidate_and_record(
+            ledger=disabled_ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            awareness_decision=awareness_decision,
+            context=self.eligible_context(enabled=False),
+        )
+
+        enabled_ledger = TraceVersionLedger()
+        enabled_ledger.register_initial(trace)
+        enabled_decision, enabled_successor = reconsolidate_and_record(
+            ledger=enabled_ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            awareness_decision=awareness_decision,
+            context=self.eligible_context(enabled=True),
+        )
+
+        self.assertEqual(trace.snapshot_digest, original_digest)
+        self.assertEqual(
+            disabled_decision.candidate_digest,
+            enabled_decision.candidate_digest,
+        )
+        self.assertEqual(
+            disabled_decision.source_decision_fingerprint,
+            enabled_decision.source_decision_fingerprint,
+        )
+        self.assertEqual(
+            disabled_decision.recollection_event_id,
+            enabled_decision.recollection_event_id,
+        )
+        self.assertFalse(disabled_decision.eligible)
+        self.assertIsNone(disabled_successor)
+        self.assertEqual(len(disabled_ledger.history(trace.trace_lineage_id)), 1)
+
+        self.assertTrue(enabled_decision.eligible)
+        self.assertIsNotNone(enabled_successor)
+        assert enabled_successor is not None
+        self.assertEqual(enabled_successor.parent_trace_id, trace.trace_id)
+        self.assertEqual(
+            enabled_successor.protected_evidence,
+            trace.protected_evidence,
+        )
+        self.assertEqual(len(enabled_ledger.history(trace.trace_lineage_id)), 2)
+
     def test_focal_recollection_creates_immutable_successor(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
