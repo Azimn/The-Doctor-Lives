@@ -1911,11 +1911,17 @@ class ReconsolidationTests(unittest.TestCase):
                 emotional_activation=0.55,
                 goal_relevance=0.65,
                 explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
                 temporal_drift_enabled=True,
                 temporal_disorientation=1.0,
                 association_drift_enabled=True,
                 context_mismatch=1.0,
             ),
+        )
+        self.assertEqual(
+            [op.field_name for op in decision.detail_operations],
+            ["accessibility"],
         )
         richer_ops = [
             op for op in decision.detail_operations
