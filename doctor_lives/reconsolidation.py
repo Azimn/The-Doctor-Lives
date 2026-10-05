@@ -120,7 +120,12 @@ class ReconsolidationContext:
 
 @dataclass(frozen=True)
 class ReconsolidationPolicy:
-    """Bounded conservative plasticity policy for initial P6."""
+    """Bounded conservative plasticity policy for initial P6.
+
+    Initial P6 intentionally exposes no switch that can enable blended
+    reconsolidation or consume ungrounded non-neutral content certainty.
+    Those capabilities require a later reviewed schema revision.
+    """
 
     min_reactivation: float = 0.35
     min_prediction_error: float = 0.15
@@ -131,8 +136,6 @@ class ReconsolidationPolicy:
     strength_ceiling: float = 0.95
     accessibility_ceiling: float = 0.98
     familiarity_ceiling: float = 0.98
-    require_neutral_content_certainty: bool = True
-    allow_blended_recollection: bool = False
 
     def __post_init__(self) -> None:
         for name in (
@@ -142,15 +145,18 @@ class ReconsolidationPolicy:
             "max_strength_delta",
             "max_accessibility_delta",
             "max_familiarity_delta",
+        ):
+            object.__setattr__(
+                self,
+                name,
+                _positive_unit(getattr(self, name), name),
+            )
+        for name in (
             "strength_ceiling",
             "accessibility_ceiling",
             "familiarity_ceiling",
         ):
             object.__setattr__(self, name, _unit(getattr(self, name), name))
-        if not isinstance(self.require_neutral_content_certainty, bool):
-            raise TypeError("require_neutral_content_certainty must be bool")
-        if not isinstance(self.allow_blended_recollection, bool):
-            raise TypeError("allow_blended_recollection must be bool")
 
     @property
     def fingerprint(self) -> str:
@@ -205,6 +211,7 @@ class ReconsolidationDecision:
     source_decision_fingerprint: str
     recollection_event_id: str
     recollection_event_lineage_fingerprint: str
+    recollection_awareness: AwarenessLevel
     context: ReconsolidationContext
     context_fingerprint: str
     policy: ReconsolidationPolicy
@@ -310,6 +317,7 @@ def _decision_payload(
         "source_decision_fingerprint": source_decision.decision_fingerprint,
         "recollection_event_id": recollection_event.event_id,
         "recollection_event_lineage_fingerprint": recollection_event.lineage_fingerprint,
+        "recollection_awareness": recollection_event.awareness.value,
         "context": asdict(context),
         "context_fingerprint": context.fingerprint,
         "policy": asdict(policy),
@@ -353,13 +361,11 @@ def evaluate_reconsolidation(
         AwarenessLevel.FOCAL,
     }:
         reasons.append("recollection_not_consciously_accessible")
-    if policy.require_neutral_content_certainty and (
-        recollection_event.subjective_certainty is not CertaintyBand.MODERATE
-    ):
+    if recollection_event.subjective_certainty is not CertaintyBand.MODERATE:
         reasons.append("nonneutral_content_certainty_not_grounded_for_p6")
-    if candidate.blended and not policy.allow_blended_recollection:
+    if candidate.blended:
         reasons.append("blended_recollection_not_enabled")
-    if len(candidate.trace_ids) != 1 and not policy.allow_blended_recollection:
+    if len(candidate.trace_ids) != 1:
         reasons.append("multiple_trace_reconsolidation_not_enabled")
     if context.reactivation_strength < policy.min_reactivation:
         reasons.append("reactivation_below_threshold")
@@ -474,6 +480,7 @@ def evaluate_reconsolidation(
             "recollection_event_lineage_fingerprint",
             recollection_event.lineage_fingerprint,
         ),
+        ("recollection_awareness", recollection_event.awareness),
         ("context", context),
         ("context_fingerprint", context.fingerprint),
         ("policy", policy),
@@ -525,6 +532,8 @@ def _verify_decision_integrity(
         != recollection_event.lineage_fingerprint
     ):
         raise ValueError("reconsolidation decision event lineage mismatch")
+    if decision.recollection_awareness is not recollection_event.awareness:
+        raise ValueError("reconsolidation decision awareness mismatch")
     if decision.context_fingerprint != decision.context.fingerprint:
         raise ValueError("reconsolidation context fingerprint mismatch")
     if decision.policy_fingerprint != decision.policy.fingerprint:
@@ -667,10 +676,16 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
 
 
 class TraceVersionLedger:
-    """Local deterministic version ledger preventing silent trace forks."""
+    """Local deterministic version and transition-audit ledger.
+
+    The ledger is the isolated P6 authority for monotonic versions. Every
+    successor is stored with the complete canonical ReconsolidationDecision
+    audit payload that caused it.
+    """
 
     def __init__(self) -> None:
         self._history: dict[str, list[MemoryTrace]] = {}
+        self._decision_audit: dict[str, str] = {}
 
     def register_initial(self, trace: MemoryTrace) -> None:
         if not isinstance(trace, MemoryTrace):
@@ -687,14 +702,18 @@ class TraceVersionLedger:
             raise ValueError("trace lineage is already registered")
         self._history[trace.trace_lineage_id] = [trace]
 
-    def append_successor(
+    def _append_verified(
         self,
         *,
         parent: MemoryTrace,
         successor: MemoryTrace,
+        decision_json: str,
     ) -> None:
         if not isinstance(parent, MemoryTrace) or not isinstance(successor, MemoryTrace):
             raise TypeError("parent and successor must be MemoryTrace")
+        if not isinstance(decision_json, str) or not decision_json.strip():
+            raise ValueError("decision audit JSON is required")
+        audit = json.loads(decision_json)
         history = self._history.get(parent.trace_lineage_id)
         if not history:
             raise ValueError("parent trace lineage is not registered")
@@ -715,7 +734,46 @@ class TraceVersionLedger:
             raise ValueError("successor requires recollection event lineage")
         if any(item.version == successor.version for item in history):
             raise ValueError("duplicate trace version rejected")
+        if str(audit.get("decision_fingerprint") or "") != (
+            successor.reconsolidation_decision_fingerprint
+        ):
+            raise ValueError("decision audit fingerprint does not match successor")
+        if str(audit.get("old_trace_id") or "") != parent.trace_id:
+            raise ValueError("decision audit parent trace mismatch")
+        if str(audit.get("old_trace_digest") or "") != parent.snapshot_digest:
+            raise ValueError("decision audit parent digest mismatch")
+        if str(audit.get("trace_lineage_id") or "") != parent.trace_lineage_id:
+            raise ValueError("decision audit lineage mismatch")
+        if int(audit.get("old_version", -1)) != parent.version:
+            raise ValueError("decision audit parent version mismatch")
+        if not bool(audit.get("eligible")):
+            raise ValueError("ineligible decision cannot produce a successor")
+        if successor.trace_id in self._decision_audit:
+            raise ValueError("successor transition audit already exists")
+
         history.append(successor)
+        self._decision_audit[successor.trace_id] = _stable_json(audit)
+
+    def append_successor(
+        self,
+        *,
+        parent: MemoryTrace,
+        successor: MemoryTrace,
+        decision: ReconsolidationDecision,
+    ) -> None:
+        if not isinstance(decision, ReconsolidationDecision):
+            raise TypeError("decision must be ReconsolidationDecision")
+        if decision.old_trace_id != parent.trace_id:
+            raise ValueError("decision does not belong to parent trace")
+        if decision.old_trace_digest != parent.snapshot_digest:
+            raise ValueError("decision parent digest mismatch")
+        if decision.decision_fingerprint != successor.reconsolidation_decision_fingerprint:
+            raise ValueError("decision fingerprint does not match successor")
+        self._append_verified(
+            parent=parent,
+            successor=successor,
+            decision_json=decision.stable_json(),
+        )
 
     def history(self, trace_lineage_id: str) -> tuple[MemoryTrace, ...]:
         if trace_lineage_id not in self._history:
@@ -725,16 +783,29 @@ class TraceVersionLedger:
     def latest(self, trace_lineage_id: str) -> MemoryTrace:
         return self.history(trace_lineage_id)[-1]
 
+    def decision_audit(self, successor_trace_id: str) -> dict[str, Any]:
+        if successor_trace_id not in self._decision_audit:
+            raise KeyError(successor_trace_id)
+        return json.loads(self._decision_audit[successor_trace_id])
+
     def stable_json(self) -> str:
         traces = [
             asdict(trace)
             for lineage in sorted(self._history)
             for trace in self._history[lineage]
         ]
+        transitions = [
+            {
+                "successor_trace_id": successor_trace_id,
+                "decision": json.loads(self._decision_audit[successor_trace_id]),
+            }
+            for successor_trace_id in sorted(self._decision_audit)
+        ]
         return _stable_json(
             {
                 "schema_version": _LEDGER_SCHEMA_VERSION,
                 "traces": traces,
+                "transitions": transitions,
             }
         )
 
@@ -745,20 +816,40 @@ class TraceVersionLedger:
         decoded = json.loads(payload)
         if decoded.get("schema_version") != _LEDGER_SCHEMA_VERSION:
             raise ValueError("unsupported trace ledger schema version")
+
+        transition_by_successor = {
+            str(item["successor_trace_id"]): _stable_json(item["decision"])
+            for item in decoded.get("transitions", [])
+        }
+        if len(transition_by_successor) != len(decoded.get("transitions", [])):
+            raise ValueError("duplicate successor transition audit")
+
         ledger = cls()
         for raw in decoded.get("traces", []):
             trace = _memory_trace_from_dict(raw)
             if trace.version == 0:
                 ledger.register_initial(trace)
-            else:
-                history = ledger._history.get(trace.trace_lineage_id)
-                if not history:
-                    raise ValueError("successor encountered before initial trace")
-                ledger.append_successor(parent=history[-1], successor=trace)
+                continue
+            history = ledger._history.get(trace.trace_lineage_id)
+            if not history:
+                raise ValueError("successor encountered before initial trace")
+            decision_json = transition_by_successor.pop(trace.trace_id, None)
+            if decision_json is None:
+                raise ValueError("successor is missing reconsolidation decision audit")
+            ledger._append_verified(
+                parent=history[-1],
+                successor=trace,
+                decision_json=decision_json,
+            )
+        if transition_by_successor:
+            raise ValueError("transition audit references unknown successor trace")
         return ledger
 
     def save(self, path: str | Path) -> None:
-        Path(path).write_text(self.stable_json(), encoding="utf-8")
+        target = Path(path)
+        temporary = target.with_name(target.name + ".tmp")
+        temporary.write_text(self.stable_json(), encoding="utf-8")
+        temporary.replace(target)
 
     @classmethod
     def load(cls, path: str | Path) -> "TraceVersionLedger":
@@ -795,5 +886,9 @@ def reconsolidate_and_record(
         decision=decision,
     )
     if successor is not None:
-        ledger.append_successor(parent=old_trace, successor=successor)
+        ledger.append_successor(
+            parent=old_trace,
+            successor=successor,
+            decision=decision,
+        )
     return decision, successor
