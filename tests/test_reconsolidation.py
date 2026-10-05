@@ -1682,6 +1682,7 @@ class ReconsolidationTests(unittest.TestCase):
             notebook_state.accessibility,
             policy.detail_accessibility_floor,
         )
+        self.assertEqual(notebook_state.availability_state.value, "suppressed")
         self.assertEqual(current.version, 100)
         self.assertEqual(len(ledger.history(current.trace_lineage_id)), 101)
         self.assertIsNotNone(first_loss)
