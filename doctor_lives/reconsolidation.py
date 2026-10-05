@@ -87,6 +87,21 @@ def _optional_nonblank(value: str | None, name: str) -> str | None:
     return value
 
 
+def _json_int(value: Any, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"persisted {name} must be an integer")
+    return value
+
+
+def _json_number(value: Any, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"persisted {name} must be numeric")
+    normalized = float(value)
+    if not math.isfinite(normalized):
+        raise ValueError(f"persisted {name} must be finite")
+    return normalized
+
+
 @dataclass(frozen=True)
 class ReconsolidationContext:
     """Engineer-visible reactivation context for one possible trace update."""
@@ -659,22 +674,38 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
         )
         for item in data.get("details", ())
     )
+    subject_id = data.get("subject_id")
+    gist = data.get("gist")
+    if not isinstance(subject_id, str) or not subject_id.strip():
+        raise ValueError("persisted subject_id must be a non-blank string")
+    if not isinstance(gist, str) or not gist.strip():
+        raise ValueError("persisted gist must be a non-blank string")
+
     trace = MemoryTrace(
-        subject_id=str(data["subject_id"]),
-        version=int(data["version"]),
+        subject_id=subject_id,
+        version=_json_int(data.get("version"), "version"),
         protected_evidence=protected,
-        gist=str(data["gist"]),
+        gist=gist,
         details=details,
         temporal_cues=tuple(data.get("temporal_cues", ())),
         actor_refs=tuple(data.get("actor_refs", ())),
         object_refs=tuple(data.get("object_refs", ())),
         encoding_affect=tuple(data.get("encoding_affect", ())),
         source_cues=tuple(data.get("source_cues", ())),
-        strength=float(data.get("strength", 0.5)),
-        accessibility=float(data.get("accessibility", 0.5)),
-        familiarity=float(data.get("familiarity", 0.5)),
-        rehearsal_count=int(data.get("rehearsal_count", 0)),
-        retrieval_count=int(data.get("retrieval_count", 0)),
+        strength=_json_number(data.get("strength", 0.5), "strength"),
+        accessibility=_json_number(
+            data.get("accessibility", 0.5),
+            "accessibility",
+        ),
+        familiarity=_json_number(data.get("familiarity", 0.5), "familiarity"),
+        rehearsal_count=_json_int(
+            data.get("rehearsal_count", 0),
+            "rehearsal_count",
+        ),
+        retrieval_count=_json_int(
+            data.get("retrieval_count", 0),
+            "retrieval_count",
+        ),
         competing_trace_ids=tuple(data.get("competing_trace_ids", ())),
         parent_trace_id=_optional_nonblank(data.get("parent_trace_id"), "parent_trace_id"),
         reconsolidation_decision_fingerprint=_optional_nonblank(
@@ -688,9 +719,13 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
     )
     stored_trace_id = data.get("trace_id")
     stored_lineage_id = data.get("trace_lineage_id")
-    if stored_trace_id is not None and str(stored_trace_id) != trace.trace_id:
+    if not isinstance(stored_trace_id, str) or not stored_trace_id.strip():
+        raise ValueError("persisted trace_id is required")
+    if not isinstance(stored_lineage_id, str) or not stored_lineage_id.strip():
+        raise ValueError("persisted trace_lineage_id is required")
+    if stored_trace_id != trace.trace_id:
         raise ValueError("persisted trace_id does not match reconstructed snapshot")
-    if stored_lineage_id is not None and str(stored_lineage_id) != trace.trace_lineage_id:
+    if stored_lineage_id != trace.trace_lineage_id:
         raise ValueError(
             "persisted trace_lineage_id does not match reconstructed lineage"
         )
