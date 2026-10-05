@@ -112,6 +112,7 @@ class ReconsolidationTests(unittest.TestCase):
         cues: SourceMonitoringCues | None = None,
         content_certainty: CertaintyBand = CertaintyBand.MODERATE,
         focal: bool = True,
+        evidence_class: str = "lived_runtime_memory",
     ):
         candidate = self.reconstruct(trace, episode_id=episode_id)
         decision = monitor_recollection_source(
@@ -125,7 +126,7 @@ class ReconsolidationTests(unittest.TestCase):
                 tick=60 + trace.version,
                 source_state_digest=f"sha256:p5:{trace.version}",
                 objective_provenance=ObjectiveProvenance(
-                    evidence_class="lived_runtime_memory",
+                    evidence_class=evidence_class,
                     source="world",
                     record_ids=candidate.protected_evidence_refs,
                 ),
@@ -344,8 +345,17 @@ class ReconsolidationTests(unittest.TestCase):
             trace,
             episode_id="episode:misattributed",
             cues=self.source_cues(),
+            evidence_class="reconstructed_preawakening_memory",
         )
         self.assertIs(source_decision.selected_source, SubjectiveSourceKind.LIVED)
+        self.assertEqual(
+            event.event.objective_provenance.evidence_class,
+            "reconstructed_preawakening_memory",
+        )
+        self.assertNotEqual(
+            event.event.objective_provenance.evidence_class,
+            source_decision.selected_source.value,
+        )
         original_digest = trace.snapshot_digest
 
         decision, successor = reconsolidate_and_record(
