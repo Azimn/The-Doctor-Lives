@@ -244,7 +244,15 @@ class CausalAuditHarness:
             if "deep_history" in disabled:
                 conn.execute(
                     """UPDATE memories SET active=0
-                    WHERE id IN (SELECT memory_id FROM memory_provenance)"""
+                    WHERE id IN (SELECT memory_id FROM memory_provenance)
+                       OR id IN (
+                           SELECT memory_id FROM memory_classifications
+                           WHERE autobiographical_class IN (
+                               'canonical_preawakening_memory',
+                               'reconstructed_preawakening_memory',
+                               'synthesized_preawakening_memory'
+                           )
+                       )"""
                 )
                 db_mutated = True
             if "needs" in disabled:
