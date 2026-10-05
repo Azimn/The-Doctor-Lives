@@ -620,7 +620,8 @@ class PretoriusBrain:
             if item.get("actor") and self._tokens(str(item["actor"])) & decision_tokens:
                 add("commitments", "cooperate", 0.018 * importance)
 
-        for score, row in ranked[:8]:
+        history_sources = 0
+        for score, row in ranked:
             autobiographical_class = row.get("autobiographical_class")
             if autobiographical_class is None or bool(row.get("external")):
                 continue
@@ -629,6 +630,12 @@ class PretoriusBrain:
             }
             if not decision_tokens or not (tokens & decision_tokens):
                 continue
+            # Cap eligible relevant autobiographical evidence, not the raw ranked
+            # list. Otherwise highly salient design material can crowd every
+            # autobiographical record out before the history gate sees it.
+            if history_sources >= 8:
+                break
+            history_sources += 1
             source_ids["history"].append(str(row["id"]))
             weight = min(1.0, max(0.0, float(score)) / 2.0)
             for action in ACTIONS:
