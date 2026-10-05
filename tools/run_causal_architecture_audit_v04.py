@@ -163,9 +163,13 @@ def main() -> int:
         harness = CausalAuditHarness(seed, root / "conditions")
         p = probes()
 
-        pairs = {}
+        pairs = {
+            "deep_history": harness.run_existing_state_pair(
+                p["deep_history"],
+                AuditIntervention("deep_history", ("deep_history",)),
+            )
+        }
         for mechanism in (
-            "deep_history",
             "needs",
             "relationships",
             "commitments",
