@@ -761,6 +761,32 @@ class ReconsolidationTests(unittest.TestCase):
         self.assertTrue(audit["eligible"])
         self.assertTrue(audit["operations"])
 
+    def test_persisted_transition_audit_corruption_fails_closed(self):
+        trace = self.trace(label="audit-corruption")
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:audit-corruption",
+        )
+        _, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        assert successor is not None
+
+        import json
+        payload = json.loads(ledger.stable_json())
+        payload["transitions"][0]["decision"]["operations"][0]["new_value"] += 0.01
+        corrupted = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(corrupted)
+
     def test_repeated_recall_is_bounded_and_asymptotic(self):
         current = self.trace(
             label="long-run",
