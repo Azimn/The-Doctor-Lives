@@ -675,6 +675,21 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
     return trace
 
 
+def _verify_serialized_decision_audit(audit: dict[str, Any]) -> None:
+    if not isinstance(audit, dict):
+        raise TypeError("decision audit must be an object")
+    fingerprint = audit.get("decision_fingerprint")
+    if not isinstance(fingerprint, str) or not fingerprint.strip():
+        raise ValueError("decision audit fingerprint is required")
+    payload = dict(audit)
+    payload.pop("decision_fingerprint", None)
+    expected = "reconsolidation_" + _stable_sha256(payload)[:24]
+    if fingerprint != expected:
+        raise ValueError("persisted reconsolidation decision audit is corrupt")
+    if audit.get("eligible") is not True:
+        raise ValueError("ineligible decision cannot produce a successor")
+
+
 class TraceVersionLedger:
     """Local deterministic version and transition-audit ledger.
 
@@ -714,6 +729,7 @@ class TraceVersionLedger:
         if not isinstance(decision_json, str) or not decision_json.strip():
             raise ValueError("decision audit JSON is required")
         audit = json.loads(decision_json)
+        _verify_serialized_decision_audit(audit)
         history = self._history.get(parent.trace_lineage_id)
         if not history:
             raise ValueError("parent trace lineage is not registered")
@@ -746,8 +762,6 @@ class TraceVersionLedger:
             raise ValueError("decision audit lineage mismatch")
         if int(audit.get("old_version", -1)) != parent.version:
             raise ValueError("decision audit parent version mismatch")
-        if not bool(audit.get("eligible")):
-            raise ValueError("ineligible decision cannot produce a successor")
         if successor.trace_id in self._decision_audit:
             raise ValueError("successor transition audit already exists")
 
