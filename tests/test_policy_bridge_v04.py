@@ -188,19 +188,22 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
             admitted.append(result["memory_id"])
         self.neutralize(brain)
         query = "archive stress authority coercion control"
-        direct_ranked, ranked = brain._ranked_memory_sets(48, query=query, audit=True)
-        direct_ids = {row["id"] for _, row in direct_ranked}
+        decision = brain.think("history_retrieval_stress", decision_text=query)
+        with brain.store.connect() as conn:
+            row = conn.execute(
+                "SELECT direct_memory_ids_json FROM retrieval_audits ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+        direct_ids = set(json.loads(row["direct_memory_ids_json"]))
         excluded = [memory_id for memory_id in admitted if memory_id not in direct_ids]
-        self.assertEqual(len(direct_ranked), 48)
-        self.assertTrue(excluded, "stress fixture must contain relevant autobiographical records beyond the retrieval limit")
-
-        _, _, audit = brain._state_policy_scores(
-            ranked,
-            decision_text=query,
-            direct_history_ranked=direct_ranked,
+        self.assertEqual(len(direct_ids), 48)
+        self.assertTrue(
+            excluded,
+            "stress fixture must contain relevant autobiographical records beyond the retrieval limit",
         )
+
+        audit = decision["state_pressure"]
+        self.assertEqual(set(audit["history_retrieval_ids"]), direct_ids)
         self.assertTrue(set(audit["source_ids"]["history"]).issubset(direct_ids))
-        self.assertTrue(set(audit["history_retrieval_ids"]).issubset(direct_ids))
         self.assertTrue(set(excluded).isdisjoint(set(audit["source_ids"]["history"])))
 
     def test_spreading_activation_is_excluded_from_history_policy_pressure(self):
