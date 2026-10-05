@@ -535,34 +535,66 @@ Acceptance:
 
 ### P5 - source monitoring
 
-Source monitoring is a distinct mechanism downstream of P4, not random error injected by the recollection constructor.
+Source monitoring is a distinct deterministic mechanism downstream of P4, not random error injected by the recollection constructor.
 
-P5 consumes a completed P4 `RecollectionCandidate` plus psychologically plausible source cues. It must not receive or branch directly on protected objective provenance labels such as `reconstructed_preawakening_memory` merely to decide whether to "lie." Protected truth remains available to audit and experimental scoring, not to the subjective source monitor.
+The supported P5 graph is:
 
-Source-monitoring inputs may include trace quality, temporal distance, competing traces, retrieval/rehearsal history, imagination or reconstruction exposure, source similarity, cue compatibility, contextual fit, perceptual richness, familiarity, and other subject-plausible cues.
+verified RecollectionCandidate + SourceMonitoringCues -> SourceMonitoringDecision -> canonical recollection PhenomenalEvent -> P3 awareness arbitration
 
-P5 produces subjective source attribution and source confidence, then constructs the first canonical recollection `PhenomenalEvent`. That event references the P4 retrieval/reconstruction lineage in `source_event_refs` or equivalent lineage fields.
+`SourceMonitoringCues` is the privilege boundary for subjective source inference. It may contain only psychologically plausible evidence such as retrieval fluency, perceptual richness, temporal/spatial coherence, contextual compatibility, familiarity, trace accessibility, rehearsal frequency, imagination/reconstruction exposure, competing-source strength, cue match, social-communication signature, textual signature, inferential signature, and dreamlike discontinuity.
 
-Because subjective source attribution participates in phenomenal identity, P4 candidates are not themselves canonical PhenomenalEvents. P5 finalization creates the phenomenal occurrence exactly once rather than silently mutating event identity after construction.
+It must not contain:
+- ProtectedEvidenceRef values;
+- objective evidence classifications;
+- evidence digests;
+- trace IDs or database IDs;
+- archival/canonical/reconstructed status;
+- any field equivalent to "this is actually reconstructed."
 
-The final path is therefore:
+The source-scoring function receives only `SourceMonitoringCues`. A P4 candidate ID is bound into the audit decision identity, but candidate content, candidate vividness, candidate content confidence, protected evidence, and trace lineage do not enter the source-score calculation.
 
-protected evidence -> memory trace -> retrieval episode -> RecollectionCandidate -> source monitoring -> canonical recollection PhenomenalEvent -> P3 awareness arbitration
+The no-evidence default is epistemically neutral: an empty/default cue set must yield `UNKNOWN`, not silently bias toward `LIVED`.
+
+`SourceMonitoringDecision` is immutable, audit-visible, and factory-controlled. It records:
+- exact candidate ID;
+- cue fingerprint;
+- source-monitor rule version;
+- deterministic per-source evidence contributions;
+- selected SubjectiveSourceKind;
+- certainty band;
+- deterministic decision fingerprint.
+
+P5 initially uses deterministic weighted evidence rather than stochastic false-memory rates. If stochasticity is ever introduced later, its seed/state must become part of the decision identity.
+
+The finalization stage receives the verified P4 candidate, the matching SourceMonitoringDecision, and a separate engineer-only `RecollectionFinalizationContext`. Objective provenance is available only at this finalization/audit layer and is not passed into the source-monitor scoring mechanism.
+
+Finalization must:
+- reject a decision bound to a different candidate;
+- require objective provenance record IDs to match the candidate's protected-evidence references;
+- preserve the P4 reconstructed scene unchanged across matched source-monitor conditions;
+- create source-neutral first-person recollection text so changing attribution does not confound reconstructed content;
+- create the first canonical `PhenomenalEvent` with subjective source attribution and certainty;
+- begin that event at `LATENT` awareness so P3 remains the only awareness-arbitration gate;
+- retain candidate ID, source-monitor decision fingerprint, and retrieval-episode fingerprint in engineer-visible lineage.
 
 P5 must support:
-- correct attribution;
-- uncertainty;
-- misattribution;
-- matched negative controls where reconstruction awareness remains correct.
+- correct attribution under strong source-consistent cues;
+- genuine uncertainty under weak/ambiguous/competing cues;
+- deterministic misattribution under identifiable misleading cues;
+- matched negative controls where good cues preserve correct attribution.
 
 Every error must have a causal explanation available to engineering/audit even when the character cannot access that explanation.
 
 Acceptance:
-- subjective attribution can be correct, uncertain, or wrong;
 - objective provenance never changes because of source attribution;
-- identical candidate + identical source-monitoring evidence reproduces the same result;
-- changed source-monitoring evidence can change attribution while recollection content remains fixed;
-- source-monitoring error is reproducibly attributable to explicit mechanism state;
+- source-monitor scoring cannot inspect privileged objective provenance;
+- identical candidate ID + identical cues reproduces exactly;
+- the same P4 candidate can produce different source attributions when only SourceMonitoringCues change;
+- different P4 candidates with identical SourceMonitoringCues produce identical source scores and selected source, while retaining distinct audit decision fingerprints;
+- content confidence does not automatically become source confidence;
+- vividness is not treated as a synonym for livedness;
+- default/no-evidence cues yield UNKNOWN;
+- final canonical recollection content remains fixed across matched source-attribution conditions;
 - final recollection enters P3 only after P5 finalization.
 
 ### P6 - reconsolidation
