@@ -5,7 +5,12 @@ import unittest
 from pathlib import Path
 
 from doctor_lives import Experience, PretoriusBrain
-from doctor_lives.causal_audit import AuditIntervention, CausalAuditHarness
+from doctor_lives.causal_audit import (
+    AuditIntervention,
+    CausalAuditHarness,
+    cross_version_row,
+    experiment_fingerprint,
+)
 from doctor_lives.history import install_deep_history
 from doctor_lives.neural import DEFAULT_CONFIG
 
@@ -170,6 +175,40 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertEqual(result["lesion"]["retrieval"]["activated_memory_ids"], [])
         self.assertAlmostEqual(result["comparison"]["action_score_l1"], 0.0, places=12)
         self.assertFalse(result["comparison"]["selected_action_diverged"])
+
+    def test_causal_experiment_fingerprint_changes_with_probe_or_method(self):
+        probe_a = Experience("The homunculi creation invites another experiment.")
+        probe_b = Experience("Henry invokes authority over the procedure.")
+        a = experiment_fingerprint("deep_history", probe_a, "run_existing_state_pair:v1")
+        b = experiment_fingerprint("deep_history", probe_b, "run_existing_state_pair:v1")
+        c = experiment_fingerprint("deep_history", probe_a, "run_pair:v1")
+        self.assertNotEqual(a, b)
+        self.assertNotEqual(a, c)
+
+    def test_cross_version_comparison_fails_closed_on_identity_mismatch(self):
+        current = {
+            "mechanism": "deep_history",
+            "experiment_fingerprint": "new-fingerprint",
+            "action_score_l1": .1,
+            "selected_action_diverged": False,
+            "renderer_request_changed": True,
+        }
+        prior = {
+            "comparable": True,
+            "experiment_fingerprint": "old-fingerprint",
+            "action_score_l1": 0.0,
+            "selected_action_diverged": False,
+        }
+        with self.assertRaises(RuntimeError):
+            cross_version_row(prior, current)
+
+        prior_without_fingerprint = {
+            "action_score_l1": 0.0,
+            "selected_action_diverged": False,
+        }
+        historical = cross_version_row(prior_without_fingerprint, current)
+        self.assertFalse(historical["comparable"])
+        self.assertEqual(historical["v03_historical_action_score_l1"], 0.0)
 
     def test_bridge_lesion_restores_recurrent_only_path(self):
         harness = self.make_harness()
