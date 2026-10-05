@@ -47,6 +47,43 @@ class AuditIntervention:
             raise ValueError("audit intervention name is required")
 
 
+def experiment_fingerprint(mechanism: str, stimulus: Experience, method: str) -> str:
+    """Bind a causal result to its mechanism, exact probe, and measurement method."""
+    payload = {
+        "mechanism": mechanism,
+        "method": method,
+        "stimulus": asdict(stimulus),
+    }
+    return _stable_sha256(payload)
+
+
+def cross_version_row(prior: dict[str, Any] | None, current: dict[str, Any]) -> dict[str, Any]:
+    """Construct a fail-closed cross-version comparison row."""
+    prior_fp = None if prior is None else prior.get("experiment_fingerprint")
+    current_fp = current["experiment_fingerprint"]
+    if prior is not None and bool(prior.get("comparable")) and prior_fp != current_fp:
+        raise RuntimeError(
+            f"cross-version row {current['mechanism']!r} is marked comparable but experiment fingerprints differ"
+        )
+    comparable = bool(prior_fp) and prior_fp == current_fp
+    return {
+        "mechanism": current["mechanism"],
+        "comparable": comparable,
+        "comparison_reason": (
+            "matching experiment fingerprints"
+            if comparable
+            else "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only"
+        ),
+        "v03_experiment_fingerprint": prior_fp,
+        "v04_experiment_fingerprint": current_fp,
+        "v03_historical_action_score_l1": None if prior is None else prior.get("action_score_l1"),
+        "v04_action_score_l1": current["action_score_l1"],
+        "v03_historical_selected_action_diverged": None if prior is None else prior.get("selected_action_diverged"),
+        "v04_selected_action_diverged": current["selected_action_diverged"],
+        "v04_renderer_request_changed": current["renderer_request_changed"],
+    }
+
+
 def _stable_sha256(value: Any) -> str:
     payload = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
