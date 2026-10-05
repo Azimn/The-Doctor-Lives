@@ -517,7 +517,7 @@ def reconstruct_recollection(
     operations = ["retrieve_gist"]
     if included:
         operations.append("retrieve_details")
-    if omitted_ids:
+    if omitted_detail_refs:
         operations.append("omit_details")
     if len(ordered) > 1:
         operations.append("blend_traces")
