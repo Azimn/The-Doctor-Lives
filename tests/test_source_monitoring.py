@@ -610,6 +610,33 @@ class SourceMonitoringTests(unittest.TestCase):
                 context=collapsed_context,
             )
 
+    def test_finalization_rejects_corrupted_source_decision_fingerprint(self):
+        candidate = self.candidate()
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.read_cues(),
+        )
+        object.__setattr__(
+            decision,
+            "selected_source",
+            SubjectiveSourceKind.LIVED,
+        )
+        context = RecollectionFinalizationContext(
+            tick=41,
+            source_state_digest="sha256:p5-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="test",
+                source="audit",
+                record_ids=candidate.protected_evidence_refs,
+            ),
+        )
+        with self.assertRaises(ValueError):
+            finalize_recollection_event(
+                candidate=candidate,
+                decision=decision,
+                context=context,
+            )
+
     def test_finalization_requires_canonical_protected_evidence_order(self):
         trace = MemoryTrace(
             subject_id="subject-source-monitor",
