@@ -628,7 +628,8 @@ P6 consumes the complete upstream causal chain:
 - explicit ReconsolidationContext and bounded ReconsolidationPolicy.
 
 Initial P6 eligibility is deliberately conservative:
-- the canonical P6 boundary accepts the P3 AwarenessDecision object, not a bare PhenomenalEvent carrying an awareness label;
+- the canonical P6 boundary accepts the factory-controlled P3 AwarenessDecision produced by AwarenessRouter.route(), not a bare PhenomenalEvent carrying an awareness label;
+- direct fabrication of an AwarenessDecision through the supported public constructor is rejected;
 - the P3 decision must be CONSCIOUS or FOCAL; LATENT/PRECONSCIOUS access cannot rewrite memory;
 - reactivation must exceed a minimum threshold;
 - at least one destabilizing/rehearsal signal must be present: prediction error, sufficient emotional activation, or explicit rehearsal;
@@ -670,7 +671,9 @@ TraceVersionLedger is the P6 version and transition-audit authority for the isol
 - persist the complete canonical ReconsolidationDecision audit record for every successor;
 - verify the persisted decision fingerprint and parent/lineage/event binding on append and load;
 - verify the successor's changed fields exactly match the audited ReconsolidationOperations and that blocked structural fields remain identical to the parent;
-- support deterministic serialization and local atomic save/load restart continuity.
+- support deterministic serialization and local atomic save/load restart continuity;
+- reject persisted traces missing canonical trace_id or trace_lineage_id;
+- reject noncanonical persisted numeric types rather than silently coercing booleans/strings into valid trace state.
 
 Update families must be bounded by per-recall delta caps and absolute ceilings. Repeated identical recall should approach the configured ceiling asymptotically rather than explode.
 
@@ -678,7 +681,8 @@ P6 acceptance:
 - old trace snapshot digest is identical before and after reconsolidation;
 - protected archive/provenance is immutable;
 - a bare PhenomenalEvent cannot substitute for a P3 AwarenessDecision at the canonical P6 boundary;
-- a LATENT P3 AwarenessDecision produces no successor;
+- a canonical P3 AwarenessDecision cannot be fabricated directly outside AwarenessRouter.route();
+- LATENT and PRECONSCIOUS P3 AwarenessDecisions produce no successor;
 - a P5 source misattribution with reconsolidation disabled produces no successor;
 - eligible conscious/focal reactivation creates exactly one immutable successor snapshot;
 - every changed psychological field has an explicit ReconsolidationOperation;
@@ -687,6 +691,7 @@ P6 acceptance:
 - repeated recall remains bounded over a 100-cycle stress test;
 - ledger rejects silent forks and non-monotonic versioning;
 - ledger survives save/load with identical trace IDs, lineage, versions, ancestry, and transition-decision audit records;
+- persisted trace identity fields are mandatory and persisted numeric types are validated without coercion;
 - tampering with a persisted transition decision fails closed on reload;
 - a manually constructed successor whose state is not exactly described by the verified P6 decision is rejected by the ledger;
 - a matched lesion experiment holds the complete P4/P5/phenomenal input chain fixed and shows no trace change when P6 is disabled and a successor only when enabled;
