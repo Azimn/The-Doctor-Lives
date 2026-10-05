@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from .phenomenology import (
@@ -138,11 +138,17 @@ class SourceMonitoringDecision:
     """Immutable engineer-visible result of the restricted source monitor."""
 
     candidate_id: str
+    candidate_digest: str
+    cues: SourceMonitoringCues
     cues_fingerprint: str
     rule_version: str
     contributions: tuple[SourceEvidenceContribution, ...]
     selected_source: SubjectiveSourceKind
     certainty: CertaintyBand
+    top_score: float
+    runner_up_score: float
+    margin: float
+    decision_basis: tuple[str, ...]
     decision_fingerprint: str
 
     def __init__(self, *, _factory_token: object = None) -> None:
@@ -290,14 +296,19 @@ def _certainty_for(top_score: float, margin: float) -> CertaintyBand:
 
 def monitor_recollection_source(
     *,
-    candidate_id: str,
+    candidate: RecollectionCandidate,
     cues: SourceMonitoringCues,
     rule_version: str = _SOURCE_MONITOR_RULE_VERSION,
 ) -> SourceMonitoringDecision:
-    """Infer subjective source using only restricted source-monitoring cues."""
+    """Infer subjective source using only restricted source-monitoring cues.
 
-    if not isinstance(candidate_id, str) or not candidate_id.strip():
-        raise ValueError("candidate_id is required")
+    The canonical P5 boundary accepts the verified P4 candidate itself rather
+    than a caller-supplied identifier. Source scoring still receives only the
+    restricted cue object and never objective provenance.
+    """
+
+    if not isinstance(candidate, RecollectionCandidate):
+        raise TypeError("candidate must be RecollectionCandidate")
     if not isinstance(cues, SourceMonitoringCues):
         raise TypeError("cues must be SourceMonitoringCues")
     if not isinstance(rule_version, str) or not rule_version.strip():
@@ -310,46 +321,59 @@ def monitor_recollection_source(
         reverse=True,
     )
     top_source, top_score = ordered[0]
-    second_score = ordered[1][1]
-    margin = top_score - second_score
+    runner_up_score = ordered[1][1]
+    margin = top_score - runner_up_score
 
-    ambiguous = (
-        top_score < 0.42
-        or margin < 0.07
-        or (
-            cues.competing_source_strength >= 0.75
-            and margin < 0.18
-        )
-    )
-    if ambiguous:
+    decision_basis: list[str] = []
+    if top_score < 0.42:
+        decision_basis.append("top_score_below_attribution_threshold")
+    if margin < 0.07:
+        decision_basis.append("winner_margin_below_attribution_threshold")
+    if cues.competing_source_strength >= 0.75 and margin < 0.18:
+        decision_basis.append("strong_competing_source")
+
+    if decision_basis:
         selected = SubjectiveSourceKind.UNKNOWN
         certainty = CertaintyBand.LOW
     else:
         selected = top_source
         certainty = _certainty_for(top_score, margin)
+        decision_basis.append("clear_highest_supported_source")
 
     contributions = tuple(
         SourceEvidenceContribution(source_kind=kind, score=score)
         for kind, score in ordered
     )
     payload = {
-        "candidate_id": candidate_id,
+        "candidate_id": candidate.candidate_id,
+        "candidate_digest": candidate.candidate_digest,
+        "cues": asdict(cues),
         "cues_fingerprint": cues.fingerprint,
         "rule_version": rule_version,
         "contributions": [asdict(item) for item in contributions],
         "selected_source": selected.value,
         "certainty": certainty.value,
+        "top_score": top_score,
+        "runner_up_score": runner_up_score,
+        "margin": margin,
+        "decision_basis": decision_basis,
     }
 
     decision = SourceMonitoringDecision(
         _factory_token=_SOURCE_MONITORING_DECISION_FACTORY_TOKEN
     )
-    object.__setattr__(decision, "candidate_id", candidate_id)
+    object.__setattr__(decision, "candidate_id", candidate.candidate_id)
+    object.__setattr__(decision, "candidate_digest", candidate.candidate_digest)
+    object.__setattr__(decision, "cues", cues)
     object.__setattr__(decision, "cues_fingerprint", cues.fingerprint)
     object.__setattr__(decision, "rule_version", rule_version)
     object.__setattr__(decision, "contributions", contributions)
     object.__setattr__(decision, "selected_source", selected)
     object.__setattr__(decision, "certainty", certainty)
+    object.__setattr__(decision, "top_score", top_score)
+    object.__setattr__(decision, "runner_up_score", runner_up_score)
+    object.__setattr__(decision, "margin", margin)
+    object.__setattr__(decision, "decision_basis", tuple(decision_basis))
     object.__setattr__(
         decision,
         "decision_fingerprint",
@@ -381,12 +405,16 @@ def finalize_recollection_event(
         raise TypeError("context must be RecollectionFinalizationContext")
     if decision.candidate_id != candidate.candidate_id:
         raise ValueError("source-monitoring decision does not belong to candidate")
+    if decision.candidate_digest != candidate.candidate_digest:
+        raise ValueError("source-monitoring decision candidate digest mismatch")
+    if decision.cues_fingerprint != decision.cues.fingerprint:
+        raise ValueError("source-monitoring decision cue fingerprint mismatch")
 
     provenance_ids = tuple(context.objective_provenance.record_ids)
-    if set(provenance_ids) != set(candidate.protected_evidence_refs):
+    if provenance_ids != candidate.protected_evidence_refs:
         raise ValueError(
             "objective provenance record_ids must exactly match "
-            "candidate protected_evidence_refs"
+            "candidate protected_evidence_refs in canonical order"
         )
 
     text = _source_neutral_first_person(candidate.reconstructed_scene)
@@ -410,6 +438,7 @@ def finalize_recollection_event(
         source_state_refs=candidate.trace_ids,
         source_event_refs=(
             candidate.candidate_id,
+            candidate.candidate_digest,
             decision.decision_fingerprint,
             candidate.retrieval_episode_fingerprint,
         ),
