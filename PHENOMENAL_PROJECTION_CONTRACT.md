@@ -754,7 +754,7 @@ The successor trace must preserve:
 - retention, temporal confidence, and association strength of the weakened detail;
 - all P6A ancestry and finalization/P3/P6 audit bindings.
 
-The TraceVersionLedger verifies detail-state transitions against the persisted DetailStateOperation audit and rejects fabricated or unaudited detail-state values.
+The TraceVersionLedger verifies detail-state transitions against the persisted DetailStateOperation audit and rejects fabricated or unaudited detail-state values. Version-0/root traces may begin with non-default mnemonic values, but their detail states cannot claim prior parent-state fingerprints.
 
 P6B acceptance:
 - detail drift disabled versus enabled holds the same parent, P4/P5/finalization/P3 inputs and the same P6A scalar operations; only the audited target detail state may differ;
@@ -765,7 +765,8 @@ P6B acceptance:
 - the underlying TraceDetail and protected evidence remain unchanged;
 - a strong matching cue can still recover the weakened detail;
 - repeated omission remains bounded and asymptotically approaches, but never crosses, the configured accessibility floor;
-- detail-state parent fingerprints form an explicit version chain;
+- root detail states cannot claim nonexistent prior parents;
+- changed detail-state parent fingerprints form an explicit version chain;
 - detail state and DetailStateOperation audit survive deterministic restart;
 - missing/tampered persisted detail-state identity fails closed;
 - a successor with detail state not exactly described by the P6 decision is rejected.
