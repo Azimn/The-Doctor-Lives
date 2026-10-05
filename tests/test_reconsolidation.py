@@ -1784,6 +1784,21 @@ class ReconsolidationTests(unittest.TestCase):
         self.assertEqual(notebook_state.availability_state.value, "suppressed")
         self.assertEqual(current.version, 100)
         self.assertEqual(len(ledger.history(current.trace_lineage_id)), 101)
+
+        strong_recovery = self.reconstruct(
+            current,
+            episode_id="episode:p6b-repeat-recovery",
+            cue_text="blue notebook table",
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.80,
+            ),
+        )
+        self.assertIn(
+            f"{current.trace_id}:detail:notebook",
+            strong_recovery.included_detail_refs,
+        )
+
         self.assertIsNotNone(first_loss)
         self.assertIsNotNone(last_loss)
         assert first_loss is not None and last_loss is not None
