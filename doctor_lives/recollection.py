@@ -22,6 +22,7 @@ from .phenomenology import VividnessBand
 
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9']+")
+_RECOLLECTION_CANDIDATE_FACTORY_TOKEN = object()
 
 
 def _tokens(text: str) -> set[str]:
@@ -157,14 +158,17 @@ class MemoryTrace:
         )
         if not protected:
             raise ValueError("MemoryTrace requires protected evidence")
+        evidence_ids = tuple(ref.evidence_id for ref in protected)
+        if len(set(evidence_ids)) != len(evidence_ids):
+            raise ValueError("protected_evidence evidence_id values must be unique within a trace")
         object.__setattr__(self, "protected_evidence", protected)
         if not isinstance(self.gist, str) or not self.gist.strip():
             raise ValueError("memory trace gist is required")
-        object.__setattr__(
-            self,
-            "details",
-            _tuple_of_type(self.details, TraceDetail, "details"),
-        )
+        normalized_details = _tuple_of_type(self.details, TraceDetail, "details")
+        detail_ids = tuple(detail.detail_id for detail in normalized_details)
+        if len(set(detail_ids)) != len(detail_ids):
+            raise ValueError("detail_id values must be unique within a MemoryTrace")
+        object.__setattr__(self, "details", normalized_details)
         for field_name in (
             "temporal_cues",
             "actor_refs",
@@ -316,13 +320,30 @@ class ReconstructionConfig:
             _unit(self.minimum_detail_score, "minimum_detail_score"),
         )
 
+    @property
+    def fingerprint(self) -> str:
+        return _stable_sha256(
+            {
+                "max_details": self.max_details,
+                "minimum_detail_score": self.minimum_detail_score,
+            }
+        )
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, init=False)
 class RecollectionCandidate:
-    """Nonfinal P4 reconstruction with no subjective source attribution."""
+    """Verified nonfinal P4 reconstruction.
 
+    Public callers may inspect and type-check candidates, but canonical
+    candidates can only be created by the module reconstruction factory.
+    """
+
+    candidate_id: str
     subject_id: str
     retrieval_episode_id: str
+    retrieval_episode_fingerprint: str
+    reconstruction_config_fingerprint: str
+    reconstruction_rule_version: str
     trace_ids: tuple[str, ...]
     protected_evidence_refs: tuple[str, ...]
     reconstructed_scene: str
@@ -333,62 +354,13 @@ class RecollectionCandidate:
     fragmented: bool
     blended: bool
     reconstruction_operations: tuple[str, ...]
-    candidate_id: str = field(init=False)
 
-    def __post_init__(self) -> None:
-        for name in (
-            "subject_id",
-            "retrieval_episode_id",
-            "reconstructed_scene",
-        ):
-            value = getattr(self, name)
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"{name} is required")
-        for field_name in (
-            "trace_ids",
-            "protected_evidence_refs",
-            "included_detail_refs",
-            "omitted_detail_refs",
-            "reconstruction_operations",
-        ):
-            object.__setattr__(
-                self,
-                field_name,
-                _tuple_of_strings(getattr(self, field_name), field_name),
+    def __init__(self, *, _factory_token: object = None) -> None:
+        if _factory_token is not _RECOLLECTION_CANDIDATE_FACTORY_TOKEN:
+            raise TypeError(
+                "RecollectionCandidate is factory-controlled; "
+                "use reconstruct_recollection()"
             )
-        if not self.trace_ids:
-            raise ValueError("RecollectionCandidate requires trace_ids")
-        if not isinstance(self.vividness, VividnessBand):
-            raise TypeError("vividness must be VividnessBand")
-        object.__setattr__(
-            self,
-            "content_confidence",
-            _unit(self.content_confidence, "content_confidence"),
-        )
-        if not isinstance(self.fragmented, bool):
-            raise TypeError("fragmented must be bool")
-        if not isinstance(self.blended, bool):
-            raise TypeError("blended must be bool")
-
-        identity_payload = {
-            "subject_id": self.subject_id,
-            "retrieval_episode_id": self.retrieval_episode_id,
-            "trace_ids": self.trace_ids,
-            "protected_evidence_refs": self.protected_evidence_refs,
-            "reconstructed_scene": self.reconstructed_scene,
-            "included_detail_refs": self.included_detail_refs,
-            "omitted_detail_refs": self.omitted_detail_refs,
-            "vividness": self.vividness.value,
-            "content_confidence": self.content_confidence,
-            "fragmented": self.fragmented,
-            "blended": self.blended,
-            "reconstruction_operations": self.reconstruction_operations,
-        }
-        object.__setattr__(
-            self,
-            "candidate_id",
-            "recollection_candidate_" + _stable_sha256(identity_payload)[:24],
-        )
 
     @property
     def candidate_digest(self) -> str:
@@ -396,6 +368,111 @@ class RecollectionCandidate:
 
     def stable_json(self) -> str:
         return _stable_json(asdict(self))
+
+
+def _make_recollection_candidate(
+    *,
+    subject_id: str,
+    retrieval_episode_id: str,
+    retrieval_episode_fingerprint: str,
+    reconstruction_config_fingerprint: str,
+    reconstruction_rule_version: str,
+    trace_ids: Iterable[str],
+    protected_evidence_refs: Iterable[str],
+    reconstructed_scene: str,
+    included_detail_refs: Iterable[str],
+    omitted_detail_refs: Iterable[str],
+    vividness: VividnessBand,
+    content_confidence: float,
+    fragmented: bool,
+    blended: bool,
+    reconstruction_operations: Iterable[str],
+) -> RecollectionCandidate:
+    """Canonical construction gate for verified P4 reconstruction output."""
+
+    for name, value in (
+        ("subject_id", subject_id),
+        ("retrieval_episode_id", retrieval_episode_id),
+        ("retrieval_episode_fingerprint", retrieval_episode_fingerprint),
+        ("reconstruction_config_fingerprint", reconstruction_config_fingerprint),
+        ("reconstruction_rule_version", reconstruction_rule_version),
+        ("reconstructed_scene", reconstructed_scene),
+    ):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{name} is required")
+
+    normalized_trace_ids = _tuple_of_strings(trace_ids, "trace_ids")
+    if not normalized_trace_ids:
+        raise ValueError("RecollectionCandidate requires trace_ids")
+    normalized_protected_refs = _tuple_of_strings(
+        protected_evidence_refs,
+        "protected_evidence_refs",
+    )
+    normalized_included = _tuple_of_strings(
+        included_detail_refs,
+        "included_detail_refs",
+    )
+    normalized_omitted = _tuple_of_strings(
+        omitted_detail_refs,
+        "omitted_detail_refs",
+    )
+    normalized_operations = _tuple_of_strings(
+        reconstruction_operations,
+        "reconstruction_operations",
+    )
+    if not isinstance(vividness, VividnessBand):
+        raise TypeError("vividness must be VividnessBand")
+    normalized_confidence = _unit(content_confidence, "content_confidence")
+    if not isinstance(fragmented, bool):
+        raise TypeError("fragmented must be bool")
+    if not isinstance(blended, bool):
+        raise TypeError("blended must be bool")
+
+    identity_payload = {
+        "subject_id": subject_id,
+        "retrieval_episode_id": retrieval_episode_id,
+        "retrieval_episode_fingerprint": retrieval_episode_fingerprint,
+        "reconstruction_config_fingerprint": reconstruction_config_fingerprint,
+        "reconstruction_rule_version": reconstruction_rule_version,
+        "trace_ids": normalized_trace_ids,
+        "protected_evidence_refs": normalized_protected_refs,
+        "reconstructed_scene": reconstructed_scene,
+        "included_detail_refs": normalized_included,
+        "omitted_detail_refs": normalized_omitted,
+        "vividness": vividness.value,
+        "content_confidence": normalized_confidence,
+        "fragmented": fragmented,
+        "blended": blended,
+        "reconstruction_operations": normalized_operations,
+    }
+
+    candidate = RecollectionCandidate(
+        _factory_token=_RECOLLECTION_CANDIDATE_FACTORY_TOKEN
+    )
+    for field_name, value in (
+        ("subject_id", subject_id),
+        ("retrieval_episode_id", retrieval_episode_id),
+        ("retrieval_episode_fingerprint", retrieval_episode_fingerprint),
+        ("reconstruction_config_fingerprint", reconstruction_config_fingerprint),
+        ("reconstruction_rule_version", reconstruction_rule_version),
+        ("trace_ids", normalized_trace_ids),
+        ("protected_evidence_refs", normalized_protected_refs),
+        ("reconstructed_scene", reconstructed_scene),
+        ("included_detail_refs", normalized_included),
+        ("omitted_detail_refs", normalized_omitted),
+        ("vividness", vividness),
+        ("content_confidence", normalized_confidence),
+        ("fragmented", fragmented),
+        ("blended", blended),
+        ("reconstruction_operations", normalized_operations),
+    ):
+        object.__setattr__(candidate, field_name, value)
+    object.__setattr__(
+        candidate,
+        "candidate_id",
+        "recollection_candidate_" + _stable_sha256(identity_payload)[:24],
+    )
+    return candidate
 
 
 def _vividness(score: float) -> VividnessBand:
@@ -527,9 +604,12 @@ def reconstruct_recollection(
         for trace in ordered
         for ref in trace.protected_evidence
     )
-    return RecollectionCandidate(
+    return _make_recollection_candidate(
         subject_id=episode.subject_id,
         retrieval_episode_id=episode.episode_id,
+        retrieval_episode_fingerprint=episode.occurrence_fingerprint,
+        reconstruction_config_fingerprint=config.fingerprint,
+        reconstruction_rule_version=episode.reconstruction_rule_version,
         trace_ids=tuple(trace.trace_id for trace in ordered),
         protected_evidence_refs=protected_refs,
         reconstructed_scene=reconstructed_scene,
