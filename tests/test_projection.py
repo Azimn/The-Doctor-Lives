@@ -40,6 +40,22 @@ class DeterministicProjectionTests(unittest.TestCase):
             record_ids=("engineer-only-record",),
         )
 
+    def test_projection_context_rejects_invalid_enum_values(self):
+        with self.assertRaises(TypeError):
+            ProjectionContext(
+                subject_id="subject-beta",
+                tick=1,
+                source_state_digest="sha256:test",
+                awareness="conscious",  # type: ignore[arg-type]
+            )
+        with self.assertRaises(TypeError):
+            ProjectionContext(
+                subject_id="subject-beta",
+                tick=1,
+                source_state_digest="sha256:test",
+                privacy="private",  # type: ignore[arg-type]
+            )
+
     def test_bodily_projection_hides_raw_value(self):
         event = project_bodily_sensation(
             context=self.context,
