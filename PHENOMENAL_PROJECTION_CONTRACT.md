@@ -573,7 +573,9 @@ Finalization must:
 - require objective provenance record IDs to exactly match the candidate's protected-evidence references in canonical order;
 - preserve the P4 reconstructed scene unchanged across matched source-monitor conditions;
 - create source-neutral first-person recollection text so changing attribution does not confound reconstructed content;
-- create the first canonical `PhenomenalEvent` with subjective source attribution and certainty;
+- create the first canonical `PhenomenalEvent` with subjective source attribution and **source certainty**;
+- keep source certainty and remembered-content certainty semantically independent;
+- obtain remembered-content certainty from a separate subject-level mechanism or an explicit neutral/default value in finalization; never copy source certainty into content certainty and never map P4 implementation `content_confidence` directly into subjective certainty;
 - begin that event at `LATENT` awareness so P3 remains the only awareness-arbitration gate;
 - retain candidate ID, full candidate digest, source-monitor decision fingerprint, and retrieval-episode fingerprint in engineer-visible lineage.
 
@@ -594,7 +596,9 @@ Acceptance:
 - finalization rejects reordered or substituted protected-evidence lineage rather than treating provenance as an unordered set;
 - the same P4 candidate can produce different source attributions when only SourceMonitoringCues change;
 - different P4 candidates with identical SourceMonitoringCues produce identical source scores and selected source, while retaining distinct audit decision fingerprints;
-- content confidence does not automatically become source confidence;
+- P4 content confidence does not automatically become source confidence or subjective content certainty;
+- source-monitor certainty populates only `SubjectiveSourceAttribution.certainty`;
+- `PhenomenalEvent.subjective_certainty` represents remembered-content certainty and remains independently supplied (neutral MODERATE until a dedicated mechanism is present);
 - vividness is not treated as a synonym for livedness;
 - default/no-evidence cues yield UNKNOWN;
 - final canonical recollection content remains fixed across matched source-attribution conditions;
