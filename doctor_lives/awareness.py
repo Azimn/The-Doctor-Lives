@@ -16,6 +16,9 @@ import math
 from .phenomenology import AwarenessLevel, PhenomenalEvent
 
 
+_AWARENESS_DECISION_FACTORY_TOKEN = object()
+
+
 def _unit(value: float, name: str) -> float:
     if isinstance(value, bool):
         raise TypeError(f"{name} must be numeric, not bool")
@@ -69,14 +72,39 @@ class AwarenessCandidate:
         return max(0.0, min(1.0, raw))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class AwarenessDecision:
+    """Factory-controlled result of P3 awareness arbitration."""
+
     event: PhenomenalEvent
     priority: float
+
+    def __init__(self, *, _factory_token: object = None) -> None:
+        if _factory_token is not _AWARENESS_DECISION_FACTORY_TOKEN:
+            raise TypeError(
+                "AwarenessDecision is factory-controlled; "
+                "use AwarenessRouter.route()"
+            )
 
     @property
     def awareness(self) -> AwarenessLevel:
         return self.event.awareness
+
+
+def _make_awareness_decision(
+    *,
+    event: PhenomenalEvent,
+    priority: float,
+) -> AwarenessDecision:
+    if not isinstance(event, PhenomenalEvent):
+        raise TypeError("event must be PhenomenalEvent")
+    normalized_priority = _unit(priority, "priority")
+    decision = AwarenessDecision(
+        _factory_token=_AWARENESS_DECISION_FACTORY_TOKEN
+    )
+    object.__setattr__(decision, "event", event)
+    object.__setattr__(decision, "priority", normalized_priority)
+    return decision
 
 
 @dataclass(frozen=True)
@@ -156,7 +184,7 @@ class AwarenessRouter:
                 level = AwarenessLevel.PRECONSCIOUS
 
             decisions.append(
-                AwarenessDecision(
+                _make_awareness_decision(
                     event=replace(candidate.event, awareness=level),
                     priority=score,
                 )
