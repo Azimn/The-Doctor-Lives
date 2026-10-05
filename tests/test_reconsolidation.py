@@ -341,6 +341,10 @@ class ReconsolidationTests(unittest.TestCase):
             successor.reconsolidation_decision_fingerprint,
             decision.decision_fingerprint,
         )
+        self.assertEqual(
+            decision.finalized_recollection_fingerprint,
+            finalized.finalization_fingerprint,
+        )
         self.assertEqual(successor.reconsolidation_event_id, event.event.event_id)
         self.assertEqual(len(ledger.history(trace.trace_lineage_id)), 2)
 
@@ -1128,6 +1132,33 @@ class ReconsolidationTests(unittest.TestCase):
                     separators=(",", ":"),
                 )
             )
+
+    def test_ledger_rejects_missing_p5_finalization_attestation_on_restart(self):
+        trace = self.trace(label="missing-finalization-attestation")
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate, source_decision, finalized, event = self.final_event(
+            trace,
+            episode_id="episode:missing-finalization-attestation",
+        )
+        _, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=event,
+            context=self.eligible_context(),
+        )
+        assert successor is not None
+
+        payload = json.loads(ledger.stable_json())
+        payload["transitions"][0]["decision"].pop(
+            "finalized_recollection_fingerprint"
+        )
+        corrupted = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(corrupted)
 
     def test_persisted_transition_audit_corruption_fails_closed(self):
         trace = self.trace(label="audit-corruption")
