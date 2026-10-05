@@ -11,6 +11,7 @@ from doctor_lives.recollection import (
     RecollectionCandidate,
     RetrievalEpisode,
     TraceDetail,
+    TraceDetailState,
     reconstruct_recollection,
 )
 
@@ -86,6 +87,41 @@ class RecollectionArchitectureTests(unittest.TestCase):
         self.assertEqual(trace.details[0].cue_terms, ("window", "rain"))
         with self.assertRaises(FrozenInstanceError):
             trace.gist = "changed"  # type: ignore[misc]
+
+    def test_detail_state_is_frozen_and_matches_semantic_detail(self):
+        trace = self.trace()
+        self.assertEqual(
+            tuple(state.detail_id for state in trace.detail_states),
+            tuple(detail.detail_id for detail in trace.details),
+        )
+        state = trace.detail_states[0]
+        self.assertEqual(state.accessibility, 1.0)
+        self.assertEqual(state.availability_state.value, "available")
+        with self.assertRaises(FrozenInstanceError):
+            state.accessibility = 0.1  # type: ignore[misc]
+
+    def test_detail_state_ids_must_exactly_match_detail_order(self):
+        with self.assertRaises(ValueError):
+            MemoryTrace(
+                subject_id="subject-memory",
+                version=0,
+                protected_evidence=(self.evidence("state-order"),),
+                gist="A trace with mismatched detail-state identity",
+                details=(
+                    TraceDetail(
+                        detail_id="detail:first",
+                        text="The first detail",
+                    ),
+                    TraceDetail(
+                        detail_id="detail:second",
+                        text="The second detail",
+                    ),
+                ),
+                detail_states=(
+                    TraceDetailState(detail_id="detail:second"),
+                    TraceDetailState(detail_id="detail:first"),
+                ),
+            )
 
     def test_duplicate_detail_ids_within_trace_fail_closed(self):
         with self.assertRaises(ValueError):
