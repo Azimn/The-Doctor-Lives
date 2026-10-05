@@ -11,6 +11,14 @@ from .recollection import (
     TraceDetail,
     reconstruct_recollection,
 )
+from .source_monitoring import (
+    RecollectionFinalizationContext,
+    SourceEvidenceContribution,
+    SourceMonitoringCues,
+    SourceMonitoringDecision,
+    finalize_recollection_event,
+    monitor_recollection_source,
+)
 from .chassis import PretoriusBrainPort
 from .cognition import PretoriusBrain
 from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
@@ -86,4 +94,10 @@ __all__ = [
     "ReconstructionConfig",
     "RecollectionCandidate",
     "reconstruct_recollection",
+    "SourceMonitoringCues",
+    "SourceEvidenceContribution",
+    "SourceMonitoringDecision",
+    "RecollectionFinalizationContext",
+    "monitor_recollection_source",
+    "finalize_recollection_event",
 ]
