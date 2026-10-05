@@ -1,6 +1,7 @@
 """The Doctor Lives: persistent renderer-neutral Pretorius cognition."""
 
 from .causal_audit import AuditIntervention, CausalAuditHarness
+from .awareness import AwarenessCandidate, AwarenessDecision, AwarenessPolicy, AwarenessRouter
 from .chassis import PretoriusBrainPort
 from .cognition import PretoriusBrain
 from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
@@ -65,4 +66,8 @@ __all__ = [
     "project_relationship_feeling",
     "project_concern",
     "project_commitment",
+    "AwarenessCandidate",
+    "AwarenessDecision",
+    "AwarenessPolicy",
+    "AwarenessRouter",
 ]
