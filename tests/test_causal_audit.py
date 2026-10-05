@@ -163,13 +163,25 @@ class CausalAuditHarnessTests(unittest.TestCase):
     def test_spreading_activation_lesion_changes_retrieval_not_policy(self):
         harness = self.make_harness()
         probe = Experience(
-            "The homunculi creation invites another artificial-life experiment.",
-            kind="observation", novelty=.6, creation=.8,
-            tags=("homunculi", "creation", "artificial_life"),
+            "Ingolstadt Henry collaboration and institutional rejection return to attention.",
+            kind="observation", novelty=.4,
+            tags=("ingolstadt", "henry", "collaboration", "institutional_rejection"),
         )
+
+        def prime_graph_history(brain):
+            with brain.store.transaction() as conn:
+                memory_id = conn.execute(
+                    "SELECT memory_id FROM history_nodes WHERE node_id='memory.ingolstadt'"
+                ).fetchone()["memory_id"]
+                conn.execute(
+                    "UPDATE memories SET base_salience=2.0 WHERE id=?", (memory_id,)
+                )
+                brain.store.bump_state_version(conn)
+
         result = harness.run_existing_state_pair(
             probe,
             AuditIntervention("spreading_activation", ("spreading_activation",)),
+            prelude=prime_graph_history,
         )
         self.assertTrue(result["intact"]["retrieval"]["activated_memory_ids"])
         self.assertEqual(result["lesion"]["retrieval"]["activated_memory_ids"], [])
