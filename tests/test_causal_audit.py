@@ -94,6 +94,22 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertIn("source_state_version", intact["policy_decision"]["state_pressure"])
         self.assertTrue(intact["policy_decision"]["state_pressure"]["source_ids"]["needs"])
         self.assertIn("retrieval", intact)
+        self.assertIn("policy_retrieval", intact)
+        self.assertIn("renderer_retrieval", intact)
+        self.assertEqual(intact["retrieval"]["id"], intact["policy_retrieval"]["id"])
+        self.assertNotEqual(
+            intact["policy_retrieval"]["id"],
+            intact["renderer_retrieval"]["id"],
+        )
+        self.assertEqual(
+            set(intact["policy_decision"]["state_pressure"]["history_retrieval_ids"]),
+            set(intact["policy_retrieval"]["direct_memory_ids"]),
+        )
+        self.assertTrue(
+            set(intact["policy_decision"]["state_pressure"]["source_ids"]["history"]).issubset(
+                set(intact["policy_retrieval"]["direct_memory_ids"])
+            )
+        )
         self.assertIn("renderer_request", intact)
         self.assertIn("deterministic_audit_render", intact)
         self.assertEqual(lesion["disabled_mechanisms"], ["deep_history"])
@@ -135,6 +151,29 @@ class CausalAuditHarnessTests(unittest.TestCase):
             result["comparison"]["action_score_l1"], 0.0,
             msg=f"history sources present but no policy divergence: {intact_history!r}",
         )
+
+    def test_renderer_retrieval_cannot_overwrite_policy_retrieval_trace(self):
+        harness = self.make_harness()
+        result = harness.run_existing_state_pair(
+            self.probe(),
+            AuditIntervention("trace_retrieval_boundary", ()),
+        )
+        intact = result["intact"]
+        policy_retrieval = intact["policy_retrieval"]
+        renderer_retrieval = intact["renderer_retrieval"]
+        self.assertEqual(intact["retrieval"]["id"], policy_retrieval["id"])
+        self.assertNotEqual(policy_retrieval["id"], renderer_retrieval["id"])
+        self.assertEqual(
+            set(policy_retrieval["direct_memory_ids"]),
+            set(intact["policy_decision"]["state_pressure"]["history_retrieval_ids"]),
+        )
+        self.assertTrue(
+            set(intact["policy_decision"]["state_pressure"]["source_ids"]["history"]).issubset(
+                set(policy_retrieval["direct_memory_ids"])
+            )
+        )
+        self.assertLessEqual(len(renderer_retrieval["ranked_memory_ids"]), 14)
+        self.assertLessEqual(len(policy_retrieval["ranked_memory_ids"]), 48)
 
     def test_deep_history_lesion_preserves_design_material(self):
         harness = self.make_harness()
