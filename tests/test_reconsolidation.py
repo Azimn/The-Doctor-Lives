@@ -103,6 +103,44 @@ class ReconsolidationTests(unittest.TestCase):
             familiarity=0.60,
         )
 
+    def trace_with_detail_state(
+        self,
+        *,
+        label: str,
+        detail_accessibility: float = 1.0,
+        temporal_confidence: float = 1.0,
+        association_strength: float = 1.0,
+    ) -> MemoryTrace:
+        return MemoryTrace(
+            subject_id="subject-reconsolidation",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef(
+                    evidence_id=f"evidence:{label}",
+                    digest=f"sha256:{label}",
+                ),
+            ),
+            gist="The demonstration occurred in the laboratory",
+            details=(
+                TraceDetail(
+                    detail_id="detail:henry",
+                    text="Henry stood beside the apparatus at 8:15 PM",
+                    cue_terms=("henry", "apparatus"),
+                ),
+            ),
+            detail_states=(
+                TraceDetailState(
+                    detail_id="detail:henry",
+                    accessibility=detail_accessibility,
+                    temporal_confidence=temporal_confidence,
+                    association_strength=association_strength,
+                ),
+            ),
+            strength=0.60,
+            accessibility=0.60,
+            familiarity=0.60,
+        )
+
     def finalized_from_candidate(self, candidate):
         decision = monitor_recollection_source(
             candidate=candidate,
