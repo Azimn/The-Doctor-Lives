@@ -551,18 +551,18 @@ It must not contain:
 - archival/canonical/reconstructed status;
 - any field equivalent to "this is actually reconstructed."
 
-The source-scoring function receives only `SourceMonitoringCues`. A P4 candidate ID is bound into the audit decision identity, but candidate content, candidate vividness, candidate content confidence, protected evidence, and trace lineage do not enter the source-score calculation.
+The canonical P5 boundary accepts the factory-controlled `RecollectionCandidate` itself, but the source-scoring function receives only `SourceMonitoringCues`. The decision binds both candidate ID and full candidate digest for lineage. Candidate content, candidate vividness, candidate content confidence, protected evidence, and trace lineage do not enter the source-score calculation.
 
 The no-evidence default is epistemically neutral: an empty/default cue set must yield `UNKNOWN`, not silently bias toward `LIVED`.
 
 `SourceMonitoringDecision` is immutable, audit-visible, and factory-controlled. It records:
-- exact candidate ID;
-- cue fingerprint;
+- exact candidate ID and full candidate digest;
+- the immutable `SourceMonitoringCues` snapshot and its fingerprint;
 - source-monitor rule version;
 - deterministic per-source evidence contributions;
-- selected SubjectiveSourceKind;
-- certainty band;
-- deterministic decision fingerprint.
+- selected SubjectiveSourceKind and certainty band;
+- top score, runner-up score, margin, and explicit decision-basis reason codes;
+- deterministic decision fingerprint binding all of the above.
 
 P5 initially uses deterministic weighted evidence rather than stochastic false-memory rates. If stochasticity is ever introduced later, its seed/state must become part of the decision identity.
 
@@ -570,12 +570,12 @@ The finalization stage receives the verified P4 candidate, the matching SourceMo
 
 Finalization must:
 - reject a decision bound to a different candidate;
-- require objective provenance record IDs to match the candidate's protected-evidence references;
+- require objective provenance record IDs to exactly match the candidate's protected-evidence references in canonical order;
 - preserve the P4 reconstructed scene unchanged across matched source-monitor conditions;
 - create source-neutral first-person recollection text so changing attribution does not confound reconstructed content;
 - create the first canonical `PhenomenalEvent` with subjective source attribution and certainty;
 - begin that event at `LATENT` awareness so P3 remains the only awareness-arbitration gate;
-- retain candidate ID, source-monitor decision fingerprint, and retrieval-episode fingerprint in engineer-visible lineage.
+- retain candidate ID, full candidate digest, source-monitor decision fingerprint, and retrieval-episode fingerprint in engineer-visible lineage.
 
 P5 must support:
 - correct attribution under strong source-consistent cues;
@@ -588,7 +588,10 @@ Every error must have a causal explanation available to engineering/audit even w
 Acceptance:
 - objective provenance never changes because of source attribution;
 - source-monitor scoring cannot inspect privileged objective provenance;
-- identical candidate ID + identical cues reproduces exactly;
+- identical verified candidate + identical cues reproduces exactly;
+- a caller cannot create a canonical source-monitor decision from an arbitrary candidate-ID string without supplying a verified P4 candidate;
+- the complete cue snapshot and threshold/margin basis needed to explain a source decision survive in the immutable audit decision;
+- finalization rejects reordered or substituted protected-evidence lineage rather than treating provenance as an unordered set;
 - the same P4 candidate can produce different source attributions when only SourceMonitoringCues change;
 - different P4 candidates with identical SourceMonitoringCues produce identical source scores and selected source, while retaining distinct audit decision fingerprints;
 - content confidence does not automatically become source confidence;
