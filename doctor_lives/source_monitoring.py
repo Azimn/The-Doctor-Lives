@@ -168,12 +168,12 @@ class RecollectionFinalizationContext:
 
     This context is deliberately not passed into the source-monitoring scoring
     function. Objective provenance remains available to audit/finalization but
-    cannot influence subjective source inference.
-    """
+    cannot influence subjective source inference.\n\n    subjective_content_certainty is confidence in remembered content, not\n    confidence in where the memory came from. Until a dedicated metacognitive\n    content-certainty mechanism exists, callers may leave the explicit neutral\n    MODERATE default. P4 content_confidence is not mapped into this field.\n    """
 
     tick: int
     source_state_digest: str
     objective_provenance: ObjectiveProvenance
+    subjective_content_certainty: CertaintyBand = CertaintyBand.MODERATE
     privacy: PrivacyState = PrivacyState.PRIVATE
     projection_rule_version: str = "uppb-p5-finalize-v1"
 
@@ -189,6 +189,10 @@ class RecollectionFinalizationContext:
             raise ValueError("source_state_digest is required")
         if not isinstance(self.objective_provenance, ObjectiveProvenance):
             raise TypeError("objective_provenance must be ObjectiveProvenance")
+        if not isinstance(self.subjective_content_certainty, CertaintyBand):
+            raise TypeError(
+                "subjective_content_certainty must be CertaintyBand"
+            )
         if not isinstance(self.privacy, PrivacyState):
             raise TypeError("privacy must be PrivacyState")
         if (
@@ -432,7 +436,7 @@ def finalize_recollection_event(
             kind=decision.selected_source,
             certainty=decision.certainty,
         ),
-        subjective_certainty=decision.certainty,
+        subjective_certainty=context.subjective_content_certainty,
         subjective_vividness=candidate.vividness,
         subjective_intensity=IntensityBand.MODERATE,
         source_state_refs=candidate.trace_ids,
