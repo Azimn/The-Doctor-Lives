@@ -1447,6 +1447,178 @@ class ReconsolidationTests(unittest.TestCase):
                 decision=decision,
             )
 
+    def test_p6b_detail_drift_requires_interference_threshold(self):
+        trace = self.trace_with_two_details()
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-low-interference",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=0.10,
+            ),
+        )
+        self.assertTrue(decision.eligible)
+        self.assertEqual(decision.detail_operations, ())
+        self.assertIn(
+            "detail_interference_below_threshold",
+            decision.detail_reason_codes,
+        )
+
+    def test_p6b_included_detail_is_not_weakened(self):
+        trace = self.trace_with_two_details()
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-included",
+            cue_text="blue notebook table",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIn(
+            f"{trace.trace_id}:detail:notebook",
+            candidate.included_detail_refs,
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+            policy=ReconsolidationPolicy(
+                max_detail_accessibility_loss=0.20,
+            ),
+        )
+        weakened_ids = {op.detail_id for op in decision.detail_operations}
+        self.assertNotIn("detail:notebook", weakened_ids)
+
+    def test_p6b_repeated_omission_is_bounded_and_asymptotic(self):
+        current = self.trace_with_two_details()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(current)
+        policy = ReconsolidationPolicy(
+            max_detail_accessibility_loss=0.20,
+            detail_accessibility_floor=0.10,
+        )
+        first_loss = None
+        last_loss = None
+
+        for index in range(100):
+            candidate = self.reconstruct(
+                current,
+                episode_id=f"episode:p6b-repeat:{index}",
+                cue_text="Henry apparatus",
+                config=ReconstructionConfig(max_details=1),
+            )
+            source_decision, finalized, awareness = self.finalized_from_candidate(
+                candidate
+            )
+            decision, successor = reconsolidate_and_record(
+                ledger=ledger,
+                old_trace=current,
+                candidate=candidate,
+                source_decision=source_decision,
+                finalized_recollection=finalized,
+                awareness_decision=awareness,
+                context=ReconsolidationContext(
+                    enabled=True,
+                    reactivation_strength=0.95,
+                    prediction_error=0.65,
+                    emotional_activation=0.55,
+                    goal_relevance=0.65,
+                    explicit_rehearsal=True,
+                    detail_drift_enabled=True,
+                    interference_strength=1.0,
+                ),
+                policy=policy,
+            )
+            assert successor is not None
+            notebook_ops = [
+                op
+                for op in decision.detail_operations
+                if op.detail_id == "detail:notebook"
+            ]
+            if notebook_ops:
+                loss = abs(float(notebook_ops[0].delta))
+                if first_loss is None:
+                    first_loss = loss
+                last_loss = loss
+            current = successor
+
+        notebook_state = current.detail_state("detail:notebook")
+        self.assertGreaterEqual(
+            notebook_state.accessibility,
+            policy.detail_accessibility_floor,
+        )
+        self.assertEqual(current.version, 100)
+        self.assertEqual(len(ledger.history(current.trace_lineage_id)), 101)
+        self.assertIsNotNone(first_loss)
+        self.assertIsNotNone(last_loss)
+        assert first_loss is not None and last_loss is not None
+        self.assertLess(last_loss, first_loss)
+
+    def test_p6b_restart_rejects_missing_detail_state_payload(self):
+        trace = self.trace_with_two_details()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        payload = json.loads(ledger.stable_json())
+        payload["traces"][0].pop("detail_states")
+        corrupted = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(corrupted)
+
+    def test_p6b_restart_rejects_tampered_detail_state_fingerprint(self):
+        trace = self.trace_with_two_details()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        payload = json.loads(ledger.stable_json())
+        payload["traces"][0]["detail_states"][0][
+            "state_fingerprint"
+        ] = "detail_state_corrupt"
+        corrupted = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(corrupted)
+
+    def test_p6b_restart_rejects_tampered_detail_availability_state(self):
+        trace = self.trace_with_two_details()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        payload = json.loads(ledger.stable_json())
+        payload["traces"][0]["detail_states"][0][
+            "availability_state"
+        ] = "suppressed"
+        corrupted = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(corrupted)
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
