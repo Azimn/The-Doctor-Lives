@@ -1246,20 +1246,22 @@ def _verify_successor_matches_audit(
             for value in (old_value, new_value, delta)
         ):
             raise ValueError("detail operation values must be numeric")
-        if abs(parent_state.accessibility - float(old_value)) > 1e-12:
+        if abs(float(getattr(parent_state, field_name)) - float(old_value)) > 1e-12:
             raise ValueError("detail operation old value does not match parent")
         if raw.get("old_state_fingerprint") != parent_state.state_fingerprint:
             raise ValueError("detail operation old fingerprint mismatch")
         if abs((float(new_value) - float(old_value)) - float(delta)) > 1e-12:
             raise ValueError("detail operation delta is inconsistent")
-        new_state = TraceDetailState(
-            detail_id=parent_state.detail_id,
-            retention=parent_state.retention,
-            accessibility=float(new_value),
-            temporal_confidence=parent_state.temporal_confidence,
-            association_strength=parent_state.association_strength,
-            parent_state_fingerprint=parent_state.state_fingerprint,
-        )
+        kwargs = {
+            "detail_id": parent_state.detail_id,
+            "retention": parent_state.retention,
+            "accessibility": parent_state.accessibility,
+            "temporal_confidence": parent_state.temporal_confidence,
+            "association_strength": parent_state.association_strength,
+            "parent_state_fingerprint": parent_state.state_fingerprint,
+        }
+        kwargs[field_name] = float(new_value)
+        new_state = TraceDetailState(**kwargs)
         if raw.get("new_state_fingerprint") != new_state.state_fingerprint:
             raise ValueError("detail operation new fingerprint mismatch")
         expected_detail_states[detail_id] = new_state
