@@ -3,10 +3,12 @@ from __future__ import annotations
 import dataclasses
 import unittest
 
+from doctor_lives.awareness import AwarenessCandidate, AwarenessRouter
 from doctor_lives.phenomenology import (
     AwarenessLevel,
     ObjectiveProvenance,
     PhenomenalEvent,
+    PhenomenalLeakError,
     PrivacyState,
     SubjectiveSourceKind,
 )
@@ -144,7 +146,7 @@ class SourceMonitoringTests(unittest.TestCase):
     def test_default_cues_remain_epistemically_unknown(self):
         candidate = self.candidate()
         decision = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=SourceMonitoringCues(),
         )
         self.assertIs(decision.selected_source, SubjectiveSourceKind.UNKNOWN)
@@ -153,15 +155,15 @@ class SourceMonitoringTests(unittest.TestCase):
         candidate = self.candidate()
 
         lived = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.lived_cues(),
         )
         ambiguous = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.ambiguous_cues(),
         )
         read = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.read_cues(),
         )
 
@@ -181,15 +183,15 @@ class SourceMonitoringTests(unittest.TestCase):
         audit_truth = SubjectiveSourceKind.READ
 
         correct = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.read_cues(),
         )
         uncertain = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.ambiguous_cues(),
         )
         misleading = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.lived_cues(),
         )
 
@@ -208,11 +210,11 @@ class SourceMonitoringTests(unittest.TestCase):
         cues = self.read_cues()
 
         first_decision = monitor_recollection_source(
-            candidate_id=first.candidate_id,
+            candidate=first,
             cues=cues,
         )
         second_decision = monitor_recollection_source(
-            candidate_id=second.candidate_id,
+            candidate=second,
             cues=cues,
         )
 
@@ -244,11 +246,11 @@ class SourceMonitoringTests(unittest.TestCase):
     def test_finalization_keeps_candidate_content_fixed_while_source_changes(self):
         candidate = self.candidate()
         lived_decision = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.lived_cues(),
         )
         read_decision = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.read_cues(),
         )
         provenance = ObjectiveProvenance(
@@ -296,7 +298,7 @@ class SourceMonitoringTests(unittest.TestCase):
         first = self.candidate(label="first")
         second = self.candidate(label="second")
         decision = monitor_recollection_source(
-            candidate_id=first.candidate_id,
+            candidate=first,
             cues=self.lived_cues(),
         )
         provenance = ObjectiveProvenance(
@@ -319,7 +321,7 @@ class SourceMonitoringTests(unittest.TestCase):
     def test_finalization_requires_objective_provenance_to_match_candidate_refs(self):
         candidate = self.candidate()
         decision = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=self.lived_cues(),
         )
         wrong_provenance = ObjectiveProvenance(
@@ -344,7 +346,7 @@ class SourceMonitoringTests(unittest.TestCase):
         cues = self.lived_cues()
 
         before = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=cues,
         )
         # Objective truth exists only at finalization. The source monitor cannot
@@ -362,10 +364,192 @@ class SourceMonitoringTests(unittest.TestCase):
         self.assertNotEqual(reconstructed.evidence_class, lived.evidence_class)
 
         after = monitor_recollection_source(
-            candidate_id=candidate.candidate_id,
+            candidate=candidate,
             cues=cues,
         )
         self.assertEqual(before, after)
+
+
+    def test_source_monitor_requires_verified_p4_candidate_object(self):
+        with self.assertRaises(TypeError):
+            monitor_recollection_source(
+                candidate="recollection_candidate_fabricated",  # type: ignore[arg-type]
+                cues=self.lived_cues(),
+            )
+
+    def test_decision_retains_full_candidate_and_cue_evidence_for_audit(self):
+        candidate = self.candidate()
+        cues = self.lived_cues()
+        decision = monitor_recollection_source(candidate=candidate, cues=cues)
+
+        self.assertEqual(decision.candidate_id, candidate.candidate_id)
+        self.assertEqual(decision.candidate_digest, candidate.candidate_digest)
+        self.assertEqual(decision.cues, cues)
+        self.assertEqual(decision.cues_fingerprint, cues.fingerprint)
+        self.assertEqual(decision.top_score, decision.contributions[0].score)
+        self.assertEqual(decision.runner_up_score, decision.contributions[1].score)
+        self.assertAlmostEqual(
+            decision.margin,
+            decision.top_score - decision.runner_up_score,
+        )
+        self.assertTrue(decision.decision_basis)
+        self.assertIn("retrieval_fluency", decision.stable_json())
+
+    def test_finalization_preserves_full_candidate_digest_in_event_lineage(self):
+        candidate = self.candidate()
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.read_cues(),
+        )
+        context = RecollectionFinalizationContext(
+            tick=41,
+            source_state_digest="sha256:p5-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="reconstructed_source",
+                source="protected-memory-audit",
+                record_ids=candidate.protected_evidence_refs,
+            ),
+        )
+        event = finalize_recollection_event(
+            candidate=candidate,
+            decision=decision,
+            context=context,
+        )
+        self.assertIn(candidate.candidate_digest, event.source_event_refs)
+
+    def test_finalization_requires_canonical_protected_evidence_order(self):
+        trace = MemoryTrace(
+            subject_id="subject-source-monitor",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef("evidence:first", "sha256:first"),
+                ProtectedEvidenceRef("evidence:second", "sha256:second"),
+            ),
+            gist="Two records jointly support the laboratory demonstration",
+            details=(
+                TraceDetail(
+                    detail_id="detail:joint",
+                    text="The apparatus stood beside the long table",
+                ),
+            ),
+            strength=0.8,
+            accessibility=0.8,
+            familiarity=0.8,
+        )
+        episode = RetrievalEpisode(
+            episode_id="episode:ordered-provenance",
+            subject_id=trace.subject_id,
+            tick=44,
+            cue_text="apparatus table",
+            candidate_trace_ids=(trace.trace_id,),
+            subject_state_digest="sha256:ordered-state",
+        )
+        candidate = reconstruct_recollection(
+            (trace,),
+            episode,
+            config=ReconstructionConfig(max_details=1),
+        )
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.read_cues(),
+        )
+        reversed_refs = tuple(reversed(candidate.protected_evidence_refs))
+        context = RecollectionFinalizationContext(
+            tick=45,
+            source_state_digest="sha256:ordered-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="reconstructed_source",
+                source="protected-memory-audit",
+                record_ids=reversed_refs,
+            ),
+        )
+        with self.assertRaises(ValueError):
+            finalize_recollection_event(
+                candidate=candidate,
+                decision=decision,
+                context=context,
+            )
+
+    def test_p4_candidate_cannot_enter_awareness_but_p5_event_can(self):
+        candidate = self.candidate()
+        with self.assertRaises(TypeError):
+            AwarenessCandidate(event=candidate)  # type: ignore[arg-type]
+
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.lived_cues(),
+        )
+        event = finalize_recollection_event(
+            candidate=candidate,
+            decision=decision,
+            context=RecollectionFinalizationContext(
+                tick=41,
+                source_state_digest="sha256:p5-state",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="lived_runtime_memory",
+                    source="world",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+            ),
+        )
+        self.assertIs(event.awareness, AwarenessLevel.LATENT)
+
+        routed = AwarenessRouter().route(
+            (
+                AwarenessCandidate(
+                    event=event,
+                    salience=1.0,
+                    change=1.0,
+                    novelty=1.0,
+                    goal_relevance=1.0,
+                    conflict=1.0,
+                    persistence=1.0,
+                ),
+            )
+        )
+        self.assertIs(routed[0].awareness, AwarenessLevel.FOCAL)
+        self.assertEqual(routed[0].event.event_id, event.event_id)
+
+    def test_p5_finalization_preserves_phenomenal_leak_gate(self):
+        trace = MemoryTrace(
+            subject_id="subject-source-monitor",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef("evidence:unsafe", "sha256:unsafe"),
+            ),
+            gist="state_pressure = 0.9 during the demonstration",
+            strength=0.8,
+            accessibility=0.8,
+            familiarity=0.8,
+        )
+        episode = RetrievalEpisode(
+            episode_id="episode:unsafe",
+            subject_id=trace.subject_id,
+            tick=50,
+            cue_text="demonstration",
+            candidate_trace_ids=(trace.trace_id,),
+            subject_state_digest="sha256:unsafe-state",
+        )
+        candidate = reconstruct_recollection((trace,), episode)
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.lived_cues(),
+        )
+        context = RecollectionFinalizationContext(
+            tick=51,
+            source_state_digest="sha256:unsafe-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="test",
+                source="audit",
+                record_ids=candidate.protected_evidence_refs,
+            ),
+        )
+        with self.assertRaises(PhenomenalLeakError):
+            finalize_recollection_event(
+                candidate=candidate,
+                decision=decision,
+                context=context,
+            )
 
 
 if __name__ == "__main__":
