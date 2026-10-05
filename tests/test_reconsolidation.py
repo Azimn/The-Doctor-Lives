@@ -1551,6 +1551,105 @@ class ReconsolidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ledger.register_initial(forged)
 
+    def test_p6b_source_attribution_does_not_change_detail_drift(self):
+        trace = self.trace_with_two_details()
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-source-independence",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        lived = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.source_cues(),
+        )
+        read = monitor_recollection_source(
+            candidate=candidate,
+            cues=SourceMonitoringCues(
+                retrieval_fluency=0.75,
+                perceptual_richness=0.10,
+                temporal_coherence=0.70,
+                spatial_coherence=0.65,
+                contextual_compatibility=0.80,
+                familiarity=0.85,
+                trace_accessibility=0.70,
+                rehearsal_frequency=0.70,
+                reconstruction_exposure=0.20,
+                cue_match=0.80,
+                textual_signature=0.95,
+            ),
+        )
+        self.assertIs(lived.selected_source, SubjectiveSourceKind.LIVED)
+        self.assertIs(read.selected_source, SubjectiveSourceKind.READ)
+
+        def finalize_and_route(source_decision):
+            finalized = finalize_recollection(
+                candidate=candidate,
+                decision=source_decision,
+                context=RecollectionFinalizationContext(
+                    tick=91,
+                    source_state_digest="sha256:p6b-source-independent",
+                    objective_provenance=ObjectiveProvenance(
+                        evidence_class="test",
+                        source="audit",
+                        record_ids=candidate.protected_evidence_refs,
+                    ),
+                ),
+            )
+            awareness = AwarenessRouter().route(
+                (
+                    AwarenessCandidate(
+                        event=finalized.event,
+                        salience=1.0,
+                        change=1.0,
+                        novelty=1.0,
+                        goal_relevance=1.0,
+                        persistence=1.0,
+                    ),
+                )
+            )[0]
+            return finalized, awareness
+
+        lived_finalized, lived_awareness = finalize_and_route(lived)
+        read_finalized, read_awareness = finalize_and_route(read)
+        context = ReconsolidationContext(
+            enabled=True,
+            reactivation_strength=0.95,
+            prediction_error=0.65,
+            emotional_activation=0.55,
+            goal_relevance=0.65,
+            explicit_rehearsal=True,
+            detail_drift_enabled=True,
+            interference_strength=1.0,
+        )
+        policy = ReconsolidationPolicy(max_detail_accessibility_loss=0.20)
+        lived_decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=lived,
+            finalized_recollection=lived_finalized,
+            awareness_decision=lived_awareness,
+            context=context,
+            policy=policy,
+        )
+        read_decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=read,
+            finalized_recollection=read_finalized,
+            awareness_decision=read_awareness,
+            context=context,
+            policy=policy,
+        )
+        self.assertEqual(
+            lived_decision.detail_operations,
+            read_decision.detail_operations,
+        )
+        self.assertEqual(
+            lived_decision.detail_reason_codes,
+            read_decision.detail_reason_codes,
+        )
+
     def test_p6b_detail_drift_requires_interference_threshold(self):
         trace = self.trace_with_two_details()
         candidate = self.reconstruct(
