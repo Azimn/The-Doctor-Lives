@@ -2105,6 +2105,73 @@ class ReconsolidationTests(unittest.TestCase):
             after.reconstructed_scene,
         )
 
+    def test_p6c_crossed_mnemonic_axes_produce_distinct_p4_outcomes(self):
+        high_access_low_time = self.trace_with_detail_state(
+            label="cross-temporal",
+            detail_accessibility=1.0,
+            temporal_confidence=0.25,
+            association_strength=1.0,
+        )
+        low_access_high_time = self.trace_with_detail_state(
+            label="cross-access",
+            detail_accessibility=0.10,
+            temporal_confidence=1.0,
+            association_strength=1.0,
+        )
+        high_access_weak_context = self.trace_with_detail_state(
+            label="cross-context",
+            detail_accessibility=1.0,
+            temporal_confidence=1.0,
+            association_strength=0.30,
+        )
+        config = ReconstructionConfig(
+            max_details=1,
+            minimum_detail_score=0.80,
+        )
+
+        temporal = self.reconstruct(
+            high_access_low_time,
+            episode_id="episode:cross-temporal",
+            cue_text="Henry apparatus",
+            config=config,
+        )
+        access = self.reconstruct(
+            low_access_high_time,
+            episode_id="episode:cross-access",
+            cue_text="Henry apparatus",
+            config=config,
+        )
+        context = self.reconstruct(
+            high_access_weak_context,
+            episode_id="episode:cross-context",
+            cue_text="Henry apparatus",
+            config=config,
+        )
+
+        self.assertEqual(len(temporal.included_detail_refs), 1)
+        self.assertIs(
+            temporal.recalled_detail_states[0].temporal_precision,
+            TemporalPrecision.UNCERTAIN,
+        )
+        self.assertIn("The timing feels uncertain.", temporal.reconstructed_scene)
+
+        self.assertEqual(access.included_detail_refs, ())
+        self.assertEqual(len(access.detail_omissions), 1)
+        self.assertIs(
+            access.detail_omissions[0].cause,
+            OmissionCause.BELOW_RETRIEVAL_THRESHOLD,
+        )
+
+        self.assertEqual(len(context.included_detail_refs), 1)
+        self.assertIs(
+            context.recalled_detail_states[0].contextual_association,
+            ContextAssociation.WEAK,
+        )
+        self.assertIn(
+            "weakly connected to the surrounding context",
+            context.reconstructed_scene,
+        )
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
