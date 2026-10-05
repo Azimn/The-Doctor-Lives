@@ -39,7 +39,7 @@ from .source_monitoring import (
 
 
 _RECONSOLIDATION_DECISION_FACTORY_TOKEN = object()
-_LEDGER_SCHEMA_VERSION = "uppb-p6-ledger-v1"
+_LEDGER_SCHEMA_VERSION = "uppb-p6-ledger-v2"
 _ALLOWED_OPERATION_FIELDS = {
     "strength",
     "accessibility",
@@ -782,6 +782,14 @@ def _verify_serialized_decision_audit(audit: dict[str, Any]) -> None:
     fingerprint = audit.get("decision_fingerprint")
     if not isinstance(fingerprint, str) or not fingerprint.strip():
         raise ValueError("decision audit fingerprint is required")
+    finalization_fingerprint = audit.get("finalized_recollection_fingerprint")
+    if (
+        not isinstance(finalization_fingerprint, str)
+        or not finalization_fingerprint.strip()
+    ):
+        raise ValueError(
+            "persisted reconsolidation decision requires P5 finalization fingerprint"
+        )
     payload = dict(audit)
     payload.pop("decision_fingerprint", None)
     expected = "reconsolidation_" + _stable_sha256(payload)[:24]
