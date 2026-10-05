@@ -1,6 +1,8 @@
 """Deterministic awareness routing for phenomenal candidates.
 
-P3 is a subject-access gate, not a consciousness claim. It assigns immutable
+P3 is a subject-access gate, not a consciousness claim. This module is the
+awareness arbitration kernel: change, novelty, persistence, and habituation are
+explicit inputs supplied by upstream temporal state. It assigns immutable
 phenomenal events to latent, preconscious, conscious, or focal access using a
 small inspectable priority rule. It remains disconnected from PretoriusBrain
 until a later integration gate.
@@ -32,6 +34,8 @@ class AwarenessCandidate:
     habituation: float = 0.0
 
     def __post_init__(self) -> None:
+        if not isinstance(self.event, PhenomenalEvent):
+            raise TypeError("AwarenessCandidate.event must be PhenomenalEvent")
         for name in (
             "salience",
             "change",
@@ -102,6 +106,15 @@ class AwarenessRouter:
         self, candidates: tuple[AwarenessCandidate, ...] | list[AwarenessCandidate]
     ) -> tuple[AwarenessDecision, ...]:
         """Route candidates deterministically without mutating their source events."""
+        candidates = tuple(candidates)
+        if any(not isinstance(candidate, AwarenessCandidate) for candidate in candidates):
+            raise TypeError("awareness routing accepts AwarenessCandidate values only")
+        subject_ids = {candidate.event.subject_id for candidate in candidates}
+        if len(subject_ids) > 1:
+            raise ValueError(
+                "one awareness routing operation may contain events for only one subject"
+            )
+
         ranked = sorted(
             candidates,
             key=lambda candidate: (candidate.priority, candidate.event.event_id),
