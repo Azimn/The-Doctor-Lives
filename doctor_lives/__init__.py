@@ -12,12 +12,15 @@ from .recollection import (
     reconstruct_recollection,
 )
 from .source_monitoring import (
+    FinalizedRecollection,
     RecollectionFinalizationContext,
     SourceEvidenceContribution,
     SourceMonitoringCues,
     SourceMonitoringDecision,
+    finalize_recollection,
     finalize_recollection_event,
     monitor_recollection_source,
+    verify_finalized_recollection,
 )
 from .reconsolidation import (
     ReconsolidationContext,
@@ -108,8 +111,11 @@ __all__ = [
     "SourceEvidenceContribution",
     "SourceMonitoringDecision",
     "RecollectionFinalizationContext",
+    "FinalizedRecollection",
     "monitor_recollection_source",
+    "finalize_recollection",
     "finalize_recollection_event",
+    "verify_finalized_recollection",
     "ReconsolidationContext",
     "ReconsolidationPolicy",
     "ReconsolidationOperation",
