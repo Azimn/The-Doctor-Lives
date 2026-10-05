@@ -25,6 +25,7 @@ from .source_monitoring import (
     verify_finalized_recollection,
 )
 from .reconsolidation import (
+    DetailStateOperation,
     ReconsolidationContext,
     ReconsolidationDecision,
     ReconsolidationOperation,
@@ -120,6 +121,7 @@ __all__ = [
     "finalize_recollection",
     "finalize_recollection_event",
     "verify_finalized_recollection",
+    "DetailStateOperation",
     "ReconsolidationContext",
     "ReconsolidationPolicy",
     "ReconsolidationOperation",
