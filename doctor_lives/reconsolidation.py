@@ -6,9 +6,10 @@ verified recollection and awareness. It never mutates an existing trace.
 P6A changes only bounded trace-level strength/accessibility/familiarity and
 retrieval/rehearsal counters. P6B adds separately audited accessibility drift
 for existing retained details that were omitted by the exact P4 recollection.
-Semantic TraceDetail content, protected evidence, gist, source cues, and
-structural associations remain unchanged. Constructive distortion is still
-outside this module's active release gate.
+P6C adds separately gated temporal-confidence and contextual-association drift
+for psychologically meaningful omission causes. Semantic TraceDetail content,
+protected evidence, gist, and source cues remain unchanged. Constructive
+distortion is still outside this module's active release gate.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from .phenomenology import (
 )
 from .recollection import (
     MemoryTrace,
+    OmissionCause,
     ProtectedEvidenceRef,
     RecollectionCandidate,
     TraceDetail,
@@ -42,7 +44,7 @@ from .source_monitoring import (
 
 
 _RECONSOLIDATION_DECISION_FACTORY_TOKEN = object()
-_LEDGER_SCHEMA_VERSION = "uppb-p6b-ledger-v3"
+_LEDGER_SCHEMA_VERSION = "uppb-p6c-ledger-v4"
 _ALLOWED_OPERATION_FIELDS = {
     "strength",
     "accessibility",
@@ -121,7 +123,11 @@ class ReconsolidationContext:
     explicit_rehearsal: bool = False
     detail_drift_enabled: bool = False
     interference_strength: float = 0.0
-    rule_version: str = "uppb-p6b-v1"
+    temporal_drift_enabled: bool = False
+    temporal_disorientation: float = 0.0
+    association_drift_enabled: bool = False
+    context_mismatch: float = 0.0
+    rule_version: str = "uppb-p6c-v1"
 
     def __post_init__(self) -> None:
         if not isinstance(self.enabled, bool):
@@ -130,12 +136,18 @@ class ReconsolidationContext:
             raise TypeError("explicit_rehearsal must be bool")
         if not isinstance(self.detail_drift_enabled, bool):
             raise TypeError("detail_drift_enabled must be bool")
+        if not isinstance(self.temporal_drift_enabled, bool):
+            raise TypeError("temporal_drift_enabled must be bool")
+        if not isinstance(self.association_drift_enabled, bool):
+            raise TypeError("association_drift_enabled must be bool")
         for name in (
             "reactivation_strength",
             "prediction_error",
             "emotional_activation",
             "goal_relevance",
             "interference_strength",
+            "temporal_disorientation",
+            "context_mismatch",
         ):
             object.__setattr__(self, name, _unit(getattr(self, name), name))
         if not isinstance(self.rule_version, str) or not self.rule_version.strip():
@@ -148,11 +160,10 @@ class ReconsolidationContext:
 
 @dataclass(frozen=True)
 class ReconsolidationPolicy:
-    """Bounded P6A/P6B plasticity policy.
+    """Bounded P6A/P6B/P6C plasticity policy.
 
-    P6B adds only degradative detail accessibility. The policy intentionally
-    exposes no switch for blended reconsolidation, semantic detail rewriting,
-    or ungrounded non-neutral content certainty.
+    P6C adds degradative temporal confidence and contextual association while
+    keeping retention and semantic detail content read-only.
     """
 
     min_reactivation: float = 0.35
@@ -167,6 +178,12 @@ class ReconsolidationPolicy:
     min_detail_interference: float = 0.35
     max_detail_accessibility_loss: float = 0.12
     detail_accessibility_floor: float = 0.05
+    min_temporal_disorientation: float = 0.35
+    max_temporal_confidence_loss: float = 0.10
+    temporal_confidence_floor: float = 0.20
+    min_context_mismatch: float = 0.35
+    max_association_strength_loss: float = 0.10
+    association_strength_floor: float = 0.20
 
     def __post_init__(self) -> None:
         for name in (
@@ -189,6 +206,12 @@ class ReconsolidationPolicy:
             "min_detail_interference",
             "max_detail_accessibility_loss",
             "detail_accessibility_floor",
+            "min_temporal_disorientation",
+            "max_temporal_confidence_loss",
+            "temporal_confidence_floor",
+            "min_context_mismatch",
+            "max_association_strength_loss",
+            "association_strength_floor",
         ):
             object.__setattr__(self, name, _unit(getattr(self, name), name))
 
@@ -199,7 +222,7 @@ class ReconsolidationPolicy:
 
 @dataclass(frozen=True)
 class DetailStateOperation:
-    """One explicit bounded P6B change to a retained detail's mnemonic state."""
+    """One explicit bounded P6B/P6C change to a retained detail's mnemonic state."""
 
     detail_id: str
     field_name: str
@@ -213,8 +236,12 @@ class DetailStateOperation:
     def __post_init__(self) -> None:
         if not isinstance(self.detail_id, str) or not self.detail_id.strip():
             raise ValueError("detail_id is required")
-        if self.field_name != "accessibility":
-            raise ValueError("initial P6B may change only detail accessibility")
+        if self.field_name not in {
+            "accessibility",
+            "temporal_confidence",
+            "association_strength",
+        }:
+            raise ValueError("unsupported detail-state operation field")
         for name in ("old_value", "new_value"):
             object.__setattr__(self, name, _unit(getattr(self, name), name))
         if isinstance(self.delta, bool) or not isinstance(self.delta, (int, float)):
@@ -225,7 +252,7 @@ class DetailStateOperation:
         if abs((self.new_value - self.old_value) - self.delta) > 1e-12:
             raise ValueError("delta must equal new_value - old_value")
         if self.delta > 0.0:
-            raise ValueError("initial P6B detail accessibility may only weaken")
+            raise ValueError("P6 detail-state degradation may only weaken")
         for name in ("old_state_fingerprint", "new_state_fingerprint", "reason_code"):
             value = getattr(self, name)
             if not isinstance(value, str) or not value.strip():
