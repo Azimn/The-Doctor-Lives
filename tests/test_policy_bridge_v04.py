@@ -152,7 +152,15 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
         brain = self.make_brain()
         install_deep_history(brain.store)
         self.neutralize(brain)
-        query = "The homunculi creation invites another artificial-life experiment."
+        with brain.store.transaction() as conn:
+            memory_id = conn.execute(
+                "SELECT memory_id FROM history_nodes WHERE node_id='memory.ingolstadt'"
+            ).fetchone()["memory_id"]
+            conn.execute(
+                "UPDATE memories SET base_salience=2.0 WHERE id=?", (memory_id,)
+            )
+            brain.store.bump_state_version(conn)
+        query = "Ingolstadt Henry collaboration and institutional rejection."
 
         ranked_with_edges = brain._ranked_memories(48, query=query, audit=True)
         with brain.store.connect() as conn:
