@@ -144,6 +144,9 @@ class MemoryTrace:
     rehearsal_count: int = 0
     retrieval_count: int = 0
     competing_trace_ids: tuple[str, ...] = ()
+    parent_trace_id: str | None = None
+    reconsolidation_decision_fingerprint: str | None = None
+    reconsolidation_event_id: str | None = None
     trace_lineage_id: str = field(init=False)
     trace_id: str = field(init=False)
 
@@ -198,6 +201,16 @@ class MemoryTrace:
             "retrieval_count",
             _nonnegative_int(self.retrieval_count, "retrieval_count"),
         )
+        for field_name in (
+            "parent_trace_id",
+            "reconsolidation_decision_fingerprint",
+            "reconsolidation_event_id",
+        ):
+            value = getattr(self, field_name)
+            if value is not None and (
+                not isinstance(value, str) or not value.strip()
+            ):
+                raise ValueError(f"{field_name} must be a non-blank string or None")
 
         lineage_payload = {
             "subject_id": self.subject_id,
@@ -224,6 +237,9 @@ class MemoryTrace:
             "rehearsal_count": self.rehearsal_count,
             "retrieval_count": self.retrieval_count,
             "competing_trace_ids": self.competing_trace_ids,
+            "parent_trace_id": self.parent_trace_id,
+            "reconsolidation_decision_fingerprint": self.reconsolidation_decision_fingerprint,
+            "reconsolidation_event_id": self.reconsolidation_event_id,
         }
         object.__setattr__(
             self,
