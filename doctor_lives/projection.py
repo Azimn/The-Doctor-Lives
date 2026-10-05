@@ -36,12 +36,24 @@ class ProjectionContext:
     privacy: PrivacyState = PrivacyState.PRIVATE
 
     def __post_init__(self) -> None:
-        if not self.subject_id.strip():
+        if not isinstance(self.subject_id, str) or not self.subject_id.strip():
             raise ValueError("subject_id is required")
-        if self.tick < 0:
-            raise ValueError("tick cannot be negative")
-        if not self.source_state_digest.strip():
+        if not isinstance(self.tick, int) or isinstance(self.tick, bool) or self.tick < 0:
+            raise ValueError("tick must be a non-negative integer")
+        if (
+            not isinstance(self.source_state_digest, str)
+            or not self.source_state_digest.strip()
+        ):
             raise ValueError("source_state_digest is required")
+        if (
+            not isinstance(self.projection_rule_version, str)
+            or not self.projection_rule_version.strip()
+        ):
+            raise ValueError("projection_rule_version is required")
+        if not isinstance(self.awareness, AwarenessLevel):
+            raise TypeError("awareness must be AwarenessLevel")
+        if not isinstance(self.privacy, PrivacyState):
+            raise TypeError("privacy must be PrivacyState")
 
 
 class BodilySignal(str):
