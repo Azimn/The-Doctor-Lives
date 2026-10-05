@@ -87,6 +87,57 @@ class RecollectionArchitectureTests(unittest.TestCase):
         with self.assertRaises(FrozenInstanceError):
             trace.gist = "changed"  # type: ignore[misc]
 
+    def test_duplicate_detail_ids_within_trace_fail_closed(self):
+        with self.assertRaises(ValueError):
+            MemoryTrace(
+                subject_id="subject-memory",
+                version=0,
+                protected_evidence=(self.evidence("dup-detail"),),
+                gist="A scene with ambiguous local detail identity",
+                details=(
+                    TraceDetail(
+                        detail_id="detail:henry",
+                        text="Henry stood near the apparatus",
+                    ),
+                    TraceDetail(
+                        detail_id="detail:henry",
+                        text="Henry stood by the doorway",
+                    ),
+                ),
+            )
+
+    def test_duplicate_evidence_ids_within_trace_fail_closed(self):
+        with self.assertRaises(ValueError):
+            MemoryTrace(
+                subject_id="subject-memory",
+                version=0,
+                protected_evidence=(
+                    ProtectedEvidenceRef("evidence:same", "sha256:first"),
+                    ProtectedEvidenceRef("evidence:same", "sha256:second"),
+                ),
+                gist="A trace cannot ambiguously bind one evidence identifier twice",
+            )
+
+    def test_recollection_candidate_cannot_be_constructed_directly(self):
+        with self.assertRaises(TypeError):
+            RecollectionCandidate(
+                subject_id="subject-memory",
+                retrieval_episode_id="episode-fabricated",
+                retrieval_episode_fingerprint="fabricated-fingerprint",
+                reconstruction_config_fingerprint="fabricated-config",
+                reconstruction_rule_version="uppb-p4-v1",
+                trace_ids=("trace_x",),
+                protected_evidence_refs=("evidence:x",),
+                reconstructed_scene="Henry was definitely there.",
+                included_detail_refs=("trace_x:invented",),
+                omitted_detail_refs=(),
+                vividness=None,  # type: ignore[arg-type]
+                content_confidence=1.0,
+                fragmented=False,
+                blended=False,
+                reconstruction_operations=("retrieve_details",),
+            )
+
     def test_recall_does_not_mutate_protected_evidence_or_trace(self):
         trace = self.trace()
         episode = self.episode(trace)
@@ -173,6 +224,64 @@ class RecollectionArchitectureTests(unittest.TestCase):
         )
         self.assertEqual(first.reconstructed_scene, second.reconstructed_scene)
         self.assertNotEqual(first_episode.occurrence_fingerprint, second_episode.occurrence_fingerprint)
+        self.assertNotEqual(first.candidate_id, second.candidate_id)
+
+    def test_reused_episode_id_with_changed_episode_state_stays_distinct(self):
+        trace = self.trace()
+        first_episode = RetrievalEpisode(
+            episode_id="episode-reused",
+            subject_id=trace.subject_id,
+            tick=20,
+            cue_text="rain window",
+            candidate_trace_ids=(trace.trace_id,),
+            context_refs=("context:first",),
+            subject_state_digest="sha256:same-state",
+        )
+        second_episode = RetrievalEpisode(
+            episode_id="episode-reused",
+            subject_id=trace.subject_id,
+            tick=20,
+            cue_text="rain window",
+            candidate_trace_ids=(trace.trace_id,),
+            context_refs=("context:second",),
+            subject_state_digest="sha256:same-state",
+        )
+        config = ReconstructionConfig(max_details=1)
+        first = reconstruct_recollection([trace], first_episode, config=config)
+        second = reconstruct_recollection([trace], second_episode, config=config)
+
+        self.assertEqual(first.reconstructed_scene, second.reconstructed_scene)
+        self.assertNotEqual(
+            first_episode.occurrence_fingerprint,
+            second_episode.occurrence_fingerprint,
+        )
+        self.assertEqual(
+            first.retrieval_episode_fingerprint,
+            first_episode.occurrence_fingerprint,
+        )
+        self.assertEqual(
+            second.retrieval_episode_fingerprint,
+            second_episode.occurrence_fingerprint,
+        )
+        self.assertNotEqual(first.candidate_id, second.candidate_id)
+
+    def test_reconstruction_config_is_bound_even_when_visible_content_matches(self):
+        trace = self.trace()
+        episode = self.episode(trace, episode_id="episode-config")
+        loose = ReconstructionConfig(max_details=1, minimum_detail_score=0.0)
+        stricter = ReconstructionConfig(max_details=1, minimum_detail_score=0.1)
+
+        first = reconstruct_recollection([trace], episode, config=loose)
+        second = reconstruct_recollection([trace], episode, config=stricter)
+
+        self.assertEqual(first.reconstructed_scene, second.reconstructed_scene)
+        self.assertNotEqual(loose.fingerprint, stricter.fingerprint)
+        self.assertEqual(first.reconstruction_config_fingerprint, loose.fingerprint)
+        self.assertEqual(second.reconstruction_config_fingerprint, stricter.fingerprint)
+        self.assertEqual(
+            first.reconstruction_rule_version,
+            episode.reconstruction_rule_version,
+        )
         self.assertNotEqual(first.candidate_id, second.candidate_id)
 
     def test_partial_recollection_prefers_omission_over_invention(self):
