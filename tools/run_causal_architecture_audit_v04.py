@@ -44,10 +44,10 @@ def build_seed(state_dir: Path) -> None:
 def probes() -> dict[str, Experience]:
     return {
         "deep_history": Experience(
-            "Henry orders me to abandon the Ingolstadt work and comply immediately.",
-            kind="social", actor="Henry Frankenstein", valence=-.6, arousal=.72,
-            social=.8, authority=.95, autonomy=.05, threat=.55, control=-.5,
-            novelty=.2, tags=("coercion", "ingolstadt"),
+            "The homunculi creation invites another artificial-life experiment.",
+            kind="observation", valence=.2, arousal=.45, novelty=.6,
+            achievement=.2, creation=.8,
+            tags=("homunculi", "creation", "artificial_life"),
         ),
         "needs": Experience(
             "A difficult new artificial-life experiment becomes available after a long exhausting session.",
