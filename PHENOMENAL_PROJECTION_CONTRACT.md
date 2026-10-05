@@ -443,39 +443,83 @@ Acceptance:
 - no dependency on network or LLM;
 - unit tests include a non-Pretorius subject.
 
-### P2 - deterministic projectors
+### P2 - deterministic non-memory projectors
 
-Implement canonical offline projectors for bodily/interoceptive state, affect/appraisal, action tendency and impulse, uncertainty, concern/commitment, relationship state, and memory/recollection.
+Implement canonical offline projectors for bodily/interoceptive state, affect/appraisal, action tendency and impulse, uncertainty, concern/commitment, and relationship state.
+
+Memory/recollection projection is intentionally excluded from P2. Trace-to-recollection construction belongs exclusively to P4.
 
 Acceptance:
 - source state remains unchanged;
 - raw numeric state does not leak to canonical first-person output;
 - each projector has boundary tests.
 
-### P3 - awareness routing
+### P3 - awareness arbitration kernel
 
-Add latent/preconscious/conscious/focal routing, change detection, conflict, and habituation.
+Add deterministic latent/preconscious/conscious/focal arbitration using explicit change, novelty, relevance, conflict, persistence, and habituation inputs.
+
+P3 is an arbitration kernel, not yet a complete temporal awareness process. Change detection and habituation accumulation are supplied by surrounding temporal state until a later dedicated integration layer owns them.
 
 Acceptance:
 - not every eligible event becomes conscious;
 - routing is deterministic under fixed state/config;
-- attention remains capacity-limited.
+- attention remains capacity-limited;
+- one routing operation cannot mix subjects.
 
-### P4 - recollection layer
+### P3H - representation-integrity hardening gate
 
-Separate memory trace from subjective recollection.
+P4 and P5 are blocked until the substrate can support persistent recollection lineage safely.
+
+Required corrections:
+- collection-bearing value objects are deeply immutable by tuple normalization or rejection;
+- enum-bearing fields are runtime validated;
+- canonical subject-text validation occurs at PhenomenalEvent construction and cannot be bypassed by direct public construction;
+- semantic/content identity is distinct from lineage/event identity;
+- distinct objective provenance/source lineage cannot collapse to one event identity merely because wording matches;
+- Recollection has one authoritative subjective source/certainty/vividness representation;
+- awareness capacity is isolated to one subject per routing operation.
+
+Required adversarial tests:
+- mutable-container injection;
+- invalid mode/awareness/privacy/source enums;
+- direct unsafe canonical-event construction;
+- same text with different provenance and distinct event identity;
+- contradictory recollection metadata made structurally impossible;
+- mixed-subject awareness competition rejected before capacity arbitration.
+
+### P4 - recollection architecture
+
+P4 owns the memory path:
+
+protected event/evidence -> persistent memory trace -> retrieval cue -> reconstructed recollection
+
+The recollection is an ephemeral or explicitly versioned phenomenal construction from one or more traces plus current cue and subject state. It may differ across recalls in vividness, certainty, interpretation, completeness, affect, or fragmentation while protected objective evidence remains unchanged.
 
 Acceptance:
-- objective source remains preserved;
-- recollection can differ in source attribution, certainty, vividness, and interpretation.
+- objective source remains bit-for-bit preserved;
+- trace lineage remains intact;
+- two recollections from the same trace can differ without mutating protected evidence;
+- current recollection is not identical to the persistent trace;
+- awareness routing remains downstream of recollection construction.
 
 ### P5 - source monitoring
 
-Add a psychological source-attribution mechanism.
+Source monitoring is a distinct mechanism downstream of P4, not random error injected by the recollection projector.
+
+It should consume psychologically meaningful evidence such as trace quality, temporal distance, competing traces, retrieval/rehearsal history, imagination or reconstruction exposure, source similarity, cue compatibility, and current contextual fit.
+
+It produces subjective source attribution and confidence and must support:
+- correct attribution;
+- uncertainty;
+- misattribution;
+- matched negative controls where reconstruction awareness remains correct.
+
+Every error must have a causal explanation available to engineering/audit even when the character cannot access that explanation.
 
 Acceptance:
-- subjective attribution can be correct or incorrect;
-- error does not alter objective provenance.
+- subjective attribution can be correct, uncertain, or wrong;
+- objective provenance never changes because of source attribution;
+- error is deterministic or otherwise reproducibly attributable to explicit mechanism state.
 
 ### P6 - reconsolidation
 
