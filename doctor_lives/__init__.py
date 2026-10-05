@@ -3,12 +3,14 @@
 from .causal_audit import AuditIntervention, CausalAuditHarness
 from .awareness import AwarenessCandidate, AwarenessDecision, AwarenessPolicy, AwarenessRouter
 from .recollection import (
+    DetailAvailability,
     MemoryTrace,
     ProtectedEvidenceRef,
     ReconstructionConfig,
     RecollectionCandidate,
     RetrievalEpisode,
     TraceDetail,
+    TraceDetailState,
     reconstruct_recollection,
 )
 from .source_monitoring import (
@@ -102,6 +104,8 @@ __all__ = [
     "AwarenessRouter",
     "ProtectedEvidenceRef",
     "TraceDetail",
+    "DetailAvailability",
+    "TraceDetailState",
     "MemoryTrace",
     "RetrievalEpisode",
     "ReconstructionConfig",
