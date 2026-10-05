@@ -22,9 +22,11 @@ from doctor_lives.recollection import (
     reconstruct_recollection,
 )
 from doctor_lives.source_monitoring import (
+    FinalizedRecollection,
     RecollectionFinalizationContext,
     SourceMonitoringCues,
     SourceMonitoringDecision,
+    finalize_recollection,
     finalize_recollection_event,
     monitor_recollection_source,
 )
@@ -227,6 +229,51 @@ class SourceMonitoringTests(unittest.TestCase):
             first_decision.decision_fingerprint,
             second_decision.decision_fingerprint,
         )
+
+    def test_finalized_recollection_is_factory_controlled(self):
+        with self.assertRaises(TypeError):
+            FinalizedRecollection()
+
+    def test_finalized_recollection_attests_exact_canonical_event(self):
+        candidate = self.candidate(label="finalized-artifact")
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.read_cues(),
+        )
+        context = RecollectionFinalizationContext(
+            tick=41,
+            source_state_digest="sha256:p5-finalized",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="test",
+                source="audit",
+                record_ids=candidate.protected_evidence_refs,
+            ),
+        )
+        first = finalize_recollection(
+            candidate=candidate,
+            decision=decision,
+            context=context,
+        )
+        second = finalize_recollection(
+            candidate=candidate,
+            decision=decision,
+            context=context,
+        )
+        self.assertEqual(first, second)
+        self.assertEqual(first.event, finalize_recollection_event(
+            candidate=candidate,
+            decision=decision,
+            context=context,
+        ))
+        self.assertEqual(first.candidate_id, candidate.candidate_id)
+        self.assertEqual(first.candidate_digest, candidate.candidate_digest)
+        self.assertEqual(
+            first.source_decision_fingerprint,
+            decision.decision_fingerprint,
+        )
+        self.assertTrue(first.finalization_fingerprint.startswith(
+            "finalized_recollection_"
+        ))
 
     def test_decision_is_factory_controlled(self):
         with self.assertRaises(TypeError):
