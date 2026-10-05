@@ -2,6 +2,15 @@
 
 from .causal_audit import AuditIntervention, CausalAuditHarness
 from .awareness import AwarenessCandidate, AwarenessDecision, AwarenessPolicy, AwarenessRouter
+from .recollection import (
+    MemoryTrace,
+    ProtectedEvidenceRef,
+    ReconstructionConfig,
+    RecollectionCandidate,
+    RetrievalEpisode,
+    TraceDetail,
+    reconstruct_recollection,
+)
 from .chassis import PretoriusBrainPort
 from .cognition import PretoriusBrain
 from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
@@ -70,4 +79,11 @@ __all__ = [
     "AwarenessDecision",
     "AwarenessPolicy",
     "AwarenessRouter",
+    "ProtectedEvidenceRef",
+    "TraceDetail",
+    "MemoryTrace",
+    "RetrievalEpisode",
+    "ReconstructionConfig",
+    "RecollectionCandidate",
+    "reconstruct_recollection",
 ]
