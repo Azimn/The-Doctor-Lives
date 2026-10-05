@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .awareness import AwarenessDecision
 from .phenomenology import (
     AwarenessLevel,
     CertaintyBand,
@@ -212,6 +213,7 @@ class ReconsolidationDecision:
     recollection_event_id: str
     recollection_event_lineage_fingerprint: str
     recollection_awareness: AwarenessLevel
+    awareness_priority: float
     context: ReconsolidationContext
     context_fingerprint: str
     policy: ReconsolidationPolicy
@@ -238,16 +240,29 @@ def _validate_upstream_chain(
     old_trace: MemoryTrace,
     candidate: RecollectionCandidate,
     source_decision: SourceMonitoringDecision,
-    recollection_event: PhenomenalEvent,
-) -> None:
+    awareness_decision: AwarenessDecision,
+) -> PhenomenalEvent:
     if not isinstance(old_trace, MemoryTrace):
         raise TypeError("old_trace must be MemoryTrace")
     if not isinstance(candidate, RecollectionCandidate):
         raise TypeError("candidate must be RecollectionCandidate")
     if not isinstance(source_decision, SourceMonitoringDecision):
         raise TypeError("source_decision must be SourceMonitoringDecision")
+    if not isinstance(awareness_decision, AwarenessDecision):
+        raise TypeError(
+            "awareness_decision must be the P3 AwarenessDecision output"
+        )
+    recollection_event = awareness_decision.event
     if not isinstance(recollection_event, PhenomenalEvent):
-        raise TypeError("recollection_event must be PhenomenalEvent")
+        raise TypeError("awareness decision event must be PhenomenalEvent")
+    if isinstance(awareness_decision.priority, bool) or not isinstance(
+        awareness_decision.priority, (int, float)
+    ):
+        raise TypeError("awareness decision priority must be numeric")
+    if not math.isfinite(float(awareness_decision.priority)):
+        raise ValueError("awareness decision priority must be finite")
+    if not 0.0 <= float(awareness_decision.priority) <= 1.0:
+        raise ValueError("awareness decision priority must be between 0 and 1")
 
     if candidate.subject_id != old_trace.subject_id:
         raise ValueError("candidate subject does not match old trace")
@@ -281,6 +296,7 @@ def _validate_upstream_chain(
         raise ValueError("recollection event source attribution mismatch")
     if recollection_event.subjective_source.certainty is not source_decision.certainty:
         raise ValueError("recollection event source certainty mismatch")
+    return recollection_event
 
 
 def _bounded_delta(
@@ -299,7 +315,7 @@ def _decision_payload(
     old_trace: MemoryTrace,
     candidate: RecollectionCandidate,
     source_decision: SourceMonitoringDecision,
-    recollection_event: PhenomenalEvent,
+    awareness_decision: AwarenessDecision,
     context: ReconsolidationContext,
     policy: ReconsolidationPolicy,
     eligible: bool,
@@ -307,6 +323,7 @@ def _decision_payload(
     operations: tuple[ReconsolidationOperation, ...],
     reason_codes: tuple[str, ...],
 ) -> dict[str, Any]:
+    recollection_event = awareness_decision.event
     return {
         "old_trace_id": old_trace.trace_id,
         "old_trace_digest": old_trace.snapshot_digest,
@@ -318,6 +335,7 @@ def _decision_payload(
         "recollection_event_id": recollection_event.event_id,
         "recollection_event_lineage_fingerprint": recollection_event.lineage_fingerprint,
         "recollection_awareness": recollection_event.awareness.value,
+        "awareness_priority": float(awareness_decision.priority),
         "context": asdict(context),
         "context_fingerprint": context.fingerprint,
         "policy": asdict(policy),
@@ -334,7 +352,7 @@ def evaluate_reconsolidation(
     old_trace: MemoryTrace,
     candidate: RecollectionCandidate,
     source_decision: SourceMonitoringDecision,
-    recollection_event: PhenomenalEvent,
+    awareness_decision: AwarenessDecision,
     context: ReconsolidationContext,
     policy: ReconsolidationPolicy | None = None,
 ) -> ReconsolidationDecision:
@@ -346,11 +364,11 @@ def evaluate_reconsolidation(
     if not isinstance(policy, ReconsolidationPolicy):
         raise TypeError("policy must be ReconsolidationPolicy")
 
-    _validate_upstream_chain(
+    recollection_event = _validate_upstream_chain(
         old_trace=old_trace,
         candidate=candidate,
         source_decision=source_decision,
-        recollection_event=recollection_event,
+        awareness_decision=awareness_decision,
     )
 
     reasons: list[str] = []
@@ -455,7 +473,7 @@ def evaluate_reconsolidation(
         old_trace=old_trace,
         candidate=candidate,
         source_decision=source_decision,
-        recollection_event=recollection_event,
+        awareness_decision=awareness_decision,
         context=context,
         policy=policy,
         eligible=eligible,
@@ -481,6 +499,7 @@ def evaluate_reconsolidation(
             recollection_event.lineage_fingerprint,
         ),
         ("recollection_awareness", recollection_event.awareness),
+        ("awareness_priority", float(awareness_decision.priority)),
         ("context", context),
         ("context_fingerprint", context.fingerprint),
         ("policy", policy),
@@ -504,16 +523,16 @@ def _verify_decision_integrity(
     old_trace: MemoryTrace,
     candidate: RecollectionCandidate,
     source_decision: SourceMonitoringDecision,
-    recollection_event: PhenomenalEvent,
+    awareness_decision: AwarenessDecision,
     decision: ReconsolidationDecision,
 ) -> None:
     if not isinstance(decision, ReconsolidationDecision):
         raise TypeError("decision must be ReconsolidationDecision")
-    _validate_upstream_chain(
+    recollection_event = _validate_upstream_chain(
         old_trace=old_trace,
         candidate=candidate,
         source_decision=source_decision,
-        recollection_event=recollection_event,
+        awareness_decision=awareness_decision,
     )
     if decision.old_trace_id != old_trace.trace_id:
         raise ValueError("reconsolidation decision old trace ID mismatch")
@@ -534,6 +553,8 @@ def _verify_decision_integrity(
         raise ValueError("reconsolidation decision event lineage mismatch")
     if decision.recollection_awareness is not recollection_event.awareness:
         raise ValueError("reconsolidation decision awareness mismatch")
+    if abs(decision.awareness_priority - float(awareness_decision.priority)) > 1e-12:
+        raise ValueError("reconsolidation decision awareness priority mismatch")
     if decision.context_fingerprint != decision.context.fingerprint:
         raise ValueError("reconsolidation context fingerprint mismatch")
     if decision.policy_fingerprint != decision.policy.fingerprint:
@@ -543,7 +564,7 @@ def _verify_decision_integrity(
         old_trace=old_trace,
         candidate=candidate,
         source_decision=source_decision,
-        recollection_event=recollection_event,
+        awareness_decision=awareness_decision,
         context=decision.context,
         policy=decision.policy,
         eligible=decision.eligible,
@@ -561,7 +582,7 @@ def apply_reconsolidation(
     old_trace: MemoryTrace,
     candidate: RecollectionCandidate,
     source_decision: SourceMonitoringDecision,
-    recollection_event: PhenomenalEvent,
+    awareness_decision: AwarenessDecision,
     decision: ReconsolidationDecision,
 ) -> MemoryTrace | None:
     """Create an immutable successor trace when the verified decision is eligible."""
@@ -570,9 +591,10 @@ def apply_reconsolidation(
         old_trace=old_trace,
         candidate=candidate,
         source_decision=source_decision,
-        recollection_event=recollection_event,
+        awareness_decision=awareness_decision,
         decision=decision,
     )
+    recollection_event = awareness_decision.event
     if not decision.eligible:
         return None
 
@@ -962,7 +984,7 @@ def reconsolidate_and_record(
     old_trace: MemoryTrace,
     candidate: RecollectionCandidate,
     source_decision: SourceMonitoringDecision,
-    recollection_event: PhenomenalEvent,
+    awareness_decision: AwarenessDecision,
     context: ReconsolidationContext,
     policy: ReconsolidationPolicy | None = None,
 ) -> tuple[ReconsolidationDecision, MemoryTrace | None]:
@@ -974,7 +996,7 @@ def reconsolidate_and_record(
         old_trace=old_trace,
         candidate=candidate,
         source_decision=source_decision,
-        recollection_event=recollection_event,
+        awareness_decision=awareness_decision,
         context=context,
         policy=policy,
     )
@@ -982,7 +1004,7 @@ def reconsolidate_and_record(
         old_trace=old_trace,
         candidate=candidate,
         source_decision=source_decision,
-        recollection_event=recollection_event,
+        awareness_decision=awareness_decision,
         decision=decision,
     )
     if successor is not None:
