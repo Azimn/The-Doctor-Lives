@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
 
 from doctor_lives import Experience, PretoriusBrain
-from doctor_lives.causal_audit import AuditIntervention, CausalAuditHarness
+from doctor_lives.causal_audit import (
+    AuditIntervention,
+    CausalAuditHarness,
+    cross_version_row,
+    experiment_fingerprint,
+)
 from doctor_lives.history import install_deep_history
 
 
@@ -94,42 +97,6 @@ def probes() -> dict[str, Experience]:
             kind="observation", valence=.25, arousal=.5, novelty=.5,
             achievement=.2, creation=.9, tags=("create", "artificial_life"),
         ),
-    }
-
-
-def experiment_fingerprint(mechanism: str, stimulus: Experience, method: str) -> str:
-    payload = {
-        "mechanism": mechanism,
-        "method": method,
-        "stimulus": asdict(stimulus),
-    }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
-
-
-def cross_version_row(prior: dict | None, current: dict) -> dict:
-    prior_fp = None if prior is None else prior.get("experiment_fingerprint")
-    current_fp = current["experiment_fingerprint"]
-    if prior is not None and bool(prior.get("comparable")) and prior_fp != current_fp:
-        raise RuntimeError(
-            f"cross-version row {current['mechanism']!r} is marked comparable but experiment fingerprints differ"
-        )
-    comparable = bool(prior_fp) and prior_fp == current_fp
-    return {
-        "mechanism": current["mechanism"],
-        "comparable": comparable,
-        "comparison_reason": (
-            "matching experiment fingerprints"
-            if comparable
-            else "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only"
-        ),
-        "v03_experiment_fingerprint": prior_fp,
-        "v04_experiment_fingerprint": current_fp,
-        "v03_historical_action_score_l1": None if prior is None else prior.get("action_score_l1"),
-        "v04_action_score_l1": current["action_score_l1"],
-        "v03_historical_selected_action_diverged": None if prior is None else prior.get("selected_action_diverged"),
-        "v04_selected_action_diverged": current["selected_action_diverged"],
-        "v04_renderer_request_changed": current["renderer_request_changed"],
     }
 
 
