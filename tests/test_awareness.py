@@ -13,21 +13,28 @@ from doctor_lives.phenomenology import (
 
 
 class AwarenessRouterTests(unittest.TestCase):
-    def event(self, event_id: str, text: str) -> PhenomenalEvent:
+    def event(
+        self,
+        label: str,
+        text: str,
+        *,
+        subject_id: str = "subject-gamma",
+    ) -> PhenomenalEvent:
         return PhenomenalEvent(
-            event_id=event_id,
             tick=1,
-            subject_id="subject-gamma",
+            subject_id=subject_id,
             mode=PhenomenalMode.FEELING,
             awareness=AwarenessLevel.LATENT,
             canonical_first_person=text,
             privacy=PrivacyState.PRIVATE,
-            projection_rule_version="uppb-p3",
+            projection_rule_version="uppb-p3h",
             source_state_digest="sha256:awareness-state",
             objective_provenance=ObjectiveProvenance(
                 evidence_class="mechanistic_projection",
                 source="test",
+                record_ids=(f"record:{label}",),
             ),
+            source_event_refs=(f"source:{label}",),
         )
 
     def test_router_is_capacity_limited(self):
@@ -103,19 +110,20 @@ class AwarenessRouterTests(unittest.TestCase):
             goal_relevance=.8,
             novelty=.6,
         )
-        decisions = {d.event.event_id: d for d in router.route([quiet, conflicted])}
+        decisions = {d.event.subject_text: d for d in router.route([quiet, conflicted])}
         self.assertGreater(
-            decisions["conflicted"].priority,
-            decisions["quiet"].priority,
+            decisions["I want to stay, but I also want to leave."].priority,
+            decisions["I am unsure what I feel."].priority,
         )
         self.assertIn(
-            decisions["conflicted"].awareness,
+            decisions["I want to stay, but I also want to leave."].awareness,
             {AwarenessLevel.CONSCIOUS, AwarenessLevel.FOCAL},
         )
 
-    def test_routing_does_not_mutate_source_event(self):
+    def test_routing_does_not_mutate_source_event_or_identity(self):
         router = AwarenessRouter()
         source = self.event("source", "I feel a sudden chill.")
+        source_id = source.event_id
         candidate = AwarenessCandidate(
             source,
             salience=.9,
@@ -126,10 +134,24 @@ class AwarenessRouterTests(unittest.TestCase):
         decision = router.route([candidate])[0]
         self.assertIs(source.awareness, AwarenessLevel.LATENT)
         self.assertIsNot(source, decision.event)
+        self.assertEqual(source_id, decision.event.event_id)
         self.assertIn(
             decision.awareness,
             {AwarenessLevel.CONSCIOUS, AwarenessLevel.FOCAL},
         )
+
+    def test_mixed_subject_candidates_fail_closed_before_capacity_competition(self):
+        router = AwarenessRouter()
+        a = AwarenessCandidate(
+            self.event("a", "I feel uneasy.", subject_id="subject-a"),
+            salience=.8,
+        )
+        b = AwarenessCandidate(
+            self.event("b", "I feel tired.", subject_id="subject-b"),
+            salience=.9,
+        )
+        with self.assertRaises(ValueError):
+            router.route([a, b])
 
     def test_fixed_candidates_route_deterministically(self):
         router = AwarenessRouter()
