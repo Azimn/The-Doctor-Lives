@@ -31,6 +31,7 @@ from doctor_lives.reconsolidation import (
 from doctor_lives.source_monitoring import (
     RecollectionFinalizationContext,
     SourceMonitoringCues,
+    finalize_recollection,
     finalize_recollection_event,
     monitor_recollection_source,
 )
@@ -119,7 +120,7 @@ class ReconsolidationTests(unittest.TestCase):
             candidate=candidate,
             cues=cues or self.source_cues(),
         )
-        event = finalize_recollection_event(
+        finalized = finalize_recollection(
             candidate=candidate,
             decision=decision,
             context=RecollectionFinalizationContext(
@@ -134,7 +135,7 @@ class ReconsolidationTests(unittest.TestCase):
             ),
         )
         awareness_candidate = AwarenessCandidate(
-            event=event,
+            event=finalized.event,
             salience=1.0 if focal else 0.0,
             change=1.0 if focal else 0.0,
             novelty=1.0 if focal else 0.0,
@@ -144,7 +145,7 @@ class ReconsolidationTests(unittest.TestCase):
             habituation=0.0,
         )
         awareness_decision = AwarenessRouter().route((awareness_candidate,))[0]
-        return candidate, decision, awareness_decision
+        return candidate, decision, finalized, awareness_decision
 
     def eligible_context(self, *, enabled: bool = True) -> ReconsolidationContext:
         return ReconsolidationContext(
@@ -165,7 +166,7 @@ class ReconsolidationTests(unittest.TestCase):
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
         original_digest = trace.snapshot_digest
-        candidate, source_decision, latent_event = self.final_event(
+        candidate, source_decision, finalized, latent_event = self.final_event(
             trace,
             episode_id="episode:latent",
             focal=False,
@@ -240,9 +241,9 @@ class ReconsolidationTests(unittest.TestCase):
             decision.reason_codes,
         )
 
-    def test_matched_reconsolidation_lesion_changes_only_enabled_condition(self):
+    def test_matched_reconsolidation_lesion_holds_upstream_chain_fixed(self):
         trace = self.trace(label="matched-lesion")
-        candidate, source_decision, awareness_decision = self.final_event(
+        candidate, source_decision, finalized, awareness_decision = self.final_event(
             trace,
             episode_id="episode:matched-lesion",
         )
@@ -302,7 +303,7 @@ class ReconsolidationTests(unittest.TestCase):
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
         original_digest = trace.snapshot_digest
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:focal",
         )
@@ -341,7 +342,7 @@ class ReconsolidationTests(unittest.TestCase):
         trace = self.trace()
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:misattributed",
             cues=self.source_cues(),
@@ -375,7 +376,7 @@ class ReconsolidationTests(unittest.TestCase):
 
     def test_matched_reconsolidation_lesion_changes_only_enabled_condition(self):
         trace = self.trace(label="matched-lesion")
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:matched-lesion",
         )
@@ -413,7 +414,7 @@ class ReconsolidationTests(unittest.TestCase):
 
     def test_reconsolidation_decision_binds_exact_awareness_state(self):
         trace = self.trace(label="awareness-binding")
-        candidate, source_decision, latent_event = self.final_event(
+        candidate, source_decision, finalized, latent_event = self.final_event(
             trace,
             episode_id="episode:awareness-binding",
             focal=False,
@@ -459,7 +460,7 @@ class ReconsolidationTests(unittest.TestCase):
 
     def test_p6_rejects_bare_phenomenal_event_in_place_of_p3_decision(self):
         trace = self.trace(label="bare-event")
-        candidate, source_decision, awareness_decision = self.final_event(
+        candidate, source_decision, finalized, awareness_decision = self.final_event(
             trace,
             episode_id="episode:bare-event",
         )
@@ -474,7 +475,7 @@ class ReconsolidationTests(unittest.TestCase):
 
     def test_initial_p6_ignores_non_neutral_content_certainty(self):
         trace = self.trace()
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:certainty",
             content_certainty=CertaintyBand.VERY_HIGH,
@@ -561,7 +562,7 @@ class ReconsolidationTests(unittest.TestCase):
 
     def test_no_destabilizing_signal_means_no_reconsolidation(self):
         trace = self.trace()
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:no-destabilizer",
         )
@@ -587,11 +588,11 @@ class ReconsolidationTests(unittest.TestCase):
     def test_reconsolidation_requires_exact_p4_p5_event_chain(self):
         first = self.trace(label="first")
         second = self.trace(label="second")
-        first_candidate, first_source, first_event = self.final_event(
+        first_candidate, first_source, first_finalized, first_event = self.final_event(
             first,
             episode_id="episode:first",
         )
-        second_candidate, _, _ = self.final_event(
+        second_candidate, _, _, _ = self.final_event(
             second,
             episode_id="episode:second",
         )
@@ -607,7 +608,7 @@ class ReconsolidationTests(unittest.TestCase):
 
     def test_every_successor_change_has_explicit_operation(self):
         trace = self.trace()
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:operations",
         )
@@ -662,7 +663,7 @@ class ReconsolidationTests(unittest.TestCase):
         )
         self.assertEqual(before.included_detail_refs, ())
 
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:reactivate",
         )
@@ -777,7 +778,7 @@ class ReconsolidationTests(unittest.TestCase):
         trace = self.trace()
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:fork",
         )
@@ -812,7 +813,7 @@ class ReconsolidationTests(unittest.TestCase):
         trace = self.trace(label="nonmonotonic")
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:nonmonotonic",
         )
@@ -863,7 +864,7 @@ class ReconsolidationTests(unittest.TestCase):
         trace = self.trace(label="forged-successor")
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:forged-successor",
         )
@@ -915,7 +916,7 @@ class ReconsolidationTests(unittest.TestCase):
         trace = self.trace()
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:persist",
         )
@@ -990,7 +991,7 @@ class ReconsolidationTests(unittest.TestCase):
         trace = self.trace(label="audit-corruption")
         ledger = TraceVersionLedger()
         ledger.register_initial(trace)
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:audit-corruption",
         )
@@ -1025,7 +1026,7 @@ class ReconsolidationTests(unittest.TestCase):
         last_strength_delta = None
 
         for index in range(100):
-            candidate, source_decision, event = self.final_event(
+            candidate, source_decision, finalized, event = self.final_event(
                 current,
                 episode_id=f"episode:repeat:{index}",
             )
@@ -1061,7 +1062,7 @@ class ReconsolidationTests(unittest.TestCase):
 
     def test_corrupted_reconsolidation_decision_fails_closed(self):
         trace = self.trace()
-        candidate, source_decision, event = self.final_event(
+        candidate, source_decision, finalized, event = self.final_event(
             trace,
             episode_id="episode:corrupt",
         )
