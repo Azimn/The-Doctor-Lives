@@ -258,6 +258,84 @@ class ReconsolidationTests(unittest.TestCase):
         self.assertEqual(trace.snapshot_digest, original_digest)
         self.assertEqual(len(ledger.history(trace.trace_lineage_id)), 1)
 
+    def test_matched_reconsolidation_lesion_changes_only_enabled_condition(self):
+        trace = self.trace(label="matched-lesion")
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:matched-lesion",
+        )
+        original_digest = trace.snapshot_digest
+
+        disabled_ledger = TraceVersionLedger()
+        disabled_ledger.register_initial(trace)
+        disabled_decision, disabled_successor = reconsolidate_and_record(
+            ledger=disabled_ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(enabled=False),
+        )
+
+        enabled_ledger = TraceVersionLedger()
+        enabled_ledger.register_initial(trace)
+        enabled_decision, enabled_successor = reconsolidate_and_record(
+            ledger=enabled_ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(enabled=True),
+        )
+
+        self.assertFalse(disabled_decision.eligible)
+        self.assertIsNone(disabled_successor)
+        self.assertTrue(enabled_decision.eligible)
+        self.assertIsNotNone(enabled_successor)
+        self.assertEqual(trace.snapshot_digest, original_digest)
+        self.assertEqual(len(disabled_ledger.history(trace.trace_lineage_id)), 1)
+        self.assertEqual(len(enabled_ledger.history(trace.trace_lineage_id)), 2)
+
+    def test_reconsolidation_decision_binds_exact_awareness_state(self):
+        trace = self.trace(label="awareness-binding")
+        candidate, source_decision, latent_event = self.final_event(
+            trace,
+            episode_id="episode:awareness-binding",
+            focal=False,
+        )
+        focal_event = AwarenessRouter().route(
+            (
+                AwarenessCandidate(
+                    event=latent_event,
+                    salience=1.0,
+                    change=1.0,
+                    novelty=1.0,
+                    goal_relevance=1.0,
+                    persistence=1.0,
+                ),
+            )
+        )[0].event
+        self.assertEqual(latent_event.event_id, focal_event.event_id)
+
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=focal_event,
+            context=self.eligible_context(),
+        )
+        self.assertTrue(decision.eligible)
+        self.assertIs(decision.recollection_awareness, focal_event.awareness)
+
+        with self.assertRaises(ValueError):
+            apply_reconsolidation(
+                old_trace=trace,
+                candidate=candidate,
+                source_decision=source_decision,
+                recollection_event=latent_event,
+                decision=decision,
+            )
+
     def test_initial_p6_ignores_non_neutral_content_certainty(self):
         trace = self.trace()
         candidate, source_decision, event = self.final_event(
@@ -277,6 +355,73 @@ class ReconsolidationTests(unittest.TestCase):
             "nonneutral_content_certainty_not_grounded_for_p6",
             decision.reason_codes,
         )
+
+    def test_initial_p6_cannot_enable_blended_reconsolidation(self):
+        first = self.trace(label="blend-first")
+        second = self.trace(label="blend-second")
+        episode = RetrievalEpisode(
+            episode_id="episode:blend",
+            subject_id=first.subject_id,
+            tick=50,
+            cue_text="Henry apparatus",
+            candidate_trace_ids=(first.trace_id, second.trace_id),
+            subject_state_digest="sha256:blend",
+        )
+        candidate = reconstruct_recollection(
+            (first, second),
+            episode,
+            config=ReconstructionConfig(max_details=2),
+        )
+        source_decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.source_cues(),
+        )
+        latent_event = finalize_recollection_event(
+            candidate=candidate,
+            decision=source_decision,
+            context=RecollectionFinalizationContext(
+                tick=51,
+                source_state_digest="sha256:blend",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="test",
+                    source="audit",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+            ),
+        )
+        focal_event = AwarenessRouter().route(
+            (
+                AwarenessCandidate(
+                    event=latent_event,
+                    salience=1.0,
+                    change=1.0,
+                    novelty=1.0,
+                    goal_relevance=1.0,
+                    persistence=1.0,
+                ),
+            )
+        )[0].event
+        decision = evaluate_reconsolidation(
+            old_trace=first,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=focal_event,
+            context=self.eligible_context(),
+        )
+        self.assertFalse(decision.eligible)
+        self.assertIn("blended_recollection_not_enabled", decision.reason_codes)
+        self.assertIn(
+            "multiple_trace_reconsolidation_not_enabled",
+            decision.reason_codes,
+        )
+
+    def test_policy_thresholds_cannot_be_configured_to_zero(self):
+        with self.assertRaises(ValueError):
+            ReconsolidationPolicy(min_reactivation=0.0)
+        with self.assertRaises(ValueError):
+            ReconsolidationPolicy(min_prediction_error=0.0)
+        with self.assertRaises(ValueError):
+            ReconsolidationPolicy(max_strength_delta=0.0)
 
     def test_no_destabilizing_signal_means_no_reconsolidation(self):
         trace = self.trace()
@@ -515,9 +660,68 @@ class ReconsolidationTests(unittest.TestCase):
             decision=decision,
         )
         assert successor is not None
-        ledger.append_successor(parent=trace, successor=successor)
+        ledger.append_successor(
+            parent=trace,
+            successor=successor,
+            decision=decision,
+        )
         with self.assertRaises(ValueError):
-            ledger.append_successor(parent=trace, successor=successor)
+            ledger.append_successor(
+                parent=trace,
+                successor=successor,
+                decision=decision,
+            )
+
+    def test_ledger_rejects_nonmonotonic_successor_version(self):
+        trace = self.trace(label="nonmonotonic")
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:nonmonotonic",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        valid = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            decision=decision,
+        )
+        assert valid is not None
+        invalid = MemoryTrace(
+            subject_id=valid.subject_id,
+            version=2,
+            protected_evidence=valid.protected_evidence,
+            gist=valid.gist,
+            details=valid.details,
+            temporal_cues=valid.temporal_cues,
+            actor_refs=valid.actor_refs,
+            object_refs=valid.object_refs,
+            encoding_affect=valid.encoding_affect,
+            source_cues=valid.source_cues,
+            strength=valid.strength,
+            accessibility=valid.accessibility,
+            familiarity=valid.familiarity,
+            rehearsal_count=valid.rehearsal_count,
+            retrieval_count=valid.retrieval_count,
+            competing_trace_ids=valid.competing_trace_ids,
+            parent_trace_id=trace.trace_id,
+            reconsolidation_decision_fingerprint=decision.decision_fingerprint,
+            reconsolidation_event_id=event.event_id,
+        )
+        with self.assertRaises(ValueError):
+            ledger.append_successor(
+                parent=trace,
+                successor=invalid,
+                decision=decision,
+            )
 
     def test_ledger_restart_round_trip_preserves_exact_history(self):
         trace = self.trace()
@@ -549,6 +753,13 @@ class ReconsolidationTests(unittest.TestCase):
             tuple(item.trace_id for item in ledger.history(trace.trace_lineage_id)),
         )
         self.assertEqual(restored.latest(trace.trace_lineage_id).trace_id, successor.trace_id)
+        audit = restored.decision_audit(successor.trace_id)
+        self.assertEqual(
+            audit["decision_fingerprint"],
+            successor.reconsolidation_decision_fingerprint,
+        )
+        self.assertTrue(audit["eligible"])
+        self.assertTrue(audit["operations"])
 
     def test_repeated_recall_is_bounded_and_asymptotic(self):
         current = self.trace(
