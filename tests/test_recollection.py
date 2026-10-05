@@ -294,6 +294,63 @@ class RecollectionArchitectureTests(unittest.TestCase):
             OmissionCause.BELOW_RETRIEVAL_THRESHOLD,
         )
 
+    def test_p4_exposes_temporal_and_contextual_recall_state_without_raw_scalars(self):
+        base = self.trace()
+        states = tuple(
+            (
+                TraceDetailState(
+                    detail_id=state.detail_id,
+                    retention=state.retention,
+                    accessibility=state.accessibility,
+                    temporal_confidence=0.25,
+                    association_strength=0.25,
+                )
+                if state.detail_id == "detail:henry"
+                else state
+            )
+            for state in base.detail_states
+        )
+        trace = MemoryTrace(
+            subject_id=base.subject_id,
+            version=0,
+            protected_evidence=base.protected_evidence,
+            gist=base.gist,
+            details=base.details,
+            detail_states=states,
+            temporal_cues=base.temporal_cues,
+            actor_refs=base.actor_refs,
+            object_refs=base.object_refs,
+            encoding_affect=base.encoding_affect,
+            source_cues=base.source_cues,
+            strength=base.strength,
+            accessibility=base.accessibility,
+            familiarity=base.familiarity,
+            rehearsal_count=base.rehearsal_count,
+            retrieval_count=base.retrieval_count,
+            competing_trace_ids=base.competing_trace_ids,
+        )
+        candidate = reconstruct_recollection(
+            [trace],
+            self.episode(
+                trace,
+                episode_id="episode-qualitative-state",
+                cue_text="Henry apparatus",
+            ),
+            config=ReconstructionConfig(max_details=1),
+        )
+        recalled = candidate.recalled_detail_states[0]
+        self.assertIs(recalled.temporal_precision, TemporalPrecision.UNCERTAIN)
+        self.assertIs(
+            recalled.contextual_association,
+            ContextAssociation.WEAK,
+        )
+        self.assertIn("The timing feels uncertain.", candidate.reconstructed_scene)
+        self.assertIn(
+            "weakly connected to the surrounding context",
+            candidate.reconstructed_scene,
+        )
+        self.assertNotIn("0.25", candidate.reconstructed_scene)
+
     def test_identical_inputs_reconstruct_deterministically(self):
         trace = self.trace()
         episode = self.episode(trace)
