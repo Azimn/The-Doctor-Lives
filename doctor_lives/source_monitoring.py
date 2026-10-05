@@ -33,6 +33,7 @@ from .recollection import RecollectionCandidate
 
 
 _SOURCE_MONITORING_DECISION_FACTORY_TOKEN = object()
+_FINALIZED_RECOLLECTION_FACTORY_TOKEN = object()
 _SOURCE_MONITOR_RULE_VERSION = "uppb-p5-v1"
 
 
@@ -200,6 +201,32 @@ class RecollectionFinalizationContext:
             or not self.projection_rule_version.strip()
         ):
             raise ValueError("projection_rule_version is required")
+
+    @property
+    def fingerprint(self) -> str:
+        return _stable_sha256(asdict(self))
+
+
+@dataclass(frozen=True, init=False)
+class FinalizedRecollection:
+    """Factory-controlled P5 attestation for one canonical latent recollection."""
+
+    event: PhenomenalEvent
+    candidate_id: str
+    candidate_digest: str
+    source_decision_fingerprint: str
+    finalization_context_fingerprint: str
+    finalization_fingerprint: str
+
+    def __init__(self, *, _factory_token: object = None) -> None:
+        if _factory_token is not _FINALIZED_RECOLLECTION_FACTORY_TOKEN:
+            raise TypeError(
+                "FinalizedRecollection is factory-controlled; "
+                "use finalize_recollection()"
+            )
+
+    def stable_json(self) -> str:
+        return _stable_json(asdict(self))
 
 
 def _source_scores(cues: SourceMonitoringCues) -> dict[SubjectiveSourceKind, float]:
@@ -424,13 +451,88 @@ def _source_neutral_first_person(scene: str) -> str:
     return f"I can call to mind the following: {scene}"
 
 
-def finalize_recollection_event(
+def _finalization_payload(
+    *,
+    event: PhenomenalEvent,
+    candidate_id: str,
+    candidate_digest: str,
+    source_decision_fingerprint: str,
+    finalization_context_fingerprint: str,
+) -> dict[str, Any]:
+    return {
+        "event": asdict(event),
+        "candidate_id": candidate_id,
+        "candidate_digest": candidate_digest,
+        "source_decision_fingerprint": source_decision_fingerprint,
+        "finalization_context_fingerprint": finalization_context_fingerprint,
+    }
+
+
+def verify_finalized_recollection(
+    *,
+    finalized: FinalizedRecollection,
+    candidate: RecollectionCandidate,
+    decision: SourceMonitoringDecision,
+) -> None:
+    """Verify that a P5 finalization artifact still matches its P4/P5 inputs."""
+
+    if not isinstance(finalized, FinalizedRecollection):
+        raise TypeError("finalized must be FinalizedRecollection")
+    if not isinstance(candidate, RecollectionCandidate):
+        raise TypeError("candidate must be RecollectionCandidate")
+    if not isinstance(decision, SourceMonitoringDecision):
+        raise TypeError("decision must be SourceMonitoringDecision")
+    if finalized.candidate_id != candidate.candidate_id:
+        raise ValueError("finalized recollection candidate ID mismatch")
+    if finalized.candidate_digest != candidate.candidate_digest:
+        raise ValueError("finalized recollection candidate digest mismatch")
+    if finalized.source_decision_fingerprint != decision.decision_fingerprint:
+        raise ValueError("finalized recollection P5 decision mismatch")
+    if finalized.event.awareness is not AwarenessLevel.LATENT:
+        raise ValueError("P5 finalized recollection must remain LATENT")
+    if finalized.event.subject_id != candidate.subject_id:
+        raise ValueError("finalized recollection subject mismatch")
+    if finalized.event.mode is not PhenomenalMode.RECOLLECTION:
+        raise ValueError("finalized recollection must be a recollection event")
+    if finalized.event.source_state_refs != candidate.trace_ids:
+        raise ValueError("finalized recollection trace lineage mismatch")
+    expected_refs = (
+        candidate.candidate_id,
+        candidate.candidate_digest,
+        decision.decision_fingerprint,
+        candidate.retrieval_episode_fingerprint,
+    )
+    if finalized.event.source_event_refs != expected_refs:
+        raise ValueError("finalized recollection P4/P5 lineage mismatch")
+    if (
+        tuple(finalized.event.objective_provenance.record_ids)
+        != candidate.protected_evidence_refs
+    ):
+        raise ValueError("finalized recollection objective provenance mismatch")
+    if finalized.event.subjective_source.kind is not decision.selected_source:
+        raise ValueError("finalized recollection subjective source mismatch")
+    if finalized.event.subjective_source.certainty is not decision.certainty:
+        raise ValueError("finalized recollection source certainty mismatch")
+    expected_fingerprint = "finalized_recollection_" + _stable_sha256(
+        _finalization_payload(
+            event=finalized.event,
+            candidate_id=finalized.candidate_id,
+            candidate_digest=finalized.candidate_digest,
+            source_decision_fingerprint=finalized.source_decision_fingerprint,
+            finalization_context_fingerprint=finalized.finalization_context_fingerprint,
+        )
+    )[:24]
+    if finalized.finalization_fingerprint != expected_fingerprint:
+        raise ValueError("finalized recollection fingerprint mismatch")
+
+
+def finalize_recollection(
     *,
     candidate: RecollectionCandidate,
     decision: SourceMonitoringDecision,
     context: RecollectionFinalizationContext,
-) -> PhenomenalEvent:
-    """Create the first canonical phenomenal recollection after source monitoring."""
+) -> FinalizedRecollection:
+    """Create and attest the canonical latent recollection after P5 monitoring."""
 
     if not isinstance(candidate, RecollectionCandidate):
         raise TypeError("candidate must be RecollectionCandidate")
@@ -472,7 +574,7 @@ def finalize_recollection_event(
         )
 
     text = _source_neutral_first_person(candidate.reconstructed_scene)
-    return PhenomenalEvent(
+    event = PhenomenalEvent(
         tick=context.tick,
         subject_id=candidate.subject_id,
         mode=PhenomenalMode.RECOLLECTION,
@@ -497,3 +599,53 @@ def finalize_recollection_event(
             candidate.retrieval_episode_fingerprint,
         ),
     )
+    context_fingerprint = context.fingerprint
+    payload = _finalization_payload(
+        event=event,
+        candidate_id=candidate.candidate_id,
+        candidate_digest=candidate.candidate_digest,
+        source_decision_fingerprint=decision.decision_fingerprint,
+        finalization_context_fingerprint=context_fingerprint,
+    )
+    finalized = FinalizedRecollection(
+        _factory_token=_FINALIZED_RECOLLECTION_FACTORY_TOKEN
+    )
+    object.__setattr__(finalized, "event", event)
+    object.__setattr__(finalized, "candidate_id", candidate.candidate_id)
+    object.__setattr__(finalized, "candidate_digest", candidate.candidate_digest)
+    object.__setattr__(
+        finalized,
+        "source_decision_fingerprint",
+        decision.decision_fingerprint,
+    )
+    object.__setattr__(
+        finalized,
+        "finalization_context_fingerprint",
+        context_fingerprint,
+    )
+    object.__setattr__(
+        finalized,
+        "finalization_fingerprint",
+        "finalized_recollection_" + _stable_sha256(payload)[:24],
+    )
+    verify_finalized_recollection(
+        finalized=finalized,
+        candidate=candidate,
+        decision=decision,
+    )
+    return finalized
+
+
+def finalize_recollection_event(
+    *,
+    candidate: RecollectionCandidate,
+    decision: SourceMonitoringDecision,
+    context: RecollectionFinalizationContext,
+) -> PhenomenalEvent:
+    """Compatibility view of the P5 finalization artifact's latent event."""
+
+    return finalize_recollection(
+        candidate=candidate,
+        decision=decision,
+        context=context,
+    ).event
