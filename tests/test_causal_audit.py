@@ -6,6 +6,7 @@ from pathlib import Path
 
 from doctor_lives import Experience, PretoriusBrain
 from doctor_lives.causal_audit import AuditIntervention, CausalAuditHarness
+from doctor_lives.history import install_deep_history
 from doctor_lives.neural import DEFAULT_CONFIG
 
 
@@ -29,6 +30,7 @@ class CausalAuditHarnessTests(unittest.TestCase):
         root = Path(temp.name)
         seed = root / "seed"
         brain = PretoriusBrain(seed, neural_config=small_config())
+        install_deep_history(brain.store)
         brain.ingest(Experience(
             "Henry returned a borrowed instrument intact and kept his promise.",
             kind="social",
