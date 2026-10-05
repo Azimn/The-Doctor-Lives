@@ -2016,6 +2016,95 @@ class ReconsolidationTests(unittest.TestCase):
         )
         self.assertIn("The timing feels approximate.", after.reconstructed_scene)
 
+    def test_p6c_association_drift_changes_only_contextual_association(self):
+        trace = self.trace_with_detail_state(
+            label="association-drift",
+            association_strength=0.45,
+        )
+        before = self.reconstruct(
+            trace,
+            episode_id="episode:p6c-association-before",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIs(
+            before.recalled_detail_states[0].contextual_association,
+            ContextAssociation.MODERATE,
+        )
+
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6c-association-reactivate",
+            cue_text="unrelated signal",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.95,
+            ),
+        )
+        self.assertIs(
+            candidate.detail_omissions[0].cause,
+            OmissionCause.CUE_MISMATCH,
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                association_drift_enabled=True,
+                context_mismatch=1.0,
+            ),
+        )
+        self.assertEqual(
+            [op.field_name for op in decision.detail_operations],
+            ["association_strength"],
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+        old_state = trace.detail_state("detail:henry")
+        new_state = successor.detail_state("detail:henry")
+        self.assertEqual(new_state.accessibility, old_state.accessibility)
+        self.assertEqual(
+            new_state.temporal_confidence,
+            old_state.temporal_confidence,
+        )
+        self.assertLess(
+            new_state.association_strength,
+            old_state.association_strength,
+        )
+
+        after = self.reconstruct(
+            successor,
+            episode_id="episode:p6c-association-after",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIs(
+            after.recalled_detail_states[0].contextual_association,
+            ContextAssociation.WEAK,
+        )
+        self.assertIn(
+            "weakly connected to the surrounding context",
+            after.reconstructed_scene,
+        )
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
