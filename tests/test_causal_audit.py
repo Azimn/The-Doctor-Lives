@@ -92,6 +92,25 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertEqual(lesion["disabled_mechanisms"], ["deep_history"])
         self.assertLess(result["comparison"]["retrieval_jaccard"], 1.0)
 
+    def test_existing_state_history_pair_does_not_admit_probe(self):
+        harness = self.make_harness()
+        result = harness.run_existing_state_pair(
+            self.probe(),
+            AuditIntervention("deep_history", ("deep_history",)),
+        )
+        self.assertFalse(result["probe_admitted_as_lived_memory"])
+        self.assertFalse(result["intact"]["ingestion"]["admitted"])
+        self.assertFalse(result["lesion"]["ingestion"]["admitted"])
+        self.assertEqual(
+            result["intact"]["source_state_digest"],
+            result["lesion"]["source_state_digest"],
+        )
+        self.assertEqual(
+            result["intact"]["source_neural_sha256"],
+            result["lesion"]["source_neural_sha256"],
+        )
+        self.assertGreater(result["comparison"]["action_score_l1"], 0.0)
+
     def test_bridge_lesion_restores_recurrent_only_path(self):
         harness = self.make_harness()
         result = harness.run_pair(
