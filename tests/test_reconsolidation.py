@@ -131,22 +131,18 @@ class ReconsolidationTests(unittest.TestCase):
                 subjective_content_certainty=content_certainty,
             ),
         )
-        if focal:
-            routed = AwarenessRouter().route(
-                (
-                    AwarenessCandidate(
-                        event=event,
-                        salience=1.0,
-                        change=1.0,
-                        novelty=1.0,
-                        goal_relevance=1.0,
-                        conflict=0.7,
-                        persistence=1.0,
-                    ),
-                )
-            )
-            event = routed[0].event
-        return candidate, decision, event
+        awareness_candidate = AwarenessCandidate(
+            event=event,
+            salience=1.0 if focal else 0.0,
+            change=1.0 if focal else 0.0,
+            novelty=1.0 if focal else 0.0,
+            goal_relevance=1.0 if focal else 0.0,
+            conflict=0.7 if focal else 0.0,
+            persistence=1.0 if focal else 0.0,
+            habituation=0.0,
+        )
+        awareness_decision = AwarenessRouter().route((awareness_candidate,))[0]
+        return candidate, decision, awareness_decision
 
     def eligible_context(self, *, enabled: bool = True) -> ReconsolidationContext:
         return ReconsolidationContext(
@@ -178,7 +174,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=latent_event,
+            awareness_decision=latent_event,
             context=self.eligible_context(),
         )
 
@@ -206,7 +202,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
 
@@ -228,7 +224,7 @@ class ReconsolidationTests(unittest.TestCase):
             successor.reconsolidation_decision_fingerprint,
             decision.decision_fingerprint,
         )
-        self.assertEqual(successor.reconsolidation_event_id, event.event_id)
+        self.assertEqual(successor.reconsolidation_event_id, event.event.event_id)
         self.assertEqual(len(ledger.history(trace.trace_lineage_id)), 2)
 
     def test_misattribution_without_reconsolidation_does_not_rewrite_trace(self):
@@ -248,7 +244,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(enabled=False),
         )
 
@@ -273,7 +269,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(enabled=False),
         )
 
@@ -284,7 +280,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(enabled=True),
         )
 
@@ -315,13 +311,13 @@ class ReconsolidationTests(unittest.TestCase):
                 ),
             )
         )[0].event
-        self.assertEqual(latent_event.event_id, focal_event.event_id)
+        self.assertEqual(latent_event.event.event_id, focal_event.event.event_id)
 
         decision = evaluate_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=focal_event,
+            awareness_decision=focal_event,
             context=self.eligible_context(),
         )
         self.assertTrue(decision.eligible)
@@ -332,7 +328,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=trace,
                 candidate=candidate,
                 source_decision=source_decision,
-                recollection_event=latent_event,
+                awareness_decision=latent_event,
                 decision=decision,
             )
 
@@ -347,7 +343,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         self.assertFalse(decision.eligible)
@@ -405,7 +401,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=first,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=focal_event,
+            awareness_decision=focal_event,
             context=self.eligible_context(),
         )
         self.assertFalse(decision.eligible)
@@ -433,7 +429,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=ReconsolidationContext(
                 reactivation_strength=0.90,
                 prediction_error=0.0,
@@ -464,7 +460,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=first,
                 candidate=second_candidate,
                 source_decision=first_source,
-                recollection_event=first_event,
+                awareness_decision=first_event,
                 context=self.eligible_context(),
             )
         self.assertNotEqual(first_candidate.candidate_id, second_candidate.candidate_id)
@@ -479,14 +475,14 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         successor = apply_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             decision=decision,
         )
         assert successor is not None
@@ -534,14 +530,14 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         successor = apply_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             decision=decision,
         )
         assert successor is not None
@@ -620,14 +616,14 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=lived,
-            recollection_event=lived_event,
+            awareness_decision=lived_event,
             context=self.eligible_context(),
         )
         read_decision = evaluate_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=read,
-            recollection_event=read_event,
+            awareness_decision=read_event,
             context=self.eligible_context(),
         )
 
@@ -649,14 +645,14 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         successor = apply_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             decision=decision,
         )
         assert successor is not None
@@ -684,14 +680,14 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         valid = apply_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             decision=decision,
         )
         assert valid is not None
@@ -714,7 +710,7 @@ class ReconsolidationTests(unittest.TestCase):
             competing_trace_ids=valid.competing_trace_ids,
             parent_trace_id=trace.trace_id,
             reconsolidation_decision_fingerprint=decision.decision_fingerprint,
-            reconsolidation_event_id=event.event_id,
+            reconsolidation_event_id=event.event.event_id,
         )
         with self.assertRaises(ValueError):
             ledger.append_successor(
@@ -735,14 +731,14 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         valid = apply_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             decision=decision,
         )
         assert valid is not None
@@ -788,7 +784,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         assert successor is not None
@@ -826,7 +822,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         assert successor is not None
@@ -862,7 +858,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=current,
                 candidate=candidate,
                 source_decision=source_decision,
-                recollection_event=event,
+                awareness_decision=event,
                 context=self.eligible_context(),
                 policy=policy,
             )
@@ -897,7 +893,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            recollection_event=event,
+            awareness_decision=event,
             context=self.eligible_context(),
         )
         object.__setattr__(decision, "eligibility_strength", 0.01)
@@ -906,7 +902,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=trace,
                 candidate=candidate,
                 source_decision=source_decision,
-                recollection_event=event,
+                awareness_decision=event,
                 decision=decision,
             )
 
