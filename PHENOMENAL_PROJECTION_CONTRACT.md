@@ -771,16 +771,78 @@ P6B acceptance:
 - missing/tampered persisted detail-state identity fails closed;
 - a successor with detail state not exactly described by the P6 decision is rejected.
 
-P6B explicitly does not yet permit:
+P6B itself does not permit deletion of TraceDetail semantic content, rewriting TraceDetail.text, false/novel detail generation, temporal-confidence drift, association-strength drift, source-cue rewriting, or blended/multi-trace reconsolidation.
+
+### P6C - temporal and contextual imprecision
+
+P6C extends accepted P6B with two separately lesionable degradative dimensions already represented in TraceDetailState:
+- temporal_confidence;
+- association_strength.
+
+Before these dimensions become causal, P4 classifies every omitted detail by explicit omission cause:
+- `capacity_limited`: the detail met retrieval threshold but lost the configured max-details contest;
+- `cue_mismatch`: the detail fell below threshold with zero overlap to the retrieval cue;
+- `below_retrieval_threshold`: the detail had some cue support but still fell below threshold.
+
+Each DetailOmission also records its exact trace-qualified detail ref, retrieval score, cue overlap, rank, and threshold. `detail_omissions` must exactly correspond to `omitted_detail_refs`.
+
+This prevents reconstruction capacity from silently becoming a richer forgetting mechanism. Accepted P6B accessibility weakening remains broad over exact omissions, including capacity-limited omissions. P6C temporal/contextual degradation explicitly excludes `capacity_limited` omissions.
+
+Temporal-confidence drift requires:
+- accepted P6A eligibility;
+- explicit `temporal_drift_enabled`;
+- temporal disorientation above threshold;
+- an exact omitted detail whose cause is not `capacity_limited`;
+- per-transition loss cap and absolute floor.
+
+Association-strength drift requires:
+- accepted P6A eligibility;
+- explicit `association_drift_enabled`;
+- contextual mismatch above threshold;
+- an exact omitted detail whose cause is not `capacity_limited`;
+- per-transition loss cap and absolute floor.
+
+Both mechanisms use DetailStateOperation. Multiple fields may change on the same detail in one transition, but operations form an ordered state-fingerprint chain: each operation's old-state fingerprint must equal the immediately preceding state and its new-state fingerprint becomes the parent for the next operation.
+
+P6C does not rewrite TraceDetail text. P4 derives qualitative subject-facing recall metadata from current mnemonic state:
+- temporal precision: precise / approximate / uncertain;
+- contextual association: strong / moderate / weak.
+
+When an included detail has degraded temporal confidence, P4 can expose qualitative timing uncertainty without exposing raw confidence scalars or changing the protected semantic detail. When contextual association is weak, P4 can expose that the detail feels weakly connected to the surrounding context.
+
+P6C orthogonality requirements:
+- temporal-confidence drift must not automatically change accessibility or association strength;
+- association-strength drift must not automatically change accessibility or temporal confidence;
+- accepted P6B accessibility drift remains independently lesionable;
+- source-monitor attribution remains causally irrelevant to these update magnitudes;
+- capacity-limited omission may still trigger accepted P6B accessibility loss but cannot by itself trigger P6C temporal/contextual loss.
+
+Crossed-state tests must distinguish:
+- high accessibility + low temporal confidence;
+- low accessibility + high temporal confidence;
+- high accessibility + weak contextual association.
+
+P6C acceptance:
+- omission causes are factory-derived from exact P4 ranking/threshold/capacity mechanics and bound into the candidate digest;
+- capacity-limited omissions are excluded from richer P6C drift;
+- temporal and association drift each have independent enable flags, trigger thresholds, caps, and floors;
+- each axis can change while the other mnemonic axes remain unchanged;
+- P4 later exposes qualitative temporal/contextual uncertainty while TraceDetail content remains identical;
+- chained temporal + association operations on one detail preserve exact state-fingerprint ancestry;
+- the ledger deterministically replays and verifies multiple audited fields on the same detail;
+- 100 repeated P6C transitions remain bounded and asymptotic above configured floors;
+- strong-cue recovery remains possible after long-horizon temporal/contextual degradation;
+- existing P0-P6B behavior remains green.
+
+Trace identity schema boundary: P6B detail-state snapshots already participate in MemoryTrace identity, while P6C changes candidate/decision audit semantics and permitted detail-state operation fields. The isolated ledger schema is `uppb-p6c-ledger-v4`; live integration requires an explicit migration policy rather than silent reinterpretation of earlier experimental ledgers.
+
+P6C still does not permit:
+- retention drift;
 - deletion of TraceDetail semantic content;
 - rewriting TraceDetail.text;
 - false or novel detail generation;
-- temporal-confidence drift;
-- association-strength drift;
 - source-cue rewriting;
 - blended/multi-trace reconsolidation.
-
-Trace identity schema boundary: P6B detail-state snapshots now participate in MemoryTrace snapshot identity. Experimental P6A trace IDs are not assumed compatible with the P6B ledger. The isolated ledger schema is `uppb-p6b-ledger-v3`; live integration requires an explicit migration policy rather than silent reinterpretation of older trace IDs.
 
 Constructive distortion remains downstream. Any future altered or false detail must carry explicit distortion provenance such as competing-trace intrusion, imagination exposure, suggestion, inference, or another separately reviewed causal mechanism.
 
