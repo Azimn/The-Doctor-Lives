@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import unittest
 
-from doctor_lives.awareness import AwarenessCandidate, AwarenessPolicy, AwarenessRouter
+from doctor_lives.awareness import (
+    AwarenessCandidate,
+    AwarenessDecision,
+    AwarenessPolicy,
+    AwarenessRouter,
+)
 from doctor_lives.phenomenology import (
     AwarenessLevel,
     ObjectiveProvenance,
@@ -36,6 +41,13 @@ class AwarenessRouterTests(unittest.TestCase):
             ),
             source_event_refs=(f"source:{label}",),
         )
+
+    def test_awareness_decision_cannot_be_fabricated_directly(self):
+        with self.assertRaises(TypeError):
+            AwarenessDecision(
+                event=self.event("forged", "I feel certain."),
+                priority=1.0,
+            )
 
     def test_router_is_capacity_limited(self):
         router = AwarenessRouter(
