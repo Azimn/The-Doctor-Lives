@@ -299,10 +299,10 @@ class ReconsolidationTests(unittest.TestCase):
             episode_id="episode:awareness-binding",
             focal=False,
         )
-        focal_event = AwarenessRouter().route(
+        focal_decision = AwarenessRouter().route(
             (
                 AwarenessCandidate(
-                    event=latent_event,
+                    event=latent_event.event,
                     salience=1.0,
                     change=1.0,
                     novelty=1.0,
@@ -310,18 +310,24 @@ class ReconsolidationTests(unittest.TestCase):
                     persistence=1.0,
                 ),
             )
-        )[0].event
-        self.assertEqual(latent_event.event.event_id, focal_event.event.event_id)
+        )[0]
+        self.assertEqual(
+            latent_event.event.event_id,
+            focal_decision.event.event_id,
+        )
 
         decision = evaluate_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
-            awareness_decision=focal_event,
+            awareness_decision=focal_decision,
             context=self.eligible_context(),
         )
         self.assertTrue(decision.eligible)
-        self.assertIs(decision.recollection_awareness, focal_event.awareness)
+        self.assertIs(
+            decision.recollection_awareness,
+            focal_decision.awareness,
+        )
 
         with self.assertRaises(ValueError):
             apply_reconsolidation(
@@ -385,7 +391,7 @@ class ReconsolidationTests(unittest.TestCase):
                 ),
             ),
         )
-        focal_event = AwarenessRouter().route(
+        focal_decision = AwarenessRouter().route(
             (
                 AwarenessCandidate(
                     event=latent_event,
@@ -396,12 +402,12 @@ class ReconsolidationTests(unittest.TestCase):
                     persistence=1.0,
                 ),
             )
-        )[0].event
+        )[0]
         decision = evaluate_reconsolidation(
             old_trace=first,
             candidate=candidate,
             source_decision=source_decision,
-            awareness_decision=focal_event,
+            awareness_decision=focal_decision,
             context=self.eligible_context(),
         )
         self.assertFalse(decision.eligible)
