@@ -654,13 +654,15 @@ Initial P6 plasticity may change only bounded trace variables:
 - retrieval count;
 - rehearsal count.
 
-Initial P6 must not rewrite:
+Initial P6A must not rewrite:
 - protected evidence;
 - gist;
-- retained details;
+- retained TraceDetail semantic content;
 - actor/object/temporal associations;
 - source-cue labels;
 - competing-trace links.
+
+P6B may evolve a separate mnemonic TraceDetailState for an existing retained detail without modifying the TraceDetail itself.
 
 Every changed field is represented by an immutable ReconsolidationOperation naming old value, new value, delta, and reason code.
 
@@ -710,9 +712,76 @@ P6 acceptance:
 - a later P4 retrieval can differ because of the successor trace while protected evidence remains unchanged;
 - P6 decision corruption fails closed before successor construction.
 
-Trace identity schema boundary: P6 added parent/reconsolidation ancestry fields to MemoryTrace snapshot identity. Therefore experimental pre-P6 trace IDs are not assumed compatible with the P6 ledger. The isolated P6 ledger uses schema `uppb-p6-ledger-v2`; live integration requires an explicit migration policy rather than silently treating older trace IDs as current.
+### P6B - controlled representational loss
 
-Content distortion, false-detail incorporation, blended-trace reconsolidation, and source-cue rewriting remain downstream P6 extensions and require separate causal review before activation.
+P6B extends accepted P6A with degradative memory drift while preserving semantic truth and explicit lineage.
+
+A retained TraceDetail is stable semantic content. Its separate TraceDetailState is versioned mnemonic state and may contain:
+- detail ID;
+- retention;
+- accessibility;
+- temporal confidence;
+- association strength;
+- derived availability state;
+- immediate parent detail-state fingerprint;
+- deterministic detail-state fingerprint.
+
+The initial P6B update family is intentionally narrower than the full schema:
+- only detail accessibility may change;
+- only an omitted detail from the exact P4 RecollectionCandidate may weaken;
+- the P6A reconsolidation decision must already be eligible;
+- detail drift must be explicitly enabled;
+- interference strength must cross a configured threshold;
+- per-transition accessibility loss is capped;
+- accessibility has a hard floor;
+- included/retrieved details are not weakened by this mechanism.
+
+P6B weakening is omission-before-destruction. The TraceDetail remains present and unchanged in the trace. Lower accessibility changes later P4 retrieval probability/threshold behavior. A sufficiently strong matching retrieval cue may still recover a weakened detail.
+
+Every P6B change is represented by an immutable DetailStateOperation containing:
+- detail ID;
+- changed state field;
+- old/new values and signed delta;
+- old detail-state fingerprint;
+- new detail-state fingerprint;
+- causal reason code.
+
+The successor trace must preserve:
+- protected evidence;
+- gist;
+- exact TraceDetail values and ordering;
+- all non-target detail states;
+- retention, temporal confidence, and association strength of the weakened detail;
+- all P6A ancestry and finalization/P3/P6 audit bindings.
+
+The TraceVersionLedger verifies detail-state transitions against the persisted DetailStateOperation audit and rejects fabricated or unaudited detail-state values.
+
+P6B acceptance:
+- detail drift disabled versus enabled holds the same parent, P4/P5/finalization/P3 inputs and the same P6A scalar operations; only the audited target detail state may differ;
+- only details omitted by the exact P4 candidate are eligible for weakening;
+- included details do not weaken;
+- low interference produces no detail-state operation;
+- an enabled degradative transition can make a later weak-cue P4 recall omit a detail that was retrievable before the transition;
+- the underlying TraceDetail and protected evidence remain unchanged;
+- a strong matching cue can still recover the weakened detail;
+- repeated omission remains bounded and asymptotically approaches, but never crosses, the configured accessibility floor;
+- detail-state parent fingerprints form an explicit version chain;
+- detail state and DetailStateOperation audit survive deterministic restart;
+- missing/tampered persisted detail-state identity fails closed;
+- a successor with detail state not exactly described by the P6 decision is rejected.
+
+P6B explicitly does not yet permit:
+- deletion of TraceDetail semantic content;
+- rewriting TraceDetail.text;
+- false or novel detail generation;
+- temporal-confidence drift;
+- association-strength drift;
+- source-cue rewriting;
+- blended/multi-trace reconsolidation.
+
+Trace identity schema boundary: P6B detail-state snapshots now participate in MemoryTrace snapshot identity. Experimental P6A trace IDs are not assumed compatible with the P6B ledger. The isolated ledger schema is `uppb-p6b-ledger-v3`; live integration requires an explicit migration policy rather than silent reinterpretation of older trace IDs.
+
+Constructive distortion remains downstream. Any future altered or false detail must carry explicit distortion provenance such as competing-trace intrusion, imagination exposure, suggestion, inference, or another separately reviewed causal mechanism.
 
 ### P7 - thought / communication separation
 
