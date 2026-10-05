@@ -609,12 +609,83 @@ Acceptance:
 
 ### P6 - reconsolidation
 
-Allow explicit recall-driven memory-trace updates.
+P6 evolves memory by producing immutable successor trace snapshots after verified recollection and reactivation. It does not mutate an existing MemoryTrace.
 
-Acceptance:
+The initial P6 graph is:
+
+verified P5 recollection PhenomenalEvent
+-> P3 awareness arbitration
+-> ReconsolidationContext
+-> ReconsolidationDecision
+-> successor MemoryTrace snapshot
+-> TraceVersionLedger
+
+P6 consumes the complete upstream causal chain:
+- exact prior MemoryTrace snapshot;
+- verified P4 RecollectionCandidate;
+- verified P5 SourceMonitoringDecision;
+- finalized recollection PhenomenalEvent after P3 routing;
+- explicit ReconsolidationContext and bounded ReconsolidationPolicy.
+
+Initial P6 eligibility is deliberately conservative:
+- the recollection must be CONSCIOUS or FOCAL; LATENT/PRECONSCIOUS existence alone cannot rewrite memory;
+- reactivation must exceed a minimum threshold;
+- at least one destabilizing/rehearsal signal must be present: prediction error, sufficient emotional activation, or explicit rehearsal;
+- until a dedicated remembered-content certainty mechanism exists, non-neutral caller-supplied subjective content certainty is not permitted to amplify reconsolidation;
+- blended/multi-trace reconsolidation is disabled by default until separately reviewed;
+- P5 source attribution itself does not determine update strength.
+
+Initial P6 plasticity may change only bounded trace variables:
+- strength;
+- accessibility;
+- familiarity;
+- retrieval count;
+- rehearsal count.
+
+Initial P6 must not rewrite:
+- protected evidence;
+- gist;
+- retained details;
+- actor/object/temporal associations;
+- source-cue labels;
+- competing-trace links.
+
+Every changed field is represented by an immutable ReconsolidationOperation naming old value, new value, delta, and reason code.
+
+A successor trace must:
+- preserve trace_lineage_id;
+- increment version exactly once;
+- receive a new trace_id;
+- record the immediate parent_trace_id;
+- record the reconsolidation decision fingerprint and recollection event ID;
+- preserve protected evidence exactly.
+
+TraceVersionLedger is the P6 version authority for the isolated subsystem. It must:
+- reject duplicate versions;
+- reject backward versions;
+- reject appending from a non-latest parent (silent fork);
+- preserve exact ancestry;
+- support deterministic serialization and local save/load restart continuity.
+
+Update families must be bounded by per-recall delta caps and absolute ceilings. Repeated identical recall should approach the configured ceiling asymptotically rather than explode.
+
+P6 acceptance:
+- old trace snapshot digest is identical before and after reconsolidation;
 - protected archive/provenance is immutable;
-- repeated recall can alter later recollection through explicit trace changes;
-- every change is auditable.
+- LATENT recollection produces no successor;
+- a P5 source misattribution with reconsolidation disabled produces no successor;
+- eligible conscious/focal reactivation creates exactly one immutable successor snapshot;
+- every changed psychological field has an explicit ReconsolidationOperation;
+- source attribution alone does not change the update rule;
+- initial P6 cannot rewrite gist or retained details;
+- repeated recall remains bounded over a 100-cycle stress test;
+- ledger rejects silent forks and non-monotonic versioning;
+- ledger survives save/load with identical trace IDs, lineage, versions, and ancestry;
+- a matched lesion experiment shows no trace change when P6 is disabled and a successor only when enabled;
+- a later P4 retrieval can differ because of the successor trace while protected evidence remains unchanged;
+- P6 decision corruption fails closed before successor construction.
+
+Content distortion, false-detail incorporation, blended-trace reconsolidation, and source-cue rewriting remain downstream P6 extensions and require separate causal review before activation.
 
 ### P7 - thought / communication separation
 
