@@ -1,0 +1,626 @@
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from doctor_lives.awareness import AwarenessCandidate, AwarenessRouter
+from doctor_lives.phenomenology import (
+    CertaintyBand,
+    ObjectiveProvenance,
+    SubjectiveSourceKind,
+)
+from doctor_lives.recollection import (
+    MemoryTrace,
+    ProtectedEvidenceRef,
+    ReconstructionConfig,
+    RetrievalEpisode,
+    TraceDetail,
+    reconstruct_recollection,
+)
+from doctor_lives.reconsolidation import (
+    ReconsolidationContext,
+    ReconsolidationDecision,
+    ReconsolidationPolicy,
+    TraceVersionLedger,
+    apply_reconsolidation,
+    evaluate_reconsolidation,
+    reconsolidate_and_record,
+)
+from doctor_lives.source_monitoring import (
+    RecollectionFinalizationContext,
+    SourceMonitoringCues,
+    finalize_recollection_event,
+    monitor_recollection_source,
+)
+
+
+class ReconsolidationTests(unittest.TestCase):
+    def trace(
+        self,
+        *,
+        label: str = "base",
+        strength: float = 0.30,
+        accessibility: float = 0.30,
+        familiarity: float = 0.30,
+    ) -> MemoryTrace:
+        return MemoryTrace(
+            subject_id="subject-reconsolidation",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef(
+                    evidence_id=f"evidence:{label}",
+                    digest=f"sha256:{label}",
+                ),
+            ),
+            gist=f"The {label} demonstration occurred in the laboratory",
+            details=(
+                TraceDetail(
+                    detail_id=f"detail:{label}",
+                    text=f"Henry stood beside the {label} apparatus",
+                    cue_terms=("henry", "apparatus"),
+                ),
+            ),
+            source_cues=("visual-richness",),
+            strength=strength,
+            accessibility=accessibility,
+            familiarity=familiarity,
+        )
+
+    def source_cues(self) -> SourceMonitoringCues:
+        return SourceMonitoringCues(
+            retrieval_fluency=0.90,
+            perceptual_richness=0.95,
+            temporal_coherence=0.90,
+            spatial_coherence=0.90,
+            contextual_compatibility=0.90,
+            familiarity=0.85,
+            trace_accessibility=0.85,
+            rehearsal_frequency=0.40,
+            cue_match=0.90,
+        )
+
+    def reconstruct(
+        self,
+        trace: MemoryTrace,
+        *,
+        episode_id: str,
+        cue_text: str = "Henry apparatus",
+        config: ReconstructionConfig | None = None,
+    ):
+        episode = RetrievalEpisode(
+            episode_id=episode_id,
+            subject_id=trace.subject_id,
+            tick=40 + trace.version,
+            cue_text=cue_text,
+            candidate_trace_ids=(trace.trace_id,),
+            context_refs=("room:laboratory",),
+            subject_state_digest=f"sha256:state:{trace.version}",
+        )
+        return reconstruct_recollection(
+            (trace,),
+            episode,
+            config=config or ReconstructionConfig(max_details=1),
+        )
+
+    def final_event(
+        self,
+        trace: MemoryTrace,
+        *,
+        episode_id: str,
+        cues: SourceMonitoringCues | None = None,
+        content_certainty: CertaintyBand = CertaintyBand.MODERATE,
+        focal: bool = True,
+    ):
+        candidate = self.reconstruct(trace, episode_id=episode_id)
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=cues or self.source_cues(),
+        )
+        event = finalize_recollection_event(
+            candidate=candidate,
+            decision=decision,
+            context=RecollectionFinalizationContext(
+                tick=60 + trace.version,
+                source_state_digest=f"sha256:p5:{trace.version}",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="lived_runtime_memory",
+                    source="world",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+                subjective_content_certainty=content_certainty,
+            ),
+        )
+        if focal:
+            routed = AwarenessRouter().route(
+                (
+                    AwarenessCandidate(
+                        event=event,
+                        salience=1.0,
+                        change=1.0,
+                        novelty=1.0,
+                        goal_relevance=1.0,
+                        conflict=0.7,
+                        persistence=1.0,
+                    ),
+                )
+            )
+            event = routed[0].event
+        return candidate, decision, event
+
+    def eligible_context(self, *, enabled: bool = True) -> ReconsolidationContext:
+        return ReconsolidationContext(
+            enabled=enabled,
+            reactivation_strength=0.95,
+            prediction_error=0.65,
+            emotional_activation=0.55,
+            goal_relevance=0.65,
+            explicit_rehearsal=True,
+        )
+
+    def test_decision_is_factory_controlled(self):
+        with self.assertRaises(TypeError):
+            ReconsolidationDecision()
+
+    def test_latent_recollection_does_not_reconsolidate(self):
+        trace = self.trace()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        original_digest = trace.snapshot_digest
+        candidate, source_decision, latent_event = self.final_event(
+            trace,
+            episode_id="episode:latent",
+            focal=False,
+        )
+
+        decision, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=latent_event,
+            context=self.eligible_context(),
+        )
+
+        self.assertFalse(decision.eligible)
+        self.assertIn(
+            "recollection_not_consciously_accessible",
+            decision.reason_codes,
+        )
+        self.assertIsNone(successor)
+        self.assertEqual(trace.snapshot_digest, original_digest)
+        self.assertEqual(len(ledger.history(trace.trace_lineage_id)), 1)
+
+    def test_focal_recollection_creates_immutable_successor(self):
+        trace = self.trace()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        original_digest = trace.snapshot_digest
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:focal",
+        )
+
+        decision, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+
+        self.assertTrue(decision.eligible)
+        self.assertIsNotNone(successor)
+        assert successor is not None
+        self.assertEqual(trace.snapshot_digest, original_digest)
+        self.assertEqual(successor.version, trace.version + 1)
+        self.assertEqual(successor.parent_trace_id, trace.trace_id)
+        self.assertEqual(successor.trace_lineage_id, trace.trace_lineage_id)
+        self.assertNotEqual(successor.trace_id, trace.trace_id)
+        self.assertEqual(successor.protected_evidence, trace.protected_evidence)
+        self.assertEqual(successor.gist, trace.gist)
+        self.assertEqual(successor.details, trace.details)
+        self.assertEqual(successor.source_cues, trace.source_cues)
+        self.assertEqual(successor.retrieval_count, trace.retrieval_count + 1)
+        self.assertEqual(successor.rehearsal_count, trace.rehearsal_count + 1)
+        self.assertEqual(
+            successor.reconsolidation_decision_fingerprint,
+            decision.decision_fingerprint,
+        )
+        self.assertEqual(successor.reconsolidation_event_id, event.event_id)
+        self.assertEqual(len(ledger.history(trace.trace_lineage_id)), 2)
+
+    def test_misattribution_without_reconsolidation_does_not_rewrite_trace(self):
+        trace = self.trace()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:misattributed",
+            cues=self.source_cues(),
+        )
+        self.assertIs(source_decision.selected_source, SubjectiveSourceKind.LIVED)
+        original_digest = trace.snapshot_digest
+
+        decision, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(enabled=False),
+        )
+
+        self.assertFalse(decision.eligible)
+        self.assertIn("reconsolidation_disabled", decision.reason_codes)
+        self.assertIsNone(successor)
+        self.assertEqual(trace.snapshot_digest, original_digest)
+        self.assertEqual(len(ledger.history(trace.trace_lineage_id)), 1)
+
+    def test_initial_p6_ignores_non_neutral_content_certainty(self):
+        trace = self.trace()
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:certainty",
+            content_certainty=CertaintyBand.VERY_HIGH,
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        self.assertFalse(decision.eligible)
+        self.assertIn(
+            "nonneutral_content_certainty_not_grounded_for_p6",
+            decision.reason_codes,
+        )
+
+    def test_no_destabilizing_signal_means_no_reconsolidation(self):
+        trace = self.trace()
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:no-destabilizer",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=ReconsolidationContext(
+                reactivation_strength=0.90,
+                prediction_error=0.0,
+                emotional_activation=0.0,
+                goal_relevance=0.8,
+                explicit_rehearsal=False,
+            ),
+        )
+        self.assertFalse(decision.eligible)
+        self.assertIn(
+            "no_destabilizing_or_rehearsal_signal",
+            decision.reason_codes,
+        )
+
+    def test_reconsolidation_requires_exact_p4_p5_event_chain(self):
+        first = self.trace(label="first")
+        second = self.trace(label="second")
+        first_candidate, first_source, first_event = self.final_event(
+            first,
+            episode_id="episode:first",
+        )
+        second_candidate, _, _ = self.final_event(
+            second,
+            episode_id="episode:second",
+        )
+        with self.assertRaises(ValueError):
+            evaluate_reconsolidation(
+                old_trace=first,
+                candidate=second_candidate,
+                source_decision=first_source,
+                recollection_event=first_event,
+                context=self.eligible_context(),
+            )
+        self.assertNotEqual(first_candidate.candidate_id, second_candidate.candidate_id)
+
+    def test_every_successor_change_has_explicit_operation(self):
+        trace = self.trace()
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:operations",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            decision=decision,
+        )
+        assert successor is not None
+
+        operation_fields = {op.field_name for op in decision.operations}
+        changed_psychological_fields = {
+            name
+            for name in (
+                "strength",
+                "accessibility",
+                "familiarity",
+                "retrieval_count",
+                "rehearsal_count",
+            )
+            if getattr(trace, name) != getattr(successor, name)
+        }
+        self.assertEqual(operation_fields, changed_psychological_fields)
+        self.assertEqual(successor.gist, trace.gist)
+        self.assertEqual(successor.details, trace.details)
+        self.assertEqual(successor.protected_evidence, trace.protected_evidence)
+
+    def test_successor_changes_later_p4_recall_without_changing_protected_truth(self):
+        trace = self.trace(
+            label="threshold",
+            strength=0.30,
+            accessibility=0.30,
+            familiarity=0.30,
+        )
+        before = self.reconstruct(
+            trace,
+            episode_id="episode:before",
+            cue_text="unrelated cue",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.28,
+            ),
+        )
+        self.assertEqual(before.included_detail_refs, ())
+
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:reactivate",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            decision=decision,
+        )
+        assert successor is not None
+
+        after = self.reconstruct(
+            successor,
+            episode_id="episode:after",
+            cue_text="unrelated cue",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.28,
+            ),
+        )
+        self.assertEqual(trace.protected_evidence, successor.protected_evidence)
+        self.assertEqual(trace.gist, successor.gist)
+        self.assertEqual(trace.details, successor.details)
+        self.assertEqual(len(after.included_detail_refs), 1)
+        self.assertNotEqual(before.reconstructed_scene, after.reconstructed_scene)
+
+    def test_source_attribution_does_not_change_update_rule(self):
+        trace = self.trace()
+        candidate = self.reconstruct(trace, episode_id="episode:sources")
+        lived = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.source_cues(),
+        )
+        read = monitor_recollection_source(
+            candidate=candidate,
+            cues=SourceMonitoringCues(
+                retrieval_fluency=0.75,
+                perceptual_richness=0.10,
+                temporal_coherence=0.70,
+                spatial_coherence=0.65,
+                contextual_compatibility=0.80,
+                familiarity=0.85,
+                trace_accessibility=0.70,
+                rehearsal_frequency=0.70,
+                reconstruction_exposure=0.20,
+                cue_match=0.80,
+                textual_signature=0.95,
+            ),
+        )
+        self.assertIs(lived.selected_source, SubjectiveSourceKind.LIVED)
+        self.assertIs(read.selected_source, SubjectiveSourceKind.READ)
+
+        def event_for(source_decision):
+            latent = finalize_recollection_event(
+                candidate=candidate,
+                decision=source_decision,
+                context=RecollectionFinalizationContext(
+                    tick=60,
+                    source_state_digest="sha256:p5:sources",
+                    objective_provenance=ObjectiveProvenance(
+                        evidence_class="test",
+                        source="audit",
+                        record_ids=candidate.protected_evidence_refs,
+                    ),
+                ),
+            )
+            return AwarenessRouter().route(
+                (
+                    AwarenessCandidate(
+                        event=latent,
+                        salience=1.0,
+                        change=1.0,
+                        novelty=1.0,
+                        goal_relevance=1.0,
+                        persistence=1.0,
+                    ),
+                )
+            )[0].event
+
+        lived_event = event_for(lived)
+        read_event = event_for(read)
+        lived_decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=lived,
+            recollection_event=lived_event,
+            context=self.eligible_context(),
+        )
+        read_decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=read,
+            recollection_event=read_event,
+            context=self.eligible_context(),
+        )
+
+        self.assertEqual(lived_decision.operations, read_decision.operations)
+        self.assertEqual(
+            lived_decision.eligibility_strength,
+            read_decision.eligibility_strength,
+        )
+
+    def test_ledger_rejects_silent_fork(self):
+        trace = self.trace()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:fork",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            decision=decision,
+        )
+        assert successor is not None
+        ledger.append_successor(parent=trace, successor=successor)
+        with self.assertRaises(ValueError):
+            ledger.append_successor(parent=trace, successor=successor)
+
+    def test_ledger_restart_round_trip_preserves_exact_history(self):
+        trace = self.trace()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:persist",
+        )
+        _, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        assert successor is not None
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "trace-ledger.json"
+            ledger.save(path)
+            restored = TraceVersionLedger.load(path)
+
+        self.assertEqual(restored.stable_json(), ledger.stable_json())
+        restored_history = restored.history(trace.trace_lineage_id)
+        self.assertEqual(
+            tuple(item.trace_id for item in restored_history),
+            tuple(item.trace_id for item in ledger.history(trace.trace_lineage_id)),
+        )
+        self.assertEqual(restored.latest(trace.trace_lineage_id).trace_id, successor.trace_id)
+
+    def test_repeated_recall_is_bounded_and_asymptotic(self):
+        current = self.trace(
+            label="long-run",
+            strength=0.20,
+            accessibility=0.20,
+            familiarity=0.20,
+        )
+        ledger = TraceVersionLedger()
+        ledger.register_initial(current)
+        policy = ReconsolidationPolicy()
+        first_strength_delta = None
+        last_strength_delta = None
+
+        for index in range(100):
+            candidate, source_decision, event = self.final_event(
+                current,
+                episode_id=f"episode:repeat:{index}",
+            )
+            decision, successor = reconsolidate_and_record(
+                ledger=ledger,
+                old_trace=current,
+                candidate=candidate,
+                source_decision=source_decision,
+                recollection_event=event,
+                context=self.eligible_context(),
+                policy=policy,
+            )
+            self.assertTrue(decision.eligible)
+            assert successor is not None
+            strength_ops = [
+                op for op in decision.operations if op.field_name == "strength"
+            ]
+            if strength_ops:
+                if first_strength_delta is None:
+                    first_strength_delta = float(strength_ops[0].delta)
+                last_strength_delta = float(strength_ops[0].delta)
+            current = successor
+
+        self.assertEqual(current.version, 100)
+        self.assertLessEqual(current.strength, policy.strength_ceiling)
+        self.assertLessEqual(current.accessibility, policy.accessibility_ceiling)
+        self.assertLessEqual(current.familiarity, policy.familiarity_ceiling)
+        self.assertEqual(len(ledger.history(current.trace_lineage_id)), 101)
+        self.assertIsNotNone(first_strength_delta)
+        self.assertIsNotNone(last_strength_delta)
+        assert first_strength_delta is not None and last_strength_delta is not None
+        self.assertLess(last_strength_delta, first_strength_delta)
+
+    def test_corrupted_reconsolidation_decision_fails_closed(self):
+        trace = self.trace()
+        candidate, source_decision, event = self.final_event(
+            trace,
+            episode_id="episode:corrupt",
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            recollection_event=event,
+            context=self.eligible_context(),
+        )
+        object.__setattr__(decision, "eligibility_strength", 0.01)
+        with self.assertRaises(ValueError):
+            apply_reconsolidation(
+                old_trace=trace,
+                candidate=candidate,
+                source_decision=source_decision,
+                recollection_event=event,
+                decision=decision,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()
