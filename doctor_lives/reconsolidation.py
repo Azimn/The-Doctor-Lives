@@ -163,7 +163,7 @@ class ReconsolidationPolicy:
     accessibility_ceiling: float = 0.98
     familiarity_ceiling: float = 0.98
     min_detail_interference: float = 0.35
-    max_detail_accessibility_loss: float = 0.08
+    max_detail_accessibility_loss: float = 0.12
     detail_accessibility_floor: float = 0.05
 
     def __post_init__(self) -> None:
