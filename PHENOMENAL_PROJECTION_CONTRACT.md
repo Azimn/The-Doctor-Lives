@@ -520,12 +520,17 @@ P4 reconstruction must be deterministic under identical trace snapshots, retriev
 Acceptance:
 - protected evidence references/digests remain bit-for-bit unchanged;
 - memory-trace snapshots remain immutable during recall;
+- local TraceDetail identifiers are unique within each trace;
+- local ProtectedEvidenceRef identifiers are unique within each trace;
 - trace lineage remains intact;
 - distinct retrieval episodes have distinct occurrence identity even when all other inputs match;
+- the candidate binds the complete retrieval-episode fingerprint, not merely the human-readable episode ID;
+- the candidate binds a deterministic ReconstructionConfig fingerprint and reconstruction-rule version;
 - repeated reconstruction with identical inputs is deterministic;
 - two recollections from the same trace can differ under different cues without mutating protected evidence or the trace;
 - blended recollection retains all contributing trace references;
 - no invented detail may appear without an explicit traceable reconstruction operation;
+- canonical RecollectionCandidate construction is factory-controlled through reconstruct_recollection(); public direct fabrication fails closed;
 - no P4 output enters awareness directly.
 
 ### P5 - source monitoring
