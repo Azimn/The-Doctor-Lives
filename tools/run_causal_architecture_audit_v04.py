@@ -125,6 +125,8 @@ def pair_row(mechanism: str, result: dict, stimulus: Experience, method: str) ->
         "selected_action_diverged": bool(c["selected_action_diverged"]),
         "renderer_request_changed": bool(c["renderer_request_changed"]),
         "retrieval_jaccard": float(c["retrieval_jaccard"]),
+        "intact_activated_memory_count": len(result["intact"].get("retrieval", {}).get("activated_memory_ids", [])),
+        "lesion_activated_memory_count": len(result["lesion"].get("retrieval", {}).get("activated_memory_ids", [])),
         "intact_selected_action": intact_policy["selected_action"],
         "lesion_selected_action": lesion_policy["selected_action"],
         "intact_raw_recurrent_scores": intact_policy.get("base_action_scores", {}),
