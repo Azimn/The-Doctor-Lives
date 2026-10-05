@@ -326,8 +326,8 @@ class RecollectionCandidate:
     trace_ids: tuple[str, ...]
     protected_evidence_refs: tuple[str, ...]
     reconstructed_scene: str
-    included_detail_ids: tuple[str, ...]
-    omitted_detail_ids: tuple[str, ...]
+    included_detail_refs: tuple[str, ...]
+    omitted_detail_refs: tuple[str, ...]
     vividness: VividnessBand
     content_confidence: float
     fragmented: bool
@@ -347,8 +347,8 @@ class RecollectionCandidate:
         for field_name in (
             "trace_ids",
             "protected_evidence_refs",
-            "included_detail_ids",
-            "omitted_detail_ids",
+            "included_detail_refs",
+            "omitted_detail_refs",
             "reconstruction_operations",
         ):
             object.__setattr__(
@@ -376,8 +376,8 @@ class RecollectionCandidate:
             "trace_ids": self.trace_ids,
             "protected_evidence_refs": self.protected_evidence_refs,
             "reconstructed_scene": self.reconstructed_scene,
-            "included_detail_ids": self.included_detail_ids,
-            "omitted_detail_ids": self.omitted_detail_ids,
+            "included_detail_refs": self.included_detail_refs,
+            "omitted_detail_refs": self.omitted_detail_refs,
             "vividness": self.vividness.value,
             "content_confidence": self.content_confidence,
             "fragmented": self.fragmented,
@@ -470,15 +470,18 @@ def reconstruct_recollection(
         if item[0] >= config.minimum_detail_score
     ]
     included = eligible[: config.max_details]
-    included_ids = tuple(item[2].detail_id for item in included)
-    all_detail_ids = tuple(
-        detail.detail_id
+    included_detail_refs = tuple(
+        f"{ordered[trace_index].trace_id}:{detail.detail_id}"
+        for _, trace_index, detail in included
+    )
+    all_detail_refs = tuple(
+        f"{trace.trace_id}:{detail.detail_id}"
         for trace in ordered
         for detail in trace.details
     )
-    included_set = set(included_ids)
-    omitted_ids = tuple(
-        detail_id for detail_id in all_detail_ids if detail_id not in included_set
+    included_set = set(included_detail_refs)
+    omitted_detail_refs = tuple(
+        detail_ref for detail_ref in all_detail_refs if detail_ref not in included_set
     )
 
     gist_parts = [trace.gist.strip().rstrip(".") for trace in ordered]
@@ -530,11 +533,11 @@ def reconstruct_recollection(
         trace_ids=tuple(trace.trace_id for trace in ordered),
         protected_evidence_refs=protected_refs,
         reconstructed_scene=reconstructed_scene,
-        included_detail_ids=included_ids,
-        omitted_detail_ids=omitted_ids,
+        included_detail_refs=included_detail_refs,
+        omitted_detail_refs=omitted_detail_refs,
         vividness=vividness,
         content_confidence=content_confidence,
-        fragmented=bool(omitted_ids),
+        fragmented=bool(omitted_detail_refs),
         blended=len(ordered) > 1,
         reconstruction_operations=tuple(operations),
     )
