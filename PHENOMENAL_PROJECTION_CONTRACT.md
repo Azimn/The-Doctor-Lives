@@ -614,7 +614,7 @@ P6 evolves memory by producing immutable successor trace snapshots after verifie
 The initial P6 graph is:
 
 verified P5 recollection PhenomenalEvent
--> P3 awareness arbitration
+-> P3 AwarenessDecision
 -> ReconsolidationContext
 -> ReconsolidationDecision
 -> successor MemoryTrace snapshot
@@ -624,16 +624,17 @@ P6 consumes the complete upstream causal chain:
 - exact prior MemoryTrace snapshot;
 - verified P4 RecollectionCandidate;
 - verified P5 SourceMonitoringDecision;
-- finalized recollection PhenomenalEvent after P3 routing;
+- the actual P3 AwarenessDecision for that finalized recollection;
 - explicit ReconsolidationContext and bounded ReconsolidationPolicy.
 
 Initial P6 eligibility is deliberately conservative:
-- the recollection must be CONSCIOUS or FOCAL; LATENT/PRECONSCIOUS existence alone cannot rewrite memory;
+- the canonical P6 boundary accepts the P3 AwarenessDecision object, not a bare PhenomenalEvent carrying an awareness label;
+- the P3 decision must be CONSCIOUS or FOCAL; LATENT/PRECONSCIOUS access cannot rewrite memory;
 - reactivation must exceed a minimum threshold;
 - at least one destabilizing/rehearsal signal must be present: prediction error, sufficient emotional activation, or explicit rehearsal;
 - until a dedicated remembered-content certainty mechanism exists, non-neutral caller-supplied subjective content certainty is not permitted to amplify reconsolidation;
 - blended/multi-trace reconsolidation is not activatable in initial P6; enabling it requires a later reviewed schema revision;
-- the exact P3 awareness level used for eligibility is bound into the ReconsolidationDecision because PhenomenalEvent occurrence identity intentionally excludes awareness;
+- the exact P3 awareness level and arbitration priority used for eligibility are bound into the ReconsolidationDecision because PhenomenalEvent occurrence identity intentionally excludes awareness;
 - P5 source attribution itself does not determine update strength.
 
 Initial P6 plasticity may change only bounded trace variables:
@@ -676,7 +677,8 @@ Update families must be bounded by per-recall delta caps and absolute ceilings. 
 P6 acceptance:
 - old trace snapshot digest is identical before and after reconsolidation;
 - protected archive/provenance is immutable;
-- LATENT recollection produces no successor;
+- a bare PhenomenalEvent cannot substitute for a P3 AwarenessDecision at the canonical P6 boundary;
+- a LATENT P3 AwarenessDecision produces no successor;
 - a P5 source misattribution with reconsolidation disabled produces no successor;
 - eligible conscious/focal reactivation creates exactly one immutable successor snapshot;
 - every changed psychological field has an explicit ReconsolidationOperation;
