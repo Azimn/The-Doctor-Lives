@@ -1135,6 +1135,13 @@ class TraceVersionLedger:
             raise ValueError("initial trace cannot have a reconsolidation decision")
         if trace.reconsolidation_event_id is not None:
             raise ValueError("initial trace cannot have a reconsolidation event")
+        if any(
+            state.parent_state_fingerprint is not None
+            for state in trace.detail_states
+        ):
+            raise ValueError(
+                "initial trace detail states cannot claim prior mnemonic parents"
+            )
         if trace.trace_lineage_id in self._history:
             raise ValueError("trace lineage is already registered")
         self._history[trace.trace_lineage_id] = [trace]
