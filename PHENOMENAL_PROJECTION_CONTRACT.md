@@ -491,24 +491,60 @@ Required adversarial tests:
 
 P4 owns the memory path:
 
-protected event/evidence -> persistent memory trace -> retrieval cue -> reconstructed recollection
+protected event/evidence -> persistent memory trace -> retrieval episode -> reconstructed recollection candidate
 
-The recollection is an ephemeral or explicitly versioned phenomenal construction from one or more traces plus current cue and subject state. It may differ across recalls in vividness, certainty, interpretation, completeness, affect, or fragmentation while protected objective evidence remains unchanged.
+P4 does **not** create the final canonical PhenomenalEvent for a memory. It creates a non-subject-accessible `RecollectionCandidate` that contains reconstructed content and lineage but no authoritative subjective source attribution.
+
+This resolves P4/P5 ownership explicitly:
+
+- P4 reconstructs what seems to be remembered.
+- P5 determines where the subject thinks that recollection came from.
+- P5 creates the first canonical recollection PhenomenalEvent.
+- Only that final P5 event may enter P3 awareness arbitration.
+
+A persistent `MemoryTrace` is an immutable/versioned representation derived from protected evidence. It may contain psychologically relevant features such as gist, retained details, temporal cues, actor/object associations, encoding affect, accessibility, strength, familiarity, subject-available source cues, rehearsal/retrieval history, competing trace links, and protected evidence references.
+
+A `RetrievalEpisode` is an immutable occurrence record. It must have its own explicit episode identifier and bind subject, tick, cue semantics/fingerprint, current context references, and exact candidate trace IDs. Two separate recalls must remain distinct even when tick, cue wording, and resulting reconstruction are otherwise identical.
+
+The `RecollectionCandidate` is an ephemeral or explicitly versioned reconstruction from one or more traces plus one retrieval episode and current subject state. It may vary across recalls in completeness, vividness precursor state, interpretation, affect, omitted details, or blended trace contribution while protected objective evidence remains unchanged.
+
+Initial P4 progression should prefer omission before invention:
+1. accurate full recollection;
+2. partial recollection;
+3. gist-dominant recollection;
+4. blended recollection from competing traces;
+5. only later, explicit false reconstructed details through a separately auditable reconstruction mechanism.
+
+P4 reconstruction must be deterministic under identical trace snapshots, retrieval episode, subject-state inputs, configuration, and seed if stochasticity is ever added.
 
 Acceptance:
-- objective source remains bit-for-bit preserved;
+- protected evidence references/digests remain bit-for-bit unchanged;
+- memory-trace snapshots remain immutable during recall;
 - trace lineage remains intact;
-- two recollections from the same trace can differ without mutating protected evidence;
-- current recollection is not identical to the persistent trace;
-- awareness routing remains downstream of recollection construction.
+- distinct retrieval episodes have distinct occurrence identity even when all other inputs match;
+- repeated reconstruction with identical inputs is deterministic;
+- two recollections from the same trace can differ under different cues without mutating protected evidence or the trace;
+- blended recollection retains all contributing trace references;
+- no invented detail may appear without an explicit traceable reconstruction operation;
+- no P4 output enters awareness directly.
 
 ### P5 - source monitoring
 
-Source monitoring is a distinct mechanism downstream of P4, not random error injected by the recollection projector.
+Source monitoring is a distinct mechanism downstream of P4, not random error injected by the recollection constructor.
 
-It should consume psychologically meaningful evidence such as trace quality, temporal distance, competing traces, retrieval/rehearsal history, imagination or reconstruction exposure, source similarity, cue compatibility, and current contextual fit.
+P5 consumes a completed P4 `RecollectionCandidate` plus psychologically plausible source cues. It must not receive or branch directly on protected objective provenance labels such as `reconstructed_preawakening_memory` merely to decide whether to "lie." Protected truth remains available to audit and experimental scoring, not to the subjective source monitor.
 
-It produces subjective source attribution and confidence and must support:
+Source-monitoring inputs may include trace quality, temporal distance, competing traces, retrieval/rehearsal history, imagination or reconstruction exposure, source similarity, cue compatibility, contextual fit, perceptual richness, familiarity, and other subject-plausible cues.
+
+P5 produces subjective source attribution and source confidence, then constructs the first canonical recollection `PhenomenalEvent`. That event references the P4 retrieval/reconstruction lineage in `source_event_refs` or equivalent lineage fields.
+
+Because subjective source attribution participates in phenomenal identity, P4 candidates are not themselves canonical PhenomenalEvents. P5 finalization creates the phenomenal occurrence exactly once rather than silently mutating event identity after construction.
+
+The final path is therefore:
+
+protected evidence -> memory trace -> retrieval episode -> RecollectionCandidate -> source monitoring -> canonical recollection PhenomenalEvent -> P3 awareness arbitration
+
+P5 must support:
 - correct attribution;
 - uncertainty;
 - misattribution;
@@ -519,7 +555,10 @@ Every error must have a causal explanation available to engineering/audit even w
 Acceptance:
 - subjective attribution can be correct, uncertain, or wrong;
 - objective provenance never changes because of source attribution;
-- error is deterministic or otherwise reproducibly attributable to explicit mechanism state.
+- identical candidate + identical source-monitoring evidence reproduces the same result;
+- changed source-monitoring evidence can change attribution while recollection content remains fixed;
+- source-monitoring error is reproducibly attributable to explicit mechanism state;
+- final recollection enters P3 only after P5 finalization.
 
 ### P6 - reconsolidation
 
