@@ -1879,6 +1879,143 @@ class ReconsolidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             TraceVersionLedger.from_json(corrupted)
 
+    def test_p6c_capacity_limited_omission_does_not_drive_richer_drift(self):
+        trace = self.trace_with_two_details()
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6c-capacity",
+            cue_text="Henry apparatus blue notebook table",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.0,
+            ),
+        )
+        self.assertEqual(len(candidate.detail_omissions), 1)
+        self.assertIs(
+            candidate.detail_omissions[0].cause,
+            OmissionCause.CAPACITY_LIMITED,
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_drift_enabled=True,
+                temporal_disorientation=1.0,
+                association_drift_enabled=True,
+                context_mismatch=1.0,
+            ),
+        )
+        richer_ops = [
+            op for op in decision.detail_operations
+            if op.field_name in {
+                "temporal_confidence",
+                "association_strength",
+            }
+        ]
+        self.assertEqual(richer_ops, [])
+        self.assertIn(
+            "capacity_limited_omission_excluded_from_p6c",
+            decision.detail_reason_codes,
+        )
+
+    def test_p6c_temporal_drift_changes_only_temporal_confidence(self):
+        trace = self.trace_with_detail_state(
+            label="temporal-drift",
+            temporal_confidence=0.78,
+        )
+        before = self.reconstruct(
+            trace,
+            episode_id="episode:p6c-temporal-before",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIs(
+            before.recalled_detail_states[0].temporal_precision,
+            TemporalPrecision.PRECISE,
+        )
+
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6c-temporal-reactivate",
+            cue_text="unrelated signal",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.95,
+            ),
+        )
+        self.assertIs(
+            candidate.detail_omissions[0].cause,
+            OmissionCause.CUE_MISMATCH,
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_drift_enabled=True,
+                temporal_disorientation=1.0,
+            ),
+        )
+        self.assertEqual(
+            [op.field_name for op in decision.detail_operations],
+            ["temporal_confidence"],
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+        old_state = trace.detail_state("detail:henry")
+        new_state = successor.detail_state("detail:henry")
+        self.assertEqual(new_state.accessibility, old_state.accessibility)
+        self.assertEqual(
+            new_state.association_strength,
+            old_state.association_strength,
+        )
+        self.assertLess(
+            new_state.temporal_confidence,
+            old_state.temporal_confidence,
+        )
+
+        after = self.reconstruct(
+            successor,
+            episode_id="episode:p6c-temporal-after",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIs(
+            after.recalled_detail_states[0].temporal_precision,
+            TemporalPrecision.APPROXIMATE,
+        )
+        self.assertIn("The timing feels approximate.", after.reconstructed_scene)
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
