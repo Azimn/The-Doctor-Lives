@@ -298,6 +298,37 @@ def _certainty_for(top_score: float, margin: float) -> CertaintyBand:
     return CertaintyBand.LOW
 
 
+def _decision_payload(
+    *,
+    candidate_id: str,
+    candidate_digest: str,
+    cues: SourceMonitoringCues,
+    cues_fingerprint: str,
+    rule_version: str,
+    contributions: tuple[SourceEvidenceContribution, ...],
+    selected_source: SubjectiveSourceKind,
+    certainty: CertaintyBand,
+    top_score: float,
+    runner_up_score: float,
+    margin: float,
+    decision_basis: tuple[str, ...] | list[str],
+) -> dict[str, Any]:
+    return {
+        "candidate_id": candidate_id,
+        "candidate_digest": candidate_digest,
+        "cues": asdict(cues),
+        "cues_fingerprint": cues_fingerprint,
+        "rule_version": rule_version,
+        "contributions": [asdict(item) for item in contributions],
+        "selected_source": selected_source.value,
+        "certainty": certainty.value,
+        "top_score": top_score,
+        "runner_up_score": runner_up_score,
+        "margin": margin,
+        "decision_basis": tuple(decision_basis),
+    }
+
+
 def monitor_recollection_source(
     *,
     candidate: RecollectionCandidate,
@@ -348,20 +379,20 @@ def monitor_recollection_source(
         SourceEvidenceContribution(source_kind=kind, score=score)
         for kind, score in ordered
     )
-    payload = {
-        "candidate_id": candidate.candidate_id,
-        "candidate_digest": candidate.candidate_digest,
-        "cues": asdict(cues),
-        "cues_fingerprint": cues.fingerprint,
-        "rule_version": rule_version,
-        "contributions": [asdict(item) for item in contributions],
-        "selected_source": selected.value,
-        "certainty": certainty.value,
-        "top_score": top_score,
-        "runner_up_score": runner_up_score,
-        "margin": margin,
-        "decision_basis": decision_basis,
-    }
+    payload = _decision_payload(
+        candidate_id=candidate.candidate_id,
+        candidate_digest=candidate.candidate_digest,
+        cues=cues,
+        cues_fingerprint=cues.fingerprint,
+        rule_version=rule_version,
+        contributions=contributions,
+        selected_source=selected,
+        certainty=certainty,
+        top_score=top_score,
+        runner_up_score=runner_up_score,
+        margin=margin,
+        decision_basis=decision_basis,
+    )
 
     decision = SourceMonitoringDecision(
         _factory_token=_SOURCE_MONITORING_DECISION_FACTORY_TOKEN
@@ -413,6 +444,25 @@ def finalize_recollection_event(
         raise ValueError("source-monitoring decision candidate digest mismatch")
     if decision.cues_fingerprint != decision.cues.fingerprint:
         raise ValueError("source-monitoring decision cue fingerprint mismatch")
+
+    expected_decision_fingerprint = "source_monitor_" + _stable_sha256(
+        _decision_payload(
+            candidate_id=decision.candidate_id,
+            candidate_digest=decision.candidate_digest,
+            cues=decision.cues,
+            cues_fingerprint=decision.cues_fingerprint,
+            rule_version=decision.rule_version,
+            contributions=decision.contributions,
+            selected_source=decision.selected_source,
+            certainty=decision.certainty,
+            top_score=decision.top_score,
+            runner_up_score=decision.runner_up_score,
+            margin=decision.margin,
+            decision_basis=decision.decision_basis,
+        )
+    )[:24]
+    if decision.decision_fingerprint != expected_decision_fingerprint:
+        raise ValueError("source-monitoring decision fingerprint mismatch")
 
     provenance_ids = tuple(context.objective_provenance.record_ids)
     if provenance_ids != candidate.protected_evidence_refs:
