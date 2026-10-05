@@ -365,3 +365,107 @@ def project_uncertainty(
         intensity=IntensityBand.MILD,
         source_state_refs=source_state_refs,
     )
+
+
+def project_relationship_feeling(
+    *,
+    context: ProjectionContext,
+    actor_name: str,
+    trust: float,
+    affiliation: float,
+    provenance: ObjectiveProvenance,
+    source_state_refs: tuple[str, ...] = (),
+) -> PhenomenalEvent:
+    actor = actor_name.strip()
+    if not actor:
+        raise ValueError("actor_name is required")
+    trust = _unit(trust, "trust")
+    affiliation = _unit(affiliation, "affiliation")
+
+    if trust <= 0.20 and affiliation >= 0.55:
+        text = f"I want to remain close to {actor}, but I do not trust them."
+    elif trust <= 0.25:
+        text = f"I do not trust {actor}."
+    elif trust < 0.45:
+        text = f"I am wary of {actor}."
+    elif trust >= 0.78 and affiliation >= 0.60:
+        text = f"I feel close to {actor}, and I trust them."
+    elif affiliation >= 0.70:
+        text = f"I feel drawn toward {actor}."
+    elif trust >= 0.65:
+        text = f"I trust {actor}."
+    else:
+        text = f"I am not yet sure what to make of {actor}."
+
+    tension = max(abs(trust - 0.5) * 2.0, affiliation)
+    return _event(
+        context=context,
+        mode=PhenomenalMode.FEELING,
+        text=text,
+        provenance=provenance,
+        intensity=_intensity(tension),
+        source_state_refs=source_state_refs,
+        object_refs=(f"actor:{actor}",),
+    )
+
+
+def project_concern(
+    *,
+    context: ProjectionContext,
+    subject_phrase: str,
+    urgency: float,
+    provenance: ObjectiveProvenance,
+    source_state_refs: tuple[str, ...] = (),
+) -> PhenomenalEvent:
+    phrase = subject_phrase.strip().rstrip(".")
+    if not phrase:
+        raise ValueError("subject_phrase is required")
+    band = _intensity(urgency)
+    if band is IntensityBand.TRACE:
+        text = f"The thought of {phrase} flickers at the edge of my attention."
+    elif band is IntensityBand.MILD:
+        text = f"The thought of {phrase} keeps returning to me."
+    elif band is IntensityBand.MODERATE:
+        text = f"I cannot quite put aside the thought of {phrase}."
+    elif band is IntensityBand.STRONG:
+        text = f"I am preoccupied with {phrase}."
+    else:
+        text = f"I can barely think past {phrase}."
+    return _event(
+        context=context,
+        mode=PhenomenalMode.CONCERN,
+        text=text,
+        provenance=provenance,
+        intensity=band,
+        source_state_refs=source_state_refs,
+    )
+
+
+def project_commitment(
+    *,
+    context: ProjectionContext,
+    action_phrase: str,
+    importance: float,
+    provenance: ObjectiveProvenance,
+    source_state_refs: tuple[str, ...] = (),
+) -> PhenomenalEvent:
+    phrase = action_phrase.strip().rstrip(".")
+    if not phrase:
+        raise ValueError("action_phrase is required")
+    band = _intensity(importance)
+    if band in {IntensityBand.TRACE, IntensityBand.MILD}:
+        text = f"I still mean to {phrase}."
+    elif band is IntensityBand.MODERATE:
+        text = f"I intend to {phrase}."
+    elif band is IntensityBand.STRONG:
+        text = f"I am determined to {phrase}."
+    else:
+        text = f"I cannot accept leaving {phrase} undone."
+    return _event(
+        context=context,
+        mode=PhenomenalMode.INTENTION,
+        text=text,
+        provenance=provenance,
+        intensity=band,
+        source_state_refs=source_state_refs,
+    )
