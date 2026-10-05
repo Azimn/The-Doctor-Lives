@@ -2172,6 +2172,174 @@ class ReconsolidationTests(unittest.TestCase):
             context.reconstructed_scene,
         )
 
+    def test_p6c_temporal_and_association_chain_survives_restart(self):
+        trace = self.trace_with_detail_state(
+            label="p6c-persist",
+            temporal_confidence=0.80,
+            association_strength=0.80,
+        )
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6c-persist",
+            cue_text="unrelated signal",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.95,
+            ),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_drift_enabled=True,
+                temporal_disorientation=1.0,
+                association_drift_enabled=True,
+                context_mismatch=1.0,
+            ),
+        )
+        assert successor is not None
+        self.assertEqual(
+            [op.field_name for op in decision.detail_operations],
+            ["temporal_confidence", "association_strength"],
+        )
+        self.assertEqual(
+            decision.detail_operations[1].old_state_fingerprint,
+            decision.detail_operations[0].new_state_fingerprint,
+        )
+
+        restored = TraceVersionLedger.from_json(ledger.stable_json())
+        self.assertEqual(
+            restored.latest(trace.trace_lineage_id),
+            successor,
+        )
+        audit = restored.decision_audit(successor.trace_id)
+        self.assertEqual(
+            [item["field_name"] for item in audit["detail_operations"]],
+            ["temporal_confidence", "association_strength"],
+        )
+
+    def test_p6c_repeated_temporal_and_context_drift_is_bounded(self):
+        current = self.trace_with_detail_state(
+            label="p6c-long-run",
+            temporal_confidence=1.0,
+            association_strength=1.0,
+        )
+        ledger = TraceVersionLedger()
+        ledger.register_initial(current)
+        policy = ReconsolidationPolicy(
+            temporal_confidence_floor=0.20,
+            association_strength_floor=0.20,
+        )
+        first_temporal_loss = None
+        last_temporal_loss = None
+        first_association_loss = None
+        last_association_loss = None
+
+        for index in range(100):
+            candidate = self.reconstruct(
+                current,
+                episode_id=f"episode:p6c-repeat:{index}",
+                cue_text="unrelated signal",
+                config=ReconstructionConfig(
+                    max_details=1,
+                    minimum_detail_score=0.99,
+                ),
+            )
+            self.assertIs(
+                candidate.detail_omissions[0].cause,
+                OmissionCause.CUE_MISMATCH,
+            )
+            source_decision, finalized, awareness = self.finalized_from_candidate(
+                candidate
+            )
+            decision, successor = reconsolidate_and_record(
+                ledger=ledger,
+                old_trace=current,
+                candidate=candidate,
+                source_decision=source_decision,
+                finalized_recollection=finalized,
+                awareness_decision=awareness,
+                context=ReconsolidationContext(
+                    enabled=True,
+                    reactivation_strength=0.95,
+                    prediction_error=0.65,
+                    emotional_activation=0.55,
+                    goal_relevance=0.65,
+                    explicit_rehearsal=True,
+                    temporal_drift_enabled=True,
+                    temporal_disorientation=1.0,
+                    association_drift_enabled=True,
+                    context_mismatch=1.0,
+                ),
+                policy=policy,
+            )
+            assert successor is not None
+            for operation in decision.detail_operations:
+                loss = abs(float(operation.delta))
+                if operation.field_name == "temporal_confidence":
+                    if first_temporal_loss is None:
+                        first_temporal_loss = loss
+                    last_temporal_loss = loss
+                if operation.field_name == "association_strength":
+                    if first_association_loss is None:
+                        first_association_loss = loss
+                    last_association_loss = loss
+            current = successor
+
+        final_state = current.detail_state("detail:henry")
+        self.assertGreaterEqual(
+            final_state.temporal_confidence,
+            policy.temporal_confidence_floor,
+        )
+        self.assertGreaterEqual(
+            final_state.association_strength,
+            policy.association_strength_floor,
+        )
+        self.assertEqual(current.version, 100)
+        self.assertEqual(len(ledger.history(current.trace_lineage_id)), 101)
+        self.assertIsNotNone(first_temporal_loss)
+        self.assertIsNotNone(last_temporal_loss)
+        self.assertIsNotNone(first_association_loss)
+        self.assertIsNotNone(last_association_loss)
+        assert first_temporal_loss is not None and last_temporal_loss is not None
+        assert first_association_loss is not None and last_association_loss is not None
+        self.assertLess(last_temporal_loss, first_temporal_loss)
+        self.assertLess(last_association_loss, first_association_loss)
+
+        recovered = self.reconstruct(
+            current,
+            episode_id="episode:p6c-repeat-recovery",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.70,
+            ),
+        )
+        self.assertEqual(len(recovered.included_detail_refs), 1)
+        self.assertIs(
+            recovered.recalled_detail_states[0].temporal_precision,
+            TemporalPrecision.UNCERTAIN,
+        )
+        self.assertIs(
+            recovered.recalled_detail_states[0].contextual_association,
+            ContextAssociation.WEAK,
+        )
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
