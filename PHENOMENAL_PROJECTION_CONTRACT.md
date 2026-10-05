@@ -476,7 +476,7 @@ Required corrections:
 - canonical subject-text validation occurs at PhenomenalEvent construction and cannot be bypassed by direct public construction;
 - semantic/content identity is distinct from lineage/event identity;
 - distinct objective provenance/source lineage cannot collapse to one event identity merely because wording matches;
-- Recollection has one authoritative subjective source/certainty/vividness representation;
+- Recollection has one authoritative representation per subjective dimension; source-attribution certainty and remembered-content certainty are distinct rather than duplicated;
 - awareness capacity is isolated to one subject per routing operation.
 
 Required adversarial tests:
