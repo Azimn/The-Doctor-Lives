@@ -1,6 +1,6 @@
 {
   "concern_resolution": {
-    "concern_id": "concern_9377565c2bd04db7810dd69ad5222881",
+    "concern_id": "concern_69049d0ec3ea4308a36248751d80c9cf",
     "heartbeat_thoughts_after_resolution": 0,
     "lifecycle_events": [
       {
@@ -48,6 +48,7 @@
       "action_score_l1": 0.08536570197209688,
       "experiment_fingerprint": "5c79edf981172bb2459bc38edb7acf4d153f48ba752891a8d003ac8c10d36e16",
       "experiment_method": "run_existing_state_pair:v1",
+      "intact_activated_memory_count": 0,
       "intact_final_scores": {
         "approach": 0.10697324150034195,
         "avoid": 0.10624038796165058,
@@ -202,16 +203,16 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_bc2f0bc4796d4c8691f0c1a8a758f8fd",
-            "mem_66c14cdc3cf54572b4e0bfa24337a4a6",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_67750c7bdb9f40f8b75d402e3aa5bd4d",
-            "mem_4adab1459db5410cb87d794b7ecc21a8"
+            "mem_be3f0817200b4d0b9888b55659478431",
+            "mem_f05eea67cda6449ea1e3640083e84042",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_9c91b83dabb84b22b6df31159b9d95a7",
+            "mem_b21afdae103a4868bdf6318bda5ff34d"
           ],
           "needs": [
             "affiliation",
@@ -289,6 +290,7 @@
         },
         "version": "state-policy-bridge-v0.4"
       },
+      "lesion_activated_memory_count": 0,
       "lesion_final_scores": {
         "approach": 0.09789658085828921,
         "avoid": 0.1127764942476695,
@@ -443,7 +445,7 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [],
@@ -532,6 +534,7 @@
       "action_score_l1": 0.0,
       "experiment_fingerprint": "054d421f306b7446581dcc06ed449e22652fc42b910ee96a2e922ca6967c456a",
       "experiment_method": "run_existing_state_pair:v1+prime_spreading_activation:v1",
+      "intact_activated_memory_count": 15,
       "intact_final_scores": {
         "approach": 0.11069334842179453,
         "avoid": 0.10370125787264807,
@@ -686,18 +689,18 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_46d0f1ec053b4291bfe63fe026ed1c45",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_3dc7b9571a6b48119ea306a0eb41fab6",
-            "mem_e13d282f3d32460fa788bcc5d9a884d0",
-            "mem_626cd61983cc4d1e82d9aea8724b3380",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87",
-            "mem_599bef615f344df0811b0618de48e1c5"
+            "mem_342eec58e1b24e758b7b9abeb5109de9",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_cc1995e6cb5f41c4bfb7c5efd4563308",
+            "mem_a7191c90d24e46dd92a276f4271949e0",
+            "mem_3b54819cdb244565b1acf36002f265b6",
+            "mem_fe926823878d4a8d8086e3722908054f",
+            "mem_5ee62575b8f0433da26cecb1e2e942b8"
           ],
           "needs": [
             "affiliation",
@@ -777,6 +780,7 @@
         },
         "version": "state-policy-bridge-v0.4"
       },
+      "lesion_activated_memory_count": 0,
       "lesion_final_scores": {
         "approach": 0.11069334842179453,
         "avoid": 0.10370125787264807,
@@ -931,18 +935,18 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_46d0f1ec053b4291bfe63fe026ed1c45",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_3dc7b9571a6b48119ea306a0eb41fab6",
-            "mem_e13d282f3d32460fa788bcc5d9a884d0",
-            "mem_626cd61983cc4d1e82d9aea8724b3380",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87",
-            "mem_599bef615f344df0811b0618de48e1c5"
+            "mem_342eec58e1b24e758b7b9abeb5109de9",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_cc1995e6cb5f41c4bfb7c5efd4563308",
+            "mem_a7191c90d24e46dd92a276f4271949e0",
+            "mem_3b54819cdb244565b1acf36002f265b6",
+            "mem_fe926823878d4a8d8086e3722908054f",
+            "mem_5ee62575b8f0433da26cecb1e2e942b8"
           ],
           "needs": [
             "affiliation",
@@ -1031,6 +1035,7 @@
       "action_score_l1": 0.12773991586424088,
       "experiment_fingerprint": "f9ed90362c49f202adac64fe0477096ae669408bdd6b471cb1e8776697c7e629",
       "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
       "intact_final_scores": {
         "approach": 0.10504166965883863,
         "avoid": 0.10671482315129284,
@@ -1185,15 +1190,15 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_2e7b6edee1e54ecc9625838ef3dab754",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_bc2f0bc4796d4c8691f0c1a8a758f8fd",
-            "mem_67750c7bdb9f40f8b75d402e3aa5bd4d"
+            "mem_a1d9251cd6dc4a1689eb2a34be83af09",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_be3f0817200b4d0b9888b55659478431",
+            "mem_9c91b83dabb84b22b6df31159b9d95a7"
           ],
           "needs": [
             "affiliation",
@@ -1271,6 +1276,7 @@
         },
         "version": "state-policy-bridge-v0.4"
       },
+      "lesion_activated_memory_count": 0,
       "lesion_final_scores": {
         "approach": 0.10742363149864237,
         "avoid": 0.08549448216197893,
@@ -1425,15 +1431,15 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_3db77bf2dec3487bb035cf6abf63528c",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_bc2f0bc4796d4c8691f0c1a8a758f8fd",
-            "mem_67750c7bdb9f40f8b75d402e3aa5bd4d"
+            "mem_66dd7b332cab49eda5d472070b3c7283",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_be3f0817200b4d0b9888b55659478431",
+            "mem_9c91b83dabb84b22b6df31159b9d95a7"
           ],
           "needs": [
             "affiliation",
@@ -1520,6 +1526,7 @@
       "action_score_l1": 0.002378277372023438,
       "experiment_fingerprint": "0d106a026a38f552d9d8afa43f677c01f3f9f49494fba132544f74ef843b61f5",
       "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
       "intact_final_scores": {
         "approach": 0.12244363313554542,
         "avoid": 0.10421725494582257,
@@ -1674,15 +1681,15 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_19f0cd6f040146f99bd021a3777b1b8f",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_e13d282f3d32460fa788bcc5d9a884d0",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87"
+            "mem_4480b6c44fd244bba8cc94689974a82a",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_a7191c90d24e46dd92a276f4271949e0",
+            "mem_fe926823878d4a8d8086e3722908054f"
           ],
           "needs": [
             "affiliation",
@@ -1762,6 +1769,7 @@
         },
         "version": "state-policy-bridge-v0.4"
       },
+      "lesion_activated_memory_count": 0,
       "lesion_final_scores": {
         "approach": 0.12235581837011043,
         "avoid": 0.10389493119364471,
@@ -1916,15 +1924,15 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_2858fa44dba944f1a71224b5d8bdd8da",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_e13d282f3d32460fa788bcc5d9a884d0",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87"
+            "mem_43e5bd9c88e5462aaa3f47eb28523ef8",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_a7191c90d24e46dd92a276f4271949e0",
+            "mem_fe926823878d4a8d8086e3722908054f"
           ],
           "needs": [
             "affiliation",
@@ -2011,6 +2019,7 @@
       "action_score_l1": 0.06865875255470569,
       "experiment_fingerprint": "b75dc51c01079647e7c51ef3d4f39ffb5c5734353c9f556c0a86f1aac8ea4526",
       "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
       "intact_final_scores": {
         "approach": 0.11310244870150785,
         "avoid": 0.10465607200387717,
@@ -2165,15 +2174,15 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [],
           "history": [
-            "mem_af1cc53e3557400aa2036345fb62661a",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_e13d282f3d32460fa788bcc5d9a884d0",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87"
+            "mem_6e57711ea06e4a84826b1b9194d14da2",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_a7191c90d24e46dd92a276f4271949e0",
+            "mem_fe926823878d4a8d8086e3722908054f"
           ],
           "needs": [
             "affiliation",
@@ -2253,6 +2262,7 @@
         },
         "version": "state-policy-bridge-v0.4"
       },
+      "lesion_activated_memory_count": 0,
       "lesion_final_scores": {
         "approach": 0.11624692174875269,
         "avoid": 0.11046808204547036,
@@ -2409,11 +2419,11 @@
           "commitments": [],
           "concerns": [],
           "history": [
-            "mem_5f2a7cd259e84dee8f578a09c065dfe5",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_e13d282f3d32460fa788bcc5d9a884d0",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87"
+            "mem_b07aedafaf0f4e8c9e1cf2f37f3149cb",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_a7191c90d24e46dd92a276f4271949e0",
+            "mem_fe926823878d4a8d8086e3722908054f"
           ],
           "needs": [
             "affiliation",
@@ -2502,6 +2512,7 @@
       "action_score_l1": 0.022523060602370276,
       "experiment_fingerprint": "0934e283fa01bd0ef4ff81520de943cd3ad02bd89f624fdbac734657d3bcfe9c",
       "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
       "intact_final_scores": {
         "approach": 0.10812763543792081,
         "avoid": 0.10235430347570307,
@@ -2656,20 +2667,20 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [
-            "concern_8ce7942b338c472a89f11e61d5af69c5"
+            "concern_bd99ddf4779745e8884e48cfb845493d"
           ],
           "history": [
-            "mem_a1766173af87473ebcf277b6ac5df218",
-            "mem_626cd61983cc4d1e82d9aea8724b3380",
-            "mem_67750c7bdb9f40f8b75d402e3aa5bd4d",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_dd1b4ecbd7364536979a86ebf4dcc343",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87",
-            "mem_ffa2a998233246c287d32acc04be6472",
-            "mem_16ea45c473994e87a4e761039d97b507"
+            "mem_2c4265b473ea4cbfa90d8da94629de0f",
+            "mem_3b54819cdb244565b1acf36002f265b6",
+            "mem_9c91b83dabb84b22b6df31159b9d95a7",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_e7e79467c4fd4607b6657b4cd68fb694",
+            "mem_fe926823878d4a8d8086e3722908054f",
+            "mem_86b82499492e4672ad2acf367e6b93ec",
+            "mem_f6b26e9f1d624abe9c5ce13e3e6e790c"
           ],
           "needs": [
             "affiliation",
@@ -2749,6 +2760,7 @@
         },
         "version": "state-policy-bridge-v0.4"
       },
+      "lesion_activated_memory_count": 0,
       "lesion_final_scores": {
         "approach": 0.10520624891499487,
         "avoid": 0.10662770897556116,
@@ -2903,20 +2915,20 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [
-            "concern_d0fb0987e5f84d749b9e0c014d012446"
+            "concern_9cdc3f397e12499bab5a1c7fba0d7735"
           ],
           "history": [
-            "mem_eba85662cced4d089bd01ead69aeb843",
-            "mem_626cd61983cc4d1e82d9aea8724b3380",
-            "mem_67750c7bdb9f40f8b75d402e3aa5bd4d",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_dd1b4ecbd7364536979a86ebf4dcc343",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87",
-            "mem_ffa2a998233246c287d32acc04be6472",
-            "mem_16ea45c473994e87a4e761039d97b507"
+            "mem_59b7fd4ebfd9441087596fdf9fa13337",
+            "mem_3b54819cdb244565b1acf36002f265b6",
+            "mem_9c91b83dabb84b22b6df31159b9d95a7",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_e7e79467c4fd4607b6657b4cd68fb694",
+            "mem_fe926823878d4a8d8086e3722908054f",
+            "mem_86b82499492e4672ad2acf367e6b93ec",
+            "mem_f6b26e9f1d624abe9c5ce13e3e6e790c"
           ],
           "needs": [
             "affiliation",
@@ -3005,6 +3017,7 @@
       "action_score_l1": 0.21732210006896935,
       "experiment_fingerprint": "7b00b650c6547080459262242990d650747a9f9fa78292922c8a771733b7f00e",
       "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
       "intact_final_scores": {
         "approach": 0.10875288109530207,
         "avoid": 0.10744837758079476,
@@ -3159,17 +3172,17 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e92489ee7362432d926b2d180ce10aa0"
+            "commit_90e3c88375b34881ada6eef54cd0c9f3"
           ],
           "concerns": [
-            "concern_183588bb9f134197abbff348cf8b5547"
+            "concern_05b6f03172d541fbb74bc83d04a080d4"
           ],
           "history": [
-            "mem_2ee651362d5f4dd4b1385524c8244ab4",
-            "mem_13631a0f34484852a99bd73531efd5f9",
-            "mem_ea4a12a4066849c4a973aa28d5cc08b1",
-            "mem_e13d282f3d32460fa788bcc5d9a884d0",
-            "mem_2c2caaf9a3b143c1b68a5280cc8ceb87"
+            "mem_e64f8c264f2d4736aaf281623cb7b838",
+            "mem_288f6782e58e400a9c192b5eea644970",
+            "mem_70527880d0804681958aabeade39a6ac",
+            "mem_a7191c90d24e46dd92a276f4271949e0",
+            "mem_fe926823878d4a8d8086e3722908054f"
           ],
           "needs": [
             "affiliation",
@@ -3249,6 +3262,7 @@
         },
         "version": "state-policy-bridge-v0.4"
       },
+      "lesion_activated_memory_count": 0,
       "lesion_final_scores": {
         "approach": 0.10370684878278269,
         "avoid": 0.09457989722250197,
@@ -3503,7 +3517,7 @@
     }
   },
   "sleep_replay": {
-    "action_score_l1": 0.0005491404198683172,
+    "action_score_l1": 0.0006070529582935177,
     "deterministic_render_changed": true,
     "renderer_request_changed": true,
     "renderer_request_raw_changed": true,
