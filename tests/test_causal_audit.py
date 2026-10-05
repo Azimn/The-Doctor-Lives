@@ -131,6 +131,46 @@ class CausalAuditHarnessTests(unittest.TestCase):
             msg=f"history sources present but no policy divergence: {intact_history!r}",
         )
 
+    def test_deep_history_lesion_preserves_design_material(self):
+        harness = self.make_harness()
+        clone = harness._clone_seed("deep-history-lesion-scope")
+        brain = PretoriusBrain(clone, neural_config=small_config())
+        with brain.store.connect() as conn:
+            design_id = conn.execute(
+                "SELECT memory_id FROM memory_provenance WHERE history_key=?",
+                ("connectome:self.digital_continuation",),
+            ).fetchone()["memory_id"]
+            autobiography_id = conn.execute(
+                "SELECT memory_id FROM memory_provenance WHERE history_key=?",
+                ("curated:history.homunculi",),
+            ).fetchone()["memory_id"]
+        CausalAuditHarness._apply_static_lesions(brain, {"deep_history"})
+        with brain.store.connect() as conn:
+            design_active = conn.execute(
+                "SELECT active FROM memories WHERE id=?", (design_id,)
+            ).fetchone()["active"]
+            autobiography_active = conn.execute(
+                "SELECT active FROM memories WHERE id=?", (autobiography_id,)
+            ).fetchone()["active"]
+        self.assertEqual(int(design_active), 1)
+        self.assertEqual(int(autobiography_active), 0)
+
+    def test_spreading_activation_lesion_changes_retrieval_not_policy(self):
+        harness = self.make_harness()
+        probe = Experience(
+            "The homunculi creation invites another artificial-life experiment.",
+            kind="observation", novelty=.6, creation=.8,
+            tags=("homunculi", "creation", "artificial_life"),
+        )
+        result = harness.run_existing_state_pair(
+            probe,
+            AuditIntervention("spreading_activation", ("spreading_activation",)),
+        )
+        self.assertTrue(result["intact"]["retrieval"]["activated_memory_ids"])
+        self.assertEqual(result["lesion"]["retrieval"]["activated_memory_ids"], [])
+        self.assertAlmostEqual(result["comparison"]["action_score_l1"], 0.0, places=12)
+        self.assertFalse(result["comparison"]["selected_action_diverged"])
+
     def test_bridge_lesion_restores_recurrent_only_path(self):
         harness = self.make_harness()
         result = harness.run_pair(
