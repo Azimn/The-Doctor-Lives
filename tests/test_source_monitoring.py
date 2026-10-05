@@ -176,6 +176,32 @@ class SourceMonitoringTests(unittest.TestCase):
         self.assertNotEqual(lived.decision_fingerprint, ambiguous.decision_fingerprint)
         self.assertNotEqual(read.decision_fingerprint, ambiguous.decision_fingerprint)
 
+    def test_matched_source_monitoring_experiment_separates_accuracy_uncertainty_and_error(self):
+        candidate = self.candidate(label="audit-read")
+        audit_truth = SubjectiveSourceKind.READ
+
+        correct = monitor_recollection_source(
+            candidate_id=candidate.candidate_id,
+            cues=self.read_cues(),
+        )
+        uncertain = monitor_recollection_source(
+            candidate_id=candidate.candidate_id,
+            cues=self.ambiguous_cues(),
+        )
+        misleading = monitor_recollection_source(
+            candidate_id=candidate.candidate_id,
+            cues=self.lived_cues(),
+        )
+
+        self.assertIs(correct.selected_source, audit_truth)
+        self.assertIs(uncertain.selected_source, SubjectiveSourceKind.UNKNOWN)
+        self.assertIs(misleading.selected_source, SubjectiveSourceKind.LIVED)
+        self.assertIsNot(misleading.selected_source, audit_truth)
+        self.assertEqual(
+            {correct.candidate_id, uncertain.candidate_id, misleading.candidate_id},
+            {candidate.candidate_id},
+        )
+
     def test_same_cues_different_reconstruction_content_preserve_source_scoring(self):
         first = self.candidate(label="first", accessibility=0.65)
         second = self.candidate(label="second", accessibility=0.91)
