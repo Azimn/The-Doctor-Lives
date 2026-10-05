@@ -148,6 +148,29 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
         self.assertTrue(relevant["source_ids"]["history"])
         self.assertEqual(neutral["source_ids"]["history"], [])
 
+    def test_integrated_think_path_keeps_irrelevant_history_neutral(self):
+        brain = self.make_brain()
+        install_deep_history(brain.store)
+        self.neutralize(brain)
+
+        relevant = brain.think(
+            "held_out_history_relevant",
+            decision_text="The homunculi creation invites another artificial-life experiment.",
+        )
+        neutral = brain.think(
+            "held_out_history_neutral",
+            decision_text="Rainwater collects quietly beside the greenhouse.",
+        )
+
+        self.assertTrue(relevant["state_pressure"]["source_ids"]["history"])
+        self.assertTrue(any(
+            abs(v) > 0.0 for v in relevant["state_pressure"]["families"]["history"].values()
+        ))
+        self.assertEqual(neutral["state_pressure"]["source_ids"]["history"], [])
+        self.assertTrue(all(
+            abs(v) < 1e-12 for v in neutral["state_pressure"]["families"]["history"].values()
+        ))
+
     def test_spreading_activation_is_excluded_from_history_policy_pressure(self):
         brain = self.make_brain()
         install_deep_history(brain.store)
