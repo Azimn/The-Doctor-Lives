@@ -96,8 +96,13 @@ class CausalAuditHarnessTests(unittest.TestCase):
 
     def test_existing_state_history_pair_does_not_admit_probe(self):
         harness = self.make_harness()
+        history_probe = Experience(
+            "The homunculi creation invites another artificial-life experiment.",
+            kind="observation", novelty=.6, creation=.8,
+            tags=("homunculi", "creation", "artificial_life"),
+        )
         result = harness.run_existing_state_pair(
-            self.probe(),
+            history_probe,
             AuditIntervention("deep_history", ("deep_history",)),
         )
         self.assertFalse(result["probe_admitted_as_lived_memory"])
