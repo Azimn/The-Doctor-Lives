@@ -228,6 +228,72 @@ class RecollectionArchitectureTests(unittest.TestCase):
         self.assertNotEqual(rain.reconstructed_scene, henry.reconstructed_scene)
         self.assertEqual(trace.snapshot_digest, digest_before)
 
+    def test_p4_classifies_capacity_limited_omission(self):
+        trace = self.trace()
+        candidate = reconstruct_recollection(
+            [trace],
+            self.episode(
+                trace,
+                episode_id="episode-capacity-omission",
+                cue_text="rain window Henry apparatus",
+            ),
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.0,
+            ),
+        )
+        self.assertEqual(len(candidate.detail_omissions), 1)
+        omission = candidate.detail_omissions[0]
+        self.assertIs(omission.cause, OmissionCause.CAPACITY_LIMITED)
+        self.assertEqual(
+            tuple(item.detail_ref for item in candidate.detail_omissions),
+            candidate.omitted_detail_refs,
+        )
+
+    def test_p4_classifies_cue_mismatch_separately_from_capacity(self):
+        trace = self.trace()
+        candidate = reconstruct_recollection(
+            [trace],
+            self.episode(
+                trace,
+                episode_id="episode-cue-mismatch",
+                cue_text="unrelated signal",
+            ),
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.95,
+            ),
+        )
+        self.assertEqual(len(candidate.detail_omissions), 2)
+        self.assertTrue(
+            all(
+                item.cause is OmissionCause.CUE_MISMATCH
+                for item in candidate.detail_omissions
+            )
+        )
+
+    def test_p4_classifies_below_threshold_with_partial_cue_match(self):
+        trace = self.trace()
+        candidate = reconstruct_recollection(
+            [trace],
+            self.episode(
+                trace,
+                episode_id="episode-partial-threshold",
+                cue_text="Henry unrelated",
+            ),
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.99,
+            ),
+        )
+        by_ref = {item.detail_ref: item for item in candidate.detail_omissions}
+        henry = by_ref[f"{trace.trace_id}:detail:henry"]
+        self.assertGreater(henry.cue_overlap, 0.0)
+        self.assertIs(
+            henry.cause,
+            OmissionCause.BELOW_RETRIEVAL_THRESHOLD,
+        )
+
     def test_identical_inputs_reconstruct_deterministically(self):
         trace = self.trace()
         episode = self.episode(trace)
