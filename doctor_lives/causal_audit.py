@@ -538,16 +538,20 @@ class CausalAuditHarness:
         self,
         stimulus: Experience,
         intervention: AuditIntervention,
+        *,
+        prelude: Callable[[PretoriusBrain], None] | None = None,
     ) -> dict[str, Any]:
         """Matched lesion over preexisting state without admitting the probe."""
         intact = self._run_condition(
             stimulus,
             AuditIntervention(name=f"{intervention.name}:existing-state:intact"),
+            prelude=prelude,
             admit_stimulus=False,
         )
         lesion = self._run_condition(
             stimulus,
             intervention,
+            prelude=prelude,
             admit_stimulus=False,
         )
         if intact["source_state_digest"] != lesion["source_state_digest"]:
