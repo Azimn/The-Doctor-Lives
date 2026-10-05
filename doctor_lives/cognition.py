@@ -521,6 +521,44 @@ class PretoriusBrain:
             )
         return selected
 
+    def _bridge_history_candidates(
+        self, decision_text: str | None
+    ) -> list[tuple[float, dict[str, Any]]]:
+        """Return direct, pre-spreading autobiographical evidence for policy use.
+
+        v0.4 deliberately excludes spreading activation from the state-policy
+        bridge. This ranking therefore recomputes salience and query relevance
+        directly from canonical memory state and never consumes graph bonuses.
+        """
+        decision_tokens = self._tokens(decision_text or "")
+        if not decision_tokens:
+            return []
+        now = self.store.tick
+        open_terms = self._open_terms()
+        suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
+        candidates: list[tuple[float, dict[str, Any]]] = []
+        for row in self.store.memories_with_classification():
+            if row["id"] in suppressed_by_canon:
+                continue
+            if row.get("autobiographical_class") is None or bool(row.get("external")):
+                continue
+            tokens = self._tokens(str(row["text"])) | {
+                str(tag).lower() for tag in row.get("tags", [])
+            }
+            if not (tokens & decision_tokens):
+                continue
+            score = self._salience(row, now, open_terms)
+            overlap = len(decision_tokens & tokens) / max(1, len(decision_tokens))
+            score += min(1.0, overlap)
+            candidates.append((score, row))
+        candidates.sort(
+            key=lambda item: (
+                item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]
+            ),
+            reverse=True,
+        )
+        return candidates
+
     @staticmethod
     def _policy_terms(action: str) -> set[str]:
         return {
@@ -620,22 +658,10 @@ class PretoriusBrain:
             if item.get("actor") and self._tokens(str(item["actor"])) & decision_tokens:
                 add("commitments", "cooperate", 0.018 * importance)
 
-        history_sources = 0
-        for score, row in ranked:
-            autobiographical_class = row.get("autobiographical_class")
-            if autobiographical_class is None or bool(row.get("external")):
-                continue
+        for score, row in self._bridge_history_candidates(decision_text)[:8]:
             tokens = self._tokens(str(row["text"])) | {
                 str(tag).lower() for tag in row.get("tags", [])
             }
-            if not decision_tokens or not (tokens & decision_tokens):
-                continue
-            # Cap eligible relevant autobiographical evidence, not the raw ranked
-            # list. Otherwise highly salient design material can crowd every
-            # autobiographical record out before the history gate sees it.
-            if history_sources >= 8:
-                break
-            history_sources += 1
             source_ids["history"].append(str(row["id"]))
             weight = min(1.0, max(0.0, float(score)) / 2.0)
             for action in ACTIONS:
