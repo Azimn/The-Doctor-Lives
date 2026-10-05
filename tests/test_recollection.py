@@ -127,8 +127,14 @@ class RecollectionArchitectureTests(unittest.TestCase):
             config=ReconstructionConfig(max_details=1),
         )
 
-        self.assertEqual(rain.included_detail_ids, ("detail:window",))
-        self.assertEqual(henry.included_detail_ids, ("detail:henry",))
+        self.assertEqual(
+            rain.included_detail_refs,
+            (f"{trace.trace_id}:detail:window",),
+        )
+        self.assertEqual(
+            henry.included_detail_refs,
+            (f"{trace.trace_id}:detail:henry",),
+        )
         self.assertNotEqual(rain.reconstructed_scene, henry.reconstructed_scene)
         self.assertEqual(trace.snapshot_digest, digest_before)
 
@@ -177,18 +183,19 @@ class RecollectionArchitectureTests(unittest.TestCase):
             config=ReconstructionConfig(max_details=1),
         )
         known_detail_text = {
-            detail.detail_id: detail.text for detail in trace.details
+            f"{trace.trace_id}:{detail.detail_id}": detail.text
+            for detail in trace.details
         }
-        self.assertEqual(len(candidate.included_detail_ids), 1)
-        self.assertEqual(len(candidate.omitted_detail_ids), 1)
+        self.assertEqual(len(candidate.included_detail_refs), 1)
+        self.assertEqual(len(candidate.omitted_detail_refs), 1)
         self.assertTrue(candidate.fragmented)
         self.assertIn("omit_details", candidate.reconstruction_operations)
-        for detail_id in candidate.included_detail_ids:
+        for detail_ref in candidate.included_detail_refs:
             self.assertIn(
-                known_detail_text[detail_id].rstrip("."),
+                known_detail_text[detail_ref].rstrip("."),
                 candidate.reconstructed_scene,
             )
-        omitted_text = known_detail_text[candidate.omitted_detail_ids[0]].rstrip(".")
+        omitted_text = known_detail_text[candidate.omitted_detail_refs[0]].rstrip(".")
         self.assertNotIn(omitted_text, candidate.reconstructed_scene)
 
     def test_blended_recollection_retains_all_trace_lineage(self):
@@ -231,6 +238,47 @@ class RecollectionArchitectureTests(unittest.TestCase):
             ("evidence:demo", "evidence:corridor"),
         )
         self.assertIn("blend_traces", candidate.reconstruction_operations)
+
+    def test_blended_detail_lineage_names_exact_source_trace(self):
+        first = self.trace()
+        second = MemoryTrace(
+            subject_id=first.subject_id,
+            version=0,
+            protected_evidence=(self.evidence("second"),),
+            gist="A second related scene",
+            details=(
+                TraceDetail(
+                    detail_id="detail:henry",
+                    text="Henry spoke near the doorway",
+                    cue_terms=("henry", "doorway"),
+                ),
+            ),
+            strength=0.71,
+            accessibility=0.69,
+            familiarity=0.72,
+        )
+        episode = RetrievalEpisode(
+            episode_id="episode-detail-lineage",
+            subject_id=first.subject_id,
+            tick=27,
+            cue_text="Henry doorway apparatus",
+            candidate_trace_ids=(first.trace_id, second.trace_id),
+        )
+        candidate = reconstruct_recollection(
+            [first, second],
+            episode,
+            config=ReconstructionConfig(max_details=3),
+        )
+        self.assertTrue(
+            any(ref.startswith(first.trace_id + ":") for ref in candidate.included_detail_refs)
+        )
+        self.assertTrue(
+            any(ref.startswith(second.trace_id + ":") for ref in candidate.included_detail_refs)
+        )
+        self.assertEqual(
+            len(candidate.included_detail_refs),
+            len(set(candidate.included_detail_refs)),
+        )
 
     def test_episode_candidate_set_must_exactly_match_supplied_traces(self):
         trace = self.trace()
