@@ -6,6 +6,7 @@ import unittest
 from doctor_lives.awareness import AwarenessCandidate, AwarenessRouter
 from doctor_lives.phenomenology import (
     AwarenessLevel,
+    CertaintyBand,
     ObjectiveProvenance,
     PhenomenalEvent,
     PhenomenalLeakError,
@@ -294,6 +295,98 @@ class SourceMonitoringTests(unittest.TestCase):
             lived_event.source_event_refs,
         )
 
+    def test_source_certainty_and_content_certainty_are_independent(self):
+        candidate = self.candidate()
+        source_decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.ambiguous_cues(),
+        )
+        self.assertIs(source_decision.certainty, CertaintyBand.LOW)
+
+        context = RecollectionFinalizationContext(
+            tick=41,
+            source_state_digest="sha256:p5-certainty-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="reconstructed_source",
+                source="protected-memory-audit",
+                record_ids=candidate.protected_evidence_refs,
+            ),
+            subjective_content_certainty=CertaintyBand.VERY_HIGH,
+        )
+        event = finalize_recollection_event(
+            candidate=candidate,
+            decision=source_decision,
+            context=context,
+        )
+
+        self.assertIs(
+            event.subjective_source.certainty,
+            source_decision.certainty,
+        )
+        self.assertIs(event.subjective_certainty, CertaintyBand.VERY_HIGH)
+        self.assertIsNot(
+            event.subjective_source.certainty,
+            event.subjective_certainty,
+        )
+
+    def test_content_certainty_is_not_derived_from_p4_content_confidence(self):
+        first = self.candidate(label="certainty-first", accessibility=0.20)
+        second = self.candidate(label="certainty-second", accessibility=0.95)
+        self.assertNotEqual(first.content_confidence, second.content_confidence)
+
+        first_decision = monitor_recollection_source(
+            candidate=first,
+            cues=self.read_cues(),
+        )
+        second_decision = monitor_recollection_source(
+            candidate=second,
+            cues=self.read_cues(),
+        )
+
+        first_event = finalize_recollection_event(
+            candidate=first,
+            decision=first_decision,
+            context=RecollectionFinalizationContext(
+                tick=42,
+                source_state_digest="sha256:first-certainty",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="test",
+                    source="audit",
+                    record_ids=first.protected_evidence_refs,
+                ),
+            ),
+        )
+        second_event = finalize_recollection_event(
+            candidate=second,
+            decision=second_decision,
+            context=RecollectionFinalizationContext(
+                tick=43,
+                source_state_digest="sha256:second-certainty",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="test",
+                    source="audit",
+                    record_ids=second.protected_evidence_refs,
+                ),
+            ),
+        )
+
+        self.assertIs(first_event.subjective_certainty, CertaintyBand.MODERATE)
+        self.assertIs(second_event.subjective_certainty, CertaintyBand.MODERATE)
+
+    def test_finalization_context_rejects_invalid_content_certainty(self):
+        candidate = self.candidate()
+        with self.assertRaises(TypeError):
+            RecollectionFinalizationContext(
+                tick=1,
+                source_state_digest="sha256:test",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="test",
+                    source="audit",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+                subjective_content_certainty="high",  # type: ignore[arg-type]
+            )
+
     def test_finalization_requires_decision_for_exact_candidate(self):
         first = self.candidate(label="first")
         second = self.candidate(label="second")
@@ -416,6 +509,106 @@ class SourceMonitoringTests(unittest.TestCase):
             context=context,
         )
         self.assertIn(candidate.candidate_digest, event.source_event_refs)
+
+    def test_finalization_rejects_candidate_digest_corruption(self):
+        candidate = self.candidate()
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.read_cues(),
+        )
+        object.__setattr__(decision, "candidate_digest", "sha256:corrupted")
+        context = RecollectionFinalizationContext(
+            tick=41,
+            source_state_digest="sha256:p5-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="test",
+                source="audit",
+                record_ids=candidate.protected_evidence_refs,
+            ),
+        )
+        with self.assertRaises(ValueError):
+            finalize_recollection_event(
+                candidate=candidate,
+                decision=decision,
+                context=context,
+            )
+
+    def test_finalization_rejects_cue_snapshot_fingerprint_corruption(self):
+        candidate = self.candidate()
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.read_cues(),
+        )
+        object.__setattr__(decision, "cues", self.lived_cues())
+        context = RecollectionFinalizationContext(
+            tick=41,
+            source_state_digest="sha256:p5-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="test",
+                source="audit",
+                record_ids=candidate.protected_evidence_refs,
+            ),
+        )
+        with self.assertRaises(ValueError):
+            finalize_recollection_event(
+                candidate=candidate,
+                decision=decision,
+                context=context,
+            )
+
+    def test_finalization_rejects_protected_evidence_multiplicity_collapse(self):
+        first = MemoryTrace(
+            subject_id="subject-source-monitor",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef("evidence:shared", "sha256:shared"),
+            ),
+            gist="The first supporting trace",
+        )
+        second = MemoryTrace(
+            subject_id=first.subject_id,
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef("evidence:shared", "sha256:shared"),
+            ),
+            gist="The second supporting trace",
+        )
+        episode = RetrievalEpisode(
+            episode_id="episode:multiplicity",
+            subject_id=first.subject_id,
+            tick=44,
+            cue_text="supporting trace",
+            candidate_trace_ids=(first.trace_id, second.trace_id),
+            subject_state_digest="sha256:multiplicity-state",
+        )
+        candidate = reconstruct_recollection(
+            (first, second),
+            episode,
+            config=ReconstructionConfig(max_details=0),
+        )
+        self.assertEqual(
+            candidate.protected_evidence_refs,
+            ("evidence:shared", "evidence:shared"),
+        )
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.read_cues(),
+        )
+        collapsed_context = RecollectionFinalizationContext(
+            tick=45,
+            source_state_digest="sha256:multiplicity-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="test",
+                source="audit",
+                record_ids=("evidence:shared",),
+            ),
+        )
+        with self.assertRaises(ValueError):
+            finalize_recollection_event(
+                candidate=candidate,
+                decision=decision,
+                context=collapsed_context,
+            )
 
     def test_finalization_requires_canonical_protected_evidence_order(self):
         trace = MemoryTrace(
