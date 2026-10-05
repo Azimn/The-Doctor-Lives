@@ -141,6 +141,14 @@ class SourceMonitoringTests(unittest.TestCase):
             for fragment in forbidden_fragments:
                 self.assertNotIn(fragment, name)
 
+    def test_default_cues_remain_epistemically_unknown(self):
+        candidate = self.candidate()
+        decision = monitor_recollection_source(
+            candidate_id=candidate.candidate_id,
+            cues=SourceMonitoringCues(),
+        )
+        self.assertIs(decision.selected_source, SubjectiveSourceKind.UNKNOWN)
+
     def test_matched_candidate_supports_lived_unknown_and_read_attribution(self):
         candidate = self.candidate()
 
