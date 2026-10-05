@@ -8,6 +8,7 @@ from pathlib import Path
 
 from doctor_lives import Experience, PretoriusBrain
 from doctor_lives.causal_audit import AuditIntervention, CausalAuditHarness
+from doctor_lives.history import install_deep_history
 
 
 PRODUCTION_BASE = "02068362af6a969a3788a9fcbcd0b667644d25fd"
@@ -16,6 +17,7 @@ ISSUE = "Azimn/The-Doctor-Lives#10"
 
 def build_seed(state_dir: Path) -> None:
     brain = PretoriusBrain(state_dir)
+    install_deep_history(brain.store)
     brain.ingest(Experience(
         "Henry returned a borrowed instrument intact and kept his promise.",
         kind="social",
