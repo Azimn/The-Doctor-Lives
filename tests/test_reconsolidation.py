@@ -20,6 +20,7 @@ from doctor_lives.recollection import (
     ProtectedEvidenceRef,
     ReconstructionConfig,
     RetrievalEpisode,
+    TemporalPrecision,
     TraceDetail,
     TraceDetailState,
     reconstruct_recollection,
