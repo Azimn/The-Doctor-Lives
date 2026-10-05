@@ -569,8 +569,10 @@ P5 initially uses deterministic weighted evidence rather than stochastic false-m
 The finalization stage receives the verified P4 candidate, the matching SourceMonitoringDecision, and a separate engineer-only `RecollectionFinalizationContext`. Objective provenance is available only at this finalization/audit layer and is not passed into the source-monitor scoring mechanism.
 
 Finalization must:
-- reject a decision bound to a different candidate;
-- require objective provenance record IDs to exactly match the candidate's protected-evidence references in canonical order;
+- reject a decision bound to a different candidate or candidate digest;
+- verify the stored cue snapshot still matches its cue fingerprint;
+- verify the complete SourceMonitoringDecision state still matches its deterministic decision fingerprint;
+- require objective provenance record IDs to exactly match the candidate's protected-evidence references in canonical order and multiplicity;
 - preserve the P4 reconstructed scene unchanged across matched source-monitor conditions;
 - create source-neutral first-person recollection text so changing attribution does not confound reconstructed content;
 - create the first canonical `PhenomenalEvent` with subjective source attribution and **source certainty**;
@@ -593,7 +595,8 @@ Acceptance:
 - identical verified candidate + identical cues reproduces exactly;
 - a caller cannot create a canonical source-monitor decision from an arbitrary candidate-ID string without supplying a verified P4 candidate;
 - the complete cue snapshot and threshold/margin basis needed to explain a source decision survive in the immutable audit decision;
-- finalization rejects reordered or substituted protected-evidence lineage rather than treating provenance as an unordered set;
+- finalization rejects candidate-digest, cue-snapshot, or decision-fingerprint inconsistency;
+- finalization rejects reordered, substituted, or multiplicity-collapsed protected-evidence lineage rather than treating provenance as an unordered set;
 - the same P4 candidate can produce different source attributions when only SourceMonitoringCues change;
 - different P4 candidates with identical SourceMonitoringCues produce identical source scores and selected source, while retaining distinct audit decision fingerprints;
 - P4 content confidence does not automatically become source confidence or subjective content certainty;
