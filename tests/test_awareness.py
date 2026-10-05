@@ -153,6 +153,61 @@ class AwarenessRouterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             router.route([a, b])
 
+    def test_candidate_numeric_inputs_are_normalized(self):
+        candidate = AwarenessCandidate(
+            self.event("numeric", "I feel uneasy."),
+            salience="0.5",  # type: ignore[arg-type]
+            change=1,
+            novelty=0,
+        )
+        self.assertEqual(candidate.salience, 0.5)
+        self.assertIsInstance(candidate.salience, float)
+        self.assertEqual(candidate.change, 1.0)
+
+    def test_malformed_nonfinite_and_boolean_candidate_inputs_fail_closed(self):
+        with self.assertRaises(TypeError):
+            AwarenessCandidate(
+                self.event("bad-string", "I feel uneasy."),
+                salience="not-a-number",  # type: ignore[arg-type]
+            )
+        with self.assertRaises(TypeError):
+            AwarenessCandidate(
+                self.event("bool", "I feel uneasy."),
+                salience=True,  # type: ignore[arg-type]
+            )
+        with self.assertRaises(ValueError):
+            AwarenessCandidate(
+                self.event("nan", "I feel uneasy."),
+                salience=float("nan"),
+            )
+        with self.assertRaises(ValueError):
+            AwarenessCandidate(
+                self.event("inf", "I feel uneasy."),
+                salience=float("inf"),
+            )
+
+    def test_policy_requires_integer_capacities_and_normalizes_thresholds(self):
+        policy = AwarenessPolicy(
+            conscious_capacity=2,
+            focal_capacity=1,
+            conscious_threshold="0.35",  # type: ignore[arg-type]
+            focal_threshold=0.55,
+            preconscious_threshold=0.20,
+        )
+        self.assertEqual(policy.conscious_threshold, 0.35)
+        self.assertIsInstance(policy.conscious_threshold, float)
+
+        with self.assertRaises(TypeError):
+            AwarenessPolicy(conscious_capacity=1.5)  # type: ignore[arg-type]
+        with self.assertRaises(TypeError):
+            AwarenessPolicy(conscious_capacity=True)  # type: ignore[arg-type]
+        with self.assertRaises(TypeError):
+            AwarenessPolicy(focal_capacity=False)  # type: ignore[arg-type]
+        with self.assertRaises(ValueError):
+            AwarenessPolicy(conscious_threshold=float("nan"))
+        with self.assertRaises(ValueError):
+            AwarenessPolicy(focal_threshold=float("inf"))
+
     def test_fixed_candidates_route_deterministically(self):
         router = AwarenessRouter()
         candidates = [
