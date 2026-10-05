@@ -632,7 +632,8 @@ Initial P6 eligibility is deliberately conservative:
 - reactivation must exceed a minimum threshold;
 - at least one destabilizing/rehearsal signal must be present: prediction error, sufficient emotional activation, or explicit rehearsal;
 - until a dedicated remembered-content certainty mechanism exists, non-neutral caller-supplied subjective content certainty is not permitted to amplify reconsolidation;
-- blended/multi-trace reconsolidation is disabled by default until separately reviewed;
+- blended/multi-trace reconsolidation is not activatable in initial P6; enabling it requires a later reviewed schema revision;
+- the exact P3 awareness level used for eligibility is bound into the ReconsolidationDecision because PhenomenalEvent occurrence identity intentionally excludes awareness;
 - P5 source attribution itself does not determine update strength.
 
 Initial P6 plasticity may change only bounded trace variables:
@@ -660,12 +661,14 @@ A successor trace must:
 - record the reconsolidation decision fingerprint and recollection event ID;
 - preserve protected evidence exactly.
 
-TraceVersionLedger is the P6 version authority for the isolated subsystem. It must:
+TraceVersionLedger is the P6 version and transition-audit authority for the isolated subsystem. It must:
 - reject duplicate versions;
 - reject backward versions;
 - reject appending from a non-latest parent (silent fork);
 - preserve exact ancestry;
-- support deterministic serialization and local save/load restart continuity.
+- persist the complete canonical ReconsolidationDecision audit record for every successor;
+- verify the persisted decision fingerprint and parent/lineage binding on load;
+- support deterministic serialization and local atomic save/load restart continuity.
 
 Update families must be bounded by per-recall delta caps and absolute ceilings. Repeated identical recall should approach the configured ceiling asymptotically rather than explode.
 
@@ -680,8 +683,10 @@ P6 acceptance:
 - initial P6 cannot rewrite gist or retained details;
 - repeated recall remains bounded over a 100-cycle stress test;
 - ledger rejects silent forks and non-monotonic versioning;
-- ledger survives save/load with identical trace IDs, lineage, versions, and ancestry;
-- a matched lesion experiment shows no trace change when P6 is disabled and a successor only when enabled;
+- ledger survives save/load with identical trace IDs, lineage, versions, ancestry, and transition-decision audit records;
+- tampering with a persisted transition decision fails closed on reload;
+- a matched lesion experiment holds the complete P4/P5/phenomenal input chain fixed and shows no trace change when P6 is disabled and a successor only when enabled;
+- a P6 decision made from FOCAL/CONSCIOUS access cannot later be applied using the same occurrence demoted to LATENT/PRECONSCIOUS access;
 - a later P4 retrieval can differ because of the successor trace while protected evidence remains unchanged;
 - P6 decision corruption fails closed before successor construction.
 
