@@ -1355,7 +1355,7 @@ class ReconsolidationTests(unittest.TestCase):
         restored_successor = restored.latest(trace.trace_lineage_id)
         self.assertEqual(restored_successor, successor)
         self.assertEqual(
-            restored.transition_audit(successor.trace_id)["detail_operations"],
+            restored.decision_audit(successor.trace_id)["detail_operations"],
             [dataclasses.asdict(decision.detail_operations[0])],
         )
 
