@@ -1,6 +1,6 @@
 {
   "concern_resolution": {
-    "concern_id": "concern_c24e013ad4e74d819097ffbe51aedc3b",
+    "concern_id": "concern_3fd758a71e29483b8ca995c4067776e4",
     "heartbeat_thoughts_after_resolution": 0,
     "lifecycle_events": [
       {
@@ -45,30 +45,30 @@
   },
   "pair_measures": [
     {
-      "action_score_l1": 0.08536570197209688,
+      "action_score_l1": 0.0853657019720969,
       "intact_final_scores": {
         "approach": 0.10697324150034195,
-        "avoid": 0.10624038796165058,
+        "avoid": 0.10624038796165057,
         "challenge": 0.11161150054755074,
         "comply": 0.06414975094957372,
-        "conceal": 0.09729903424153505,
-        "cooperate": 0.09433247624354063,
-        "create": 0.1159273120204154,
-        "dominate": 0.0953343190686023,
-        "explore": 0.07834125868704372,
+        "conceal": 0.09729903424153506,
+        "cooperate": 0.09433247624354062,
+        "create": 0.11592731202041542,
+        "dominate": 0.09533431906860229,
+        "explore": 0.07834125868704374,
         "persist": 0.12979071877974582
       },
       "intact_raw_recurrent_scores": {
-        "approach": 0.10369202607036503,
-        "avoid": 0.09456393652266937,
-        "challenge": 0.09578939962122336,
-        "comply": 0.10037447678017199,
-        "conceal": 0.10434589604100444,
-        "cooperate": 0.10147299060373013,
-        "create": 0.09949322105865255,
-        "dominate": 0.10259617261043807,
-        "explore": 0.09586467911634114,
-        "persist": 0.10180720157540375
+        "approach": 0.10369202607036505,
+        "avoid": 0.09456393652266938,
+        "challenge": 0.09578939962122338,
+        "comply": 0.100374476780172,
+        "conceal": 0.10434589604100447,
+        "cooperate": 0.10147299060373015,
+        "create": 0.09949322105865258,
+        "dominate": 0.10259617261043809,
+        "explore": 0.09586467911634117,
+        "persist": 0.10180720157540378
       },
       "intact_selected_action": "persist",
       "intact_state_pressure": {
@@ -182,34 +182,34 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.162867616549319,
+          "denominator": 1.1628676165493192,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.12439571837805734,
-            "avoid": 0.12354350673023957,
-            "challenge": 0.12978939962122335,
-            "comply": 0.0745976679889632,
-            "conceal": 0.11314589604100445,
-            "cooperate": 0.10969618181252135,
-            "create": 0.13480811702214968,
-            "dominate": 0.11086119239065785,
-            "explore": 0.09110051276687617,
-            "persist": 0.15092942379762597
+            "approach": 0.12439571837805737,
+            "avoid": 0.12354350673023959,
+            "challenge": 0.12978939962122338,
+            "comply": 0.07459766798896322,
+            "conceal": 0.11314589604100447,
+            "cooperate": 0.10969618181252136,
+            "create": 0.13480811702214973,
+            "dominate": 0.11086119239065786,
+            "explore": 0.0911005127668762,
+            "persist": 0.150929423797626
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [],
           "history": [
-            "mem_963e134787e244599fc4c9e2836fee7f",
-            "mem_e1a1b4e2782646879bbf16b948370191",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_4832c91eea3b4896a573ac32fa9e86cd",
-            "mem_556d7a5bd9a443a5aacf4a3f523c4f61"
+            "mem_5b586eb8048644ed9f500d2bf99725e9",
+            "mem_4c390f94f23245dcb3192d2587e25a7e",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_5942dc6d480a4fd5ad992494c2801ddb",
+            "mem_a522c408b5394f03ad9c088e8bb80ca3"
           ],
           "needs": [
             "affiliation",
@@ -289,27 +289,27 @@
       },
       "lesion_final_scores": {
         "approach": 0.09789658085828921,
-        "avoid": 0.1127764942476695,
+        "avoid": 0.11277649424766949,
         "challenge": 0.12253534756805408,
-        "comply": 0.06266474462199573,
-        "conceal": 0.10682206511275263,
-        "cooperate": 0.09580156937843426,
-        "create": 0.08390215686282135,
-        "dominate": 0.09686197568261472,
-        "explore": 0.07824522982822008,
+        "comply": 0.06266474462199571,
+        "conceal": 0.10682206511275265,
+        "cooperate": 0.09580156937843425,
+        "create": 0.08390215686282136,
+        "dominate": 0.0968619756826147,
+        "explore": 0.07824522982822009,
         "persist": 0.1424938358391484
       },
       "lesion_raw_recurrent_scores": {
-        "approach": 0.10369202607036503,
-        "avoid": 0.09456393652266937,
-        "challenge": 0.09578939962122336,
-        "comply": 0.10037447678017199,
-        "conceal": 0.10434589604100444,
-        "cooperate": 0.10147299060373013,
-        "create": 0.09949322105865255,
-        "dominate": 0.10259617261043807,
-        "explore": 0.09586467911634114,
-        "persist": 0.10180720157540375
+        "approach": 0.10369202607036505,
+        "avoid": 0.09456393652266938,
+        "challenge": 0.09578939962122338,
+        "comply": 0.100374476780172,
+        "conceal": 0.10434589604100447,
+        "cooperate": 0.10147299060373015,
+        "create": 0.09949322105865258,
+        "dominate": 0.10259617261043809,
+        "explore": 0.09586467911634117,
+        "persist": 0.10180720157540378
       },
       "lesion_selected_action": "persist",
       "lesion_state_pressure": {
@@ -423,25 +423,25 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.0591996692965717,
+          "denominator": 1.059199669296572,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.10369202607036503,
-            "avoid": 0.11945282541155826,
-            "challenge": 0.12978939962122335,
+            "approach": 0.10369202607036505,
+            "avoid": 0.11945282541155827,
+            "challenge": 0.12978939962122338,
             "comply": 0.066374476780172,
-            "conceal": 0.11314589604100445,
-            "cooperate": 0.10147299060373013,
-            "create": 0.08886913680236946,
-            "dominate": 0.10259617261043807,
-            "explore": 0.08287732155808496,
-            "persist": 0.15092942379762597
+            "conceal": 0.11314589604100447,
+            "cooperate": 0.10147299060373015,
+            "create": 0.08886913680236949,
+            "dominate": 0.10259617261043809,
+            "explore": 0.08287732155808498,
+            "persist": 0.150929423797626
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [],
           "history": [],
@@ -523,34 +523,34 @@
       },
       "mechanism": "deep_history",
       "renderer_request_changed": true,
-      "retrieval_jaccard": 0.6,
+      "retrieval_jaccard": 0.6470588235294118,
       "selected_action_diverged": false
     },
     {
-      "action_score_l1": 0.12773991586424088,
+      "action_score_l1": 0.1277399157880004,
       "intact_final_scores": {
-        "approach": 0.10504166965883863,
-        "avoid": 0.10671482315129284,
-        "challenge": 0.11151131162405302,
-        "comply": 0.0620223753672047,
-        "conceal": 0.09673772199715829,
-        "cooperate": 0.09301321895305707,
-        "create": 0.11413036888901865,
-        "dominate": 0.09437870644791127,
-        "explore": 0.08736802459382982,
-        "persist": 0.12908177931763573
+        "approach": 0.10504166966882816,
+        "avoid": 0.10671482241122963,
+        "challenge": 0.11151131087452101,
+        "comply": 0.06202237574119059,
+        "conceal": 0.09673772448613019,
+        "cooperate": 0.09301321996749617,
+        "create": 0.11413036889860458,
+        "dominate": 0.09437870537416772,
+        "explore": 0.08736802257851635,
+        "persist": 0.12908177999931564
       },
       "intact_raw_recurrent_scores": {
-        "approach": 0.10369160024904597,
-        "avoid": 0.09458813031158195,
-        "challenge": 0.09579834644898175,
-        "comply": 0.10035789911032918,
-        "conceal": 0.10432644415537519,
-        "cooperate": 0.10147600254720998,
-        "create": 0.09950206778163068,
-        "dominate": 0.10261121526895231,
-        "explore": 0.09585445347348365,
-        "persist": 0.10179384065340936
+        "approach": 0.10369160026079217,
+        "avoid": 0.0945881294413763,
+        "challenge": 0.09579834556764219,
+        "comply": 0.10035789955008163,
+        "conceal": 0.10432644708204053,
+        "cooperate": 0.10147600374004134,
+        "create": 0.0995020677929023,
+        "dominate": 0.10261121400638759,
+        "explore": 0.095854451103771,
+        "persist": 0.10179384145496477
       },
       "intact_selected_action": "persist",
       "intact_state_pressure": {
@@ -664,33 +664,33 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.1758531131138306,
+          "denominator": 1.1758531131138303,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.12351357427502,
-            "avoid": 0.12548095701783957,
-            "challenge": 0.13112092292054922,
-            "comply": 0.07292920315824221,
-            "conceal": 0.11374935156589885,
-            "cooperate": 0.1093698830666905,
-            "create": 0.13420054955898245,
-            "dominate": 0.11097549578843283,
-            "explore": 0.10273196370526051,
-            "persist": 0.15178121205691444
+            "approach": 0.12351357428676621,
+            "avoid": 0.1254809561476339,
+            "challenge": 0.13112092203920966,
+            "comply": 0.07292920359799467,
+            "conceal": 0.1137493544925642,
+            "cooperate": 0.10936988425952186,
+            "create": 0.13420054957025407,
+            "dominate": 0.1109754945258681,
+            "explore": 0.10273196133554786,
+            "persist": 0.15178121285846985
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [],
           "history": [
-            "mem_a28583fec2bc4ea280664e8c87336103",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_963e134787e244599fc4c9e2836fee7f",
-            "mem_4832c91eea3b4896a573ac32fa9e86cd"
+            "mem_6d633f5262fd4fdb981816b6e2531e40",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_5b586eb8048644ed9f500d2bf99725e9",
+            "mem_5942dc6d480a4fd5ad992494c2801ddb"
           ],
           "needs": [
             "affiliation",
@@ -769,28 +769,28 @@
         "version": "state-policy-bridge-v0.4"
       },
       "lesion_final_scores": {
-        "approach": 0.10742363149864237,
-        "avoid": 0.08549448216197893,
-        "challenge": 0.08331882813301432,
-        "comply": 0.09414996976876236,
-        "conceal": 0.09073598232657819,
-        "cooperate": 0.09512241941476975,
-        "create": 0.1259394716294839,
-        "dominate": 0.09651887118424025,
-        "explore": 0.10066995834608196,
-        "persist": 0.12062638553644803
+        "approach": 0.10742363150885842,
+        "avoid": 0.08549448140513377,
+        "challenge": 0.08331882736648565,
+        "comply": 0.09414997015122888,
+        "conceal": 0.09073598487199087,
+        "cooperate": 0.0951224204522126,
+        "create": 0.1259394716392872,
+        "dominate": 0.0965188700861481,
+        "explore": 0.1006699562850685,
+        "persist": 0.12062638623358592
       },
       "lesion_raw_recurrent_scores": {
-        "approach": 0.10369160024904597,
-        "avoid": 0.09458813031158195,
-        "challenge": 0.09579834644898175,
-        "comply": 0.10035789911032918,
-        "conceal": 0.10432644415537519,
-        "cooperate": 0.10147600254720998,
-        "create": 0.09950206778163068,
-        "dominate": 0.10261121526895231,
-        "explore": 0.09585445347348365,
-        "persist": 0.10179384065340936
+        "approach": 0.10369160026079217,
+        "avoid": 0.0945881294413763,
+        "challenge": 0.09579834556764219,
+        "comply": 0.10035789955008163,
+        "conceal": 0.10432644708204053,
+        "cooperate": 0.10147600374004134,
+        "create": 0.0995020677929023,
+        "dominate": 0.10261121400638759,
+        "explore": 0.095854451103771,
+        "persist": 0.10179384145496477
       },
       "lesion_selected_action": "create",
       "lesion_state_pressure": {
@@ -908,29 +908,29 @@
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.12351357427502,
-            "avoid": 0.09829987057132221,
-            "challenge": 0.09579834644898175,
-            "comply": 0.1082517796298097,
-            "conceal": 0.10432644415537519,
-            "cooperate": 0.1093698830666905,
-            "create": 0.14480272232708521,
-            "dominate": 0.11097549578843283,
-            "explore": 0.11574833399296416,
-            "persist": 0.13869384065340937
+            "approach": 0.12351357428676621,
+            "avoid": 0.09829986970111657,
+            "challenge": 0.09579834556764219,
+            "comply": 0.10825178006956215,
+            "conceal": 0.10432644708204053,
+            "cooperate": 0.10936988425952186,
+            "create": 0.14480272233835684,
+            "dominate": 0.1109754945258681,
+            "explore": 0.11574833162325152,
+            "persist": 0.13869384145496477
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [],
           "history": [
-            "mem_8c594bd820244862957ac7245dde1c64",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_963e134787e244599fc4c9e2836fee7f",
-            "mem_4832c91eea3b4896a573ac32fa9e86cd"
+            "mem_564d6ab5764641069af7a06655efadfd",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_5b586eb8048644ed9f500d2bf99725e9",
+            "mem_5942dc6d480a4fd5ad992494c2801ddb"
           ],
           "needs": [
             "affiliation",
@@ -1169,15 +1169,15 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [],
           "history": [
-            "mem_da10ca99bceb4c92bc88f0526f0e1fa8",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_91559093f02442ac8926fc765560a61c",
-            "mem_628eda1e06b748baa144ce2f982c838f"
+            "mem_c3649e44ffc04ce5807a244b9f662dd7",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_a50a64a4338042a3b7293a22588e7e53",
+            "mem_3da501141a314036a46a32b62865a899"
           ],
           "needs": [
             "affiliation",
@@ -1411,15 +1411,15 @@
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [],
           "history": [
-            "mem_aa564aaab89b4670951b6ef4ac23437f",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_91559093f02442ac8926fc765560a61c",
-            "mem_628eda1e06b748baa144ce2f982c838f"
+            "mem_b03c0ea21a404fdaae9587ebb6e7e3ba",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_a50a64a4338042a3b7293a22588e7e53",
+            "mem_3da501141a314036a46a32b62865a899"
           ],
           "needs": [
             "affiliation",
@@ -1503,30 +1503,30 @@
       "selected_action_diverged": false
     },
     {
-      "action_score_l1": 0.06865875255470569,
+      "action_score_l1": 0.0686587527205425,
       "intact_final_scores": {
-        "approach": 0.11310244870150785,
-        "avoid": 0.10465607200387717,
-        "challenge": 0.11290593697875019,
-        "comply": 0.061687950319286235,
-        "conceal": 0.09739008240794549,
-        "cooperate": 0.11107957773770077,
-        "create": 0.08266692890630117,
-        "dominate": 0.09493517526667407,
-        "explore": 0.08135433864524863,
-        "persist": 0.14022148903270837
+        "approach": 0.11310244900736778,
+        "avoid": 0.10465607328833888,
+        "challenge": 0.11290593777043782,
+        "comply": 0.061687950015156555,
+        "conceal": 0.09739008188379071,
+        "cooperate": 0.11107957675602134,
+        "create": 0.08266692986074578,
+        "dominate": 0.09493517447842072,
+        "explore": 0.08135433841843412,
+        "persist": 0.1402214885212864
       },
       "intact_raw_recurrent_scores": {
-        "approach": 0.10370104851294726,
-        "avoid": 0.09458225243780326,
-        "challenge": 0.09578910025480232,
-        "comply": 0.10035765189043895,
-        "conceal": 0.10433521468802036,
-        "cooperate": 0.1014677956999193,
-        "create": 0.09948588550188402,
-        "dominate": 0.10261725513641755,
-        "explore": 0.09586310102411587,
-        "persist": 0.10180069485365126
+        "approach": 0.10370104887021205,
+        "avoid": 0.09458225393814033,
+        "challenge": 0.09578910117954632,
+        "comply": 0.10035765153519516,
+        "conceal": 0.10433521407577254,
+        "cooperate": 0.10146779455325212,
+        "create": 0.09948588661673906,
+        "dominate": 0.10261725421568495,
+        "explore": 0.09586310075918135,
+        "persist": 0.10180069425627619
       },
       "intact_selected_action": "persist",
       "intact_state_pressure": {
@@ -1640,33 +1640,33 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.1680668019361196,
+          "denominator": 1.1680668019361193,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.1321112155459143,
-            "avoid": 0.12224528332876505,
-            "challenge": 0.1318816767263698,
-            "comply": 0.0720556468474429,
-            "conceal": 0.11375812209854402,
-            "cooperate": 0.12974836712849072,
-            "create": 0.09656049527346378,
-            "dominate": 0.11089062656498898,
-            "explore": 0.09502730216498363,
-            "persist": 0.16378806625715633
+            "approach": 0.1321112159031791,
+            "avoid": 0.12224528482910213,
+            "challenge": 0.1318816776511138,
+            "comply": 0.0720556464921991,
+            "conceal": 0.1137581214862962,
+            "cooperate": 0.12974836598182354,
+            "create": 0.09656049638831882,
+            "dominate": 0.11089062564425638,
+            "explore": 0.09502730190004911,
+            "persist": 0.16378806565978127
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [],
           "history": [
-            "mem_afdd1ff625f945c2bf269fa28f5790ea",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_91559093f02442ac8926fc765560a61c",
-            "mem_628eda1e06b748baa144ce2f982c838f"
+            "mem_fda7bbca1e4d4447a2a47cbaec2fceac",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_a50a64a4338042a3b7293a22588e7e53",
+            "mem_3da501141a314036a46a32b62865a899"
           ],
           "needs": [
             "affiliation",
@@ -1747,28 +1747,28 @@
         "version": "state-policy-bridge-v0.4"
       },
       "lesion_final_scores": {
-        "approach": 0.11624692174875269,
-        "avoid": 0.11046808204547036,
-        "challenge": 0.11917609815441207,
-        "comply": 0.06413780037702874,
-        "conceal": 0.1027985802243512,
-        "cooperate": 0.10272560524802074,
-        "create": 0.08628183352681748,
-        "dominate": 0.09923138933893995,
-        "explore": 0.0846876040911712,
-        "persist": 0.1142460852450356
+        "approach": 0.11624692207159833,
+        "avoid": 0.11046808340126385,
+        "challenge": 0.11917609899006557,
+        "comply": 0.06413780005600939,
+        "conceal": 0.10279857967108778,
+        "cooperate": 0.10272560421182433,
+        "create": 0.08628183453426655,
+        "dominate": 0.09923138850691142,
+        "explore": 0.08468760385176066,
+        "persist": 0.11424608470521208
       },
       "lesion_raw_recurrent_scores": {
-        "approach": 0.10370104851294726,
-        "avoid": 0.09458225243780326,
-        "challenge": 0.09578910025480232,
-        "comply": 0.10035765189043895,
-        "conceal": 0.10433521468802036,
-        "cooperate": 0.1014677956999193,
-        "create": 0.09948588550188402,
-        "dominate": 0.10261725513641755,
-        "explore": 0.09586310102411587,
-        "persist": 0.10180069485365126
+        "approach": 0.10370104887021205,
+        "avoid": 0.09458225393814033,
+        "challenge": 0.09578910117954632,
+        "comply": 0.10035765153519516,
+        "conceal": 0.10433521407577254,
+        "cooperate": 0.10146779455325212,
+        "create": 0.09948588661673906,
+        "dominate": 0.10261725421568495,
+        "explore": 0.09586310075918135,
+        "persist": 0.10180069425627619
       },
       "lesion_selected_action": "challenge",
       "lesion_state_pressure": {
@@ -1886,27 +1886,27 @@
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.1286402155459143,
-            "avoid": 0.12224528332876505,
-            "challenge": 0.1318816767263698,
-            "comply": 0.0709756468474429,
-            "conceal": 0.11375812209854402,
-            "cooperate": 0.11367736712849073,
-            "create": 0.09548049527346378,
-            "dominate": 0.10981062656498898,
-            "explore": 0.09371630216498364,
-            "persist": 0.12642606625715636
+            "approach": 0.1286402159031791,
+            "avoid": 0.12224528482910213,
+            "challenge": 0.1318816776511138,
+            "comply": 0.07097564649219909,
+            "conceal": 0.1137581214862962,
+            "cooperate": 0.11367736598182356,
+            "create": 0.09548049638831882,
+            "dominate": 0.10981062564425638,
+            "explore": 0.09371630190004912,
+            "persist": 0.1264260656597813
           }
         },
         "source_ids": {
           "commitments": [],
           "concerns": [],
           "history": [
-            "mem_e3a6dc0746e7481e9a99e43879c334b1",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_91559093f02442ac8926fc765560a61c",
-            "mem_628eda1e06b748baa144ce2f982c838f"
+            "mem_28546799a2ea49d688bd31554095f574",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_a50a64a4338042a3b7293a22588e7e53",
+            "mem_3da501141a314036a46a32b62865a899"
           ],
           "needs": [
             "affiliation",
@@ -1992,30 +1992,30 @@
       "selected_action_diverged": true
     },
     {
-      "action_score_l1": 0.022817540540216175,
+      "action_score_l1": 0.022523059101826212,
       "intact_final_scores": {
-        "approach": 0.1073622612029473,
-        "avoid": 0.10369254473242709,
-        "challenge": 0.1272685096537452,
-        "comply": 0.059978134261445826,
-        "conceal": 0.09348017594645351,
-        "cooperate": 0.0967822495963527,
-        "create": 0.08476734016607235,
-        "dominate": 0.09324163985131445,
-        "explore": 0.09627722379156055,
-        "persist": 0.1371499207976811
+        "approach": 0.10812763567415169,
+        "avoid": 0.10235430415408357,
+        "challenge": 0.12562600102886978,
+        "comply": 0.061355040034014575,
+        "conceal": 0.09227373379792901,
+        "cooperate": 0.09768416881061161,
+        "create": 0.08582432134807957,
+        "dominate": 0.09203827571801583,
+        "explore": 0.099336635556435,
+        "persist": 0.13537988387780936
       },
       "intact_raw_recurrent_scores": {
-        "approach": 0.10370570229409488,
-        "avoid": 0.09457929704263812,
-        "challenge": 0.0957882148547649,
-        "comply": 0.10034433950267914,
-        "conceal": 0.10435295049426954,
-        "cooperate": 0.10147100873646842,
-        "create": 0.09948914480583759,
-        "dominate": 0.10261762898551662,
-        "explore": 0.09585838704580642,
-        "persist": 0.10179332623792436
+        "approach": 0.10370570259374756,
+        "avoid": 0.09457929790314605,
+        "challenge": 0.0957882157262719,
+        "comply": 0.10034433788462163,
+        "conceal": 0.10435295014788404,
+        "cooperate": 0.10147100981718274,
+        "create": 0.09948914493887925,
+        "dominate": 0.10261762800775717,
+        "explore": 0.09585838613245026,
+        "persist": 0.1017933268480594
       },
       "intact_selected_action": "persist",
       "intact_state_pressure": {
@@ -2030,15 +2030,15 @@
           ]
         },
         "combined": {
-          "approach": 0.030722914285714286,
+          "approach": 0.03345137142857143,
           "avoid": 0.0352544562877872,
           "challenge": 0.06356507647156749,
-          "comply": -0.025245533614424633,
+          "comply": -0.02251707647156749,
           "conceal": 0.012693864553380807,
-          "cooperate": 0.01971034285714286,
-          "create": 0.006648301835071814,
+          "cooperate": 0.022438800000000002,
+          "create": 0.009376758977928957,
           "dominate": 0.014130514285714286,
-          "explore": 0.024690620188486813,
+          "explore": 0.0301475344742011,
           "persist": 0.06993251029239397
         },
         "config": {
@@ -2091,15 +2091,15 @@
             "persist": 0.019250000000000003
           },
           "history": {
-            "approach": 0.030722914285714286,
+            "approach": 0.03345137142857143,
             "avoid": 0.006905314285714285,
             "challenge": 0.006,
-            "comply": 0.026929542857142857,
+            "comply": 0.029658,
             "conceal": 0.002770457142857143,
-            "cooperate": 0.01971034285714286,
-            "create": 0.018069085714285713,
+            "cooperate": 0.022438800000000002,
+            "create": 0.020797542857142855,
             "dominate": 0.014130514285714286,
-            "explore": 0.03866365714285714,
+            "explore": 0.044120571428571426,
             "persist": 0.0
           },
           "needs": {
@@ -2129,37 +2129,38 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.2521030674428348,
+          "denominator": 1.2684738102999777,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.13442861657980917,
-            "avoid": 0.12983375333042532,
-            "challenge": 0.15935329132633239,
-            "comply": 0.0750988058882545,
-            "conceal": 0.11704681504765035,
-            "cooperate": 0.12118135159361128,
-            "create": 0.1061374466409094,
-            "dominate": 0.1167481432712309,
-            "explore": 0.12054900723429324,
-            "persist": 0.17172583653031834
+            "approach": 0.137157074022319,
+            "avoid": 0.12983375419093324,
+            "challenge": 0.1593532921978394,
+            "comply": 0.07782726141305414,
+            "conceal": 0.11704681470126485,
+            "cooperate": 0.12390980981718275,
+            "create": 0.10886590391680821,
+            "dominate": 0.11674814229347145,
+            "explore": 0.12600592060665136,
+            "persist": 0.17172583714045336
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [
-            "concern_e09cca981d044346891619a51ac2a5f1"
+            "concern_9f08d866b00c49a0b0fa9c9e2c29a45e"
           ],
           "history": [
-            "mem_2c24c0f6b32a47a397d89c438b81d77e",
-            "mem_21daca8b35194c3691e5223dd27f3e76",
-            "mem_4832c91eea3b4896a573ac32fa9e86cd",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_9b424c0831fb438ca654239816d11f8b",
-            "mem_628eda1e06b748baa144ce2f982c838f",
-            "mem_d3002ae1c4094f2c97c275294c103c6f"
+            "mem_4d5ec9a01c2043deb134dfe57f3dcdc3",
+            "mem_bc609f8146904ba19c14c392c3880162",
+            "mem_5942dc6d480a4fd5ad992494c2801ddb",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_a4ba404ed7794f3d97451f70aab3c903",
+            "mem_3da501141a314036a46a32b62865a899",
+            "mem_f579cf9a852844d096a563c502405717",
+            "mem_e49e94fc3bb84485b7a188ac2ac423a3"
           ],
           "needs": [
             "affiliation",
@@ -2201,15 +2202,15 @@
             "persist": 0.019250000000000003
           },
           "history": {
-            "approach": 0.030722914285714286,
+            "approach": 0.03345137142857143,
             "avoid": 0.006905314285714285,
             "challenge": 0.006,
-            "comply": 0.026929542857142857,
+            "comply": 0.029658,
             "conceal": 0.002770457142857143,
-            "cooperate": 0.01971034285714286,
-            "create": 0.018069085714285713,
+            "cooperate": 0.022438800000000002,
+            "create": 0.020797542857142855,
             "dominate": 0.014130514285714286,
-            "explore": 0.03866365714285714,
+            "explore": 0.044120571428571426,
             "persist": 0.0
           },
           "needs": {
@@ -2240,16 +2241,16 @@
         "version": "state-policy-bridge-v0.4"
       },
       "lesion_final_scores": {
-        "approach": 0.10440267872890782,
-        "avoid": 0.10802182328649418,
-        "challenge": 0.13063227838393193,
-        "comply": 0.059703125349134495,
-        "conceal": 0.09000366462126401,
-        "cooperate": 0.09560741920521514,
-        "create": 0.08517533788402837,
-        "dominate": 0.09115105397737151,
-        "explore": 0.0995849490594588,
-        "persist": 0.13571766950419384
+        "approach": 0.10520624891499487,
+        "avoid": 0.10662770897556116,
+        "challenge": 0.12894635675046887,
+        "comply": 0.06108358162326489,
+        "conceal": 0.08884209010726848,
+        "cooperate": 0.09652449976168197,
+        "create": 0.086227053400545,
+        "dominate": 0.0899746714192892,
+        "explore": 0.10260167251180605,
+        "persist": 0.13396611653511958
       },
       "lesion_raw_recurrent_scores": {
         "approach": 0.1,
@@ -2276,15 +2277,15 @@
           ]
         },
         "combined": {
-          "approach": 0.030722914285714286,
+          "approach": 0.03345137142857143,
           "avoid": 0.0352544562877872,
           "challenge": 0.06356507647156749,
-          "comply": -0.025245533614424633,
+          "comply": -0.02251707647156749,
           "conceal": 0.012693864553380807,
-          "cooperate": 0.01971034285714286,
-          "create": 0.006648301835071814,
+          "cooperate": 0.022438800000000002,
+          "create": 0.009376758977928957,
           "dominate": 0.014130514285714286,
-          "explore": 0.024690620188486813,
+          "explore": 0.0301475344742011,
           "persist": 0.06993251029239397
         },
         "config": {
@@ -2337,15 +2338,15 @@
             "persist": 0.019250000000000003
           },
           "history": {
-            "approach": 0.030722914285714286,
+            "approach": 0.03345137142857143,
             "avoid": 0.006905314285714285,
             "challenge": 0.006,
-            "comply": 0.026929542857142857,
+            "comply": 0.029658,
             "conceal": 0.002770457142857143,
-            "cooperate": 0.01971034285714286,
-            "create": 0.018069085714285713,
+            "cooperate": 0.022438800000000002,
+            "create": 0.020797542857142855,
             "dominate": 0.014130514285714286,
-            "explore": 0.03866365714285714,
+            "explore": 0.044120571428571426,
             "persist": 0.0
           },
           "needs": {
@@ -2375,37 +2376,38 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.2521030674428348,
+          "denominator": 1.2684738102999777,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.13072291428571428,
+            "approach": 0.13345137142857144,
             "avoid": 0.1352544562877872,
             "challenge": 0.16356507647156748,
-            "comply": 0.07475446638557537,
+            "comply": 0.07748292352843252,
             "conceal": 0.11269386455338082,
-            "cooperate": 0.11971034285714287,
-            "create": 0.10664830183507182,
+            "cooperate": 0.12243880000000001,
+            "create": 0.10937675897792896,
             "dominate": 0.11413051428571429,
-            "explore": 0.12469062018848681,
+            "explore": 0.1301475344742011,
             "persist": 0.16993251029239398
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [
-            "concern_01dc9fc11314406cb442f3f24da45147"
+            "concern_f9ca818b196a435a9ec6e20c8e8e98cc"
           ],
           "history": [
-            "mem_906bc900020b4d16a61b84398c8fd639",
-            "mem_21daca8b35194c3691e5223dd27f3e76",
-            "mem_4832c91eea3b4896a573ac32fa9e86cd",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_9b424c0831fb438ca654239816d11f8b",
-            "mem_628eda1e06b748baa144ce2f982c838f",
-            "mem_d3002ae1c4094f2c97c275294c103c6f"
+            "mem_86ddb09a560f4a60b8e3a13f207ad093",
+            "mem_bc609f8146904ba19c14c392c3880162",
+            "mem_5942dc6d480a4fd5ad992494c2801ddb",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_a4ba404ed7794f3d97451f70aab3c903",
+            "mem_3da501141a314036a46a32b62865a899",
+            "mem_f579cf9a852844d096a563c502405717",
+            "mem_e49e94fc3bb84485b7a188ac2ac423a3"
           ],
           "needs": [
             "affiliation",
@@ -2447,15 +2449,15 @@
             "persist": 0.019250000000000003
           },
           "history": {
-            "approach": 0.030722914285714286,
+            "approach": 0.03345137142857143,
             "avoid": 0.006905314285714285,
             "challenge": 0.006,
-            "comply": 0.026929542857142857,
+            "comply": 0.029658,
             "conceal": 0.002770457142857143,
-            "cooperate": 0.01971034285714286,
-            "create": 0.018069085714285713,
+            "cooperate": 0.022438800000000002,
+            "create": 0.020797542857142855,
             "dominate": 0.014130514285714286,
-            "explore": 0.03866365714285714,
+            "explore": 0.044120571428571426,
             "persist": 0.0
           },
           "needs": {
@@ -2491,30 +2493,30 @@
       "selected_action_diverged": false
     },
     {
-      "action_score_l1": 0.21732210006896935,
+      "action_score_l1": 0.21732209983671216,
       "intact_final_scores": {
-        "approach": 0.10875288109530207,
-        "avoid": 0.10744837758079476,
-        "challenge": 0.13909384569639874,
-        "comply": 0.04953807189800015,
-        "conceal": 0.0948693649519032,
-        "cooperate": 0.10212404428245542,
-        "create": 0.07956932929795027,
-        "dominate": 0.09677902529948984,
-        "explore": 0.07326066042678497,
-        "persist": 0.14856439947092057
+        "approach": 0.10875288295171133,
+        "avoid": 0.10744837732504445,
+        "challenge": 0.13909384593080104,
+        "comply": 0.04953807175587627,
+        "conceal": 0.09486936440098263,
+        "cooperate": 0.10212404368140353,
+        "create": 0.07956932877269153,
+        "dominate": 0.09677902621143514,
+        "explore": 0.07326066016756036,
+        "persist": 0.1485643988024938
       },
       "intact_raw_recurrent_scores": {
-        "approach": 0.10370684878278272,
-        "avoid": 0.094579897222502,
-        "challenge": 0.09578830826151961,
-        "comply": 0.10035026544778158,
-        "conceal": 0.1043480748104757,
-        "cooperate": 0.10146841212023298,
-        "create": 0.0994875525520289,
-        "dominate": 0.10262687345748704,
-        "explore": 0.09586473564084001,
-        "persist": 0.1017790317043497
+        "approach": 0.10370685102036044,
+        "avoid": 0.09457989691423956,
+        "challenge": 0.09578830854405071,
+        "comply": 0.100350265276476,
+        "conceal": 0.10434807414643696,
+        "cooperate": 0.10146841139576968,
+        "create": 0.09948755191892103,
+        "dominate": 0.10262687455667811,
+        "explore": 0.09586473532838992,
+        "persist": 0.10177903089867771
       },
       "intact_selected_action": "persist",
       "intact_state_pressure": {
@@ -2628,35 +2630,35 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.2053256842076645,
+          "denominator": 1.2053256842076643,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.13108264081574975,
-            "avoid": 0.12951028922457491,
-            "challenge": 0.1676533847330871,
-            "comply": 0.05970951040478551,
-            "conceal": 0.11434848222099936,
-            "cooperate": 0.1230927335488044,
-            "create": 0.09590695627799688,
-            "dominate": 0.11665024488605846,
-            "explore": 0.08830295565441997,
-            "persist": 0.1790684864411881
+            "approach": 0.13108264305332748,
+            "avoid": 0.12951028891631247,
+            "challenge": 0.16765338501561822,
+            "comply": 0.05970951023347993,
+            "conceal": 0.11434848155696062,
+            "cooperate": 0.1230927328243411,
+            "create": 0.095906955644889,
+            "dominate": 0.11665024598524953,
+            "explore": 0.08830295534196987,
+            "persist": 0.17906848563551614
           }
         },
         "source_ids": {
           "commitments": [
-            "commit_e8c81821ba5149398494b9651c9968fc"
+            "commit_f6ad3ca6cac64ed6981dc88cd2e60aa0"
           ],
           "concerns": [
-            "concern_80e5fcd6e2f7401eae510bead5e58432"
+            "concern_f33106bf3f9b49eda5e54dac90b38c45"
           ],
           "history": [
-            "mem_283171a55c40451ea1ba6c7019992e58",
-            "mem_f02216c0ce4b46aca2d082ae55d43910",
-            "mem_65398d229ac74c58b8e2d06a5f506aaa",
-            "mem_91559093f02442ac8926fc765560a61c",
-            "mem_628eda1e06b748baa144ce2f982c838f"
+            "mem_b5cf277357374b908f3d7051d7879585",
+            "mem_716d6c42948549c29bc52cc06535cba3",
+            "mem_f0edac4143d048898816d3fbb1f783bc",
+            "mem_a50a64a4338042a3b7293a22588e7e53",
+            "mem_3da501141a314036a46a32b62865a899"
           ],
           "needs": [
             "affiliation",
@@ -2737,28 +2739,28 @@
         "version": "state-policy-bridge-v0.4"
       },
       "lesion_final_scores": {
-        "approach": 0.10370684878278269,
-        "avoid": 0.09457989722250197,
-        "challenge": 0.09578830826151959,
-        "comply": 0.10035026544778156,
-        "conceal": 0.10434807481047567,
-        "cooperate": 0.10146841212023296,
-        "create": 0.09948755255202887,
-        "dominate": 0.10262687345748701,
-        "explore": 0.09586473564083998,
-        "persist": 0.10177903170434967
+        "approach": 0.10370685102036044,
+        "avoid": 0.09457989691423956,
+        "challenge": 0.09578830854405071,
+        "comply": 0.100350265276476,
+        "conceal": 0.10434807414643696,
+        "cooperate": 0.10146841139576968,
+        "create": 0.09948755191892103,
+        "dominate": 0.10262687455667811,
+        "explore": 0.09586473532838992,
+        "persist": 0.10177903089867771
       },
       "lesion_raw_recurrent_scores": {
-        "approach": 0.10370684878278272,
-        "avoid": 0.094579897222502,
-        "challenge": 0.09578830826151961,
-        "comply": 0.10035026544778158,
-        "conceal": 0.1043480748104757,
-        "cooperate": 0.10146841212023298,
-        "create": 0.0994875525520289,
-        "dominate": 0.10262687345748704,
-        "explore": 0.09586473564084001,
-        "persist": 0.1017790317043497
+        "approach": 0.10370685102036044,
+        "avoid": 0.09457989691423956,
+        "challenge": 0.09578830854405071,
+        "comply": 0.100350265276476,
+        "conceal": 0.10434807414643696,
+        "cooperate": 0.10146841139576968,
+        "create": 0.09948755191892103,
+        "dominate": 0.10262687455667811,
+        "explore": 0.09586473532838992,
+        "persist": 0.10177903089867771
       },
       "lesion_selected_action": "conceal",
       "lesion_state_pressure": {
@@ -2872,20 +2874,20 @@
         },
         "family_cap": 0.05,
         "normalization": {
-          "denominator": 1.0000000000000002,
+          "denominator": 1.0,
           "method": "positive_floor_then_sum_to_one",
           "positive_floor": 1e-09,
           "pre_normalization": {
-            "approach": 0.10370684878278272,
-            "avoid": 0.094579897222502,
-            "challenge": 0.09578830826151961,
-            "comply": 0.10035026544778158,
-            "conceal": 0.1043480748104757,
-            "cooperate": 0.10146841212023298,
-            "create": 0.0994875525520289,
-            "dominate": 0.10262687345748704,
-            "explore": 0.09586473564084001,
-            "persist": 0.1017790317043497
+            "approach": 0.10370685102036044,
+            "avoid": 0.09457989691423956,
+            "challenge": 0.09578830854405071,
+            "comply": 0.100350265276476,
+            "conceal": 0.10434807414643696,
+            "cooperate": 0.10146841139576968,
+            "create": 0.09948755191892103,
+            "dominate": 0.10262687455667811,
+            "explore": 0.09586473532838992,
+            "persist": 0.10177903089867771
           }
         },
         "source_ids": {
@@ -2979,7 +2981,7 @@
       "spontaneous_cognition_diverged": false
     },
     "intact_vs_no_neural": {
-      "action_score_l1": 0.10538586518451673,
+      "action_score_l1": 0.1053858651845167,
       "deterministic_render_changed": false,
       "renderer_request_changed": true,
       "renderer_request_raw_changed": true,
@@ -2990,7 +2992,7 @@
     }
   },
   "sleep_replay": {
-    "action_score_l1": 0.0005518799992347487,
+    "action_score_l1": 0.0006252449385389103,
     "deterministic_render_changed": true,
     "renderer_request_changed": true,
     "renderer_request_raw_changed": true,
@@ -3004,7 +3006,7 @@
       "mechanism": "deep_history",
       "v03_action_score_l1": 0.0,
       "v03_selected_action_diverged": false,
-      "v04_action_score_l1": 0.08536570197209688,
+      "v04_action_score_l1": 0.0853657019720969,
       "v04_renderer_request_changed": true,
       "v04_selected_action_diverged": false
     },
@@ -3012,7 +3014,7 @@
       "mechanism": "needs",
       "v03_action_score_l1": 0.0,
       "v03_selected_action_diverged": false,
-      "v04_action_score_l1": 0.12773991586424088,
+      "v04_action_score_l1": 0.1277399157880004,
       "v04_renderer_request_changed": true,
       "v04_selected_action_diverged": true
     },
@@ -3028,7 +3030,7 @@
       "mechanism": "commitments",
       "v03_action_score_l1": 0.0,
       "v03_selected_action_diverged": false,
-      "v04_action_score_l1": 0.06865875255470569,
+      "v04_action_score_l1": 0.0686587527205425,
       "v04_renderer_request_changed": true,
       "v04_selected_action_diverged": true
     },
@@ -3036,7 +3038,7 @@
       "mechanism": "recurrent_policy",
       "v03_action_score_l1": 0.02856991059850507,
       "v03_selected_action_diverged": true,
-      "v04_action_score_l1": 0.022817540540216175,
+      "v04_action_score_l1": 0.022523059101826212,
       "v04_renderer_request_changed": true,
       "v04_selected_action_diverged": false
     },
@@ -3044,7 +3046,7 @@
       "mechanism": "state_policy_bridge",
       "v03_action_score_l1": null,
       "v03_selected_action_diverged": null,
-      "v04_action_score_l1": 0.21732210006896935,
+      "v04_action_score_l1": 0.21732209983671216,
       "v04_renderer_request_changed": false,
       "v04_selected_action_diverged": true
     }
