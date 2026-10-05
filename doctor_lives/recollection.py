@@ -321,7 +321,6 @@ class ReconstructionConfig:
 class RecollectionCandidate:
     """Nonfinal P4 reconstruction with no subjective source attribution."""
 
-    candidate_id: str
     subject_id: str
     retrieval_episode_id: str
     trace_ids: tuple[str, ...]
@@ -334,10 +333,10 @@ class RecollectionCandidate:
     fragmented: bool
     blended: bool
     reconstruction_operations: tuple[str, ...]
+    candidate_id: str = field(init=False)
 
     def __post_init__(self) -> None:
         for name in (
-            "candidate_id",
             "subject_id",
             "retrieval_episode_id",
             "reconstructed_scene",
@@ -370,6 +369,26 @@ class RecollectionCandidate:
             raise TypeError("fragmented must be bool")
         if not isinstance(self.blended, bool):
             raise TypeError("blended must be bool")
+
+        identity_payload = {
+            "subject_id": self.subject_id,
+            "retrieval_episode_id": self.retrieval_episode_id,
+            "trace_ids": self.trace_ids,
+            "protected_evidence_refs": self.protected_evidence_refs,
+            "reconstructed_scene": self.reconstructed_scene,
+            "included_detail_ids": self.included_detail_ids,
+            "omitted_detail_ids": self.omitted_detail_ids,
+            "vividness": self.vividness.value,
+            "content_confidence": self.content_confidence,
+            "fragmented": self.fragmented,
+            "blended": self.blended,
+            "reconstruction_operations": self.reconstruction_operations,
+        }
+        object.__setattr__(
+            self,
+            "candidate_id",
+            "recollection_candidate_" + _stable_sha256(identity_payload)[:24],
+        )
 
     @property
     def candidate_digest(self) -> str:
@@ -505,25 +524,7 @@ def reconstruct_recollection(
         for trace in ordered
         for ref in trace.protected_evidence
     )
-    payload = {
-        "episode_id": episode.episode_id,
-        "episode_fingerprint": episode.occurrence_fingerprint,
-        "trace_ids": tuple(trace.trace_id for trace in ordered),
-        "protected_evidence_refs": protected_refs,
-        "reconstructed_scene": reconstructed_scene,
-        "included_detail_ids": included_ids,
-        "omitted_detail_ids": omitted_ids,
-        "vividness": vividness.value,
-        "content_confidence": content_confidence,
-        "fragmented": bool(omitted_ids),
-        "blended": len(ordered) > 1,
-        "reconstruction_operations": tuple(operations),
-        "rule_version": episode.reconstruction_rule_version,
-    }
-    candidate_id = "recollection_candidate_" + _stable_sha256(payload)[:24]
-
     return RecollectionCandidate(
-        candidate_id=candidate_id,
         subject_id=episode.subject_id,
         retrieval_episode_id=episode.episode_id,
         trace_ids=tuple(trace.trace_id for trace in ordered),
