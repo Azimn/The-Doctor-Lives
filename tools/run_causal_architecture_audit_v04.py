@@ -46,6 +46,20 @@ def build_seed(state_dir: Path) -> None:
     brain.save()
 
 
+def prime_spreading_activation(brain: PretoriusBrain) -> None:
+    """Audit-only priming so the matched lesion demonstrably exercises graph spread."""
+    with brain.store.transaction() as conn:
+        row = conn.execute(
+            "SELECT memory_id FROM history_nodes WHERE node_id='memory.ingolstadt'"
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("missing memory.ingolstadt history node for activation audit")
+        conn.execute(
+            "UPDATE memories SET base_salience=2.0 WHERE id=?", (row["memory_id"],)
+        )
+        brain.store.bump_state_version(conn)
+
+
 def probes() -> dict[str, Experience]:
     return {
         "deep_history": Experience(
@@ -55,10 +69,9 @@ def probes() -> dict[str, Experience]:
             tags=("homunculi", "creation", "artificial_life"),
         ),
         "spreading_activation": Experience(
-            "The homunculi creation invites another artificial-life experiment.",
-            kind="observation", valence=.2, arousal=.45, novelty=.6,
-            achievement=.2, creation=.8,
-            tags=("homunculi", "creation", "artificial_life"),
+            "Ingolstadt Henry collaboration and institutional rejection return to attention.",
+            kind="observation", valence=.05, arousal=.35, novelty=.4,
+            tags=("ingolstadt", "henry", "collaboration", "institutional_rejection"),
         ),
         "needs": Experience(
             "A difficult new artificial-life experiment becomes available after a long exhausting session.",
@@ -186,6 +199,7 @@ def main() -> int:
             "spreading_activation": harness.run_existing_state_pair(
                 p["spreading_activation"],
                 AuditIntervention("spreading_activation", ("spreading_activation",)),
+                prelude=prime_spreading_activation,
             ),
         }
         for mechanism in (
@@ -207,7 +221,7 @@ def main() -> int:
 
         methods = {
             "deep_history": "run_existing_state_pair:v1",
-            "spreading_activation": "run_existing_state_pair:v1",
+            "spreading_activation": "run_existing_state_pair:v1+prime_spreading_activation:v1",
             "needs": "run_pair:v1",
             "relationships": "run_pair:v1",
             "commitments": "run_pair:v1",
