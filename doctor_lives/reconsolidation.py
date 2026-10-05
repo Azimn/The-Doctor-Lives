@@ -30,6 +30,7 @@ from .recollection import (
     ProtectedEvidenceRef,
     RecollectionCandidate,
     TraceDetail,
+    TraceDetailState,
 )
 from .source_monitoring import (
     FinalizedRecollection,
@@ -39,7 +40,7 @@ from .source_monitoring import (
 
 
 _RECONSOLIDATION_DECISION_FACTORY_TOKEN = object()
-_LEDGER_SCHEMA_VERSION = "uppb-p6-ledger-v2"
+_LEDGER_SCHEMA_VERSION = "uppb-p6b-ledger-v3"
 _ALLOWED_OPERATION_FIELDS = {
     "strength",
     "accessibility",
@@ -116,18 +117,23 @@ class ReconsolidationContext:
     emotional_activation: float = 0.0
     goal_relevance: float = 0.0
     explicit_rehearsal: bool = False
-    rule_version: str = "uppb-p6-v1"
+    detail_drift_enabled: bool = False
+    interference_strength: float = 0.0
+    rule_version: str = "uppb-p6b-v1"
 
     def __post_init__(self) -> None:
         if not isinstance(self.enabled, bool):
             raise TypeError("enabled must be bool")
         if not isinstance(self.explicit_rehearsal, bool):
             raise TypeError("explicit_rehearsal must be bool")
+        if not isinstance(self.detail_drift_enabled, bool):
+            raise TypeError("detail_drift_enabled must be bool")
         for name in (
             "reactivation_strength",
             "prediction_error",
             "emotional_activation",
             "goal_relevance",
+            "interference_strength",
         ):
             object.__setattr__(self, name, _unit(getattr(self, name), name))
         if not isinstance(self.rule_version, str) or not self.rule_version.strip():
@@ -156,6 +162,9 @@ class ReconsolidationPolicy:
     strength_ceiling: float = 0.95
     accessibility_ceiling: float = 0.98
     familiarity_ceiling: float = 0.98
+    min_detail_interference: float = 0.35
+    max_detail_accessibility_loss: float = 0.08
+    detail_accessibility_floor: float = 0.05
 
     def __post_init__(self) -> None:
         for name in (
@@ -175,8 +184,50 @@ class ReconsolidationPolicy:
             "strength_ceiling",
             "accessibility_ceiling",
             "familiarity_ceiling",
+            "min_detail_interference",
+            "max_detail_accessibility_loss",
+            "detail_accessibility_floor",
         ):
             object.__setattr__(self, name, _unit(getattr(self, name), name))
+
+    @property
+    def fingerprint(self) -> str:
+        return _stable_sha256(asdict(self))
+
+
+@dataclass(frozen=True)
+class DetailStateOperation:
+    """One explicit bounded P6B change to a retained detail's mnemonic state."""
+
+    detail_id: str
+    field_name: str
+    old_value: float
+    new_value: float
+    delta: float
+    old_state_fingerprint: str
+    new_state_fingerprint: str
+    reason_code: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.detail_id, str) or not self.detail_id.strip():
+            raise ValueError("detail_id is required")
+        if self.field_name != "accessibility":
+            raise ValueError("initial P6B may change only detail accessibility")
+        for name in ("old_value", "new_value"):
+            object.__setattr__(self, name, _unit(getattr(self, name), name))
+        if isinstance(self.delta, bool) or not isinstance(self.delta, (int, float)):
+            raise TypeError("delta must be numeric")
+        if not math.isfinite(float(self.delta)):
+            raise ValueError("delta must be finite")
+        object.__setattr__(self, "delta", float(self.delta))
+        if abs((self.new_value - self.old_value) - self.delta) > 1e-12:
+            raise ValueError("delta must equal new_value - old_value")
+        if self.delta > 0.0:
+            raise ValueError("initial P6B detail accessibility may only weaken")
+        for name in ("old_state_fingerprint", "new_state_fingerprint", "reason_code"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} is required")
 
     @property
     def fingerprint(self) -> str:
@@ -241,6 +292,8 @@ class ReconsolidationDecision:
     eligible: bool
     eligibility_strength: float
     operations: tuple[ReconsolidationOperation, ...]
+    detail_operations: tuple[DetailStateOperation, ...]
+    detail_reason_codes: tuple[str, ...]
     reason_codes: tuple[str, ...]
     decision_fingerprint: str
 
@@ -360,6 +413,8 @@ def _decision_payload(
     eligible: bool,
     eligibility_strength: float,
     operations: tuple[ReconsolidationOperation, ...],
+    detail_operations: tuple[DetailStateOperation, ...],
+    detail_reason_codes: tuple[str, ...],
     reason_codes: tuple[str, ...],
 ) -> dict[str, Any]:
     recollection_event = awareness_decision.event
@@ -385,6 +440,8 @@ def _decision_payload(
         "eligible": eligible,
         "eligibility_strength": eligibility_strength,
         "operations": [asdict(op) for op in operations],
+        "detail_operations": [asdict(op) for op in detail_operations],
+        "detail_reason_codes": detail_reason_codes,
         "reason_codes": reason_codes,
     }
 
@@ -511,7 +568,58 @@ def evaluate_reconsolidation(
                 )
             )
 
+    detail_operations: list[DetailStateOperation] = []
+    detail_reasons: list[str] = []
+    if not context.detail_drift_enabled:
+        detail_reasons.append("detail_drift_disabled")
+    elif not eligible:
+        detail_reasons.append("base_reconsolidation_ineligible")
+    elif context.interference_strength < policy.min_detail_interference:
+        detail_reasons.append("detail_interference_below_threshold")
+    else:
+        omitted_refs = set(candidate.omitted_detail_refs)
+        for old_state in old_trace.detail_states:
+            detail_ref = f"{old_trace.trace_id}:{old_state.detail_id}"
+            if detail_ref not in omitted_refs:
+                continue
+            available_loss = max(
+                0.0,
+                old_state.accessibility - policy.detail_accessibility_floor,
+            )
+            loss = min(
+                policy.max_detail_accessibility_loss,
+                available_loss * 0.25 * context.interference_strength,
+            )
+            if loss <= 0.0:
+                continue
+            new_state = TraceDetailState(
+                detail_id=old_state.detail_id,
+                retention=old_state.retention,
+                accessibility=old_state.accessibility - loss,
+                temporal_confidence=old_state.temporal_confidence,
+                association_strength=old_state.association_strength,
+                parent_state_fingerprint=old_state.state_fingerprint,
+            )
+            detail_operations.append(
+                DetailStateOperation(
+                    detail_id=old_state.detail_id,
+                    field_name="accessibility",
+                    old_value=old_state.accessibility,
+                    new_value=new_state.accessibility,
+                    delta=-loss,
+                    old_state_fingerprint=old_state.state_fingerprint,
+                    new_state_fingerprint=new_state.state_fingerprint,
+                    reason_code="omitted_detail_interference_weakening",
+                )
+            )
+        if detail_operations:
+            detail_reasons.append("omitted_detail_accessibility_weakened")
+        else:
+            detail_reasons.append("no_eligible_omitted_detail")
+
     operations_tuple = tuple(operations)
+    detail_operations_tuple = tuple(detail_operations)
+    detail_reasons_tuple = tuple(detail_reasons)
     reasons_tuple = tuple(reasons)
     payload = _decision_payload(
         old_trace=old_trace,
@@ -524,6 +632,8 @@ def evaluate_reconsolidation(
         eligible=eligible,
         eligibility_strength=drive,
         operations=operations_tuple,
+        detail_operations=detail_operations_tuple,
+        detail_reason_codes=detail_reasons_tuple,
         reason_codes=reasons_tuple,
     )
 
@@ -556,6 +666,8 @@ def evaluate_reconsolidation(
         ("eligible", eligible),
         ("eligibility_strength", drive),
         ("operations", operations_tuple),
+        ("detail_operations", detail_operations_tuple),
+        ("detail_reason_codes", detail_reasons_tuple),
         ("reason_codes", reasons_tuple),
     ):
         object.__setattr__(decision, name, value)
@@ -627,6 +739,8 @@ def _verify_decision_integrity(
         eligible=decision.eligible,
         eligibility_strength=decision.eligibility_strength,
         operations=decision.operations,
+        detail_operations=decision.detail_operations,
+        detail_reason_codes=decision.detail_reason_codes,
         reason_codes=decision.reason_codes,
     )
     expected = "reconsolidation_" + _stable_sha256(payload)[:24]
@@ -671,12 +785,42 @@ def apply_reconsolidation(
             )
         values[operation.field_name] = operation.new_value
 
+    detail_states = list(old_trace.detail_states)
+    detail_index = {
+        state.detail_id: index for index, state in enumerate(detail_states)
+    }
+    seen_detail_operations: set[str] = set()
+    for operation in decision.detail_operations:
+        if operation.detail_id in seen_detail_operations:
+            raise ValueError("duplicate detail-state operation")
+        seen_detail_operations.add(operation.detail_id)
+        if operation.detail_id not in detail_index:
+            raise ValueError("detail-state operation references unknown detail")
+        index = detail_index[operation.detail_id]
+        old_state = detail_states[index]
+        if old_state.state_fingerprint != operation.old_state_fingerprint:
+            raise ValueError("detail-state operation old fingerprint mismatch")
+        if abs(old_state.accessibility - operation.old_value) > 1e-12:
+            raise ValueError("detail-state operation old value mismatch")
+        new_state = TraceDetailState(
+            detail_id=old_state.detail_id,
+            retention=old_state.retention,
+            accessibility=operation.new_value,
+            temporal_confidence=old_state.temporal_confidence,
+            association_strength=old_state.association_strength,
+            parent_state_fingerprint=old_state.state_fingerprint,
+        )
+        if new_state.state_fingerprint != operation.new_state_fingerprint:
+            raise ValueError("detail-state operation new fingerprint mismatch")
+        detail_states[index] = new_state
+
     successor = MemoryTrace(
         subject_id=old_trace.subject_id,
         version=old_trace.version + 1,
         protected_evidence=old_trace.protected_evidence,
         gist=old_trace.gist,
         details=old_trace.details,
+        detail_states=tuple(detail_states),
         temporal_cues=old_trace.temporal_cues,
         actor_refs=old_trace.actor_refs,
         object_refs=old_trace.object_refs,
@@ -698,7 +842,7 @@ def apply_reconsolidation(
     if successor.protected_evidence != old_trace.protected_evidence:
         raise AssertionError("reconsolidation changed protected evidence")
     if successor.gist != old_trace.gist or successor.details != old_trace.details:
-        raise AssertionError("initial P6 may not rewrite gist or retained details")
+        raise AssertionError("P6B may not rewrite gist or retained details")
     return successor
 
 
@@ -718,6 +862,29 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
         )
         for item in data.get("details", ())
     )
+    detail_states = tuple(
+        TraceDetailState(
+            detail_id=str(item["detail_id"]),
+            retention=_json_number(item.get("retention", 1.0), "detail retention"),
+            accessibility=_json_number(
+                item.get("accessibility", 1.0),
+                "detail accessibility",
+            ),
+            temporal_confidence=_json_number(
+                item.get("temporal_confidence", 1.0),
+                "detail temporal_confidence",
+            ),
+            association_strength=_json_number(
+                item.get("association_strength", 1.0),
+                "detail association_strength",
+            ),
+            parent_state_fingerprint=_optional_nonblank(
+                item.get("parent_state_fingerprint"),
+                "detail parent_state_fingerprint",
+            ),
+        )
+        for item in data.get("detail_states", ())
+    )
     subject_id = data.get("subject_id")
     gist = data.get("gist")
     if not isinstance(subject_id, str) or not subject_id.strip():
@@ -731,6 +898,7 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
         protected_evidence=protected,
         gist=gist,
         details=details,
+        detail_states=detail_states,
         temporal_cues=tuple(data.get("temporal_cues", ())),
         actor_refs=tuple(data.get("actor_refs", ())),
         object_refs=tuple(data.get("object_refs", ())),
@@ -855,6 +1023,58 @@ def _verify_successor_matches_audit(
             raise ValueError(
                 f"successor {field_name} does not match decision operations"
             )
+
+    expected_detail_states = {
+        state.detail_id: state for state in parent.detail_states
+    }
+    seen_detail_ids: set[str] = set()
+    for raw in audit.get("detail_operations", []):
+        if not isinstance(raw, dict):
+            raise ValueError("detail operation audit must be an object")
+        detail_id = raw.get("detail_id")
+        if not isinstance(detail_id, str) or not detail_id.strip():
+            raise ValueError("detail operation requires detail_id")
+        if detail_id in seen_detail_ids:
+            raise ValueError("decision audit contains duplicate detail operation")
+        seen_detail_ids.add(detail_id)
+        if detail_id not in expected_detail_states:
+            raise ValueError("detail operation references unknown parent detail")
+        if raw.get("field_name") != "accessibility":
+            raise ValueError("initial P6B supports only detail accessibility")
+        parent_state = expected_detail_states[detail_id]
+        old_value = raw.get("old_value")
+        new_value = raw.get("new_value")
+        delta = raw.get("delta")
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in (old_value, new_value, delta)
+        ):
+            raise ValueError("detail operation values must be numeric")
+        if abs(parent_state.accessibility - float(old_value)) > 1e-12:
+            raise ValueError("detail operation old value does not match parent")
+        if raw.get("old_state_fingerprint") != parent_state.state_fingerprint:
+            raise ValueError("detail operation old fingerprint mismatch")
+        if abs((float(new_value) - float(old_value)) - float(delta)) > 1e-12:
+            raise ValueError("detail operation delta is inconsistent")
+        new_state = TraceDetailState(
+            detail_id=parent_state.detail_id,
+            retention=parent_state.retention,
+            accessibility=float(new_value),
+            temporal_confidence=parent_state.temporal_confidence,
+            association_strength=parent_state.association_strength,
+            parent_state_fingerprint=parent_state.state_fingerprint,
+        )
+        if raw.get("new_state_fingerprint") != new_state.state_fingerprint:
+            raise ValueError("detail operation new fingerprint mismatch")
+        expected_detail_states[detail_id] = new_state
+
+    expected_detail_tuple = tuple(
+        expected_detail_states[detail.detail_id] for detail in parent.details
+    )
+    if successor.detail_states != expected_detail_tuple:
+        raise ValueError(
+            "successor detail_states do not match audited detail operations"
+        )
 
     for field_name in (
         "protected_evidence",
