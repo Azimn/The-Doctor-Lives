@@ -988,6 +988,73 @@ class ReconsolidationTests(unittest.TestCase):
             self.assertEqual(state.association_strength, 1.0)
             self.assertIsNone(state.parent_state_fingerprint)
 
+    def test_p6b_default_policy_produces_real_weak_cue_degradation(self):
+        trace = self.trace_with_two_details()
+        before = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-default-before",
+            cue_text="laboratory",
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.537,
+            ),
+        )
+        self.assertIn(
+            f"{trace.trace_id}:detail:notebook",
+            before.included_detail_refs,
+        )
+
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-default-reactivation",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+
+        after = self.reconstruct(
+            successor,
+            episode_id="episode:p6b-default-after",
+            cue_text="laboratory",
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.537,
+            ),
+        )
+        self.assertIn(
+            f"{successor.trace_id}:detail:notebook",
+            after.omitted_detail_refs,
+        )
+        self.assertEqual(successor.details, trace.details)
+
     def test_p6b_detail_drift_weakens_only_omitted_detail_state(self):
         trace = self.trace_with_two_details()
         candidate = self.reconstruct(
