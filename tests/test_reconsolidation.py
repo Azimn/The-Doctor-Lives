@@ -177,6 +177,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=latent_event,
             context=self.eligible_context(),
         )
@@ -197,7 +198,7 @@ class ReconsolidationTests(unittest.TestCase):
             candidate=candidate,
             cues=self.source_cues(),
         )
-        latent = finalize_recollection_event(
+        finalized = finalize_recollection(
             candidate=candidate,
             decision=source_decision,
             context=RecollectionFinalizationContext(
@@ -213,7 +214,7 @@ class ReconsolidationTests(unittest.TestCase):
         awareness_decision = AwarenessRouter().route(
             (
                 AwarenessCandidate(
-                    event=latent,
+                    event=finalized.event,
                     salience=1.0,
                     change=0.0,
                     novelty=0.0,
@@ -232,6 +233,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=awareness_decision,
             context=self.eligible_context(),
         )
@@ -256,6 +258,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=awareness_decision,
             context=self.eligible_context(enabled=False),
         )
@@ -267,6 +270,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=awareness_decision,
             context=self.eligible_context(enabled=True),
         )
@@ -313,6 +317,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -364,6 +369,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(enabled=False),
         )
@@ -389,6 +395,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(enabled=False),
         )
@@ -400,6 +407,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(enabled=True),
         )
@@ -440,6 +448,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=focal_decision,
             context=self.eligible_context(),
         )
@@ -454,6 +463,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=trace,
                 candidate=candidate,
                 source_decision=source_decision,
+                finalized_recollection=finalized,
                 awareness_decision=latent_event,
                 decision=decision,
             )
@@ -469,6 +479,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=trace,
                 candidate=candidate,
                 source_decision=source_decision,
+                finalized_recollection=finalized,
                 awareness_decision=awareness_decision.event,  # type: ignore[arg-type]
                 context=self.eligible_context(),
             )
@@ -484,6 +495,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -513,7 +525,7 @@ class ReconsolidationTests(unittest.TestCase):
             candidate=candidate,
             cues=self.source_cues(),
         )
-        latent_event = finalize_recollection_event(
+        finalized = finalize_recollection(
             candidate=candidate,
             decision=source_decision,
             context=RecollectionFinalizationContext(
@@ -529,7 +541,7 @@ class ReconsolidationTests(unittest.TestCase):
         focal_decision = AwarenessRouter().route(
             (
                 AwarenessCandidate(
-                    event=latent_event,
+                    event=finalized.event,
                     salience=1.0,
                     change=1.0,
                     novelty=1.0,
@@ -542,6 +554,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=first,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=focal_decision,
             context=self.eligible_context(),
         )
@@ -570,6 +583,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=ReconsolidationContext(
                 reactivation_strength=0.90,
@@ -601,6 +615,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=first,
                 candidate=second_candidate,
                 source_decision=first_source,
+                finalized_recollection=first_finalized,
                 awareness_decision=first_event,
                 context=self.eligible_context(),
             )
@@ -616,6 +631,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -623,6 +639,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             decision=decision,
         )
@@ -671,6 +688,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -678,6 +696,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             decision=decision,
         )
@@ -725,7 +744,7 @@ class ReconsolidationTests(unittest.TestCase):
         self.assertIs(read.selected_source, SubjectiveSourceKind.READ)
 
         def event_for(source_decision):
-            latent = finalize_recollection_event(
+            finalized = finalize_recollection(
                 candidate=candidate,
                 decision=source_decision,
                 context=RecollectionFinalizationContext(
@@ -738,10 +757,10 @@ class ReconsolidationTests(unittest.TestCase):
                     ),
                 ),
             )
-            return AwarenessRouter().route(
+            awareness_decision = AwarenessRouter().route(
                 (
                     AwarenessCandidate(
-                        event=latent,
+                        event=finalized.event,
                         salience=1.0,
                         change=1.0,
                         novelty=1.0,
@@ -750,13 +769,15 @@ class ReconsolidationTests(unittest.TestCase):
                     ),
                 )
             )[0]
+            return finalized, awareness_decision
 
-        lived_event = event_for(lived)
-        read_event = event_for(read)
+        lived_finalized, lived_event = event_for(lived)
+        read_finalized, read_event = event_for(read)
         lived_decision = evaluate_reconsolidation(
             old_trace=trace,
             candidate=candidate,
             source_decision=lived,
+            finalized_recollection=lived_finalized,
             awareness_decision=lived_event,
             context=self.eligible_context(),
         )
@@ -764,6 +785,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=read,
+            finalized_recollection=read_finalized,
             awareness_decision=read_event,
             context=self.eligible_context(),
         )
@@ -786,6 +808,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -793,6 +816,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             decision=decision,
         )
@@ -821,6 +845,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -828,6 +853,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             decision=decision,
         )
@@ -872,6 +898,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -879,6 +906,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             decision=decision,
         )
@@ -925,6 +953,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -1000,6 +1029,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -1035,6 +1065,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=current,
                 candidate=candidate,
                 source_decision=source_decision,
+                finalized_recollection=finalized,
                 awareness_decision=event,
                 context=self.eligible_context(),
                 policy=policy,
@@ -1070,6 +1101,7 @@ class ReconsolidationTests(unittest.TestCase):
             old_trace=trace,
             candidate=candidate,
             source_decision=source_decision,
+            finalized_recollection=finalized,
             awareness_decision=event,
             context=self.eligible_context(),
         )
@@ -1079,6 +1111,7 @@ class ReconsolidationTests(unittest.TestCase):
                 old_trace=trace,
                 candidate=candidate,
                 source_decision=source_decision,
+                finalized_recollection=finalized,
                 awareness_decision=event,
                 decision=decision,
             )
