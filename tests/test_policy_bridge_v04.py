@@ -134,14 +134,18 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
             kind="interaction", valence=-.7, authority=.9, autonomy=.05,
             tags=("authority", "coercion", "control"),
         ))
-        ranked = brain._ranked_memories(30, query="committee authority coercion", audit=False)
+        direct_ranked, ranked = brain._ranked_memory_sets(
+            30, query="committee authority coercion", audit=False
+        )
         _, _, relevant = brain._state_policy_scores(
             ranked,
             decision_text="The committee again invokes authority and coercion over the procedure.",
+            direct_history_ranked=direct_ranked,
         )
         _, _, neutral = brain._state_policy_scores(
             ranked,
             decision_text="Rainwater collects quietly beside the greenhouse.",
+            direct_history_ranked=direct_ranked,
         )
         self.assertGreater(relevant["families"]["history"]["challenge"], 0.0)
         self.assertTrue(all(abs(v) < 1e-12 for v in neutral["families"]["history"].values()))
@@ -171,6 +175,34 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
             abs(v) < 1e-12 for v in neutral["state_pressure"]["families"]["history"].values()
         ))
 
+    def test_history_pressure_cannot_escape_direct_retrieval_limit(self):
+        brain = self.make_brain()
+        self.neutralize(brain)
+        admitted = []
+        for index in range(60):
+            result = brain.ingest(Experience(
+                f"Archive stress record {index} documents authority coercion and control.",
+                kind="interaction", valence=-.2, authority=.6, autonomy=.3,
+                tags=("archive_stress", "authority", "coercion", "control"),
+            ))
+            admitted.append(result["memory_id"])
+        self.neutralize(brain)
+        query = "archive stress authority coercion control"
+        direct_ranked, ranked = brain._ranked_memory_sets(48, query=query, audit=True)
+        direct_ids = {row["id"] for _, row in direct_ranked}
+        excluded = [memory_id for memory_id in admitted if memory_id not in direct_ids]
+        self.assertEqual(len(direct_ranked), 48)
+        self.assertTrue(excluded, "stress fixture must contain relevant autobiographical records beyond the retrieval limit")
+
+        _, _, audit = brain._state_policy_scores(
+            ranked,
+            decision_text=query,
+            direct_history_ranked=direct_ranked,
+        )
+        self.assertTrue(set(audit["source_ids"]["history"]).issubset(direct_ids))
+        self.assertTrue(set(audit["history_retrieval_ids"]).issubset(direct_ids))
+        self.assertTrue(set(excluded).isdisjoint(set(audit["source_ids"]["history"])))
+
     def test_spreading_activation_is_excluded_from_history_policy_pressure(self):
         brain = self.make_brain()
         install_deep_history(brain.store)
@@ -185,7 +217,9 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
             brain.store.bump_state_version(conn)
         query = "Ingolstadt Henry collaboration and institutional rejection."
 
-        ranked_with_edges = brain._ranked_memories(48, query=query, audit=True)
+        direct_with_edges, ranked_with_edges = brain._ranked_memory_sets(
+            48, query=query, audit=True
+        )
         with brain.store.connect() as conn:
             row = conn.execute(
                 "SELECT activated_memory_ids_json FROM retrieval_audits ORDER BY rowid DESC LIMIT 1"
@@ -193,16 +227,22 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
         activated = json.loads(row["activated_memory_ids_json"])
         self.assertTrue(activated, "probe must exercise spreading activation")
         _, adjusted_with_edges, audit_with_edges = brain._state_policy_scores(
-            ranked_with_edges, decision_text=query
+            ranked_with_edges,
+            decision_text=query,
+            direct_history_ranked=direct_with_edges,
         )
         self.assertTrue(audit_with_edges["source_ids"]["history"])
 
         with brain.store.transaction() as conn:
             conn.execute("DELETE FROM history_edges")
             brain.store.bump_state_version(conn)
-        ranked_without_edges = brain._ranked_memories(48, query=query, audit=True)
+        direct_without_edges, ranked_without_edges = brain._ranked_memory_sets(
+            48, query=query, audit=True
+        )
         _, adjusted_without_edges, audit_without_edges = brain._state_policy_scores(
-            ranked_without_edges, decision_text=query
+            ranked_without_edges,
+            decision_text=query,
+            direct_history_ranked=direct_without_edges,
         )
 
         self.assertEqual(
@@ -253,12 +293,13 @@ class PolicyBridgeHeldOutTests(unittest.TestCase):
             before_archive = conn.execute(
                 "SELECT COUNT(*) FROM archive WHERE record_id=?", (memory_id,)
             ).fetchone()[0]
-        ranked = brain._ranked_memories(
+        direct_ranked, ranked = brain._ranked_memory_sets(
             30, query="council coercion authority procedure", audit=False
         )
         _, _, audit = brain._state_policy_scores(
             ranked,
             decision_text="The council again uses coercion and authority over the procedure.",
+            direct_history_ranked=direct_ranked,
         )
         after_memory = brain.store.get_memory(memory_id)
         after_classification = brain.store.classification(memory_id)
