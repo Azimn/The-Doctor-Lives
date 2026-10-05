@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 from dataclasses import replace
 import tempfile
@@ -18,6 +19,7 @@ from doctor_lives.recollection import (
     ReconstructionConfig,
     RetrievalEpisode,
     TraceDetail,
+    TraceDetailState,
     reconstruct_recollection,
 )
 from doctor_lives.reconsolidation import (
@@ -69,6 +71,66 @@ class ReconsolidationTests(unittest.TestCase):
             accessibility=accessibility,
             familiarity=familiarity,
         )
+
+    def trace_with_two_details(self) -> MemoryTrace:
+        return MemoryTrace(
+            subject_id="subject-reconsolidation",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef(
+                    evidence_id="evidence:detail-drift",
+                    digest="sha256:detail-drift",
+                ),
+            ),
+            gist="The demonstration occurred in the laboratory",
+            details=(
+                TraceDetail(
+                    detail_id="detail:henry",
+                    text="Henry stood beside the apparatus",
+                    cue_terms=("henry", "apparatus"),
+                ),
+                TraceDetail(
+                    detail_id="detail:notebook",
+                    text="A blue notebook rested on the side table",
+                    cue_terms=("blue", "notebook", "table"),
+                ),
+            ),
+            strength=0.60,
+            accessibility=0.60,
+            familiarity=0.60,
+        )
+
+    def finalized_from_candidate(self, candidate):
+        decision = monitor_recollection_source(
+            candidate=candidate,
+            cues=self.source_cues(),
+        )
+        finalized = finalize_recollection(
+            candidate=candidate,
+            decision=decision,
+            context=RecollectionFinalizationContext(
+                tick=80,
+                source_state_digest="sha256:p6b-finalization",
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="lived_runtime_memory",
+                    source="world",
+                    record_ids=candidate.protected_evidence_refs,
+                ),
+            ),
+        )
+        awareness = AwarenessRouter().route(
+            (
+                AwarenessCandidate(
+                    event=finalized.event,
+                    salience=1.0,
+                    change=1.0,
+                    novelty=1.0,
+                    goal_relevance=1.0,
+                    persistence=1.0,
+                ),
+            )
+        )[0]
+        return decision, finalized, awareness
 
     def source_cues(self) -> SourceMonitoringCues:
         return SourceMonitoringCues(
@@ -912,6 +974,478 @@ class ReconsolidationTests(unittest.TestCase):
             lived_decision.eligibility_strength,
             read_decision.eligibility_strength,
         )
+
+    def test_detail_state_defaults_preserve_stable_semantic_detail(self):
+        trace = self.trace_with_two_details()
+        self.assertEqual(
+            tuple(state.detail_id for state in trace.detail_states),
+            tuple(detail.detail_id for detail in trace.details),
+        )
+        for state in trace.detail_states:
+            self.assertEqual(state.retention, 1.0)
+            self.assertEqual(state.accessibility, 1.0)
+            self.assertEqual(state.temporal_confidence, 1.0)
+            self.assertEqual(state.association_strength, 1.0)
+            self.assertIsNone(state.parent_state_fingerprint)
+
+    def test_p6b_detail_drift_weakens_only_omitted_detail_state(self):
+        trace = self.trace_with_two_details()
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-weakening",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIn(
+            f"{trace.trace_id}:detail:notebook",
+            candidate.omitted_detail_refs,
+        )
+        self.assertIn(
+            f"{trace.trace_id}:detail:henry",
+            candidate.included_detail_refs,
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+            policy=ReconsolidationPolicy(
+                max_detail_accessibility_loss=0.20,
+            ),
+        )
+        self.assertTrue(decision.eligible)
+        self.assertEqual(len(decision.detail_operations), 1)
+        detail_op = decision.detail_operations[0]
+        self.assertEqual(detail_op.detail_id, "detail:notebook")
+        self.assertEqual(detail_op.field_name, "accessibility")
+        self.assertLess(detail_op.new_value, detail_op.old_value)
+        self.assertLess(detail_op.delta, 0.0)
+
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+        old_henry = trace.detail_state("detail:henry")
+        new_henry = successor.detail_state("detail:henry")
+        old_notebook = trace.detail_state("detail:notebook")
+        new_notebook = successor.detail_state("detail:notebook")
+
+        self.assertEqual(new_henry, old_henry)
+        self.assertEqual(new_notebook.detail_id, old_notebook.detail_id)
+        self.assertEqual(new_notebook.retention, old_notebook.retention)
+        self.assertEqual(
+            new_notebook.temporal_confidence,
+            old_notebook.temporal_confidence,
+        )
+        self.assertEqual(
+            new_notebook.association_strength,
+            old_notebook.association_strength,
+        )
+        self.assertLess(
+            new_notebook.accessibility,
+            old_notebook.accessibility,
+        )
+        self.assertEqual(
+            new_notebook.parent_state_fingerprint,
+            old_notebook.state_fingerprint,
+        )
+        self.assertEqual(
+            new_notebook.state_fingerprint,
+            detail_op.new_state_fingerprint,
+        )
+        self.assertEqual(successor.details, trace.details)
+        self.assertEqual(successor.gist, trace.gist)
+        self.assertEqual(successor.protected_evidence, trace.protected_evidence)
+
+    def test_p6b_matched_detail_drift_lesion_changes_only_detail_state(self):
+        trace = self.trace_with_two_details()
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-lesion",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        policy = ReconsolidationPolicy(max_detail_accessibility_loss=0.20)
+
+        disabled = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=False,
+                interference_strength=1.0,
+            ),
+            policy=policy,
+        )
+        enabled = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+            policy=policy,
+        )
+        self.assertEqual(disabled.operations, enabled.operations)
+        self.assertEqual(
+            disabled.eligibility_strength,
+            enabled.eligibility_strength,
+        )
+        self.assertEqual(disabled.detail_operations, ())
+        self.assertEqual(len(enabled.detail_operations), 1)
+
+        disabled_successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=disabled,
+        )
+        enabled_successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=enabled,
+        )
+        assert disabled_successor is not None
+        assert enabled_successor is not None
+        for field_name in (
+            "strength",
+            "accessibility",
+            "familiarity",
+            "retrieval_count",
+            "rehearsal_count",
+        ):
+            self.assertEqual(
+                getattr(disabled_successor, field_name),
+                getattr(enabled_successor, field_name),
+            )
+        self.assertEqual(
+            disabled_successor.detail_state("detail:henry"),
+            enabled_successor.detail_state("detail:henry"),
+        )
+        self.assertNotEqual(
+            disabled_successor.detail_state("detail:notebook"),
+            enabled_successor.detail_state("detail:notebook"),
+        )
+
+    def test_p6b_weakening_can_cause_later_omission_without_deleting_detail(self):
+        trace = self.trace_with_two_details()
+        before = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-before",
+            cue_text="laboratory",
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.525,
+            ),
+        )
+        self.assertIn(
+            f"{trace.trace_id}:detail:notebook",
+            before.included_detail_refs,
+        )
+
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-reactivation",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+            policy=ReconsolidationPolicy(
+                max_detail_accessibility_loss=0.20,
+            ),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+
+        after = self.reconstruct(
+            successor,
+            episode_id="episode:p6b-after",
+            cue_text="laboratory",
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.525,
+            ),
+        )
+        self.assertIn(
+            f"{successor.trace_id}:detail:notebook",
+            after.omitted_detail_refs,
+        )
+        self.assertEqual(
+            tuple(detail.detail_id for detail in successor.details),
+            ("detail:henry", "detail:notebook"),
+        )
+        self.assertEqual(successor.details, trace.details)
+        self.assertEqual(successor.protected_evidence, trace.protected_evidence)
+
+    def test_p6b_weakened_detail_remains_recoverable_under_strong_matching_cue(self):
+        trace = self.trace_with_two_details()
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-recovery-reactivation",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+            policy=ReconsolidationPolicy(
+                max_detail_accessibility_loss=0.20,
+            ),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+
+        weak_cue = self.reconstruct(
+            successor,
+            episode_id="episode:p6b-recovery-weak",
+            cue_text="laboratory",
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.525,
+            ),
+        )
+        strong_cue = self.reconstruct(
+            successor,
+            episode_id="episode:p6b-recovery-strong",
+            cue_text="blue notebook table",
+            config=ReconstructionConfig(
+                max_details=2,
+                minimum_detail_score=0.525,
+            ),
+        )
+        self.assertIn(
+            f"{successor.trace_id}:detail:notebook",
+            weak_cue.omitted_detail_refs,
+        )
+        self.assertIn(
+            f"{successor.trace_id}:detail:notebook",
+            strong_cue.included_detail_refs,
+        )
+
+    def test_p6b_detail_state_and_operation_survive_restart(self):
+        trace = self.trace_with_two_details()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-persist",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+            policy=ReconsolidationPolicy(
+                max_detail_accessibility_loss=0.20,
+            ),
+        )
+        assert successor is not None
+        self.assertEqual(len(decision.detail_operations), 1)
+
+        restored = TraceVersionLedger.from_json(ledger.stable_json())
+        restored_successor = restored.latest(trace.trace_lineage_id)
+        self.assertEqual(restored_successor, successor)
+        self.assertEqual(
+            restored.transition_audit(successor.trace_id)["detail_operations"],
+            [dataclasses.asdict(decision.detail_operations[0])],
+        )
+
+    def test_p6b_ledger_rejects_fabricated_detail_state_transition(self):
+        trace = self.trace_with_two_details()
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6b-forged-detail-state",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                detail_drift_enabled=True,
+                interference_strength=1.0,
+            ),
+            policy=ReconsolidationPolicy(
+                max_detail_accessibility_loss=0.20,
+            ),
+        )
+        valid = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert valid is not None
+
+        notebook = valid.detail_state("detail:notebook")
+        forged_states = tuple(
+            (
+                TraceDetailState(
+                    detail_id=state.detail_id,
+                    retention=state.retention,
+                    accessibility=max(0.0, state.accessibility - 0.10),
+                    temporal_confidence=state.temporal_confidence,
+                    association_strength=state.association_strength,
+                    parent_state_fingerprint=state.parent_state_fingerprint,
+                )
+                if state.detail_id == notebook.detail_id
+                else state
+            )
+            for state in valid.detail_states
+        )
+        forged = MemoryTrace(
+            subject_id=valid.subject_id,
+            version=valid.version,
+            protected_evidence=valid.protected_evidence,
+            gist=valid.gist,
+            details=valid.details,
+            detail_states=forged_states,
+            temporal_cues=valid.temporal_cues,
+            actor_refs=valid.actor_refs,
+            object_refs=valid.object_refs,
+            encoding_affect=valid.encoding_affect,
+            source_cues=valid.source_cues,
+            strength=valid.strength,
+            accessibility=valid.accessibility,
+            familiarity=valid.familiarity,
+            rehearsal_count=valid.rehearsal_count,
+            retrieval_count=valid.retrieval_count,
+            competing_trace_ids=valid.competing_trace_ids,
+            parent_trace_id=valid.parent_trace_id,
+            reconsolidation_decision_fingerprint=valid.reconsolidation_decision_fingerprint,
+            reconsolidation_event_id=valid.reconsolidation_event_id,
+        )
+        with self.assertRaises(ValueError):
+            ledger.append_successor(
+                parent=trace,
+                successor=forged,
+                decision=decision,
+            )
 
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
