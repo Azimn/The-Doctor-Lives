@@ -830,6 +830,43 @@ class ReconsolidationTests(unittest.TestCase):
         self.assertTrue(audit["eligible"])
         self.assertTrue(audit["operations"])
 
+    def test_ledger_rejects_missing_persisted_trace_identity(self):
+        trace = self.trace(label="missing-trace-id")
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        payload = json.loads(ledger.stable_json())
+        payload["traces"][0].pop("trace_id")
+        corrupted = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(corrupted)
+
+    def test_ledger_rejects_noncanonical_persisted_numeric_types(self):
+        trace = self.trace(label="typed-ledger")
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+
+        version_payload = json.loads(ledger.stable_json())
+        version_payload["traces"][0]["version"] = True
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(
+                json.dumps(
+                    version_payload,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+            )
+
+        strength_payload = json.loads(ledger.stable_json())
+        strength_payload["traces"][0]["strength"] = "0.3"
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(
+                json.dumps(
+                    strength_payload,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+            )
+
     def test_persisted_transition_audit_corruption_fails_closed(self):
         trace = self.trace(label="audit-corruption")
         ledger = TraceVersionLedger()
@@ -848,7 +885,6 @@ class ReconsolidationTests(unittest.TestCase):
         )
         assert successor is not None
 
-        import json
         payload = json.loads(ledger.stable_json())
         payload["transitions"][0]["decision"]["operations"][0]["new_value"] += 0.01
         corrupted = json.dumps(payload, sort_keys=True, separators=(",", ":"))
