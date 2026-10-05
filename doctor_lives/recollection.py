@@ -133,6 +133,76 @@ class DetailAvailability(StrEnum):
     SUPPRESSED = "suppressed"
 
 
+class OmissionCause(StrEnum):
+    """Auditable reason an existing detail did not enter a P4 reconstruction."""
+
+    BELOW_RETRIEVAL_THRESHOLD = "below_retrieval_threshold"
+    CUE_MISMATCH = "cue_mismatch"
+    CAPACITY_LIMITED = "capacity_limited"
+
+
+class TemporalPrecision(StrEnum):
+    PRECISE = "precise"
+    APPROXIMATE = "approximate"
+    UNCERTAIN = "uncertain"
+
+
+class ContextAssociation(StrEnum):
+    STRONG = "strong"
+    MODERATE = "moderate"
+    WEAK = "weak"
+
+
+@dataclass(frozen=True)
+class DetailOmission:
+    """Exact P4 omission audit for one retained detail."""
+
+    detail_ref: str
+    cause: OmissionCause
+    score: float
+    cue_overlap: float
+    rank: int
+    retrieval_threshold: float
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.detail_ref, str) or not self.detail_ref.strip():
+            raise ValueError("detail_ref is required")
+        if not isinstance(self.cause, OmissionCause):
+            raise TypeError("cause must be OmissionCause")
+        object.__setattr__(self, "score", _unit(self.score, "score"))
+        object.__setattr__(
+            self,
+            "cue_overlap",
+            _unit(self.cue_overlap, "cue_overlap"),
+        )
+        if isinstance(self.rank, bool) or not isinstance(self.rank, int):
+            raise TypeError("rank must be a non-boolean integer")
+        if self.rank < 0:
+            raise ValueError("rank cannot be negative")
+        object.__setattr__(
+            self,
+            "retrieval_threshold",
+            _unit(self.retrieval_threshold, "retrieval_threshold"),
+        )
+
+
+@dataclass(frozen=True)
+class RecalledDetailState:
+    """Subject-plausible qualitative access state for an included P4 detail."""
+
+    detail_ref: str
+    temporal_precision: TemporalPrecision
+    contextual_association: ContextAssociation
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.detail_ref, str) or not self.detail_ref.strip():
+            raise ValueError("detail_ref is required")
+        if not isinstance(self.temporal_precision, TemporalPrecision):
+            raise TypeError("temporal_precision must be TemporalPrecision")
+        if not isinstance(self.contextual_association, ContextAssociation):
+            raise TypeError("contextual_association must be ContextAssociation")
+
+
 @dataclass(frozen=True)
 class TraceDetailState:
     """Versioned mnemonic state for a stable TraceDetail semantic identity.
@@ -467,6 +537,8 @@ class RecollectionCandidate:
     reconstructed_scene: str
     included_detail_refs: tuple[str, ...]
     omitted_detail_refs: tuple[str, ...]
+    detail_omissions: tuple[DetailOmission, ...]
+    recalled_detail_states: tuple[RecalledDetailState, ...]
     vividness: VividnessBand
     content_confidence: float
     fragmented: bool
@@ -500,6 +572,8 @@ def _make_recollection_candidate(
     reconstructed_scene: str,
     included_detail_refs: Iterable[str],
     omitted_detail_refs: Iterable[str],
+    detail_omissions: Iterable[DetailOmission],
+    recalled_detail_states: Iterable[RecalledDetailState],
     vividness: VividnessBand,
     content_confidence: float,
     fragmented: bool,
@@ -534,6 +608,24 @@ def _make_recollection_candidate(
         omitted_detail_refs,
         "omitted_detail_refs",
     )
+    normalized_omission_details = _tuple_of_type(
+        detail_omissions,
+        DetailOmission,
+        "detail_omissions",
+    )
+    if tuple(item.detail_ref for item in normalized_omission_details) != normalized_omitted:
+        raise ValueError(
+            "detail_omissions must exactly match omitted_detail_refs in canonical order"
+        )
+    normalized_recalled_states = _tuple_of_type(
+        recalled_detail_states,
+        RecalledDetailState,
+        "recalled_detail_states",
+    )
+    if tuple(item.detail_ref for item in normalized_recalled_states) != normalized_included:
+        raise ValueError(
+            "recalled_detail_states must exactly match included_detail_refs in order"
+        )
     normalized_operations = _tuple_of_strings(
         reconstruction_operations,
         "reconstruction_operations",
@@ -557,6 +649,8 @@ def _make_recollection_candidate(
         "reconstructed_scene": reconstructed_scene,
         "included_detail_refs": normalized_included,
         "omitted_detail_refs": normalized_omitted,
+        "detail_omissions": [asdict(item) for item in normalized_omission_details],
+        "recalled_detail_states": [asdict(item) for item in normalized_recalled_states],
         "vividness": vividness.value,
         "content_confidence": normalized_confidence,
         "fragmented": fragmented,
@@ -578,6 +672,8 @@ def _make_recollection_candidate(
         ("reconstructed_scene", reconstructed_scene),
         ("included_detail_refs", normalized_included),
         ("omitted_detail_refs", normalized_omitted),
+        ("detail_omissions", normalized_omission_details),
+        ("recalled_detail_states", normalized_recalled_states),
         ("vividness", vividness),
         ("content_confidence", normalized_confidence),
         ("fragmented", fragmented),
@@ -603,7 +699,11 @@ def _vividness(score: float) -> VividnessBand:
     return VividnessBand.VIVID
 
 
-def _detail_score(detail: TraceDetail, cue_tokens: set[str], trace: MemoryTrace) -> float:
+def _detail_metrics(
+    detail: TraceDetail,
+    cue_tokens: set[str],
+    trace: MemoryTrace,
+) -> tuple[float, float]:
     detail_tokens = _tokens(detail.text) | {
         token.lower() for token in detail.cue_terms
     }
@@ -619,9 +719,26 @@ def _detail_score(detail: TraceDetail, cue_tokens: set[str], trace: MemoryTrace)
         + 0.10 * overlap * state.association_strength
     )
     # Strong matching cues retain a recovery path even after accessibility
-    # weakens. P6B therefore models forgetting as reduced accessibility rather
-    # than destructive deletion of the retained semantic detail.
-    return max(0.0, min(1.0, base + 0.35 * overlap))
+    # weakens. P6B/P6C model forgetting as degraded access rather than
+    # destructive deletion of retained semantic content.
+    score = max(0.0, min(1.0, base + 0.35 * overlap))
+    return score, overlap
+
+
+def _temporal_precision(state: TraceDetailState) -> TemporalPrecision:
+    if state.temporal_confidence >= 0.75:
+        return TemporalPrecision.PRECISE
+    if state.temporal_confidence >= 0.40:
+        return TemporalPrecision.APPROXIMATE
+    return TemporalPrecision.UNCERTAIN
+
+
+def _contextual_association(state: TraceDetailState) -> ContextAssociation:
+    if state.association_strength >= 0.75:
+        return ContextAssociation.STRONG
+    if state.association_strength >= 0.40:
+        return ContextAssociation.MODERATE
+    return ContextAssociation.WEAK
 
 
 def reconstruct_recollection(
@@ -652,12 +769,11 @@ def reconstruct_recollection(
     ordered = tuple(trace_by_id[trace_id] for trace_id in episode.candidate_trace_ids)
     cue_tokens = _tokens(episode.cue_text)
 
-    ranked_details: list[tuple[float, int, TraceDetail]] = []
+    ranked_details: list[tuple[float, int, TraceDetail, float]] = []
     for trace_index, trace in enumerate(ordered):
         for detail in trace.details:
-            ranked_details.append(
-                (_detail_score(detail, cue_tokens, trace), trace_index, detail)
-            )
+            score, overlap = _detail_metrics(detail, cue_tokens, trace)
+            ranked_details.append((score, trace_index, detail, overlap))
     ranked_details.sort(
         key=lambda item: (item[0], -item[1], item[2].detail_id),
         reverse=True,
@@ -671,22 +787,77 @@ def reconstruct_recollection(
     included = eligible[: config.max_details]
     included_detail_refs = tuple(
         f"{ordered[trace_index].trace_id}:{detail.detail_id}"
-        for _, trace_index, detail in included
-    )
-    all_detail_refs = tuple(
-        f"{trace.trace_id}:{detail.detail_id}"
-        for trace in ordered
-        for detail in trace.details
+        for _, trace_index, detail, _ in included
     )
     included_set = set(included_detail_refs)
-    omitted_detail_refs = tuple(
-        detail_ref for detail_ref in all_detail_refs if detail_ref not in included_set
+    rank_by_ref = {
+        f"{ordered[trace_index].trace_id}:{detail.detail_id}": (
+            rank,
+            score,
+            overlap,
+        )
+        for rank, (score, trace_index, detail, overlap) in enumerate(ranked_details)
+    }
+
+    detail_omissions: list[DetailOmission] = []
+    for trace in ordered:
+        for detail in trace.details:
+            detail_ref = f"{trace.trace_id}:{detail.detail_id}"
+            if detail_ref in included_set:
+                continue
+            rank, score, overlap = rank_by_ref[detail_ref]
+            if score >= config.minimum_detail_score:
+                cause = OmissionCause.CAPACITY_LIMITED
+            elif cue_tokens and overlap == 0.0:
+                cause = OmissionCause.CUE_MISMATCH
+            else:
+                cause = OmissionCause.BELOW_RETRIEVAL_THRESHOLD
+            detail_omissions.append(
+                DetailOmission(
+                    detail_ref=detail_ref,
+                    cause=cause,
+                    score=score,
+                    cue_overlap=overlap,
+                    rank=rank,
+                    retrieval_threshold=config.minimum_detail_score,
+                )
+            )
+    omitted_detail_refs = tuple(item.detail_ref for item in detail_omissions)
+
+    recalled_detail_states = tuple(
+        RecalledDetailState(
+            detail_ref=f"{ordered[trace_index].trace_id}:{detail.detail_id}",
+            temporal_precision=_temporal_precision(
+                ordered[trace_index].detail_state(detail.detail_id)
+            ),
+            contextual_association=_contextual_association(
+                ordered[trace_index].detail_state(detail.detail_id)
+            ),
+        )
+        for _, trace_index, detail, _ in included
     )
 
     gist_parts = [trace.gist.strip().rstrip(".") for trace in ordered]
     detail_parts = [item[2].text.strip().rstrip(".") for item in included]
     scene_parts = gist_parts + detail_parts
     reconstructed_scene = ". ".join(part for part in scene_parts if part) + "."
+    if any(
+        item.temporal_precision is TemporalPrecision.UNCERTAIN
+        for item in recalled_detail_states
+    ):
+        reconstructed_scene += " The timing feels uncertain."
+    elif any(
+        item.temporal_precision is TemporalPrecision.APPROXIMATE
+        for item in recalled_detail_states
+    ):
+        reconstructed_scene += " The timing feels approximate."
+    if any(
+        item.contextual_association is ContextAssociation.WEAK
+        for item in recalled_detail_states
+    ):
+        reconstructed_scene += (
+            " Some details feel weakly connected to the surrounding context."
+        )
 
     average_quality = sum(
         (trace.strength + trace.accessibility + trace.familiarity) / 3.0
@@ -737,6 +908,8 @@ def reconstruct_recollection(
         reconstructed_scene=reconstructed_scene,
         included_detail_refs=included_detail_refs,
         omitted_detail_refs=omitted_detail_refs,
+        detail_omissions=tuple(detail_omissions),
+        recalled_detail_states=recalled_detail_states,
         vividness=vividness,
         content_confidence=content_confidence,
         fragmented=bool(omitted_detail_refs),
