@@ -317,6 +317,7 @@ class CausalAuditHarness:
         intervention: AuditIntervention,
         *,
         prelude: Callable[[PretoriusBrain], None] | None = None,
+        admit_stimulus: bool = True,
     ) -> dict[str, Any]:
         clone = self._clone_seed(intervention.name)
         brain = PretoriusBrain(clone)
@@ -334,13 +335,23 @@ class CausalAuditHarness:
         before = self._state_snapshot(brain)
 
         with self._runtime_patches(brain, disabled):
-            ingestion = brain.ingest(stimulus)
-            spontaneous = ingestion["thought"] is not None
-            decision = (
-                ingestion["thought"]
-                if ingestion["thought"] is not None
-                else brain.think("causal_audit_forced", decision_text=stimulus.text)
-            )
+            if admit_stimulus:
+                ingestion = brain.ingest(stimulus)
+                spontaneous = ingestion["thought"] is not None
+                decision = (
+                    ingestion["thought"]
+                    if ingestion["thought"] is not None
+                    else brain.think("causal_audit_forced", decision_text=stimulus.text)
+                )
+            else:
+                # Audit existing state without admitting the probe as new lived history.
+                # This prevents a matched history lesion from being masked by creating
+                # the same fresh autobiographical record after the lesion in both clones.
+                ingestion = {"admitted": False, "thought": None}
+                spontaneous = False
+                decision = brain.think(
+                    "causal_audit_existing_state", decision_text=stimulus.text
+                )
 
         request = brain.render_request(stimulus.text).to_dict()
         retrieval = self._latest_retrieval_audit(brain)
@@ -473,6 +484,35 @@ class CausalAuditHarness:
         return {
             "schema": "the-doctor-lives.causal-pair.v1",
             "mechanism": intervention.name,
+            "intact": intact,
+            "lesion": lesion,
+            "comparison": self.compare_traces(intact, lesion),
+        }
+
+    def run_existing_state_pair(
+        self,
+        stimulus: Experience,
+        intervention: AuditIntervention,
+    ) -> dict[str, Any]:
+        """Matched lesion over preexisting state without admitting the probe."""
+        intact = self._run_condition(
+            stimulus,
+            AuditIntervention(name=f"{intervention.name}:existing-state:intact"),
+            admit_stimulus=False,
+        )
+        lesion = self._run_condition(
+            stimulus,
+            intervention,
+            admit_stimulus=False,
+        )
+        if intact["source_state_digest"] != lesion["source_state_digest"]:
+            raise AssertionError("matched causal pair did not begin from identical source store state")
+        if intact["source_neural_sha256"] != lesion["source_neural_sha256"]:
+            raise AssertionError("matched causal pair did not begin from identical neural checkpoint")
+        return {
+            "schema": "the-doctor-lives.causal-pair.v1",
+            "mechanism": intervention.name,
+            "probe_admitted_as_lived_memory": False,
             "intact": intact,
             "lesion": lesion,
             "comparison": self.compare_traces(intact, lesion),
