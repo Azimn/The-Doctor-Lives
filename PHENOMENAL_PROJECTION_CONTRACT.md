@@ -539,7 +539,7 @@ Source monitoring is a distinct deterministic mechanism downstream of P4, not ra
 
 The supported P5 graph is:
 
-verified RecollectionCandidate + SourceMonitoringCues -> SourceMonitoringDecision -> canonical recollection PhenomenalEvent -> P3 awareness arbitration
+verified RecollectionCandidate + SourceMonitoringCues -> SourceMonitoringDecision -> FinalizedRecollection -> canonical LATENT PhenomenalEvent -> P3 awareness arbitration
 
 `SourceMonitoringCues` is the privilege boundary for subjective source inference. It may contain only psychologically plausible evidence such as retrieval fluency, perceptual richness, temporal/spatial coherence, contextual compatibility, familiarity, trace accessibility, rehearsal frequency, imagination/reconstruction exposure, competing-source strength, cue match, social-communication signature, textual signature, inferential signature, and dreamlike discontinuity.
 
@@ -568,6 +568,8 @@ P5 initially uses deterministic weighted evidence rather than stochastic false-m
 
 The finalization stage receives the verified P4 candidate, the matching SourceMonitoringDecision, and a separate engineer-only `RecollectionFinalizationContext`. Objective provenance is available only at this finalization/audit layer and is not passed into the source-monitor scoring mechanism.
 
+Canonical P5 finalization produces a factory-controlled `FinalizedRecollection` attestation. It contains the exact LATENT PhenomenalEvent, candidate ID/digest, P5 decision fingerprint, finalization-context fingerprint, and a deterministic finalization fingerprint. The wrapper is an engineer/audit artifact, not subject-facing content. A bare PhenomenalEvent carrying matching lineage IDs is not equivalent to a verified P5 finalization.
+
 Finalization must:
 - reject a decision bound to a different candidate or candidate digest;
 - verify the stored cue snapshot still matches its cue fingerprint;
@@ -579,7 +581,8 @@ Finalization must:
 - keep source certainty and remembered-content certainty semantically independent;
 - obtain remembered-content certainty from a separate subject-level mechanism or an explicit neutral/default value in finalization; never copy source certainty into content certainty and never map P4 implementation `content_confidence` directly into subjective certainty;
 - begin that event at `LATENT` awareness so P3 remains the only awareness-arbitration gate;
-- retain candidate ID, full candidate digest, source-monitor decision fingerprint, and retrieval-episode fingerprint in engineer-visible lineage.
+- produce a factory-controlled FinalizedRecollection attestation binding the exact event and finalization context;
+- retain candidate ID, full candidate digest, source-monitor decision fingerprint, retrieval-episode fingerprint, and finalization fingerprint in engineer-visible lineage.
 
 P5 must support:
 - correct attribution under strong source-consistent cues;
@@ -605,7 +608,9 @@ Acceptance:
 - vividness is not treated as a synonym for livedness;
 - default/no-evidence cues yield UNKNOWN;
 - final canonical recollection content remains fixed across matched source-attribution conditions;
-- final recollection enters P3 only after P5 finalization.
+- direct FinalizedRecollection construction fails closed;
+- a manually constructed PhenomenalEvent with copied P4/P5 IDs is not accepted downstream as proof of P5 finalization;
+- final recollection enters P3 only through the event inside the P5 FinalizedRecollection artifact.
 
 ### P6 - reconsolidation
 
@@ -613,7 +618,8 @@ P6 evolves memory by producing immutable successor trace snapshots after verifie
 
 The initial P6 graph is:
 
-verified P5 recollection PhenomenalEvent
+verified P5 FinalizedRecollection
+-> its canonical LATENT PhenomenalEvent
 -> P3 AwarenessDecision
 -> ReconsolidationContext
 -> ReconsolidationDecision
@@ -624,11 +630,14 @@ P6 consumes the complete upstream causal chain:
 - exact prior MemoryTrace snapshot;
 - verified P4 RecollectionCandidate;
 - verified P5 SourceMonitoringDecision;
-- the actual P3 AwarenessDecision for that finalized recollection;
+- the factory-controlled P5 FinalizedRecollection attesting the exact latent event;
+- the actual P3 AwarenessDecision for that exact finalized recollection;
 - explicit ReconsolidationContext and bounded ReconsolidationPolicy.
 
 Initial P6 eligibility is deliberately conservative:
 - the canonical P6 boundary accepts the factory-controlled P3 AwarenessDecision produced by AwarenessRouter.route(), not a bare PhenomenalEvent carrying an awareness label;
+- P6 also requires the factory-controlled P5 FinalizedRecollection artifact and verifies that P3 routed exactly its canonical event, differing only in awareness assignment;
+- copied candidate IDs, P5 decision fingerprints, or provenance references on a separately constructed PhenomenalEvent are insufficient;
 - direct fabrication of an AwarenessDecision through the supported public constructor is rejected;
 - the P3 decision must be CONSCIOUS or FOCAL; LATENT/PRECONSCIOUS access cannot rewrite memory;
 - reactivation must exceed a minimum threshold;
@@ -668,8 +677,8 @@ TraceVersionLedger is the P6 version and transition-audit authority for the isol
 - reject backward versions;
 - reject appending from a non-latest parent (silent fork);
 - preserve exact ancestry;
-- persist the complete canonical ReconsolidationDecision audit record for every successor;
-- verify the persisted decision fingerprint and parent/lineage/event binding on append and load;
+- persist the complete canonical ReconsolidationDecision audit record for every successor, including the P5 finalization fingerprint;
+- verify the persisted decision fingerprint and parent/lineage/finalization/event binding on append and load;
 - verify the successor's changed fields exactly match the audited ReconsolidationOperations and that blocked structural fields remain identical to the parent;
 - support deterministic serialization and local atomic save/load restart continuity;
 - reject persisted traces missing canonical trace_id or trace_lineage_id;
@@ -681,6 +690,8 @@ P6 acceptance:
 - old trace snapshot digest is identical before and after reconsolidation;
 - protected archive/provenance is immutable;
 - a bare PhenomenalEvent cannot substitute for a P3 AwarenessDecision at the canonical P6 boundary;
+- P6 rejects a genuine P3 AwarenessDecision when it routed a manually forged recollection event rather than the event attested by FinalizedRecollection;
+- P6 rejects a genuine P3 AwarenessDecision from a different P5 finalization context even when candidate ID/digest and P5 decision are unchanged;
 - a canonical P3 AwarenessDecision cannot be fabricated directly outside AwarenessRouter.route();
 - LATENT and PRECONSCIOUS P3 AwarenessDecisions produce no successor;
 - a P5 source misattribution with reconsolidation disabled produces no successor;
@@ -698,6 +709,8 @@ P6 acceptance:
 - a P6 decision made from FOCAL/CONSCIOUS access cannot later be applied using the same occurrence demoted to LATENT/PRECONSCIOUS access;
 - a later P4 retrieval can differ because of the successor trace while protected evidence remains unchanged;
 - P6 decision corruption fails closed before successor construction.
+
+Trace identity schema boundary: P6 added parent/reconsolidation ancestry fields to MemoryTrace snapshot identity. Therefore experimental pre-P6 trace IDs are not assumed compatible with the P6 ledger. The isolated P6 ledger uses schema `uppb-p6-ledger-v2`; live integration requires an explicit migration policy rather than silently treating older trace IDs as current.
 
 Content distortion, false-detail incorporation, blended-trace reconsolidation, and source-cue rewriting remain downstream P6 extensions and require separate causal review before activation.
 
