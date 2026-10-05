@@ -430,6 +430,57 @@ def _bounded_delta(
     return min(max_delta, remaining * 0.25 * drive)
 
 
+def _bounded_loss(
+    current: float,
+    *,
+    floor: float,
+    max_loss: float,
+    drive: float,
+) -> float:
+    available = max(0.0, current - floor)
+    return min(max_loss, available * 0.25 * drive)
+
+
+def _degrade_detail_state(
+    state: TraceDetailState,
+    *,
+    field_name: str,
+    loss: float,
+    reason_code: str,
+) -> tuple[DetailStateOperation, TraceDetailState]:
+    if field_name not in {
+        "accessibility",
+        "temporal_confidence",
+        "association_strength",
+    }:
+        raise ValueError("unsupported detail-state degradation field")
+    if loss < 0.0:
+        raise ValueError("detail-state loss cannot be negative")
+    old_value = float(getattr(state, field_name))
+    new_value = max(0.0, old_value - float(loss))
+    kwargs = {
+        "detail_id": state.detail_id,
+        "retention": state.retention,
+        "accessibility": state.accessibility,
+        "temporal_confidence": state.temporal_confidence,
+        "association_strength": state.association_strength,
+        "parent_state_fingerprint": state.state_fingerprint,
+    }
+    kwargs[field_name] = new_value
+    successor = TraceDetailState(**kwargs)
+    operation = DetailStateOperation(
+        detail_id=state.detail_id,
+        field_name=field_name,
+        old_value=old_value,
+        new_value=new_value,
+        delta=new_value - old_value,
+        old_state_fingerprint=state.state_fingerprint,
+        new_state_fingerprint=successor.state_fingerprint,
+        reason_code=reason_code,
+    )
+    return operation, successor
+
+
 def _decision_payload(
     *,
     old_trace: MemoryTrace,
