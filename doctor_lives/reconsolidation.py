@@ -690,6 +690,82 @@ def _verify_serialized_decision_audit(audit: dict[str, Any]) -> None:
         raise ValueError("ineligible decision cannot produce a successor")
 
 
+def _verify_successor_matches_audit(
+    *,
+    parent: MemoryTrace,
+    successor: MemoryTrace,
+    audit: dict[str, Any],
+) -> None:
+    """Prove the successor is exactly the state transition described by audit."""
+
+    expected_values: dict[str, float | int] = {
+        "strength": parent.strength,
+        "accessibility": parent.accessibility,
+        "familiarity": parent.familiarity,
+        "retrieval_count": parent.retrieval_count,
+        "rehearsal_count": parent.rehearsal_count,
+    }
+    seen_fields: set[str] = set()
+    for raw in audit.get("operations", []):
+        if not isinstance(raw, dict):
+            raise ValueError("reconsolidation operation audit must be an object")
+        field_name = raw.get("field_name")
+        if field_name not in _ALLOWED_OPERATION_FIELDS:
+            raise ValueError("decision audit contains unsupported operation field")
+        if field_name in seen_fields:
+            raise ValueError("decision audit contains duplicate operation field")
+        seen_fields.add(field_name)
+        old_value = raw.get("old_value")
+        new_value = raw.get("new_value")
+        delta = raw.get("delta")
+        if isinstance(old_value, bool) or not isinstance(old_value, (int, float)):
+            raise ValueError("decision operation old_value must be numeric")
+        if isinstance(new_value, bool) or not isinstance(new_value, (int, float)):
+            raise ValueError("decision operation new_value must be numeric")
+        if isinstance(delta, bool) or not isinstance(delta, (int, float)):
+            raise ValueError("decision operation delta must be numeric")
+        if float(expected_values[field_name]) != float(old_value):
+            raise ValueError(
+                f"decision operation old value does not match parent for {field_name}"
+            )
+        if abs((float(new_value) - float(old_value)) - float(delta)) > 1e-12:
+            raise ValueError("decision operation delta is inconsistent")
+        expected_values[field_name] = new_value
+
+    for field_name, expected_value in expected_values.items():
+        actual = getattr(successor, field_name)
+        if isinstance(expected_value, int) and field_name in {
+            "retrieval_count",
+            "rehearsal_count",
+        }:
+            if actual != int(expected_value):
+                raise ValueError(
+                    f"successor {field_name} does not match decision operations"
+                )
+        elif abs(float(actual) - float(expected_value)) > 1e-12:
+            raise ValueError(
+                f"successor {field_name} does not match decision operations"
+            )
+
+    for field_name in (
+        "protected_evidence",
+        "gist",
+        "details",
+        "temporal_cues",
+        "actor_refs",
+        "object_refs",
+        "encoding_affect",
+        "source_cues",
+        "competing_trace_ids",
+    ):
+        if getattr(successor, field_name) != getattr(parent, field_name):
+            raise ValueError(
+                f"initial P6 successor illegally changed {field_name}"
+            )
+
+
+
+
 class TraceVersionLedger:
     """Local deterministic version and transition-audit ledger.
 
@@ -768,6 +844,12 @@ class TraceVersionLedger:
             raise ValueError("decision audit parent version mismatch")
         if successor.trace_id in self._decision_audit:
             raise ValueError("successor transition audit already exists")
+
+        _verify_successor_matches_audit(
+            parent=parent,
+            successor=successor,
+            audit=audit,
+        )
 
         history.append(successor)
         self._decision_audit[successor.trace_id] = _stable_json(audit)
