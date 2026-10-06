@@ -3072,6 +3072,69 @@ class ReconsolidationTests(unittest.TestCase):
         self.assertIn("sometime that evening", later.reconstructed_scene)
         self.assertNotIn("8:15 PM", later.reconstructed_scene)
 
+    def test_p6d_generalized_representation_does_not_retrieve_through_hidden_exact_time(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        before = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-exact-cue-before",
+            cue_text="8 15 PM",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.80,
+            ),
+        )
+        self.assertEqual(len(before.included_detail_refs), 1)
+
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-exact-cue-generalize",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+
+        after = self.reconstruct(
+            successor,
+            episode_id="episode:p6d-exact-cue-after",
+            cue_text="8 15 PM",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.80,
+            ),
+        )
+        self.assertEqual(after.included_detail_refs, ())
+        self.assertEqual(len(after.detail_omissions), 1)
+        self.assertNotIn("8:15 PM", after.reconstructed_scene)
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
