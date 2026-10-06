@@ -51,3 +51,10 @@ The repository carries tools/gate1_fresh_install_validate.py and a dedicated gat
 Runtime validation installs a Python audit hook that rejects socket operations. Dependency acquisition occurs before that guard is enabled; the core mind is then exercised with networking unavailable to Python runtime code.
 
 This CI path is an equivalent clean user environment for repository regression evidence, but it does not replace the separate physical or equivalent end-user-machine validation required by Issue #8.
+
+
+## Executed historical-state migration
+
+Gate 1 also regenerates a historical state directory by running exact commit 7be60ed46add7c74359b322cc033aa7dfabb08e8, not by constructing only a current-code SQL fixture. The historical code creates lived and external memories, a commitment, Deep-History v1 state, and a recurrent checkpoint. The current candidate then opens that same directory, performs the supported schema migration, adopts the canonical evidence authority, applies Deep-History v2 migration, saves, and restarts.
+
+The validation records the source commit, source and target Deep-History versions, source and target SQLite schema versions, retained migration snapshot identity, canonical evidence manifest version, preserved lived and external evidence classes, preserved commitment, and restart idempotency.

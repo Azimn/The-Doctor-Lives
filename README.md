@@ -93,3 +93,6 @@ The recurrent NPZ checkpoint now uses an atomic write-validate-replace path. New
 The repository now has a dedicated non-editable wheel-install workflow, gate1-fresh-install-validation. It installs the built wheel into an isolated virtual environment, runs outside the source checkout, forbids Python socket activity during runtime validation, creates real production-size Pretorius state, ingests lived experience, persists relationship and commitment state, verifies render read-only behavior and deterministic retrieval, saves, restarts, and emits a preserved JSON validation artifact.
 
 The separate physical or equivalent fresh end-user-machine procedure remains documented in GATE1_FRESH_MACHINE_VALIDATION.md. CI evidence is supporting evidence and does not by itself close Issue #8.
+
+
+Gate 1 migration CI now also executes exact historical commit 7be60ed46add7c74359b322cc033aa7dfabb08e8 to generate a real older Pretorius state directory, then opens and migrates that directory with the current candidate. This supplements the deterministic SQL schema fixture with an actual old-code state-generation path.
