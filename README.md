@@ -51,3 +51,21 @@ Run the production audit with:
 `python tools/run_causal_architecture_audit.py`
 
 This phase deliberately does **not** add the proposed state-to-policy bridge. That change is only eligible after the audit establishes which existing state variables fail to influence decisions under matched tests.
+
+
+## Definitive convergence target
+
+`The-Doctor-Lives` is the canonical integration repository for Pretorius. Earlier repositories such as `Pretorius-Neural-Network`, `Persona-and-Jelly-Sandwich-`, DUCK, and related experiments are mechanism donors and evidence archives, not competing production brains. New validated mechanisms are transplanted here behind versioned gates rather than creating another parallel Pretorius implementation.
+
+The Neural Convergence v0.5 candidate keeps the accepted v0.4 recurrent path reproducible by default while adding an opt-in convergence profile. That profile brings the already tested donor mechanisms into the existing 4,096-unit substrate: Oja-style competitive recurrent plasticity, affect/novelty/threat-conditioned plasticity gating, provisional synaptic tags with delayed outcome capture, sparse recurrent-gain homeostasis, intrinsic excitability regulation, persisted correlated endogenous variation, and restart-safe persistence of the new neural state. The same opt-in profile also adds signed input channels for Pretorius's felt fatigue, affiliation, competence, autonomy, curiosity, and continuity state, so subjective interoception can directly perturb recurrent dynamics without exposing hidden homeostatic actuals. It remains the same recurrent substrate and the same action vocabulary. No second planner, second identity store, or second neural brain is introduced.
+
+The convergence work is intentionally separate from the active UPPB branch. UPPB can continue proving reconstructive subjective-memory semantics without silently changing live PretoriusBrain behavior, while Neural Convergence proves the lower-level substrate migration against the accepted v0.4 baseline.
+
+
+## v0.5 release candidate
+
+The v0.5 release candidate is the single review target for current Pretorius development. It consolidates the accepted v0.4 state-to-policy line, the complete green UPPB P0 through P6D implementation, and Neural Convergence v0.5 in one tree.
+
+The production default remains the accepted v0.4 behavioral path. This is intentional. UPPB P0 through P6D is included as a complete standalone subsystem but is not yet allowed to replace the live subject-facing Pretorius path. Neural Convergence is included behind the explicit `NEURAL_CONVERGENCE_CONFIG` profile while the legacy v0.4 neural configuration remains the control. The release candidate therefore gives the assessor one repository state that contains all validated work without silently promoting an experimental mechanism past its evidence gate.
+
+The release provenance and assessor scope are recorded in `ASSESSOR_REVIEW.md`.
