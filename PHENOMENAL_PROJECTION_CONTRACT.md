@@ -937,12 +937,19 @@ The P6D ledger uses schema `uppb-p6d-ledger-v5`. Restart verification:
 - requires the successor representation tuple to equal the audited transition exactly;
 - rejects missing/tampered representation fingerprints and fabricated successor representation state.
 
+P6D retrieval privilege boundary:
+- P4 retrieval scoring must use the current subjective detail rendering for structured temporal content;
+- after generalization, exact-only temporal tokens from stable TraceDetail truth must not remain available as a hidden retrieval oracle;
+- stable cue metadata is filtered for exact-only temporal tokens once the subjective representation has generalized;
+- external re-learning of an exact value would require an explicit perceptual/learning path, not silent access to protected semantic truth.
+
 P6D behavioral acceptance:
 - matched lesion holds parent trace, P4 candidate, P5 decision, P5 finalization, P3 awareness decision, and P6A scalar operations fixed while changing only `temporal_generalization_enabled`;
 - disabled condition retains the exact subjective representation;
 - enabled condition creates one reviewed temporal-generalization proposal/operation;
 - protected evidence and stable TraceDetail remain bit-for-bit identical;
 - later P4 recollection uses the generalized structured phrase and no longer exposes the exact temporal phrase;
+- an exact-time-only retrieval cue cannot regain access by matching hidden stable TraceDetail text after generalization;
 - the later candidate binds the new subjective-representation fingerprint;
 - source attribution does not change the distortion proposal or representation operation;
 - high temporal confidence does not generalize;
