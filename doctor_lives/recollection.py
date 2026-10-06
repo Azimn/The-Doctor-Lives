@@ -106,12 +106,88 @@ class ProtectedEvidenceRef:
 
 
 @dataclass(frozen=True)
+class TemporalSemantics:
+    """Structured temporal truth for a detail with an allowed generalization."""
+
+    exact_phrase: str
+    generalized_phrase: str
+
+    def __post_init__(self) -> None:
+        for name in ("exact_phrase", "generalized_phrase"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} is required")
+        if self.exact_phrase == self.generalized_phrase:
+            raise ValueError("temporal generalization must differ from exact phrase")
+
+
+class SubjectiveTemporalForm(StrEnum):
+    """Current subject-memory representation of a structured temporal slot."""
+
+    EXACT = "exact"
+    GENERALIZED = "generalized"
+
+
+@dataclass(frozen=True)
+class SubjectiveDetailRepresentation:
+    """Versioned subject-memory representation separate from semantic truth."""
+
+    detail_id: str
+    temporal_form: SubjectiveTemporalForm = SubjectiveTemporalForm.EXACT
+    parent_representation_fingerprint: str | None = None
+    distortion_candidate_fingerprint: str | None = None
+    representation_fingerprint: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.detail_id, str) or not self.detail_id.strip():
+            raise ValueError("detail_id is required")
+        if not isinstance(self.temporal_form, SubjectiveTemporalForm):
+            raise TypeError("temporal_form must be SubjectiveTemporalForm")
+        for name in (
+            "parent_representation_fingerprint",
+            "distortion_candidate_fingerprint",
+        ):
+            value = getattr(self, name)
+            if value is not None and (
+                not isinstance(value, str) or not value.strip()
+            ):
+                raise ValueError(f"{name} must be a non-blank string or None")
+        if self.temporal_form is SubjectiveTemporalForm.EXACT:
+            if self.parent_representation_fingerprint is not None:
+                raise ValueError("initial exact representation cannot claim a parent")
+            if self.distortion_candidate_fingerprint is not None:
+                raise ValueError("initial exact representation cannot claim distortion")
+        else:
+            if self.parent_representation_fingerprint is None:
+                raise ValueError("generalized representation requires a parent")
+            if self.distortion_candidate_fingerprint is None:
+                raise ValueError("generalized representation requires distortion lineage")
+        payload = {
+            "detail_id": self.detail_id,
+            "temporal_form": self.temporal_form.value,
+            "parent_representation_fingerprint": (
+                self.parent_representation_fingerprint
+            ),
+            "distortion_candidate_fingerprint": (
+                self.distortion_candidate_fingerprint
+            ),
+        }
+        object.__setattr__(
+            self,
+            "representation_fingerprint",
+            "subjective_detail_" + _stable_sha256(payload)[:24],
+        )
+
+
+@dataclass(frozen=True)
 class TraceDetail:
-    """One retained detail in an immutable memory-trace snapshot."""
+    """One retained semantic detail in an immutable memory-trace snapshot."""
 
     detail_id: str
     text: str
     cue_terms: tuple[str, ...] = ()
+    temporal_semantics: TemporalSemantics | None = None
+    temporal_template: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.detail_id, str) or not self.detail_id.strip():
@@ -123,6 +199,36 @@ class TraceDetail:
             "cue_terms",
             _tuple_of_strings(self.cue_terms, "cue_terms"),
         )
+        if (self.temporal_semantics is None) != (self.temporal_template is None):
+            raise ValueError(
+                "temporal_semantics and temporal_template must be supplied together"
+            )
+        if self.temporal_semantics is not None:
+            if not isinstance(self.temporal_semantics, TemporalSemantics):
+                raise TypeError("temporal_semantics must be TemporalSemantics")
+            if (
+                not isinstance(self.temporal_template, str)
+                or not self.temporal_template.strip()
+            ):
+                raise ValueError("temporal_template is required")
+            if self.temporal_template.count("{temporal}") != 1:
+                raise ValueError(
+                    "temporal_template must contain exactly one {temporal} slot"
+                )
+            remainder = self.temporal_template.replace("{temporal}", "")
+            if "{" in remainder or "}" in remainder:
+                raise ValueError("temporal_template may contain only {temporal}")
+            rendered_exact = self.temporal_template.format(
+                temporal=self.temporal_semantics.exact_phrase
+            )
+            if rendered_exact != self.text:
+                raise ValueError(
+                    "temporal_template with exact phrase must reproduce detail text"
+                )
+
+    @property
+    def semantic_fingerprint(self) -> str:
+        return "trace_detail_" + _stable_sha256(asdict(self))[:24]
 
 
 class DetailAvailability(StrEnum):
@@ -193,6 +299,8 @@ class RecalledDetailState:
     detail_ref: str
     temporal_precision: TemporalPrecision
     contextual_association: ContextAssociation
+    subjective_representation_fingerprint: str
+    temporal_form: SubjectiveTemporalForm
 
     def __post_init__(self) -> None:
         if not isinstance(self.detail_ref, str) or not self.detail_ref.strip():
@@ -201,6 +309,13 @@ class RecalledDetailState:
             raise TypeError("temporal_precision must be TemporalPrecision")
         if not isinstance(self.contextual_association, ContextAssociation):
             raise TypeError("contextual_association must be ContextAssociation")
+        if (
+            not isinstance(self.subjective_representation_fingerprint, str)
+            or not self.subjective_representation_fingerprint.strip()
+        ):
+            raise ValueError("subjective_representation_fingerprint is required")
+        if not isinstance(self.temporal_form, SubjectiveTemporalForm):
+            raise TypeError("temporal_form must be SubjectiveTemporalForm")
 
 
 @dataclass(frozen=True)
@@ -275,6 +390,7 @@ class MemoryTrace:
     gist: str
     details: tuple[TraceDetail, ...] = ()
     detail_states: tuple[TraceDetailState, ...] = ()
+    subjective_representations: tuple[SubjectiveDetailRepresentation, ...] = ()
     temporal_cues: tuple[str, ...] = ()
     actor_refs: tuple[str, ...] = ()
     object_refs: tuple[str, ...] = ()
@@ -335,6 +451,41 @@ class MemoryTrace:
                 "detail_states must exactly match details in canonical detail order"
             )
         object.__setattr__(self, "detail_states", normalized_states)
+
+        normalized_representations = _tuple_of_type(
+            self.subjective_representations,
+            SubjectiveDetailRepresentation,
+            "subjective_representations",
+        )
+        if not normalized_representations and normalized_details:
+            normalized_representations = tuple(
+                SubjectiveDetailRepresentation(detail_id=detail.detail_id)
+                for detail in normalized_details
+            )
+        representation_ids = tuple(
+            item.detail_id for item in normalized_representations
+        )
+        if representation_ids != detail_ids:
+            raise ValueError(
+                "subjective_representations must exactly match details in canonical order"
+            )
+        for detail, representation in zip(
+            normalized_details,
+            normalized_representations,
+        ):
+            if (
+                representation.temporal_form
+                is SubjectiveTemporalForm.GENERALIZED
+                and detail.temporal_semantics is None
+            ):
+                raise ValueError(
+                    "generalized representation requires structured temporal semantics"
+                )
+        object.__setattr__(
+            self,
+            "subjective_representations",
+            normalized_representations,
+        )
         for field_name in (
             "temporal_cues",
             "actor_refs",
@@ -390,6 +541,9 @@ class MemoryTrace:
             "gist": self.gist,
             "details": [asdict(detail) for detail in self.details],
             "detail_states": [asdict(state) for state in self.detail_states],
+            "subjective_representations": [
+                asdict(item) for item in self.subjective_representations
+            ],
             "temporal_cues": self.temporal_cues,
             "actor_refs": self.actor_refs,
             "object_refs": self.object_refs,
@@ -410,6 +564,17 @@ class MemoryTrace:
             "trace_id",
             "trace_" + _stable_sha256(snapshot_payload)[:24],
         )
+
+    def subjective_representation(
+        self,
+        detail_id: str,
+    ) -> SubjectiveDetailRepresentation:
+        if not isinstance(detail_id, str) or not detail_id.strip():
+            raise ValueError("detail_id is required")
+        for representation in self.subjective_representations:
+            if representation.detail_id == detail_id:
+                return representation
+        raise KeyError(detail_id)
 
     def detail_state(self, detail_id: str) -> TraceDetailState:
         if not isinstance(detail_id, str) or not detail_id.strip():
