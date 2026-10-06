@@ -42,6 +42,22 @@ def _stable_sha256(value: Any) -> str:
     return hashlib.sha256(_stable_json(value).encode("utf-8")).hexdigest()
 
 
+def _subjective_gist_exposes_temporal_specificity(
+    gist: str,
+    specificity_tokens: frozenset[str],
+) -> bool:
+    """Return True when always-recalled gist would leak suppressed exact time."""
+
+    if not isinstance(gist, str):
+        raise TypeError("gist must be a string")
+    gist_tokens = {
+        token.lower()
+        for token in __import__("re").findall(r"[A-Za-z0-9']+", gist)
+        if token
+    }
+    return bool(gist_tokens & specificity_tokens)
+
+
 class DistortionKind(StrEnum):
     """Reviewed classes of subjective-memory transformation."""
 
@@ -63,8 +79,11 @@ class DistortionCandidate:
     p4_candidate_id: str
     p4_candidate_digest: str
     recalled_detail_ref: str
+    recalled_temporal_precision: TemporalPrecision
+    recalled_representation_fingerprint: str
     driver_state_fingerprint: str
     driver_temporal_confidence: float
+    max_temporal_confidence_threshold: float
     exact_temporal_phrase: str
     generalized_temporal_phrase: str
     output_temporal_form: SubjectiveTemporalForm
@@ -150,7 +169,7 @@ def propose_temporal_generalization(
     candidate: RecollectionCandidate,
     detail_id: str,
     max_temporal_confidence: float,
-    rule_version: str = "uppb-p6d-temporal-v1",
+    rule_version: str = "uppb-p6d-temporal-v2",
 ) -> DistortionCandidate | None:
     """Propose structured exact-time -> broader-time generalization.
 
@@ -189,6 +208,13 @@ def propose_temporal_generalization(
     if detail is None:
         raise KeyError(detail_id)
     if detail.temporal_semantics is None:
+        return None
+    if not detail.temporal_semantics.specificity_tokens:
+        return None
+    if _subjective_gist_exposes_temporal_specificity(
+        old_trace.gist,
+        detail.temporal_semantics.specificity_tokens,
+    ):
         return None
     representation = old_trace.subjective_representation(detail_id)
     if representation.temporal_form is not SubjectiveTemporalForm.EXACT:
@@ -231,8 +257,13 @@ def propose_temporal_generalization(
         p4_candidate_id=candidate.candidate_id,
         p4_candidate_digest=candidate.candidate_digest,
         recalled_detail_ref=detail_ref,
+        recalled_temporal_precision=recalled.temporal_precision,
+        recalled_representation_fingerprint=(
+            recalled.subjective_representation_fingerprint
+        ),
         driver_state_fingerprint=state.state_fingerprint,
         driver_temporal_confidence=state.temporal_confidence,
+        max_temporal_confidence_threshold=threshold,
         exact_temporal_phrase=detail.temporal_semantics.exact_phrase,
         generalized_temporal_phrase=(
             detail.temporal_semantics.generalized_phrase
@@ -261,6 +292,39 @@ def verify_distortion_candidate(distortion: DistortionCandidate) -> None:
         SubjectiveTemporalForm,
     ):
         raise TypeError("distortion output temporal form is invalid")
+    if distortion.kind is not DistortionKind.TEMPORAL_GENERALIZATION:
+        raise ValueError("unsupported distortion kind")
+    if distortion.output_temporal_form is not SubjectiveTemporalForm.GENERALIZED:
+        raise ValueError("temporal distortion must generalize temporal form")
+    if distortion.recalled_temporal_precision is not TemporalPrecision.UNCERTAIN:
+        raise ValueError("temporal generalization requires uncertain P4 recall")
+    if (
+        not isinstance(distortion.recalled_representation_fingerprint, str)
+        or not distortion.recalled_representation_fingerprint.strip()
+    ):
+        raise ValueError("recalled representation fingerprint is required")
+    if (
+        distortion.recalled_representation_fingerprint
+        != distortion.parent_representation_fingerprint
+    ):
+        raise ValueError("recalled representation does not match distortion parent")
+    for name in (
+        "driver_temporal_confidence",
+        "max_temporal_confidence_threshold",
+    ):
+        value = getattr(distortion, name)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise TypeError(f"{name} must be numeric")
+        normalized = float(value)
+        if not 0.0 <= normalized <= 1.0:
+            raise ValueError(f"{name} must be between 0 and 1")
+    if (
+        float(distortion.driver_temporal_confidence)
+        > float(distortion.max_temporal_confidence_threshold)
+    ):
+        raise ValueError("driver temporal confidence exceeds distortion threshold")
+    if not isinstance(distortion.rule_version, str) or not distortion.rule_version.strip():
+        raise ValueError("distortion rule_version is required")
 
 
 def build_representation_operation(
