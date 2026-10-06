@@ -814,9 +814,49 @@ def evaluate_reconsolidation(
             else "no_p6c_association_target"
         )
 
+    distortion_candidates: list[DistortionCandidate] = []
+    representation_operations: list[RepresentationOperation] = []
+    distortion_reasons: list[str] = []
+
+    # P6D: structured content generalization is downstream of an actually
+    # recalled, consciously processed P4/P5/P3 chain. It does not use source
+    # attribution or omission cause as a driver.
+    if not context.temporal_generalization_enabled:
+        distortion_reasons.append("temporal_generalization_disabled")
+    elif not eligible:
+        distortion_reasons.append(
+            "base_reconsolidation_ineligible_for_distortion"
+        )
+    else:
+        for detail in old_trace.details:
+            proposal = propose_temporal_generalization(
+                old_trace=old_trace,
+                candidate=candidate,
+                detail_id=detail.detail_id,
+                max_temporal_confidence=(
+                    policy.max_temporal_confidence_for_generalization
+                ),
+            )
+            if proposal is None:
+                continue
+            operation, _ = build_representation_operation(
+                old_trace=old_trace,
+                distortion=proposal,
+            )
+            distortion_candidates.append(proposal)
+            representation_operations.append(operation)
+        distortion_reasons.append(
+            "temporal_generalization_proposed"
+            if distortion_candidates
+            else "no_p6d_temporal_generalization_target"
+        )
+
     operations_tuple = tuple(operations)
     detail_operations_tuple = tuple(detail_operations)
     detail_reasons_tuple = tuple(detail_reasons)
+    distortion_candidates_tuple = tuple(distortion_candidates)
+    representation_operations_tuple = tuple(representation_operations)
+    distortion_reasons_tuple = tuple(distortion_reasons)
     reasons_tuple = tuple(reasons)
     payload = _decision_payload(
         old_trace=old_trace,
@@ -831,6 +871,9 @@ def evaluate_reconsolidation(
         operations=operations_tuple,
         detail_operations=detail_operations_tuple,
         detail_reason_codes=detail_reasons_tuple,
+        distortion_candidates=distortion_candidates_tuple,
+        representation_operations=representation_operations_tuple,
+        distortion_reason_codes=distortion_reasons_tuple,
         reason_codes=reasons_tuple,
     )
 
@@ -865,6 +908,9 @@ def evaluate_reconsolidation(
         ("operations", operations_tuple),
         ("detail_operations", detail_operations_tuple),
         ("detail_reason_codes", detail_reasons_tuple),
+        ("distortion_candidates", distortion_candidates_tuple),
+        ("representation_operations", representation_operations_tuple),
+        ("distortion_reason_codes", distortion_reasons_tuple),
         ("reason_codes", reasons_tuple),
     ):
         object.__setattr__(decision, name, value)
