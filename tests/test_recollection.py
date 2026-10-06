@@ -82,6 +82,60 @@ class RecollectionArchitectureTests(unittest.TestCase):
             subject_state_digest="sha256:subject-state",
         )
 
+    def test_structured_temporal_semantics_must_reproduce_exact_truth(self):
+        detail = TraceDetail(
+            detail_id="detail:clock",
+            text="Henry stood beside the apparatus at 8:15 PM",
+            cue_terms=("henry", "apparatus"),
+            temporal_semantics=TemporalSemantics(
+                exact_phrase="at 8:15 PM",
+                generalized_phrase="sometime that evening",
+            ),
+            temporal_template="Henry stood beside the apparatus {temporal}",
+        )
+        self.assertEqual(
+            detail.semantic_fingerprint,
+            detail.semantic_fingerprint,
+        )
+        with self.assertRaises(ValueError):
+            TraceDetail(
+                detail_id="detail:bad-clock",
+                text="Henry stood beside the apparatus at 8:15 PM",
+                temporal_semantics=TemporalSemantics(
+                    exact_phrase="at 8:15 PM",
+                    generalized_phrase="sometime that evening",
+                ),
+                temporal_template="Henry was elsewhere {temporal}",
+            )
+
+    def test_subjective_detail_representation_is_factory_controlled(self):
+        with self.assertRaises(TypeError):
+            SubjectiveDetailRepresentation(
+                detail_id="detail:clock",
+                temporal_form=SubjectiveTemporalForm.GENERALIZED,
+                parent_representation_fingerprint="subjective_detail_parent",
+                distortion_candidate_fingerprint="distortion_fake",
+            )
+
+    def test_memory_trace_creates_exact_root_subjective_representations(self):
+        trace = self.trace()
+        self.assertEqual(
+            tuple(item.detail_id for item in trace.subjective_representations),
+            tuple(item.detail_id for item in trace.details),
+        )
+        self.assertTrue(
+            all(
+                item.temporal_form is SubjectiveTemporalForm.EXACT
+                for item in trace.subjective_representations
+            )
+        )
+        self.assertTrue(
+            all(
+                item.parent_representation_fingerprint is None
+                for item in trace.subjective_representations
+            )
+        )
+
     def test_memory_trace_is_deeply_immutable_snapshot(self):
         trace = self.trace()
         self.assertEqual(len(trace.details), 2)
