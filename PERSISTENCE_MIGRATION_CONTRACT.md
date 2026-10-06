@@ -31,3 +31,14 @@ The representative migration test preserves an existing lived record, relationsh
 ## Gate boundary
 
 This contract addresses the state-schema migration and rollback portion of production Gate 1. Fresh physical user-machine validation remains a separate environment-level acceptance requirement.
+
+
+## Recurrent checkpoint crash consistency
+
+The recurrent checkpoint is a separately versioned persistence surface. New checkpoints carry checkpoint_schema_version = 1. The accepted RC1 checkpoint shape, which did not contain this field, is treated as legacy schema 0 and remains loadable only through explicit structural validation.
+
+Checkpoint saves are write-validate-replace operations. The runtime writes a temporary file in the checkpoint directory, flushes and fsyncs it, validates the complete NPZ structure, then atomically replaces the active checkpoint. An interrupted or invalid write cannot replace the previous valid checkpoint.
+
+Loading validates required arrays, neuron-dependent shapes, recurrent CSR structure, motor shapes, eligibility alignment, optional convergence-state shapes, configuration JSON, and schema compatibility before constructing the recurrent substrate. Truncated checkpoints and future checkpoint schemas fail closed.
+
+This hardening preserves the accepted neural configuration mismatch boundary. It does not promote Neural Convergence or change the production-default recurrent profile.

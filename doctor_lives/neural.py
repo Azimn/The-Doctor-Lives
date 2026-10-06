@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from scipy import sparse
+
+NEURAL_CHECKPOINT_SCHEMA_VERSION = 1
+
+
+class NeuralCheckpointError(RuntimeError):
+    """Raised when recurrent state cannot be loaded or saved safely."""
+
 
 ACTIONS = [
     "explore", "challenge", "approach", "avoid", "cooperate",
@@ -521,75 +529,217 @@ class PretoriusRecurrentSubstrate:
     def save(self, path: str | Path) -> None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(
-            path,
-            v=self.v,
-            rate=self.rate,
-            bias=self.bias,
-            w_data=self.W.data,
-            w_indices=self.W.indices,
-            w_indptr=self.W.indptr,
-            excitatory=self.excitatory,
-            eligibility=self.eligibility,
-            synaptic_tags=self.synaptic_tags,
-            noise_state=self.noise_state,
-            state_gain=np.asarray([self.state_gain], dtype=np.float64),
-            homeostasis_events=np.asarray([self.homeostasis_events], dtype=np.int64),
-            last_recurrent_gain=np.asarray([
-                np.nan if self.last_recurrent_gain is None else self.last_recurrent_gain
-            ], dtype=np.float64),
-            motor_w=self.motor_w,
-            motor_b=self.motor_b,
-            cfg_json=np.asarray(json.dumps(self.cfg)),
-            rng_state_json=np.asarray(json.dumps(self.rng.bit_generator.state)),
-            tick=np.asarray([self.tick], dtype=np.int64),
-        )
+        temp = path.with_name(f".{path.name}.tmp")
+        temp.unlink(missing_ok=True)
+        try:
+            with temp.open("wb") as handle:
+                np.savez_compressed(
+                    handle,
+                    checkpoint_schema_version=np.asarray(
+                        [NEURAL_CHECKPOINT_SCHEMA_VERSION], dtype=np.int64
+                    ),
+                    v=self.v,
+                    rate=self.rate,
+                    bias=self.bias,
+                    w_data=self.W.data,
+                    w_indices=self.W.indices,
+                    w_indptr=self.W.indptr,
+                    excitatory=self.excitatory,
+                    eligibility=self.eligibility,
+                    synaptic_tags=self.synaptic_tags,
+                    noise_state=self.noise_state,
+                    state_gain=np.asarray([self.state_gain], dtype=np.float64),
+                    homeostasis_events=np.asarray(
+                        [self.homeostasis_events], dtype=np.int64
+                    ),
+                    last_recurrent_gain=np.asarray([
+                        np.nan if self.last_recurrent_gain is None
+                        else self.last_recurrent_gain
+                    ], dtype=np.float64),
+                    motor_w=self.motor_w,
+                    motor_b=self.motor_b,
+                    cfg_json=np.asarray(json.dumps(self.cfg, sort_keys=True)),
+                    rng_state_json=np.asarray(
+                        json.dumps(self.rng.bit_generator.state, sort_keys=True)
+                    ),
+                    tick=np.asarray([self.tick], dtype=np.int64),
+                )
+                handle.flush()
+                os.fsync(handle.fileno())
+            self._validate_checkpoint_file(temp)
+            os.replace(temp, path)
+        except Exception as exc:
+            temp.unlink(missing_ok=True)
+            if isinstance(exc, NeuralCheckpointError):
+                raise
+            raise NeuralCheckpointError(
+                f"failed to save recurrent checkpoint atomically: {path}"
+            ) from exc
+
+    @classmethod
+    def _validate_checkpoint_file(cls, path: Path) -> dict[str, Any]:
+        required = {
+            "v", "rate", "bias", "w_data", "w_indices", "w_indptr",
+            "excitatory", "eligibility", "motor_w", "motor_b",
+            "cfg_json", "tick",
+        }
+        try:
+            with np.load(path, allow_pickle=False) as payload:
+                missing = sorted(required - set(payload.files))
+                if missing:
+                    raise NeuralCheckpointError(
+                        f"recurrent checkpoint is missing required fields: {missing}"
+                    )
+                schema_version = (
+                    int(payload["checkpoint_schema_version"][0])
+                    if "checkpoint_schema_version" in payload.files
+                    else 0
+                )
+                if schema_version > NEURAL_CHECKPOINT_SCHEMA_VERSION:
+                    raise NeuralCheckpointError(
+                        "recurrent checkpoint schema is newer than this runtime: "
+                        f"{schema_version} > {NEURAL_CHECKPOINT_SCHEMA_VERSION}"
+                    )
+                if schema_version < 0:
+                    raise NeuralCheckpointError(
+                        f"invalid recurrent checkpoint schema version: {schema_version}"
+                    )
+                try:
+                    cfg = json.loads(str(payload["cfg_json"].item()))
+                except Exception as exc:
+                    raise NeuralCheckpointError(
+                        "recurrent checkpoint cfg_json is invalid"
+                    ) from exc
+                if not isinstance(cfg, dict):
+                    raise NeuralCheckpointError(
+                        "recurrent checkpoint cfg_json must decode to an object"
+                    )
+                n = int(cfg.get("neurons", 0))
+                if n <= 0:
+                    raise NeuralCheckpointError(
+                        "recurrent checkpoint has invalid neuron count"
+                    )
+                arrays = {
+                    name: np.asarray(payload[name]).copy()
+                    for name in payload.files
+                }
+        except NeuralCheckpointError:
+            raise
+        except Exception as exc:
+            raise NeuralCheckpointError(
+                f"recurrent checkpoint is unreadable or truncated: {path}"
+            ) from exc
+
+        for name in ("v", "rate", "bias", "excitatory"):
+            if arrays[name].shape != (n,):
+                raise NeuralCheckpointError(
+                    f"recurrent checkpoint {name} shape {arrays[name].shape!r} "
+                    f"does not match neuron count {n}"
+                )
+        if arrays["w_indptr"].shape != (n + 1,):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR indptr length does not match neuron count"
+            )
+        if arrays["w_data"].ndim != 1 or arrays["w_indices"].ndim != 1:
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR data and indices must be one-dimensional"
+            )
+        if len(arrays["w_data"]) != len(arrays["w_indices"]):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR data and indices lengths differ"
+            )
+        if arrays["eligibility"].shape != arrays["w_data"].shape:
+            raise NeuralCheckpointError(
+                "recurrent checkpoint eligibility shape does not match recurrent weights"
+            )
+        if arrays["motor_w"].shape != (len(ACTIONS), n):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint motor_w shape is incompatible"
+            )
+        if arrays["motor_b"].shape != (len(ACTIONS),):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint motor_b shape is incompatible"
+            )
+        if arrays["tick"].size != 1:
+            raise NeuralCheckpointError(
+                "recurrent checkpoint tick must contain exactly one value"
+            )
+        if (
+            "synaptic_tags" in arrays
+            and arrays["synaptic_tags"].shape != arrays["w_data"].shape
+        ):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint synaptic_tags shape does not match recurrent weights"
+            )
+        if "noise_state" in arrays and arrays["noise_state"].shape != (n,):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint noise_state shape is incompatible"
+            )
+        return {
+            "cfg": cfg,
+            "arrays": arrays,
+            "schema_version": schema_version,
+        }
 
     @classmethod
     def load(cls, path: str | Path) -> "PretoriusRecurrentSubstrate":
-        payload = np.load(Path(path), allow_pickle=False)
-        cfg = json.loads(str(payload["cfg_json"].item()))
-        net = cls(cfg)
-        net.v = payload["v"].astype(np.float32, copy=True)
-        net.rate = payload["rate"].astype(np.float32, copy=True)
-        net.bias = payload["bias"].astype(np.float32, copy=True)
-        net.W = sparse.csr_matrix(
-            (payload["w_data"], payload["w_indices"], payload["w_indptr"]),
-            shape=(net.n, net.n),
-            dtype=np.float32,
-        )
-        net.post_idx = np.repeat(np.arange(net.n, dtype=np.int32), np.diff(net.W.indptr))
-        net.pre_idx = net.W.indices.astype(np.int32, copy=False)
-        net.excitatory = payload["excitatory"].astype(bool, copy=True)
-        net.eligibility = payload["eligibility"].astype(np.float32, copy=True)
-        net.synaptic_tags = (
-            payload["synaptic_tags"].astype(np.float32, copy=True)
-            if "synaptic_tags" in payload.files
-            else np.zeros_like(net.W.data, dtype=np.float32)
-        )
-        net.noise_state = (
-            payload["noise_state"].astype(np.float32, copy=True)
-            if "noise_state" in payload.files
-            else np.zeros(net.n, dtype=np.float32)
-        )
-        net.state_gain = (
-            float(payload["state_gain"][0]) if "state_gain" in payload.files else 1.0
-        )
-        net.homeostasis_events = (
-            int(payload["homeostasis_events"][0])
-            if "homeostasis_events" in payload.files
-            else 0
-        )
-        if "last_recurrent_gain" in payload.files:
-            saved_gain = float(payload["last_recurrent_gain"][0])
-            net.last_recurrent_gain = None if np.isnan(saved_gain) else saved_gain
-        else:
-            net.last_recurrent_gain = None
-        net.motor_w = payload["motor_w"].astype(np.float32, copy=True)
-        net.motor_b = payload["motor_b"].astype(np.float32, copy=True)
-        if "rng_state_json" in payload.files:
-            net.rng.bit_generator.state = json.loads(str(payload["rng_state_json"].item()))
-        net.tick = int(payload["tick"][0])
-        net.last_diagnostics = {}
-        return net
+        checkpoint_path = Path(path)
+        validated = cls._validate_checkpoint_file(checkpoint_path)
+        cfg = dict(validated["cfg"])
+        arrays = validated["arrays"]
+        try:
+            net = cls(cfg)
+            net.v = arrays["v"].astype(np.float32, copy=True)
+            net.rate = arrays["rate"].astype(np.float32, copy=True)
+            net.bias = arrays["bias"].astype(np.float32, copy=True)
+            net.W = sparse.csr_matrix(
+                (arrays["w_data"], arrays["w_indices"], arrays["w_indptr"]),
+                shape=(net.n, net.n),
+                dtype=np.float32,
+            )
+            net.post_idx = np.repeat(
+                np.arange(net.n, dtype=np.int32), np.diff(net.W.indptr)
+            )
+            net.pre_idx = net.W.indices.astype(np.int32, copy=False)
+            net.excitatory = arrays["excitatory"].astype(bool, copy=True)
+            net.eligibility = arrays["eligibility"].astype(np.float32, copy=True)
+            net.synaptic_tags = (
+                arrays["synaptic_tags"].astype(np.float32, copy=True)
+                if "synaptic_tags" in arrays
+                else np.zeros_like(net.W.data, dtype=np.float32)
+            )
+            net.noise_state = (
+                arrays["noise_state"].astype(np.float32, copy=True)
+                if "noise_state" in arrays
+                else np.zeros(net.n, dtype=np.float32)
+            )
+            net.state_gain = (
+                float(arrays["state_gain"][0]) if "state_gain" in arrays else 1.0
+            )
+            net.homeostasis_events = (
+                int(arrays["homeostasis_events"][0])
+                if "homeostasis_events" in arrays else 0
+            )
+            if "last_recurrent_gain" in arrays:
+                saved_gain = float(arrays["last_recurrent_gain"][0])
+                net.last_recurrent_gain = (
+                    None if np.isnan(saved_gain) else saved_gain
+                )
+            else:
+                net.last_recurrent_gain = None
+            net.motor_w = arrays["motor_w"].astype(np.float32, copy=True)
+            net.motor_b = arrays["motor_b"].astype(np.float32, copy=True)
+            if "rng_state_json" in arrays:
+                net.rng.bit_generator.state = json.loads(
+                    str(arrays["rng_state_json"].item())
+                )
+            net.tick = int(np.asarray(arrays["tick"]).reshape(-1)[0])
+            net.last_diagnostics = {}
+            return net
+        except NeuralCheckpointError:
+            raise
+        except Exception as exc:
+            raise NeuralCheckpointError(
+                f"recurrent checkpoint failed semantic reconstruction: {checkpoint_path}"
+            ) from exc
 

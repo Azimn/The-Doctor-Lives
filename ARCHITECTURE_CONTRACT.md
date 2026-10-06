@@ -61,3 +61,8 @@ Protected-evidence references used by future live UPPB integration must resolve 
 ## Persistent state migration boundary
 
 BrainStore now treats schema_version as an authority boundary. Existing state is inspected before SCHEMA is applied. Supported older schemas receive a content-addressed pre-migration snapshot, explicit migration, structural validation, and lineage record. Any failure restores the snapshot. A future schema, malformed version, or current-version database missing required structure is rejected before repair can silently reinterpret it.
+
+
+## Recurrent checkpoint persistence
+
+The recurrent substrate checkpoint is a versioned persistence surface. Saving occurs through a temporary sibling file followed by structural validation and atomic replacement. Loading validates checkpoint schema, required arrays, CSR dimensions, motor dimensions, and configuration before reconstruction. The legacy RC1 checkpoint format remains accepted as schema 0; future checkpoint formats require an explicit migration.

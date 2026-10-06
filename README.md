@@ -83,3 +83,6 @@ This is the repository-side canonical-evidence portion of Issue #17 and Gate 1 i
 ## Gate 1 state-schema migration safety
 
 Long-lived SQLite state now checks its declared schema version before mutation. Supported older state is snapshotted through SQLite backup, migrated, structurally validated, and recorded in an append-only migration lineage. A failed migration restores the exact pre-migration snapshot. Future schemas, malformed versions, and partial current schemas fail closed rather than being rewritten to the runtime version. See PERSISTENCE_MIGRATION_CONTRACT.md.
+
+
+The recurrent NPZ checkpoint now uses an atomic write-validate-replace path. New checkpoints carry an explicit checkpoint schema marker, legacy RC1 checkpoints remain structurally validated and loadable, and truncated or future-schema checkpoints fail closed without overwriting the previous valid recurrent state.
