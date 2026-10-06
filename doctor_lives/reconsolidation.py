@@ -1529,6 +1529,15 @@ class TraceVersionLedger:
             raise ValueError(
                 "initial trace detail states cannot claim prior mnemonic parents"
             )
+        if any(
+            representation.temporal_form is not SubjectiveTemporalForm.EXACT
+            or representation.parent_representation_fingerprint is not None
+            or representation.distortion_candidate_fingerprint is not None
+            for representation in trace.subjective_representations
+        ):
+            raise ValueError(
+                "initial trace subjective representations must be exact roots"
+            )
         if trace.trace_lineage_id in self._history:
             raise ValueError("trace lineage is already registered")
         self._history[trace.trace_lineage_id] = [trace]
