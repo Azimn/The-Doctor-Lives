@@ -928,7 +928,9 @@ Each accepted proposal yields an immutable `RepresentationOperation` containing:
 
 The P6 reconsolidation decision binds both the complete DistortionCandidate and RepresentationOperation. Runtime application independently reconstructs the expected operation from the proposal before changing the successor representation.
 
-The P6D ledger uses schema `uppb-p6d-ledger-v5`. Restart verification:
+The P6D ledger uses schema `uppb-p6d-ledger-v5`. P6D adds subjective-representation state to MemoryTrace snapshot identity and structured temporal semantics to TraceDetail serialization, so experimental P6C/v4 trace IDs are not silently interchangeable with P6D/v5 trace IDs. Live integration requires an explicit migration/reconstruction policy rather than reinterpretation of older snapshots.
+
+Restart verification:
 - verifies the complete decision fingerprint;
 - recomputes every persisted distortion-candidate fingerprint;
 - binds distortion candidates to the exact P4 candidate and parent trace audit;
