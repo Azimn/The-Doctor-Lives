@@ -2962,6 +2962,116 @@ class ReconsolidationTests(unittest.TestCase):
             later_candidate.reconstructed_scene,
         )
 
+    def test_p6d_can_follow_audited_p6c_temporal_degradation(self):
+        current = self.trace_with_structured_time(
+            label="p6d-after-p6c",
+            temporal_confidence=0.45,
+        )
+        ledger = TraceVersionLedger()
+        ledger.register_initial(current)
+        policy = ReconsolidationPolicy(
+            max_temporal_confidence_loss=0.10,
+            temporal_confidence_floor=0.20,
+        )
+
+        for index in range(2):
+            omitted = self.reconstruct(
+                current,
+                episode_id=f"episode:p6d-p6c-degrade:{index}",
+                cue_text="unrelated signal",
+                config=ReconstructionConfig(
+                    max_details=1,
+                    minimum_detail_score=0.99,
+                ),
+            )
+            source_decision, finalized, awareness = (
+                self.finalized_from_candidate(omitted)
+            )
+            _, successor = reconsolidate_and_record(
+                ledger=ledger,
+                old_trace=current,
+                candidate=omitted,
+                source_decision=source_decision,
+                finalized_recollection=finalized,
+                awareness_decision=awareness,
+                context=ReconsolidationContext(
+                    enabled=True,
+                    reactivation_strength=0.95,
+                    prediction_error=0.65,
+                    emotional_activation=0.55,
+                    goal_relevance=0.65,
+                    explicit_rehearsal=True,
+                    temporal_drift_enabled=True,
+                    temporal_disorientation=1.0,
+                ),
+                policy=policy,
+            )
+            assert successor is not None
+            current = successor
+
+        self.assertLessEqual(
+            current.detail_state("detail:henry-time").temporal_confidence,
+            0.35,
+        )
+        self.assertIs(
+            current.subjective_representation(
+                "detail:henry-time"
+            ).temporal_form,
+            SubjectiveTemporalForm.EXACT,
+        )
+
+        recalled = self.reconstruct(
+            current,
+            episode_id="episode:p6d-after-p6c-recall",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIs(
+            recalled.recalled_detail_states[0].temporal_form,
+            SubjectiveTemporalForm.EXACT,
+        )
+        self.assertIs(
+            recalled.recalled_detail_states[0].temporal_precision,
+            TemporalPrecision.UNCERTAIN,
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            recalled
+        )
+        decision, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=current,
+            candidate=recalled,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+            policy=policy,
+        )
+        assert successor is not None
+        self.assertEqual(len(decision.distortion_candidates), 1)
+        self.assertIs(
+            successor.subjective_representation(
+                "detail:henry-time"
+            ).temporal_form,
+            SubjectiveTemporalForm.GENERALIZED,
+        )
+        later = self.reconstruct(
+            successor,
+            episode_id="episode:p6d-after-p6c-later",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIn("sometime that evening", later.reconstructed_scene)
+        self.assertNotIn("8:15 PM", later.reconstructed_scene)
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
