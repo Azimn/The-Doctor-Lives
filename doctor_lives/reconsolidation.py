@@ -142,7 +142,7 @@ class ReconsolidationContext:
     association_drift_enabled: bool = False
     context_mismatch: float = 0.0
     temporal_generalization_enabled: bool = False
-    rule_version: str = "uppb-p6d-v1"
+    rule_version: str = "uppb-p6d-v2"
 
     def __post_init__(self) -> None:
         if not isinstance(self.enabled, bool):
