@@ -43,6 +43,7 @@ from .recollection import (
     SubjectiveDetailRepresentation,
     SubjectiveTemporalForm,
     TemporalSemantics,
+    _make_subjective_detail_representation,
     TraceDetail,
     TraceDetailState,
 )
@@ -1256,7 +1257,7 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
             raise ValueError(
                 "persisted subjective representation must be an object"
             )
-        representation = SubjectiveDetailRepresentation(
+        representation = _make_subjective_detail_representation(
             detail_id=str(item["detail_id"]),
             temporal_form=SubjectiveTemporalForm(
                 str(item.get("temporal_form", "exact"))
@@ -1609,7 +1610,7 @@ def _verify_successor_matches_audit(
         ) > 1e-12:
             raise ValueError("distortion driver temporal confidence mismatch")
 
-        new_representation = SubjectiveDetailRepresentation(
+        new_representation = _make_subjective_detail_representation(
             detail_id=detail_id,
             temporal_form=SubjectiveTemporalForm.GENERALIZED,
             parent_representation_fingerprint=(
