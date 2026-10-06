@@ -512,6 +512,9 @@ def _decision_payload(
     operations: tuple[ReconsolidationOperation, ...],
     detail_operations: tuple[DetailStateOperation, ...],
     detail_reason_codes: tuple[str, ...],
+    distortion_candidates: tuple[DistortionCandidate, ...],
+    representation_operations: tuple[RepresentationOperation, ...],
+    distortion_reason_codes: tuple[str, ...],
     reason_codes: tuple[str, ...],
 ) -> dict[str, Any]:
     recollection_event = awareness_decision.event
@@ -539,6 +542,13 @@ def _decision_payload(
         "operations": [asdict(op) for op in operations],
         "detail_operations": [asdict(op) for op in detail_operations],
         "detail_reason_codes": detail_reason_codes,
+        "distortion_candidates": [
+            asdict(item) for item in distortion_candidates
+        ],
+        "representation_operations": [
+            asdict(item) for item in representation_operations
+        ],
+        "distortion_reason_codes": distortion_reason_codes,
         "reason_codes": reason_codes,
     }
 
