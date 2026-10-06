@@ -23,6 +23,7 @@ from .recollection import (
     SubjectiveTemporalForm,
     TemporalPrecision,
     _make_subjective_detail_representation,
+    _tokens,
 )
 
 
@@ -50,12 +51,7 @@ def _subjective_gist_exposes_temporal_specificity(
 
     if not isinstance(gist, str):
         raise TypeError("gist must be a string")
-    gist_tokens = {
-        token.lower()
-        for token in __import__("re").findall(r"[A-Za-z0-9']+", gist)
-        if token
-    }
-    return bool(gist_tokens & specificity_tokens)
+    return bool(_tokens(gist) & specificity_tokens)
 
 
 class DistortionKind(StrEnum):
