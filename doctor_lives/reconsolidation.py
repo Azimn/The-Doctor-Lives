@@ -1521,6 +1521,119 @@ def _verify_successor_matches_audit(
             "successor detail_states do not match audited detail operations"
         )
 
+    expected_representations = {
+        item.detail_id: item for item in parent.subjective_representations
+    }
+    distortion_by_fingerprint = {
+        str(item["distortion_fingerprint"]): item
+        for item in audit.get("distortion_candidates", [])
+    }
+    seen_representation_details: set[str] = set()
+    used_distortions: set[str] = set()
+    for raw in audit.get("representation_operations", []):
+        if not isinstance(raw, dict):
+            raise ValueError("representation operation audit must be an object")
+        detail_id = raw.get("detail_id")
+        if not isinstance(detail_id, str) or not detail_id.strip():
+            raise ValueError("representation operation requires detail_id")
+        if detail_id in seen_representation_details:
+            raise ValueError(
+                "decision audit contains duplicate representation operation"
+            )
+        seen_representation_details.add(detail_id)
+        if detail_id not in expected_representations:
+            raise ValueError(
+                "representation operation references unknown parent detail"
+            )
+        distortion_fingerprint = raw.get(
+            "distortion_candidate_fingerprint"
+        )
+        if not isinstance(distortion_fingerprint, str):
+            raise ValueError(
+                "representation operation requires distortion fingerprint"
+            )
+        distortion = distortion_by_fingerprint.get(distortion_fingerprint)
+        if distortion is None:
+            raise ValueError(
+                "representation operation references unknown distortion candidate"
+            )
+        if distortion_fingerprint in used_distortions:
+            raise ValueError("distortion candidate used more than once")
+        used_distortions.add(distortion_fingerprint)
+        if distortion.get("detail_id") != detail_id:
+            raise ValueError("distortion candidate detail mismatch")
+        parent_representation = expected_representations[detail_id]
+        if raw.get("old_representation_fingerprint") != (
+            parent_representation.representation_fingerprint
+        ):
+            raise ValueError("representation operation old fingerprint mismatch")
+        if distortion.get("parent_representation_fingerprint") != (
+            parent_representation.representation_fingerprint
+        ):
+            raise ValueError("distortion candidate representation parent mismatch")
+        if raw.get("old_temporal_form") != SubjectiveTemporalForm.EXACT.value:
+            raise ValueError("P6D operation must begin from exact temporal form")
+        if raw.get("new_temporal_form") != (
+            SubjectiveTemporalForm.GENERALIZED.value
+        ):
+            raise ValueError(
+                "P6D operation must end in generalized temporal form"
+            )
+        detail = next(
+            item for item in parent.details if item.detail_id == detail_id
+        )
+        if distortion.get("detail_semantic_fingerprint") != (
+            detail.semantic_fingerprint
+        ):
+            raise ValueError("distortion candidate semantic detail mismatch")
+        if detail.temporal_semantics is None:
+            raise ValueError(
+                "temporal distortion requires structured temporal semantics"
+            )
+        if distortion.get("exact_temporal_phrase") != (
+            detail.temporal_semantics.exact_phrase
+        ):
+            raise ValueError("distortion exact temporal phrase mismatch")
+        if distortion.get("generalized_temporal_phrase") != (
+            detail.temporal_semantics.generalized_phrase
+        ):
+            raise ValueError("distortion generalized temporal phrase mismatch")
+        parent_state = parent.detail_state(detail_id)
+        if distortion.get("driver_state_fingerprint") != (
+            parent_state.state_fingerprint
+        ):
+            raise ValueError("distortion driver state fingerprint mismatch")
+        if abs(
+            float(distortion.get("driver_temporal_confidence"))
+            - parent_state.temporal_confidence
+        ) > 1e-12:
+            raise ValueError("distortion driver temporal confidence mismatch")
+
+        new_representation = SubjectiveDetailRepresentation(
+            detail_id=detail_id,
+            temporal_form=SubjectiveTemporalForm.GENERALIZED,
+            parent_representation_fingerprint=(
+                parent_representation.representation_fingerprint
+            ),
+            distortion_candidate_fingerprint=distortion_fingerprint,
+        )
+        if raw.get("new_representation_fingerprint") != (
+            new_representation.representation_fingerprint
+        ):
+            raise ValueError("representation operation new fingerprint mismatch")
+        expected_representations[detail_id] = new_representation
+
+    if used_distortions != set(distortion_by_fingerprint):
+        raise ValueError("unused persisted distortion candidate")
+    expected_representation_tuple = tuple(
+        expected_representations[detail.detail_id]
+        for detail in parent.details
+    )
+    if successor.subjective_representations != expected_representation_tuple:
+        raise ValueError(
+            "successor subjective representations do not match audit"
+        )
+
     for field_name in (
         "protected_evidence",
         "gist",
