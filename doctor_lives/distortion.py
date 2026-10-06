@@ -242,6 +242,26 @@ def propose_temporal_generalization(
     )
 
 
+def verify_distortion_candidate(distortion: DistortionCandidate) -> None:
+    """Fail closed if a canonical distortion proposal was altered after creation."""
+
+    if not isinstance(distortion, DistortionCandidate):
+        raise TypeError("distortion must be DistortionCandidate")
+    payload = asdict(distortion)
+    stored_id = payload.pop("distortion_id")
+    stored_fingerprint = payload.pop("distortion_fingerprint")
+    expected = "distortion_" + _stable_sha256(payload)[:24]
+    if stored_fingerprint != expected or stored_id != expected:
+        raise ValueError("distortion candidate fingerprint mismatch")
+    if not isinstance(distortion.kind, DistortionKind):
+        raise TypeError("distortion candidate kind is invalid")
+    if not isinstance(
+        distortion.output_temporal_form,
+        SubjectiveTemporalForm,
+    ):
+        raise TypeError("distortion output temporal form is invalid")
+
+
 def build_representation_operation(
     *,
     old_trace: MemoryTrace,
@@ -249,8 +269,7 @@ def build_representation_operation(
 ) -> tuple[RepresentationOperation, SubjectiveDetailRepresentation]:
     """Build the exact representation transition authorized by a proposal."""
 
-    if not isinstance(distortion, DistortionCandidate):
-        raise TypeError("distortion must be DistortionCandidate")
+    verify_distortion_candidate(distortion)
     if distortion.old_trace_id != old_trace.trace_id:
         raise ValueError("distortion candidate trace ID mismatch")
     if distortion.old_trace_digest != old_trace.snapshot_digest:
