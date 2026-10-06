@@ -56,7 +56,7 @@ from .source_monitoring import (
 
 
 _RECONSOLIDATION_DECISION_FACTORY_TOKEN = object()
-_LEDGER_SCHEMA_VERSION = "uppb-p6d-ledger-v5"
+_LEDGER_SCHEMA_VERSION = "uppb-p6d-ledger-v6"
 _ALLOWED_OPERATION_FIELDS = {
     "strength",
     "accessibility",
@@ -987,6 +987,21 @@ def _verify_decision_integrity(
             raise ValueError("distortion candidate P4 ID mismatch")
         if distortion.p4_candidate_digest != candidate.candidate_digest:
             raise ValueError("distortion candidate P4 digest mismatch")
+        if (
+            distortion.max_temporal_confidence_threshold
+            != decision.policy.max_temporal_confidence_for_generalization
+        ):
+            raise ValueError("distortion candidate policy threshold mismatch")
+        if (
+            distortion.recalled_temporal_precision
+            is not TemporalPrecision.UNCERTAIN
+        ):
+            raise ValueError("distortion candidate recall precision mismatch")
+        if (
+            distortion.recalled_representation_fingerprint
+            != distortion.parent_representation_fingerprint
+        ):
+            raise ValueError("distortion candidate recalled representation mismatch")
         expected_operation, _ = build_representation_operation(
             old_trace=old_trace,
             distortion=distortion,
