@@ -848,7 +848,127 @@ P6C still does not permit:
 - source-cue rewriting;
 - blended/multi-trace reconsolidation.
 
-Constructive distortion remains downstream. Any future altered or false detail must carry explicit distortion provenance such as competing-trace intrusion, imagination exposure, suggestion, inference, or another separately reviewed causal mechanism.
+The P6C label `cue_mismatch` is an auditable observed retrieval condition, not proof that zero cue overlap was the unique counterfactual cause of failure. P6D must not use that label as direct provenance for content transformation.
+
+### P6D - structured subjective-memory generalization
+
+P6D introduces the first versioned change to remembered content without rewriting protected or stable semantic truth.
+
+The representation boundary is explicit:
+
+`ProtectedEvidence -> stable TraceDetail -> TraceDetailState -> P4 RecollectionCandidate -> DistortionCandidate -> reviewed RepresentationOperation -> successor SubjectiveDetailRepresentation -> later P4 recollection`
+
+P6D does not mutate `TraceDetail.text`.
+
+For the initial P6D gate, a detail may optionally provide structured `TemporalSemantics`:
+- exact temporal phrase;
+- approved coarser/generalized temporal phrase;
+- a single-slot temporal template.
+
+The template is validated at construction time: inserting the exact phrase must reproduce the immutable `TraceDetail.text` exactly. P6D therefore does not discover or replace timestamps through ad-hoc string parsing.
+
+Example stable semantic structure:
+- template: `Henry stood beside the apparatus {temporal}`
+- exact phrase: `at 8:15 PM`
+- generalized phrase: `sometime that evening`
+- immutable semantic text: `Henry stood beside the apparatus at 8:15 PM`
+
+A separate factory-controlled `SubjectiveDetailRepresentation` records how the subject currently tends to reconstruct that structured slot:
+- detail ID;
+- temporal form: `exact` or `generalized`;
+- immediate parent representation fingerprint;
+- distortion-candidate fingerprint;
+- deterministic representation fingerprint.
+
+Version-0/root traces receive exact representations automatically. A generalized representation cannot be created through the supported public constructor and must retain both parent and distortion lineage.
+
+The initial P6D transformation is only:
+- `TEMPORAL_GENERALIZATION`
+- `EXACT -> GENERALIZED`
+
+It cannot:
+- invent a new proposition;
+- accept arbitrary replacement prose;
+- reverse or repeatedly generalize an already generalized representation;
+- alter the stable detail, evidence, gist, retention, or source cues.
+
+A canonical `DistortionCandidate` is factory-controlled and may be proposed only when:
+- accepted P6A reconsolidation is eligible;
+- `temporal_generalization_enabled` is explicit;
+- the exact detail is included in the current verified P4 recollection rather than merely existing in storage;
+- the current subjective representation is still exact;
+- structured temporal semantics exist;
+- the detail's current temporal confidence is at or below the configured generalization threshold;
+- P4 qualitatively exposes that recalled detail as `TemporalPrecision.UNCERTAIN`;
+- the P4 recalled-detail state binds the exact current subjective-representation fingerprint;
+- the recollection is single-trace/non-blended under the current P6 restriction.
+
+The proposal binds:
+- exact old trace ID and digest;
+- exact semantic-detail fingerprint;
+- exact parent subjective-representation fingerprint;
+- exact P4 candidate ID and digest;
+- exact recalled detail ref;
+- exact mnemonic driver-state fingerprint and temporal-confidence value;
+- exact stable temporal phrase;
+- exact allowed generalized phrase;
+- output temporal form;
+- reason code and rule version;
+- deterministic distortion fingerprint.
+
+The source-monitoring decision is not an input to the distortion proposal. A memory feeling `LIVED`, `READ`, or another source category therefore cannot by itself manufacture generalized remembered content.
+
+Each accepted proposal yields an immutable `RepresentationOperation` containing:
+- detail ID;
+- distortion kind;
+- old/new temporal forms;
+- old/new subjective-representation fingerprints;
+- exact distortion-candidate fingerprint;
+- reason code.
+
+The P6 reconsolidation decision binds both the complete DistortionCandidate and RepresentationOperation. Runtime application independently reconstructs the expected operation from the proposal before changing the successor representation.
+
+The P6D ledger uses schema `uppb-p6d-ledger-v5`. Restart verification:
+- verifies the complete decision fingerprint;
+- recomputes every persisted distortion-candidate fingerprint;
+- binds distortion candidates to the exact P4 candidate and parent trace audit;
+- verifies semantic-detail fingerprint, exact/generalized temporal phrases, and mnemonic driver state against the parent;
+- replays the representation transition;
+- requires the successor representation tuple to equal the audited transition exactly;
+- rejects missing/tampered representation fingerprints and fabricated successor representation state.
+
+P6D behavioral acceptance:
+- matched lesion holds parent trace, P4 candidate, P5 decision, P5 finalization, P3 awareness decision, and P6A scalar operations fixed while changing only `temporal_generalization_enabled`;
+- disabled condition retains the exact subjective representation;
+- enabled condition creates one reviewed temporal-generalization proposal/operation;
+- protected evidence and stable TraceDetail remain bit-for-bit identical;
+- later P4 recollection uses the generalized structured phrase and no longer exposes the exact temporal phrase;
+- the later candidate binds the new subjective-representation fingerprint;
+- source attribution does not change the distortion proposal or representation operation;
+- high temporal confidence does not generalize;
+- an omitted/non-recalled detail does not generalize;
+- already-generalized content does not generalize again;
+- an audited P6C temporal-confidence degradation sequence can make a later exact recollection eligible for P6D, establishing a causal `P6C -> later P4 -> P6D -> later P4` chain;
+- deterministic save/load preserves the generalized representation and complete distortion audit.
+
+This gate models loss of temporal specificity, not arbitrary false memory. Engineering truth remains `8:15 PM`; the subject's versioned remembered representation may become `sometime that evening`.
+
+P6D deliberately does not use `CUE_MISMATCH`, `BELOW_RETRIEVAL_THRESHOLD`, or `CAPACITY_LIMITED` as direct content-distortion provenance. The P6C omission labels remain retrieval-condition audit until a stronger counterfactual causal classifier exists.
+
+P6D still does not permit:
+- arbitrary free-form text rewriting;
+- role/person substitution;
+- location substitution;
+- competing-trace intrusion;
+- suggestion/imagination-derived replacement values;
+- novel/false propositions;
+- retention drift;
+- deletion of stable TraceDetail truth;
+- source-cue rewriting;
+- blended/multi-trace reconsolidation;
+- live PretoriusBrain integration.
+
+Any later false or altered proposition must carry explicit donor/driver provenance and remain reversible in the engineering audit even when it is not psychologically reversible for the subject.
 
 ### P7 - thought / communication separation
 
