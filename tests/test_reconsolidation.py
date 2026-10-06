@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from doctor_lives.awareness import AwarenessCandidate, AwarenessRouter
+from doctor_lives.distortion import DistortionCandidate
 from doctor_lives.phenomenology import (
     CertaintyBand,
     ObjectiveProvenance,
@@ -20,7 +21,9 @@ from doctor_lives.recollection import (
     ProtectedEvidenceRef,
     ReconstructionConfig,
     RetrievalEpisode,
+    SubjectiveTemporalForm,
     TemporalPrecision,
+    TemporalSemantics,
     TraceDetail,
     TraceDetailState,
     reconstruct_recollection,
@@ -136,6 +139,48 @@ class ReconsolidationTests(unittest.TestCase):
                     association_strength=association_strength,
                 ),
             ),
+            strength=0.60,
+            accessibility=0.60,
+            familiarity=0.60,
+        )
+
+    def trace_with_structured_time(
+        self,
+        *,
+        label: str = "p6d-time",
+        temporal_confidence: float = 0.25,
+    ) -> MemoryTrace:
+        return MemoryTrace(
+            subject_id="subject-reconsolidation",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef(
+                    evidence_id=f"evidence:{label}",
+                    digest=f"sha256:{label}",
+                ),
+            ),
+            gist="The demonstration occurred in the laboratory",
+            details=(
+                TraceDetail(
+                    detail_id="detail:henry-time",
+                    text="Henry stood beside the apparatus at 8:15 PM",
+                    cue_terms=("henry", "apparatus", "demonstration"),
+                    temporal_semantics=TemporalSemantics(
+                        exact_phrase="at 8:15 PM",
+                        generalized_phrase="sometime that evening",
+                    ),
+                    temporal_template=(
+                        "Henry stood beside the apparatus {temporal}"
+                    ),
+                ),
+            ),
+            detail_states=(
+                TraceDetailState(
+                    detail_id="detail:henry-time",
+                    temporal_confidence=temporal_confidence,
+                ),
+            ),
+            temporal_cues=("evening",),
             strength=0.60,
             accessibility=0.60,
             familiarity=0.60,
