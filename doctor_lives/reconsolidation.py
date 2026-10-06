@@ -1084,6 +1084,53 @@ def apply_reconsolidation(
             raise ValueError("detail-state operation new fingerprint mismatch")
         detail_states[index] = new_state
 
+    subjective_representations = list(
+        old_trace.subjective_representations
+    )
+    representation_index = {
+        item.detail_id: index
+        for index, item in enumerate(subjective_representations)
+    }
+    distortion_by_fingerprint = {
+        item.distortion_fingerprint: item
+        for item in decision.distortion_candidates
+    }
+    seen_representation_details: set[str] = set()
+    for operation in decision.representation_operations:
+        if operation.detail_id in seen_representation_details:
+            raise ValueError("duplicate subjective-representation operation")
+        seen_representation_details.add(operation.detail_id)
+        if operation.detail_id not in representation_index:
+            raise ValueError(
+                "subjective-representation operation references unknown detail"
+            )
+        distortion = distortion_by_fingerprint.get(
+            operation.distortion_candidate_fingerprint
+        )
+        if distortion is None:
+            raise ValueError(
+                "representation operation lacks distortion candidate"
+            )
+        expected_operation, new_representation = (
+            build_representation_operation(
+                old_trace=old_trace,
+                distortion=distortion,
+            )
+        )
+        if expected_operation != operation:
+            raise ValueError(
+                "representation operation does not match reviewed distortion"
+            )
+        index = representation_index[operation.detail_id]
+        if (
+            subjective_representations[index].representation_fingerprint
+            != operation.old_representation_fingerprint
+        ):
+            raise ValueError(
+                "representation operation old fingerprint mismatch"
+            )
+        subjective_representations[index] = new_representation
+
     successor = MemoryTrace(
         subject_id=old_trace.subject_id,
         version=old_trace.version + 1,
@@ -1091,6 +1138,7 @@ def apply_reconsolidation(
         gist=old_trace.gist,
         details=old_trace.details,
         detail_states=tuple(detail_states),
+        subjective_representations=tuple(subjective_representations),
         temporal_cues=old_trace.temporal_cues,
         actor_refs=old_trace.actor_refs,
         object_refs=old_trace.object_refs,
