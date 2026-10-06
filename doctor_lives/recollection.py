@@ -23,6 +23,9 @@ from .phenomenology import VividnessBand
 
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9']+")
+_TEMPORAL_GENERALIZATION_STOPWORDS = frozenset(
+    {"a", "an", "at", "by", "from", "in", "of", "on", "the", "to"}
+)
 _RECOLLECTION_CANDIDATE_FACTORY_TOKEN = object()
 _SUBJECTIVE_DETAIL_REP_FACTORY_TOKEN = object()
 
@@ -120,6 +123,36 @@ class TemporalSemantics:
                 raise ValueError(f"{name} is required")
         if self.exact_phrase == self.generalized_phrase:
             raise ValueError("temporal generalization must differ from exact phrase")
+        if self.exact_phrase.casefold() in self.generalized_phrase.casefold():
+            raise ValueError(
+                "generalized temporal phrase cannot retain the complete exact phrase"
+            )
+        exact_numeric = {
+            token
+            for token in _tokens(self.exact_phrase)
+            if any(character.isdigit() for character in token)
+        }
+        if exact_numeric & _tokens(self.generalized_phrase):
+            raise ValueError(
+                "generalized temporal phrase cannot retain exact numeric tokens"
+            )
+
+    @property
+    def specificity_tokens(self) -> frozenset[str]:
+        """Exact-only tokens that represent temporal specificity.
+
+        The set intentionally excludes common grammatical glue. Initial P6D
+        requires at least one such token so the structured transformation has
+        an auditable specificity dimension to suppress.
+        """
+
+        return frozenset(
+            token
+            for token in (
+                _tokens(self.exact_phrase) - _tokens(self.generalized_phrase)
+            )
+            if token not in _TEMPORAL_GENERALIZATION_STOPWORDS
+        )
 
 
 class SubjectiveTemporalForm(StrEnum):
@@ -251,6 +284,17 @@ class TraceDetail:
             remainder = self.temporal_template.replace("{temporal}", "")
             if "{" in remainder or "}" in remainder:
                 raise ValueError("temporal_template may contain only {temporal}")
+            if not self.temporal_semantics.specificity_tokens:
+                raise ValueError(
+                    "temporal generalization requires exact-only specificity tokens"
+                )
+            if (
+                _tokens(remainder)
+                & self.temporal_semantics.specificity_tokens
+            ):
+                raise ValueError(
+                    "temporal_template cannot retain exact temporal specificity outside the slot"
+                )
             rendered_exact = self.temporal_template.format(
                 temporal=self.temporal_semantics.exact_phrase
             )
@@ -515,6 +559,18 @@ class MemoryTrace:
             ):
                 raise ValueError(
                     "generalized representation requires structured temporal semantics"
+                )
+            if (
+                representation.temporal_form
+                is SubjectiveTemporalForm.GENERALIZED
+                and detail.temporal_semantics is not None
+                and (
+                    _tokens(self.gist)
+                    & detail.temporal_semantics.specificity_tokens
+                )
+            ):
+                raise ValueError(
+                    "generalized representation cannot coexist with exact temporal specificity in gist"
                 )
         object.__setattr__(
             self,
@@ -913,11 +969,7 @@ def _detail_metrics(
         representation.temporal_form is SubjectiveTemporalForm.GENERALIZED
         and detail.temporal_semantics is not None
     ):
-        exact_only_tokens = (
-            _tokens(detail.temporal_semantics.exact_phrase)
-            - _tokens(detail.temporal_semantics.generalized_phrase)
-        )
-        cue_term_tokens -= exact_only_tokens
+        cue_term_tokens -= detail.temporal_semantics.specificity_tokens
     detail_tokens = _tokens(rendered_detail) | cue_term_tokens
     if cue_tokens:
         overlap = len(cue_tokens & detail_tokens) / max(1, len(cue_tokens))
