@@ -22,6 +22,7 @@ from .recollection import (
     SubjectiveDetailRepresentation,
     SubjectiveTemporalForm,
     TemporalPrecision,
+    _make_subjective_detail_representation,
 )
 
 
@@ -297,7 +298,7 @@ def build_representation_operation(
     if old_representation.temporal_form is not SubjectiveTemporalForm.EXACT:
         raise ValueError("temporal generalization requires exact parent form")
 
-    new_representation = SubjectiveDetailRepresentation(
+    new_representation = _make_subjective_detail_representation(
         detail_id=distortion.detail_id,
         temporal_form=SubjectiveTemporalForm.GENERALIZED,
         parent_representation_fingerprint=(
