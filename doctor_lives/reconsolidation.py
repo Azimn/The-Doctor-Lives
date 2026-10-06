@@ -1362,6 +1362,47 @@ def _verify_serialized_decision_audit(audit: dict[str, Any]) -> None:
     if audit.get("eligible") is not True:
         raise ValueError("ineligible decision cannot produce a successor")
 
+    distortion_items = audit.get("distortion_candidates", [])
+    if not isinstance(distortion_items, list):
+        raise ValueError("distortion_candidates audit must be a list")
+    seen_distortions: set[str] = set()
+    for raw in distortion_items:
+        if not isinstance(raw, dict):
+            raise ValueError("distortion candidate audit must be an object")
+        candidate_payload = dict(raw)
+        stored_id = candidate_payload.pop("distortion_id", None)
+        stored_fingerprint = candidate_payload.pop(
+            "distortion_fingerprint",
+            None,
+        )
+        expected_distortion = (
+            "distortion_" + _stable_sha256(candidate_payload)[:24]
+        )
+        if (
+            stored_id != expected_distortion
+            or stored_fingerprint != expected_distortion
+        ):
+            raise ValueError("persisted distortion candidate is corrupt")
+        if expected_distortion in seen_distortions:
+            raise ValueError("duplicate persisted distortion candidate")
+        seen_distortions.add(expected_distortion)
+        if raw.get("old_trace_id") != audit.get("old_trace_id"):
+            raise ValueError("distortion candidate parent trace mismatch")
+        if raw.get("old_trace_digest") != audit.get("old_trace_digest"):
+            raise ValueError("distortion candidate parent digest mismatch")
+        if raw.get("p4_candidate_id") != audit.get("candidate_id"):
+            raise ValueError("distortion candidate P4 ID mismatch")
+        if raw.get("p4_candidate_digest") != audit.get("candidate_digest"):
+            raise ValueError("distortion candidate P4 digest mismatch")
+
+    representation_items = audit.get("representation_operations", [])
+    if not isinstance(representation_items, list):
+        raise ValueError("representation_operations audit must be a list")
+    if len(representation_items) != len(distortion_items):
+        raise ValueError(
+            "persisted distortion candidate/operation count mismatch"
+        )
+
 
 def _verify_successor_matches_audit(
     *,
