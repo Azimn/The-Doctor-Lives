@@ -25,6 +25,7 @@ from typing import Any
 from .awareness import AwarenessDecision
 from .distortion import (
     DistortionCandidate,
+    DistortionKind,
     RepresentationOperation,
     build_representation_operation,
     propose_temporal_generalization,
