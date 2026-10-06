@@ -51,3 +51,12 @@ Run the production audit with:
 `python tools/run_causal_architecture_audit.py`
 
 This phase deliberately does **not** add the proposed state-to-policy bridge. That change is only eligible after the audit establishes which existing state variables fail to influence decisions under matched tests.
+
+
+## Definitive convergence target
+
+`The-Doctor-Lives` is the canonical integration repository for Pretorius. Earlier repositories such as `Pretorius-Neural-Network`, `Persona-and-Jelly-Sandwich-`, DUCK, and related experiments are mechanism donors and evidence archives, not competing production brains. New validated mechanisms are transplanted here behind versioned gates rather than creating another parallel Pretorius implementation.
+
+The Neural Convergence v0.5 candidate keeps the accepted v0.4 recurrent path reproducible by default while adding an opt-in convergence profile. That profile brings the already tested donor mechanisms into the existing 4,096-unit substrate: Oja-style competitive recurrent plasticity, affect/novelty/threat-conditioned plasticity gating, provisional synaptic tags with delayed outcome capture, sparse recurrent-gain homeostasis, intrinsic excitability regulation, persisted correlated endogenous variation, and restart-safe persistence of the new neural state. It remains the same recurrent substrate and the same action vocabulary. No second planner, second identity store, or second neural brain is introduced.
+
+The convergence work is intentionally separate from the active UPPB branch. UPPB can continue proving reconstructive subjective-memory semantics without silently changing live PretoriusBrain behavior, while Neural Convergence proves the lower-level substrate migration against the accepted v0.4 baseline.

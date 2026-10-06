@@ -414,7 +414,9 @@ class PretoriusBrain:
             self._maybe_add_concern(conn, tick, exp)
             self._update_commitments_due(conn, tick)
 
-        recurrent_tendencies = self.neural.step(exp.text, exp.scalars(), reward=0.0, learn=True)
+        recurrent_tendencies = self.neural.step(
+            exp.text, exp.scalars(), reward=0.0, learn=True, confidence=exp.confidence
+        )
         self.neural.save(self.neural_path)
         thought = self.think("event", decision_text=exp.text) if self._warrants_cognition(exp) else None
         if thought is not None:
@@ -989,7 +991,9 @@ class PretoriusBrain:
                 successes=excluded.successes,updated_tick=excluded.updated_tick""",
                 (action, value, uses + 1, successes + int(success), tick),
             )
-        self.neural.reinforce_action(action, reward if success else -abs(reward))
+        signed_reward = reward if success else -abs(reward)
+        self.neural.capture_outcome(signed_reward, confidence=1.0)
+        self.neural.reinforce_action(action, signed_reward)
         self.neural.save(self.neural_path)
 
     def sleep(self, ticks: int = 12) -> dict[str, Any]:
@@ -1183,6 +1187,7 @@ class PretoriusBrain:
             "neural_policy_causally_load_bearing": True,
             "neural_policy_decisions": policy_decisions,
             "neural_policy_version": evolution["neural_policy_version"],
+            "neural_diagnostics": self.neural.diagnostics(),
             "felt_state": self._felt_state(),
             "needs": needs,
             "open_concerns": len(self.store.open_concerns()),

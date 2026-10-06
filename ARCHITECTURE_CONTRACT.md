@@ -29,3 +29,12 @@ Version 0.3 is governed by `CAUSAL_AUDIT_CONTRACT.md` and Issue #9. The feature 
 The audit instrumentation is not part of Pretorius's production decision path unless explicitly invoked against cloned audit state. Default `PretoriusBrain` behavior must remain unchanged.
 
 A state-to-policy bridge is a post-audit candidate only. It must not be introduced until the lesion/control results demonstrate which existing states lack causal leverage over action selection.
+
+
+## Definitive neural-convergence rule
+
+This repository is the convergence target. Donor repositories may supply mechanisms, tests, and experimental evidence, but they must not become parallel production authorities. A donor mechanism enters Pretorius only through a versioned transplant into the existing `PretoriusRecurrentSubstrate` or another already-authorized subsystem, with legacy behavior preserved as a control until the new path passes its gate.
+
+Neural Convergence v0.5 therefore extends the existing recurrent substrate rather than adding another neural engine. The accepted v0.4 configuration remains the default. The opt-in convergence profile may use Oja-style competitive plasticity, bounded recurrent-gain homeostasis, intrinsic excitability regulation, persisted correlated endogenous variation, neuromodulated plasticity, and delayed outcome-dependent synaptic capture. These mechanisms may alter recurrent developmental state but may not author identity facts, autobiographical claims, world facts, renderer text, tool authority, or UPPB protected evidence.
+
+Outcome capture is allowed only from the existing explicit action-outcome path. Neural tags are provisional and have no independent semantic authority. The 70-node Persona Connectome remains a provenance-bearing psychological topology and is not silently rewritten into neural truth. Any future mapping from those 70 nodes into recurrent populations requires a separate matched lesion/control gate showing causal benefit over the present retrieval-only connectome.

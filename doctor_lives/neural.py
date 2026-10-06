@@ -42,7 +42,47 @@ DEFAULT_CONFIG = {
     "motor_lr": 0.025,
     "motor_weight_decay": 2e-5,
     "motor_temperature": 0.3,
+    # Neural-convergence controls. Defaults preserve the accepted v0.4 dynamics.
+    "plasticity_rule": "hebbian",
+    "neuromodulation_enabled": False,
+    "synaptic_tagging_enabled": False,
+    "provisional_update_fraction": 0.0,
+    "tag_decay": 0.90,
+    "capture_scale": 1.0,
+    "spectral_homeostasis_mode": "off",
+    "target_spectral_radius": 0.88,
+    "min_spectral_radius": 0.74,
+    "max_spectral_radius": 0.95,
+    "spectral_check_interval": 64,
+    "endogenous_noise": 0.0,
+    "noise_persistence": 0.92,
+    "intrinsic_excitability_homeostasis": False,
+    "target_state_saturation": 0.18,
+    "excitability_homeostasis_rate": 0.015,
+    "min_state_gain": 0.20,
+    "max_state_gain": 1.20,
 }
+
+# Versioned candidate profile transplanted from mechanisms already validated in
+# Persona-and-Jelly-Sandwich. It is opt-in so accepted v0.4 checkpoints and
+# causal results remain reproducible until this migration is independently gated.
+NEURAL_CONVERGENCE_CONFIG = dict(DEFAULT_CONFIG)
+NEURAL_CONVERGENCE_CONFIG.update({
+    "plasticity_rule": "oja",
+    "neuromodulation_enabled": True,
+    "synaptic_tagging_enabled": True,
+    "provisional_update_fraction": 0.08,
+    "tag_decay": 0.90,
+    "spectral_homeostasis_mode": "banded",
+    "target_spectral_radius": 0.88,
+    "min_spectral_radius": 0.74,
+    "max_spectral_radius": 0.95,
+    "spectral_check_interval": 32,
+    "endogenous_noise": 0.008,
+    "noise_persistence": 0.92,
+    "intrinsic_excitability_homeostasis": True,
+})
+
 
 
 class ExperienceEncoder:
@@ -85,7 +125,9 @@ class PretoriusRecurrentSubstrate:
     """
 
     def __init__(self, cfg: dict[str, Any] | None = None):
-        self.cfg = dict(DEFAULT_CONFIG if cfg is None else cfg)
+        self.cfg = dict(DEFAULT_CONFIG)
+        if cfg is not None:
+            self.cfg.update(cfg)
         self.encoder = ExperienceEncoder(int(self.cfg["sensory_dim"]))
         self.n = int(self.cfg["neurons"])
         self.rng = np.random.default_rng(int(self.cfg.get("seed", 1842)))
@@ -103,6 +145,162 @@ class PretoriusRecurrentSubstrate:
         self.v = np.zeros(self.n, dtype=np.float32)
         self.rate = np.full(self.n, self.target_rate, dtype=np.float32)
         self.bias = np.full(self.n, -2.45, dtype=np.float32)
+        self.state_gain = 1.0
+        self.noise_state = np.zeros(self.n, dtype=np.float32)
+        self.synaptic_tags = np.zeros_like(self.W.data, dtype=np.float32)
+        self.homeostasis_events = 0
+        self.last_recurrent_gain: float | None = None
+        self.last_diagnostics: dict[str, float | int | str | bool | None] = {}
+        if str(self.cfg.get("spectral_homeostasis_mode", "off")).lower() != "off":
+            self._renormalize_recurrent(force=True)
+
+    @staticmethod
+    def _clip_unit(value: float) -> float:
+        return float(np.clip(float(value), 0.0, 1.0))
+
+    def _plasticity_gate(
+        self,
+        scalars: dict[str, float] | None,
+        confidence: float,
+    ) -> float:
+        """Return a bounded global learning gate without adding persona traits.
+
+        This is a mechanism transplant from the Gelatinblob/Jelly experiments.
+        The gate changes how strongly the existing local rule writes; it does
+        not choose an action or introduce character-specific latent variables.
+        """
+        if not bool(self.cfg.get("neuromodulation_enabled", False)):
+            return 1.0
+        values = scalars or {}
+        novelty = self._clip_unit(max(float(values.get("novelty", 0.0)), 0.0))
+        valence = self._clip_unit(abs(float(values.get("valence", 0.0))))
+        threat = self._clip_unit(max(float(values.get("threat", 0.0)), 0.0))
+        arousal = self._clip_unit(abs(float(values.get("arousal", 0.0))))
+        stress = self._clip_unit(0.65 * threat + 0.35 * arousal)
+        confidence = self._clip_unit(confidence)
+        z = -1.15 + 2.0 * novelty + 1.15 * valence + 0.9 * stress + 0.7 * confidence
+        return float(1.0 / (1.0 + np.exp(-z)))
+
+    def _enforce_sign_and_bounds(self) -> None:
+        exc = self.excitatory[self.pre_idx]
+        limit = float(self.cfg["max_abs_weight"])
+        self.W.data[exc] = np.clip(self.W.data[exc], 0.0, limit)
+        self.W.data[~exc] = np.clip(self.W.data[~exc], -limit, 0.0)
+
+    def _estimate_recurrent_gain(self) -> float:
+        """Estimate dominant recurrent gain for sparse homeostasis.
+
+        ARPACK receives a deterministic start vector. A deterministic power
+        fallback is used if eigensolving fails. Diagnostics call this a gain
+        estimate rather than claiming biological criticality.
+        """
+        if self.W.nnz == 0 or self.n == 0:
+            return 0.0
+        start = np.full(self.n, 1.0 / np.sqrt(max(self.n, 1)), dtype=np.float64)
+        try:
+            if self.n > 2:
+                eig = sparse.linalg.eigs(
+                    self.W.astype(np.float64),
+                    k=1,
+                    which="LM",
+                    v0=start,
+                    return_eigenvectors=False,
+                    tol=1e-4,
+                    maxiter=max(500, self.n * 2),
+                )
+                value = float(abs(eig[0]))
+                if np.isfinite(value):
+                    return value
+        except Exception:
+            pass
+        vector = start
+        gain = 0.0
+        for _ in range(16):
+            projected = self.W.dot(vector)
+            gain = float(np.linalg.norm(projected))
+            if gain <= 1e-12:
+                return 0.0
+            vector = projected / gain
+        return gain
+
+    def _renormalize_recurrent(self, *, force: bool = False) -> float | None:
+        mode = str(self.cfg.get("spectral_homeostasis_mode", "off")).lower()
+        if mode == "off":
+            return self.last_recurrent_gain
+        interval = max(1, int(self.cfg.get("spectral_check_interval", 64)))
+        if not force and self.tick % interval != 0:
+            return self.last_recurrent_gain
+        gain = self._estimate_recurrent_gain()
+        if gain <= 1e-12:
+            self.last_recurrent_gain = gain
+            return gain
+        target = float(self.cfg.get("target_spectral_radius", 0.88))
+        lower = float(self.cfg.get("min_spectral_radius", 0.74))
+        upper = float(self.cfg.get("max_spectral_radius", 0.95))
+        should_scale = mode == "hard" or gain < lower or gain > upper
+        if should_scale:
+            self.W.data *= np.float32(target / gain)
+            self._enforce_sign_and_bounds()
+            self.homeostasis_events += 1
+            gain = self._estimate_recurrent_gain()
+        self.last_recurrent_gain = float(gain)
+        return self.last_recurrent_gain
+
+    def capture_outcome(self, reward: float, confidence: float = 1.0) -> dict[str, float | bool | None]:
+        """Resolve delayed provisional synaptic tags after an observed outcome.
+
+        Nothing is captured in legacy mode. In convergence mode, recently
+        eligible local changes are consolidated or opposed by signed outcome
+        evidence, while the E/I sign contract and recurrent-gain bounds remain
+        enforced.
+        """
+        if not bool(self.cfg.get("synaptic_tagging_enabled", False)):
+            return {
+                "captured": False,
+                "capture_gate": 0.0,
+                "tag_norm": float(np.linalg.norm(self.synaptic_tags)),
+                "recurrent_gain": self.last_recurrent_gain,
+            }
+        signed_reward = float(np.clip(reward, -1.0, 1.0))
+        confidence = self._clip_unit(confidence)
+        capture_gate = confidence * (0.25 + 0.75 * abs(signed_reward))
+        if abs(signed_reward) > 1e-12 and capture_gate > 0.0:
+            scale = float(self.cfg.get("capture_scale", 1.0))
+            self.W.data += np.float32(scale * signed_reward * capture_gate) * self.synaptic_tags
+            self.synaptic_tags *= np.float32(1.0 - capture_gate)
+            self._enforce_sign_and_bounds()
+            self._renormalize_recurrent(force=True)
+        report = {
+            "captured": bool(abs(signed_reward) > 1e-12 and capture_gate > 0.0),
+            "capture_gate": float(capture_gate),
+            "tag_norm": float(np.linalg.norm(self.synaptic_tags)),
+            "recurrent_gain": self.last_recurrent_gain,
+        }
+        self.last_diagnostics.update({
+            "last_outcome_capture_gate": float(capture_gate),
+            "last_outcome_signed_reward": signed_reward,
+        })
+        return report
+
+    def diagnostics(self) -> dict[str, float | int | str | bool | None]:
+        return {
+            "profile": "neural_convergence_v05"
+            if bool(self.cfg.get("neuromodulation_enabled", False))
+            or bool(self.cfg.get("synaptic_tagging_enabled", False))
+            or str(self.cfg.get("spectral_homeostasis_mode", "off")).lower() != "off"
+            else "legacy_v04",
+            "plasticity_rule": str(self.cfg.get("plasticity_rule", "hebbian")),
+            "neuromodulation_enabled": bool(self.cfg.get("neuromodulation_enabled", False)),
+            "synaptic_tagging_enabled": bool(self.cfg.get("synaptic_tagging_enabled", False)),
+            "spectral_homeostasis_mode": str(self.cfg.get("spectral_homeostasis_mode", "off")),
+            "endogenous_noise": float(self.cfg.get("endogenous_noise", 0.0)),
+            "state_gain": float(self.state_gain),
+            "noise_norm": float(np.linalg.norm(self.noise_state)),
+            "synaptic_tag_norm": float(np.linalg.norm(self.synaptic_tags)),
+            "recurrent_gain": self.last_recurrent_gain,
+            "homeostasis_events": int(self.homeostasis_events),
+            **self.last_diagnostics,
+        }
 
     def _make_recurrent(self) -> sparse.csr_matrix:
         k = int(self.cfg["avg_recurrent_degree"])
@@ -172,34 +370,103 @@ class PretoriusRecurrentSubstrate:
         z = np.clip(x, -10.0, 10.0)
         return (1.0 / (1.0 + np.exp(-z))).astype(np.float32, copy=False)
 
-    def step(self, text: str, scalars: dict[str, float] | None = None,
-             reward: float = 0.0, learn: bool = True) -> dict[str, float]:
-        x = self.encoder.encode(text, scalars)
+    def step(
+        self,
+        text: str,
+        scalars: dict[str, float] | None = None,
+        reward: float = 0.0,
+        learn: bool = True,
+        confidence: float = 1.0,
+    ) -> dict[str, float]:
+        values = scalars or {}
+        x = self.encoder.encode(text, values)
         syn = self.W.dot(self.rate)
         ext = self.Win.dot(x)
+
+        noise_scale = float(self.cfg.get("endogenous_noise", 0.0))
+        if noise_scale > 0.0:
+            persistence = float(np.clip(self.cfg.get("noise_persistence", 0.92), 0.0, 0.999999))
+            innovation = self.rng.normal(0.0, 1.0, self.n).astype(np.float32)
+            self.noise_state = (
+                persistence * self.noise_state
+                + np.sqrt(max(0.0, 1.0 - persistence * persistence)) * innovation
+            ).astype(np.float32)
+        else:
+            self.noise_state.fill(0.0)
+
         excess = max(float(self.rate.mean()) - self.target_rate, 0.0)
         global_term = float(self.cfg["global_inhibition"]) * excess
-        self.v += (float(self.cfg["dt"])/float(self.cfg["tau"])) * (-self.v + syn + ext + self.bias - global_term)
+        gain = self.state_gain if bool(self.cfg.get("intrinsic_excitability_homeostasis", False)) else 1.0
+        drive = gain * (syn + ext) + noise_scale * self.noise_state
+        self.v += (float(self.cfg["dt"]) / float(self.cfg["tau"])) * (
+            -self.v + drive + self.bias - global_term
+        )
         self.rate = self._sigmoid(self.v)
         self.tick += 1
+
+        saturation = float(np.mean((self.rate < 0.01) | (self.rate > 0.99)))
+        if bool(self.cfg.get("intrinsic_excitability_homeostasis", False)):
+            target_saturation = float(self.cfg.get("target_state_saturation", 0.18))
+            homeo_rate = float(self.cfg.get("excitability_homeostasis_rate", 0.015))
+            self.state_gain = float(np.clip(
+                self.state_gain * np.exp(homeo_rate * (target_saturation - saturation)),
+                float(self.cfg.get("min_state_gain", 0.20)),
+                float(self.cfg.get("max_state_gain", 1.20)),
+            ))
+
+        plastic_gate = self._plasticity_gate(values, confidence)
         interval = int(self.cfg["plasticity_interval"])
         if learn and self.tick % interval == 0:
             pre = self.rate[self.pre_idx] - self.target_rate
             post = self.rate[self.post_idx] - self.target_rate
             corr = pre * post
+
             self.eligibility *= float(self.cfg["eligibility_decay"])
             self.eligibility += corr.astype(np.float32)
+
+            rule = str(self.cfg.get("plasticity_rule", "hebbian")).lower()
+            if rule == "oja":
+                local_signal = corr - (post * post) * self.W.data
+            elif rule == "hebbian":
+                local_signal = corr
+            else:
+                raise ValueError(f"unknown plasticity_rule {rule!r}")
+
+            local_update = (
+                float(self.cfg["hebb_lr"]) * plastic_gate * local_signal
+            ).astype(np.float32)
+            reward_update = (
+                float(self.cfg["reward_lr"]) * float(reward) * self.eligibility
+            ).astype(np.float32)
+
+            if bool(self.cfg.get("synaptic_tagging_enabled", False)):
+                self.synaptic_tags *= float(self.cfg.get("tag_decay", 0.90))
+                self.synaptic_tags += local_update
+                provisional_fraction = float(np.clip(
+                    self.cfg.get("provisional_update_fraction", 0.08), 0.0, 1.0
+                ))
+                local_applied = provisional_fraction * local_update
+            else:
+                local_applied = local_update
+
             delta = (
-                float(self.cfg["hebb_lr"])*corr
-                + float(self.cfg["reward_lr"])*float(reward)*self.eligibility
-                - float(self.cfg["weight_decay"])*self.W.data
+                local_applied
+                + reward_update
+                - float(self.cfg["weight_decay"]) * self.W.data
             )
             self.W.data += delta.astype(np.float32)
-            exc = self.excitatory[self.pre_idx]
-            lim = float(self.cfg["max_abs_weight"])
-            self.W.data[exc] = np.clip(self.W.data[exc], 0.0, lim)
-            self.W.data[~exc] = np.clip(self.W.data[~exc], -lim, 0.0)
-            self.bias += float(self.cfg["homeostatic_lr"]) * (self.target_rate-self.rate)
+            self._enforce_sign_and_bounds()
+            self.bias += float(self.cfg["homeostatic_lr"]) * (self.target_rate - self.rate)
+            self._renormalize_recurrent()
+
+        self.last_diagnostics = {
+            "plastic_gate": float(plastic_gate),
+            "state_saturation": saturation,
+            "state_gain": float(self.state_gain),
+            "synaptic_tag_norm": float(np.linalg.norm(self.synaptic_tags)),
+            "recurrent_gain": self.last_recurrent_gain,
+            "homeostasis_events": int(self.homeostasis_events),
+        }
         return self.action_scores()
 
     def action_scores(self) -> dict[str, float]:
@@ -233,11 +500,27 @@ class PretoriusRecurrentSubstrate:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(
-            path, v=self.v, rate=self.rate, bias=self.bias,
-            w_data=self.W.data, w_indices=self.W.indices, w_indptr=self.W.indptr,
-            excitatory=self.excitatory, eligibility=self.eligibility,
-            motor_w=self.motor_w, motor_b=self.motor_b,
-            cfg_json=np.asarray(json.dumps(self.cfg)), tick=np.asarray([self.tick], dtype=np.int64),
+            path,
+            v=self.v,
+            rate=self.rate,
+            bias=self.bias,
+            w_data=self.W.data,
+            w_indices=self.W.indices,
+            w_indptr=self.W.indptr,
+            excitatory=self.excitatory,
+            eligibility=self.eligibility,
+            synaptic_tags=self.synaptic_tags,
+            noise_state=self.noise_state,
+            state_gain=np.asarray([self.state_gain], dtype=np.float64),
+            homeostasis_events=np.asarray([self.homeostasis_events], dtype=np.int64),
+            last_recurrent_gain=np.asarray([
+                np.nan if self.last_recurrent_gain is None else self.last_recurrent_gain
+            ], dtype=np.float64),
+            motor_w=self.motor_w,
+            motor_b=self.motor_b,
+            cfg_json=np.asarray(json.dumps(self.cfg)),
+            rng_state_json=np.asarray(json.dumps(self.rng.bit_generator.state)),
+            tick=np.asarray([self.tick], dtype=np.int64),
         )
 
     @classmethod
@@ -248,12 +531,43 @@ class PretoriusRecurrentSubstrate:
         net.v = payload["v"].astype(np.float32, copy=True)
         net.rate = payload["rate"].astype(np.float32, copy=True)
         net.bias = payload["bias"].astype(np.float32, copy=True)
-        net.W = sparse.csr_matrix((payload["w_data"], payload["w_indices"], payload["w_indptr"]), shape=(net.n,net.n), dtype=np.float32)
+        net.W = sparse.csr_matrix(
+            (payload["w_data"], payload["w_indices"], payload["w_indptr"]),
+            shape=(net.n, net.n),
+            dtype=np.float32,
+        )
         net.post_idx = np.repeat(np.arange(net.n, dtype=np.int32), np.diff(net.W.indptr))
         net.pre_idx = net.W.indices.astype(np.int32, copy=False)
         net.excitatory = payload["excitatory"].astype(bool, copy=True)
         net.eligibility = payload["eligibility"].astype(np.float32, copy=True)
+        net.synaptic_tags = (
+            payload["synaptic_tags"].astype(np.float32, copy=True)
+            if "synaptic_tags" in payload.files
+            else np.zeros_like(net.W.data, dtype=np.float32)
+        )
+        net.noise_state = (
+            payload["noise_state"].astype(np.float32, copy=True)
+            if "noise_state" in payload.files
+            else np.zeros(net.n, dtype=np.float32)
+        )
+        net.state_gain = (
+            float(payload["state_gain"][0]) if "state_gain" in payload.files else 1.0
+        )
+        net.homeostasis_events = (
+            int(payload["homeostasis_events"][0])
+            if "homeostasis_events" in payload.files
+            else 0
+        )
+        if "last_recurrent_gain" in payload.files:
+            saved_gain = float(payload["last_recurrent_gain"][0])
+            net.last_recurrent_gain = None if np.isnan(saved_gain) else saved_gain
+        else:
+            net.last_recurrent_gain = None
         net.motor_w = payload["motor_w"].astype(np.float32, copy=True)
         net.motor_b = payload["motor_b"].astype(np.float32, copy=True)
+        if "rng_state_json" in payload.files:
+            net.rng.bit_generator.state = json.loads(str(payload["rng_state_json"].item()))
         net.tick = int(payload["tick"][0])
+        net.last_diagnostics = {}
         return net
+
