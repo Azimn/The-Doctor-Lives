@@ -904,9 +904,19 @@ def _detail_metrics(
     cue_tokens: set[str],
     trace: MemoryTrace,
 ) -> tuple[float, float]:
-    detail_tokens = _tokens(detail.text) | {
-        token.lower() for token in detail.cue_terms
-    }
+    rendered_detail = _subjective_detail_text(trace, detail)
+    cue_term_tokens = _tokens(" ".join(detail.cue_terms))
+    representation = trace.subjective_representation(detail.detail_id)
+    if (
+        representation.temporal_form is SubjectiveTemporalForm.GENERALIZED
+        and detail.temporal_semantics is not None
+    ):
+        exact_only_tokens = (
+            _tokens(detail.temporal_semantics.exact_phrase)
+            - _tokens(detail.temporal_semantics.generalized_phrase)
+        )
+        cue_term_tokens -= exact_only_tokens
+    detail_tokens = _tokens(rendered_detail) | cue_term_tokens
     if cue_tokens:
         overlap = len(cue_tokens & detail_tokens) / max(1, len(cue_tokens))
     else:
