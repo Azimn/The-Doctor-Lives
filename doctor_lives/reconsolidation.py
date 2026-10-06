@@ -1172,14 +1172,34 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
         )
         for item in data["protected_evidence"]
     )
-    details = tuple(
-        TraceDetail(
-            detail_id=str(item["detail_id"]),
-            text=str(item["text"]),
-            cue_terms=tuple(item.get("cue_terms", ())),
+    parsed_details: list[TraceDetail] = []
+    for item in data.get("details", ()):
+        raw_temporal = item.get("temporal_semantics")
+        temporal_semantics = None
+        if raw_temporal is not None:
+            if not isinstance(raw_temporal, dict):
+                raise ValueError(
+                    "persisted temporal_semantics must be an object"
+                )
+            temporal_semantics = TemporalSemantics(
+                exact_phrase=str(raw_temporal["exact_phrase"]),
+                generalized_phrase=str(
+                    raw_temporal["generalized_phrase"]
+                ),
+            )
+        parsed_details.append(
+            TraceDetail(
+                detail_id=str(item["detail_id"]),
+                text=str(item["text"]),
+                cue_terms=tuple(item.get("cue_terms", ())),
+                temporal_semantics=temporal_semantics,
+                temporal_template=_optional_nonblank(
+                    item.get("temporal_template"),
+                    "detail temporal_template",
+                ),
+            )
         )
-        for item in data.get("details", ())
-    )
+    details = tuple(parsed_details)
     raw_detail_states = data.get("detail_states")
     if details and not isinstance(raw_detail_states, list):
         raise ValueError("persisted detail_states are required for traces with details")
@@ -1220,6 +1240,46 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
             raise ValueError("persisted detail state fingerprint is inconsistent")
         parsed_detail_states.append(state)
     detail_states = tuple(parsed_detail_states)
+
+    raw_representations = data.get("subjective_representations")
+    if details and not isinstance(raw_representations, list):
+        raise ValueError(
+            "persisted subjective_representations are required for traces with details"
+        )
+    if raw_representations is None:
+        raw_representations = []
+    if not isinstance(raw_representations, list):
+        raise ValueError("persisted subjective_representations must be a list")
+    parsed_representations: list[SubjectiveDetailRepresentation] = []
+    for item in raw_representations:
+        if not isinstance(item, dict):
+            raise ValueError(
+                "persisted subjective representation must be an object"
+            )
+        representation = SubjectiveDetailRepresentation(
+            detail_id=str(item["detail_id"]),
+            temporal_form=SubjectiveTemporalForm(
+                str(item.get("temporal_form", "exact"))
+            ),
+            parent_representation_fingerprint=_optional_nonblank(
+                item.get("parent_representation_fingerprint"),
+                "representation parent fingerprint",
+            ),
+            distortion_candidate_fingerprint=_optional_nonblank(
+                item.get("distortion_candidate_fingerprint"),
+                "representation distortion fingerprint",
+            ),
+        )
+        if (
+            item.get("representation_fingerprint")
+            != representation.representation_fingerprint
+        ):
+            raise ValueError(
+                "persisted subjective representation fingerprint is inconsistent"
+            )
+        parsed_representations.append(representation)
+    subjective_representations = tuple(parsed_representations)
+
     subject_id = data.get("subject_id")
     gist = data.get("gist")
     if not isinstance(subject_id, str) or not subject_id.strip():
@@ -1234,6 +1294,7 @@ def _memory_trace_from_dict(data: dict[str, Any]) -> MemoryTrace:
         gist=gist,
         details=details,
         detail_states=detail_states,
+        subjective_representations=subjective_representations,
         temporal_cues=tuple(data.get("temporal_cues", ())),
         actor_refs=tuple(data.get("actor_refs", ())),
         object_refs=tuple(data.get("object_refs", ())),
