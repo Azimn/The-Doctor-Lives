@@ -24,6 +24,7 @@ from .phenomenology import VividnessBand
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9']+")
 _RECOLLECTION_CANDIDATE_FACTORY_TOKEN = object()
+_SUBJECTIVE_DETAIL_REP_FACTORY_TOKEN = object()
 
 
 def _tokens(text: str) -> set[str]:
@@ -128,55 +129,87 @@ class SubjectiveTemporalForm(StrEnum):
     GENERALIZED = "generalized"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class SubjectiveDetailRepresentation:
-    """Versioned subject-memory representation separate from semantic truth."""
+    """Factory-controlled subject-memory representation separate from truth."""
 
     detail_id: str
-    temporal_form: SubjectiveTemporalForm = SubjectiveTemporalForm.EXACT
-    parent_representation_fingerprint: str | None = None
-    distortion_candidate_fingerprint: str | None = None
-    representation_fingerprint: str = field(init=False)
+    temporal_form: SubjectiveTemporalForm
+    parent_representation_fingerprint: str | None
+    distortion_candidate_fingerprint: str | None
+    representation_fingerprint: str
 
-    def __post_init__(self) -> None:
-        if not isinstance(self.detail_id, str) or not self.detail_id.strip():
-            raise ValueError("detail_id is required")
-        if not isinstance(self.temporal_form, SubjectiveTemporalForm):
-            raise TypeError("temporal_form must be SubjectiveTemporalForm")
-        for name in (
-            "parent_representation_fingerprint",
-            "distortion_candidate_fingerprint",
+    def __init__(self, *, _factory_token: object = None) -> None:
+        if _factory_token is not _SUBJECTIVE_DETAIL_REP_FACTORY_TOKEN:
+            raise TypeError(
+                "SubjectiveDetailRepresentation is factory-controlled"
+            )
+
+
+def _make_subjective_detail_representation(
+    *,
+    detail_id: str,
+    temporal_form: SubjectiveTemporalForm = SubjectiveTemporalForm.EXACT,
+    parent_representation_fingerprint: str | None = None,
+    distortion_candidate_fingerprint: str | None = None,
+) -> SubjectiveDetailRepresentation:
+    if not isinstance(detail_id, str) or not detail_id.strip():
+        raise ValueError("detail_id is required")
+    if not isinstance(temporal_form, SubjectiveTemporalForm):
+        raise TypeError("temporal_form must be SubjectiveTemporalForm")
+    for name, value in (
+        ("parent_representation_fingerprint", parent_representation_fingerprint),
+        ("distortion_candidate_fingerprint", distortion_candidate_fingerprint),
+    ):
+        if value is not None and (
+            not isinstance(value, str) or not value.strip()
         ):
-            value = getattr(self, name)
-            if value is not None and (
-                not isinstance(value, str) or not value.strip()
-            ):
-                raise ValueError(f"{name} must be a non-blank string or None")
-        if self.temporal_form is SubjectiveTemporalForm.EXACT:
-            if self.parent_representation_fingerprint is not None:
-                raise ValueError("initial exact representation cannot claim a parent")
-            if self.distortion_candidate_fingerprint is not None:
-                raise ValueError("initial exact representation cannot claim distortion")
-        else:
-            if self.parent_representation_fingerprint is None:
-                raise ValueError("generalized representation requires a parent")
-            if self.distortion_candidate_fingerprint is None:
-                raise ValueError("generalized representation requires distortion lineage")
-        payload = {
-            "detail_id": self.detail_id,
-            "temporal_form": self.temporal_form.value,
-            "parent_representation_fingerprint": (
-                self.parent_representation_fingerprint
-            ),
-            "distortion_candidate_fingerprint": (
-                self.distortion_candidate_fingerprint
-            ),
-        }
-        object.__setattr__(
-            self,
+            raise ValueError(f"{name} must be a non-blank string or None")
+    if temporal_form is SubjectiveTemporalForm.EXACT:
+        if parent_representation_fingerprint is not None:
+            raise ValueError("initial exact representation cannot claim a parent")
+        if distortion_candidate_fingerprint is not None:
+            raise ValueError(
+                "initial exact representation cannot claim distortion"
+            )
+    else:
+        if parent_representation_fingerprint is None:
+            raise ValueError("generalized representation requires a parent")
+        if distortion_candidate_fingerprint is None:
+            raise ValueError(
+                "generalized representation requires distortion lineage"
+            )
+    payload = {
+        "detail_id": detail_id,
+        "temporal_form": temporal_form.value,
+        "parent_representation_fingerprint": (
+            parent_representation_fingerprint
+        ),
+        "distortion_candidate_fingerprint": (
+            distortion_candidate_fingerprint
+        ),
+    }
+    representation = SubjectiveDetailRepresentation(
+        _factory_token=_SUBJECTIVE_DETAIL_REP_FACTORY_TOKEN
+    )
+    for name, value in (
+        ("detail_id", detail_id),
+        ("temporal_form", temporal_form),
+        (
+            "parent_representation_fingerprint",
+            parent_representation_fingerprint,
+        ),
+        (
+            "distortion_candidate_fingerprint",
+            distortion_candidate_fingerprint,
+        ),
+        (
             "representation_fingerprint",
             "subjective_detail_" + _stable_sha256(payload)[:24],
-        )
+        ),
+    ):
+        object.__setattr__(representation, name, value)
+    return representation
 
 
 @dataclass(frozen=True)
@@ -459,7 +492,9 @@ class MemoryTrace:
         )
         if not normalized_representations and normalized_details:
             normalized_representations = tuple(
-                SubjectiveDetailRepresentation(detail_id=detail.detail_id)
+                _make_subjective_detail_representation(
+                    detail_id=detail.detail_id
+                )
                 for detail in normalized_details
             )
         representation_ids = tuple(
