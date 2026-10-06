@@ -1383,6 +1383,19 @@ def _verify_serialized_decision_audit(audit: dict[str, Any]) -> None:
     distortion_items = audit.get("distortion_candidates", [])
     if not isinstance(distortion_items, list):
         raise ValueError("distortion_candidates audit must be a list")
+    policy_audit = audit.get("policy")
+    if not isinstance(policy_audit, dict):
+        raise ValueError("persisted reconsolidation policy audit is required")
+    policy_generalization_threshold = policy_audit.get(
+        "max_temporal_confidence_for_generalization"
+    )
+    if (
+        isinstance(policy_generalization_threshold, bool)
+        or not isinstance(policy_generalization_threshold, (int, float))
+    ):
+        raise ValueError(
+            "persisted temporal generalization threshold must be numeric"
+        )
     seen_distortions: set[str] = set()
     for raw in distortion_items:
         if not isinstance(raw, dict):
@@ -1412,6 +1425,40 @@ def _verify_serialized_decision_audit(audit: dict[str, Any]) -> None:
             raise ValueError("distortion candidate P4 ID mismatch")
         if raw.get("p4_candidate_digest") != audit.get("candidate_digest"):
             raise ValueError("distortion candidate P4 digest mismatch")
+        if raw.get("kind") != DistortionKind.TEMPORAL_GENERALIZATION.value:
+            raise ValueError("persisted distortion kind is not permitted")
+        if raw.get("output_temporal_form") != (
+            SubjectiveTemporalForm.GENERALIZED.value
+        ):
+            raise ValueError("persisted distortion output form is invalid")
+        if raw.get("recalled_temporal_precision") != (
+            TemporalPrecision.UNCERTAIN.value
+        ):
+            raise ValueError("persisted distortion recall precision is invalid")
+        if raw.get("recalled_representation_fingerprint") != raw.get(
+            "parent_representation_fingerprint"
+        ):
+            raise ValueError(
+                "persisted distortion recalled representation mismatch"
+            )
+        driver_confidence = raw.get("driver_temporal_confidence")
+        distortion_threshold = raw.get("max_temporal_confidence_threshold")
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in (driver_confidence, distortion_threshold)
+        ):
+            raise ValueError(
+                "persisted distortion confidence values must be numeric"
+            )
+        if abs(
+            float(distortion_threshold)
+            - float(policy_generalization_threshold)
+        ) > 1e-12:
+            raise ValueError("persisted distortion policy threshold mismatch")
+        if float(driver_confidence) > float(distortion_threshold):
+            raise ValueError(
+                "persisted distortion driver exceeds generalization threshold"
+            )
 
     representation_items = audit.get("representation_operations", [])
     if not isinstance(representation_items, list):
@@ -1578,6 +1625,10 @@ def _verify_successor_matches_audit(
         if distortion_fingerprint in used_distortions:
             raise ValueError("distortion candidate used more than once")
         used_distortions.add(distortion_fingerprint)
+        if raw.get("kind") != distortion.get("kind"):
+            raise ValueError("representation operation kind mismatch")
+        if raw.get("reason_code") != distortion.get("reason_code"):
+            raise ValueError("representation operation reason mismatch")
         if distortion.get("detail_id") != detail_id:
             raise ValueError("distortion candidate detail mismatch")
         parent_representation = expected_representations[detail_id]
@@ -1589,6 +1640,16 @@ def _verify_successor_matches_audit(
             parent_representation.representation_fingerprint
         ):
             raise ValueError("distortion candidate representation parent mismatch")
+        if distortion.get("recalled_representation_fingerprint") != (
+            parent_representation.representation_fingerprint
+        ):
+            raise ValueError("distortion candidate recalled representation mismatch")
+        if distortion.get("recalled_detail_ref") != f"{parent.trace_id}:{detail_id}":
+            raise ValueError("distortion candidate recalled detail ref mismatch")
+        if distortion.get("recalled_temporal_precision") != (
+            TemporalPrecision.UNCERTAIN.value
+        ):
+            raise ValueError("distortion candidate recall was not temporally uncertain")
         if raw.get("old_temporal_form") != SubjectiveTemporalForm.EXACT.value:
             raise ValueError("P6D operation must begin from exact temporal form")
         if raw.get("new_temporal_form") != (
@@ -1626,6 +1687,26 @@ def _verify_successor_matches_audit(
             - parent_state.temporal_confidence
         ) > 1e-12:
             raise ValueError("distortion driver temporal confidence mismatch")
+        audit_policy = audit.get("policy")
+        if not isinstance(audit_policy, dict):
+            raise ValueError("persisted reconsolidation policy audit is required")
+        policy_threshold = audit_policy.get(
+            "max_temporal_confidence_for_generalization"
+        )
+        distortion_threshold = distortion.get(
+            "max_temporal_confidence_threshold"
+        )
+        if (
+            isinstance(policy_threshold, bool)
+            or not isinstance(policy_threshold, (int, float))
+            or isinstance(distortion_threshold, bool)
+            or not isinstance(distortion_threshold, (int, float))
+        ):
+            raise ValueError("distortion threshold audit is invalid")
+        if abs(float(distortion_threshold) - float(policy_threshold)) > 1e-12:
+            raise ValueError("distortion threshold does not match policy")
+        if parent_state.temporal_confidence > float(distortion_threshold):
+            raise ValueError("distortion parent confidence exceeds threshold")
 
         new_representation = _make_subjective_detail_representation(
             detail_id=detail_id,
