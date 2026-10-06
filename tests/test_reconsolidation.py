@@ -2391,6 +2391,113 @@ class ReconsolidationTests(unittest.TestCase):
             ContextAssociation.WEAK,
         )
 
+    def test_p6d_distortion_candidate_is_factory_controlled(self):
+        with self.assertRaises(TypeError):
+            DistortionCandidate(
+                kind="temporal_generalization",
+                detail_id="detail:henry-time",
+            )
+
+    def test_p6d_temporal_generalization_changes_subjective_representation_not_truth(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-generalize",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertIn("8:15 PM", candidate.reconstructed_scene)
+        self.assertIs(
+            candidate.recalled_detail_states[0].temporal_form,
+            SubjectiveTemporalForm.EXACT,
+        )
+
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        self.assertTrue(decision.eligible)
+        self.assertEqual(len(decision.distortion_candidates), 1)
+        self.assertEqual(len(decision.representation_operations), 1)
+        operation = decision.representation_operations[0]
+        self.assertEqual(
+            operation.detail_id,
+            "detail:henry-time",
+        )
+        self.assertIs(
+            operation.old_temporal_form,
+            SubjectiveTemporalForm.EXACT,
+        )
+        self.assertIs(
+            operation.new_temporal_form,
+            SubjectiveTemporalForm.GENERALIZED,
+        )
+
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+        self.assertEqual(successor.details, trace.details)
+        self.assertEqual(
+            successor.protected_evidence,
+            trace.protected_evidence,
+        )
+        self.assertIn(
+            "8:15 PM",
+            successor.details[0].text,
+        )
+        representation = successor.subjective_representation(
+            "detail:henry-time"
+        )
+        self.assertIs(
+            representation.temporal_form,
+            SubjectiveTemporalForm.GENERALIZED,
+        )
+        self.assertEqual(
+            representation.parent_representation_fingerprint,
+            trace.subjective_representation(
+                "detail:henry-time"
+            ).representation_fingerprint,
+        )
+
+        later = self.reconstruct(
+            successor,
+            episode_id="episode:p6d-later",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        self.assertNotIn("8:15 PM", later.reconstructed_scene)
+        self.assertIn(
+            "sometime that evening",
+            later.reconstructed_scene,
+        )
+        self.assertIs(
+            later.recalled_detail_states[0].temporal_form,
+            SubjectiveTemporalForm.GENERALIZED,
+        )
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
