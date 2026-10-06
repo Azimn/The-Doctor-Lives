@@ -43,6 +43,7 @@ from .recollection import (
     RecollectionCandidate,
     SubjectiveDetailRepresentation,
     SubjectiveTemporalForm,
+    TemporalPrecision,
     TemporalSemantics,
     _make_subjective_detail_representation,
     TraceDetail,
