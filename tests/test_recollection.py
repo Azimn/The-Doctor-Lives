@@ -111,6 +111,27 @@ class RecollectionArchitectureTests(unittest.TestCase):
                 temporal_template="Henry was elsewhere {temporal}",
             )
 
+    def test_temporal_generalization_cannot_retain_exact_numeric_value(self):
+        with self.assertRaises(ValueError):
+            TemporalSemantics(
+                exact_phrase="at 8:15 PM",
+                generalized_phrase="around 8 PM",
+            )
+
+    def test_temporal_template_cannot_hide_exact_specificity_outside_slot(self):
+        with self.assertRaises(ValueError):
+            TraceDetail(
+                detail_id="detail:duplicated-time",
+                text="Tuesday Henry stood beside the apparatus Tuesday",
+                temporal_semantics=TemporalSemantics(
+                    exact_phrase="Tuesday",
+                    generalized_phrase="sometime that week",
+                ),
+                temporal_template=(
+                    "Tuesday Henry stood beside the apparatus {temporal}"
+                ),
+            )
+
     def test_subjective_detail_representation_is_factory_controlled(self):
         with self.assertRaises(TypeError):
             SubjectiveDetailRepresentation(
