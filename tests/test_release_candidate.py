@@ -118,7 +118,7 @@ class ReleaseCandidateTests(unittest.TestCase):
             ))
 
             neutral = Experience(
-                "A brass dial remains motionless.",
+                "QXZV-417 BLORF KLYPT.",
                 kind="observation",
                 arousal=0.0,
                 novelty=0.0,
