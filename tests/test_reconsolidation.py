@@ -2761,6 +2761,73 @@ class ReconsolidationTests(unittest.TestCase):
             enabled_successor.protected_evidence,
         )
 
+    def test_p6d_refuses_generalization_when_gist_would_leak_exact_time(self):
+        trace = MemoryTrace(
+            subject_id="subject-reconsolidation",
+            version=0,
+            protected_evidence=(
+                ProtectedEvidenceRef(
+                    evidence_id="evidence:p6d-gist-leak",
+                    digest="sha256:p6d-gist-leak",
+                ),
+            ),
+            gist="The demonstration occurred at 8:15 PM",
+            details=(
+                TraceDetail(
+                    detail_id="detail:henry-time",
+                    text="Henry stood beside the apparatus at 8:15 PM",
+                    cue_terms=("henry", "apparatus"),
+                    temporal_semantics=TemporalSemantics(
+                        exact_phrase="at 8:15 PM",
+                        generalized_phrase="sometime that evening",
+                    ),
+                    temporal_template=(
+                        "Henry stood beside the apparatus {temporal}"
+                    ),
+                ),
+            ),
+            detail_states=(
+                TraceDetailState(
+                    detail_id="detail:henry-time",
+                    temporal_confidence=0.25,
+                ),
+            ),
+            strength=0.60,
+            accessibility=0.60,
+            familiarity=0.60,
+        )
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-gist-leak",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        self.assertEqual(decision.distortion_candidates, ())
+        self.assertEqual(decision.representation_operations, ())
+        self.assertIn(
+            "no_p6d_temporal_generalization_target",
+            decision.distortion_reason_codes,
+        )
+
     def test_p6d_representation_and_distortion_audit_survive_restart(self):
         trace = self.trace_with_structured_time(
             temporal_confidence=0.25,
@@ -2807,6 +2874,23 @@ class ReconsolidationTests(unittest.TestCase):
         audit = restored.decision_audit(successor.trace_id)
         self.assertEqual(len(audit["distortion_candidates"]), 1)
         self.assertEqual(len(audit["representation_operations"]), 1)
+        distortion_audit = audit["distortion_candidates"][0]
+        self.assertEqual(
+            distortion_audit["recalled_temporal_precision"],
+            TemporalPrecision.UNCERTAIN.value,
+        )
+        self.assertEqual(
+            distortion_audit["recalled_representation_fingerprint"],
+            distortion_audit["parent_representation_fingerprint"],
+        )
+        self.assertEqual(
+            distortion_audit["max_temporal_confidence_threshold"],
+            audit["policy"]["max_temporal_confidence_for_generalization"],
+        )
+        self.assertLessEqual(
+            distortion_audit["driver_temporal_confidence"],
+            distortion_audit["max_temporal_confidence_threshold"],
+        )
         self.assertEqual(
             audit["representation_operations"][0][
                 "distortion_candidate_fingerprint"
