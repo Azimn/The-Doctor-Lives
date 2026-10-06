@@ -7,9 +7,10 @@ P6A changes only bounded trace-level strength/accessibility/familiarity and
 retrieval/rehearsal counters. P6B adds separately audited accessibility drift
 for existing retained details that were omitted by the exact P4 recollection.
 P6C adds separately gated temporal-confidence and contextual-association drift
-for psychologically meaningful omission causes. Semantic TraceDetail content,
-protected evidence, gist, and source cues remain unchanged. Constructive
-distortion is still outside this module's active release gate.
+for psychologically meaningful omission causes. P6D adds a factory-controlled
+subjective temporal-generalization representation while preserving stable
+TraceDetail semantic truth. Novel propositions, donor substitution, and
+free-form constructive distortion remain outside this module's active gate.
 """
 
 from __future__ import annotations
