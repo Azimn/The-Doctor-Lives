@@ -408,6 +408,40 @@ class RecollectionArchitectureTests(unittest.TestCase):
         )
         self.assertNotIn("0.25", candidate.reconstructed_scene)
 
+    def test_p6d_preserves_exact_mode_p4_cue_term_semantics(self):
+        trace = MemoryTrace(
+            subject_id="subject-memory",
+            version=0,
+            protected_evidence=(self.evidence("cue-compat"),),
+            gist="A neutral scene",
+            details=(
+                TraceDetail(
+                    detail_id="detail:cue-compat",
+                    text="A colorless shape was present",
+                    cue_terms=("rain storm",),
+                ),
+            ),
+            strength=0.5,
+            accessibility=0.5,
+            familiarity=0.5,
+        )
+        candidate = reconstruct_recollection(
+            [trace],
+            self.episode(
+                trace,
+                episode_id="episode-cue-compat",
+                cue_text="rain storm",
+            ),
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.99,
+            ),
+        )
+        self.assertEqual(len(candidate.detail_omissions), 1)
+        omission = candidate.detail_omissions[0]
+        self.assertEqual(omission.cue_overlap, 0.0)
+        self.assertAlmostEqual(omission.score, 0.45)
+
     def test_identical_inputs_reconstruct_deterministically(self):
         trace = self.trace()
         episode = self.episode(trace)
