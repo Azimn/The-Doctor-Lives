@@ -905,7 +905,9 @@ def _detail_metrics(
     trace: MemoryTrace,
 ) -> tuple[float, float]:
     rendered_detail = _subjective_detail_text(trace, detail)
-    cue_term_tokens = _tokens(" ".join(detail.cue_terms))
+    # Preserve accepted P4 cue-term semantics for exact/default memory. P6D
+    # filters only exact-only temporal cue terms after generalization.
+    cue_term_tokens = {term.lower() for term in detail.cue_terms}
     representation = trace.subjective_representation(detail.detail_id)
     if (
         representation.temporal_form is SubjectiveTemporalForm.GENERALIZED
