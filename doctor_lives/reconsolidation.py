@@ -27,6 +27,7 @@ from .distortion import (
     RepresentationOperation,
     build_representation_operation,
     propose_temporal_generalization,
+    verify_distortion_candidate,
 )
 from .phenomenology import (
     AwarenessLevel,
@@ -971,6 +972,26 @@ def _verify_decision_integrity(
     if decision.policy_fingerprint != decision.policy.fingerprint:
         raise ValueError("reconsolidation policy fingerprint mismatch")
 
+    if len(decision.distortion_candidates) != len(
+        decision.representation_operations
+    ):
+        raise ValueError("distortion candidate/operation count mismatch")
+    for distortion, operation in zip(
+        decision.distortion_candidates,
+        decision.representation_operations,
+    ):
+        verify_distortion_candidate(distortion)
+        if distortion.p4_candidate_id != candidate.candidate_id:
+            raise ValueError("distortion candidate P4 ID mismatch")
+        if distortion.p4_candidate_digest != candidate.candidate_digest:
+            raise ValueError("distortion candidate P4 digest mismatch")
+        expected_operation, _ = build_representation_operation(
+            old_trace=old_trace,
+            distortion=distortion,
+        )
+        if operation != expected_operation:
+            raise ValueError("representation operation does not match distortion")
+
     payload = _decision_payload(
         old_trace=old_trace,
         candidate=candidate,
@@ -984,6 +1005,9 @@ def _verify_decision_integrity(
         operations=decision.operations,
         detail_operations=decision.detail_operations,
         detail_reason_codes=decision.detail_reason_codes,
+        distortion_candidates=decision.distortion_candidates,
+        representation_operations=decision.representation_operations,
+        distortion_reason_codes=decision.distortion_reason_codes,
         reason_codes=decision.reason_codes,
     )
     expected = "reconsolidation_" + _stable_sha256(payload)[:24]
