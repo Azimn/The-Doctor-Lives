@@ -29,3 +29,21 @@ Version 0.3 is governed by `CAUSAL_AUDIT_CONTRACT.md` and Issue #9. The feature 
 The audit instrumentation is not part of Pretorius's production decision path unless explicitly invoked against cloned audit state. Default `PretoriusBrain` behavior must remain unchanged.
 
 A state-to-policy bridge is a post-audit candidate only. It must not be introduced until the lesion/control results demonstrate which existing states lack causal leverage over action selection.
+
+
+## Definitive neural-convergence rule
+
+This repository is the convergence target. Donor repositories may supply mechanisms, tests, and experimental evidence, but they must not become parallel production authorities. A donor mechanism enters Pretorius only through a versioned transplant into the existing `PretoriusRecurrentSubstrate` or another already-authorized subsystem, with legacy behavior preserved as a control until the new path passes its gate.
+
+Neural Convergence v0.5 therefore extends the existing recurrent substrate rather than adding another neural engine. The accepted v0.4 configuration remains the default. The opt-in convergence profile may use Oja-style competitive plasticity, bounded recurrent-gain homeostasis, intrinsic excitability regulation, persisted correlated endogenous variation, neuromodulated plasticity, and delayed outcome-dependent synaptic capture. These mechanisms may alter recurrent developmental state but may not author identity facts, autobiographical claims, world facts, renderer text, tool authority, or UPPB protected evidence. Convergence-mode embodiment may expose only felt interoceptive values to the recurrent input layer; hidden homeostatic actuals remain inaccessible to the neural subject path.
+
+Outcome capture is allowed only from the existing explicit action-outcome path. Neural tags are provisional and have no independent semantic authority. The 70-node Persona Connectome remains a provenance-bearing psychological topology and is not silently rewritten into neural truth. Any future mapping from those 70 nodes into recurrent populations requires a separate matched lesion/control gate showing causal benefit over the present retrieval-only connectome.
+
+
+## v0.5 release-candidate authority
+
+The `release/pretorius-v0.5-rc1` line is the sole integration target for assessor review. Historical feature branches remain evidence records and are not parallel production authorities.
+
+The accepted v0.4 behavior is the production-default control. UPPB P0 through P6D is present and fully testable but remains outside the live Pretorius subject-facing path until an explicit later integration gate changes that boundary. Neural Convergence is present as an opt-in recurrent profile and must not become the default merely because it is available in the package.
+
+A release candidate is acceptable only when the exact head passes the complete repository test suite on both push and pull-request paths, package installation succeeds from a clean runner, default v0.4 behavior remains regression-compatible, UPPB protected-evidence invariants remain intact, and Neural Convergence remains separately selectable from the legacy control.

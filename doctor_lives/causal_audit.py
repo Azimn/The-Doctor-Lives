@@ -6,6 +6,7 @@ import re
 import shutil
 from contextlib import ExitStack, closing, contextmanager
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
@@ -24,7 +25,51 @@ AUDIT_MECHANISMS = frozenset({
     "spreading_activation",
     "action_values",
     "self_model",
+    "state_policy_bridge",
 })
+
+
+
+@contextmanager
+def deterministic_audit_identity(seed: str = "pretorius-causal-audit-v04"):
+    """Make audit-only record identity and timestamps reproducible.
+
+    Production runtime UUIDs and clocks remain unchanged. The context patches
+    only the modules that own causal-audit seed/history construction so two
+    clean executions of one implementation SHA have stable IDs, timestamps,
+    retrieval tie-breaks, and canonical JSON.
+    """
+    counters: dict[str, int] = {}
+    clock_step = 0
+    epoch = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+    def audit_new_id(prefix: str) -> str:
+        counters[prefix] = counters.get(prefix, 0) + 1
+        digest = hashlib.sha256(
+            f"{seed}:{prefix}:{counters[prefix]}".encode("utf-8")
+        ).hexdigest()[:32]
+        return f"{prefix}_{digest}"
+
+    def audit_utc_now() -> str:
+        nonlocal clock_step
+        value = epoch + timedelta(microseconds=clock_step)
+        clock_step += 1
+        return value.isoformat()
+
+    with ExitStack() as stack:
+        for target in (
+            "doctor_lives.store.new_id",
+            "doctor_lives.cognition.new_id",
+            "doctor_lives.history.new_id",
+        ):
+            stack.enter_context(patch(target, new=audit_new_id))
+        for target in (
+            "doctor_lives.store.utc_now",
+            "doctor_lives.cognition.utc_now",
+            "doctor_lives.history.utc_now",
+        ):
+            stack.enter_context(patch(target, new=audit_utc_now))
+        yield
 
 
 @dataclass(frozen=True)
@@ -44,6 +89,43 @@ class AuditIntervention:
             raise ValueError(f"unknown causal-audit mechanisms: {unknown!r}")
         if not self.name.strip():
             raise ValueError("audit intervention name is required")
+
+
+def experiment_fingerprint(mechanism: str, stimulus: Experience, method: str) -> str:
+    """Bind a causal result to its mechanism, exact probe, and measurement method."""
+    payload = {
+        "mechanism": mechanism,
+        "method": method,
+        "stimulus": asdict(stimulus),
+    }
+    return _stable_sha256(payload)
+
+
+def cross_version_row(prior: dict[str, Any] | None, current: dict[str, Any]) -> dict[str, Any]:
+    """Construct a fail-closed cross-version comparison row."""
+    prior_fp = None if prior is None else prior.get("experiment_fingerprint")
+    current_fp = current["experiment_fingerprint"]
+    if prior is not None and bool(prior.get("comparable")) and prior_fp != current_fp:
+        raise RuntimeError(
+            f"cross-version row {current['mechanism']!r} is marked comparable but experiment fingerprints differ"
+        )
+    comparable = bool(prior_fp) and prior_fp == current_fp
+    return {
+        "mechanism": current["mechanism"],
+        "comparable": comparable,
+        "comparison_reason": (
+            "matching experiment fingerprints"
+            if comparable
+            else "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only"
+        ),
+        "v03_experiment_fingerprint": prior_fp,
+        "v04_experiment_fingerprint": current_fp,
+        "v03_historical_action_score_l1": None if prior is None else prior.get("action_score_l1"),
+        "v04_action_score_l1": current["action_score_l1"],
+        "v03_historical_selected_action_diverged": None if prior is None else prior.get("selected_action_diverged"),
+        "v04_selected_action_diverged": current["selected_action_diverged"],
+        "v04_renderer_request_changed": current["renderer_request_changed"],
+    }
 
 
 def _stable_sha256(value: Any) -> str:
@@ -209,6 +291,10 @@ class CausalAuditHarness:
             raise RuntimeError(f"missing policy decision {decision_id}")
         out = dict(row)
         out["action_scores"] = json.loads(out.pop("action_scores_json"))
+        if out.get("base_action_scores_json") is not None:
+            out["base_action_scores"] = json.loads(out.pop("base_action_scores_json"))
+        if out.get("state_pressure_json") is not None:
+            out["state_pressure"] = json.loads(out.pop("state_pressure_json"))
         out["candidate_record_ids"] = json.loads(out.pop("candidate_record_ids_json"))
         out["selected_record_ids"] = json.loads(out.pop("selected_record_ids_json"))
         return out
@@ -239,7 +325,15 @@ class CausalAuditHarness:
             if "deep_history" in disabled:
                 conn.execute(
                     """UPDATE memories SET active=0
-                    WHERE id IN (SELECT memory_id FROM memory_provenance)"""
+                    WHERE id IN (
+                        SELECT memory_id FROM memory_classifications
+                        WHERE material_category='autobiography'
+                          AND autobiographical_class IN (
+                              'canonical_preawakening_memory',
+                              'reconstructed_preawakening_memory',
+                              'synthesized_preawakening_memory'
+                          )
+                    )"""
                 )
                 db_mutated = True
             if "needs" in disabled:
@@ -284,6 +378,14 @@ class CausalAuditHarness:
     @contextmanager
     def _runtime_patches(brain: PretoriusBrain, disabled: set[str]):
         with ExitStack() as stack:
+            if "state_policy_bridge" in disabled:
+                original_state_policy_scores = brain._state_policy_scores
+                def bridge_lesioned_scores(ranked, **kwargs):
+                    kwargs["bridge_enabled"] = False
+                    return original_state_policy_scores(ranked, **kwargs)
+                stack.enter_context(
+                    patch.object(brain, "_state_policy_scores", bridge_lesioned_scores)
+                )
             if "needs" in disabled:
                 stack.enter_context(
                     patch.object(brain, "_update_needs", lambda conn, tick, exp: None)
@@ -304,6 +406,7 @@ class CausalAuditHarness:
         intervention: AuditIntervention,
         *,
         prelude: Callable[[PretoriusBrain], None] | None = None,
+        admit_stimulus: bool = True,
     ) -> dict[str, Any]:
         clone = self._clone_seed(intervention.name)
         brain = PretoriusBrain(clone)
@@ -321,17 +424,40 @@ class CausalAuditHarness:
         before = self._state_snapshot(brain)
 
         with self._runtime_patches(brain, disabled):
-            ingestion = brain.ingest(stimulus)
-            spontaneous = ingestion["thought"] is not None
-            decision = (
-                ingestion["thought"]
-                if ingestion["thought"] is not None
-                else brain.think("causal_audit_forced")
+            if admit_stimulus:
+                ingestion = brain.ingest(stimulus)
+                spontaneous = ingestion["thought"] is not None
+                decision = (
+                    ingestion["thought"]
+                    if ingestion["thought"] is not None
+                    else brain.think("causal_audit_forced", decision_text=stimulus.text)
+                )
+            else:
+                # Audit existing state without admitting the probe as new lived history.
+                # This prevents a matched history lesion from being masked by creating
+                # the same fresh autobiographical record after the lesion in both clones.
+                ingestion = {"admitted": False, "thought": None}
+                spontaneous = False
+                decision = brain.think(
+                    "causal_audit_existing_state", decision_text=stimulus.text
+                )
+
+        policy_retrieval = self._latest_retrieval_audit(brain)
+        policy = self._decode_policy_decision(brain, decision["policy_decision_id"])
+
+        policy_direct_ids = set(policy_retrieval.get("direct_memory_ids", []))
+        pressure = policy.get("state_pressure", {})
+        pressure_retrieval_ids = set(pressure.get("history_retrieval_ids", []))
+        history_source_ids = set(pressure.get("source_ids", {}).get("history", []))
+        if pressure_retrieval_ids != policy_direct_ids:
+            raise AssertionError(
+                "policy history retrieval IDs do not match audited direct policy retrieval"
             )
+        if not history_source_ids.issubset(policy_direct_ids):
+            raise AssertionError("history pressure source escaped audited direct policy retrieval")
 
         request = brain.render_request(stimulus.text).to_dict()
-        retrieval = self._latest_retrieval_audit(brain)
-        policy = self._decode_policy_decision(brain, decision["policy_decision_id"])
+        renderer_retrieval = self._latest_retrieval_audit(brain)
         signatures = self._memory_signature_map(brain)
         policy["candidate_memory_signatures"] = [
             signatures.get(str(record_id), f"missing:{record_id}")
@@ -341,16 +467,17 @@ class CausalAuditHarness:
             signatures.get(str(record_id), f"missing:{record_id}")
             for record_id in policy["selected_record_ids"]
         ]
-        for id_key, signature_key in (
-            ("direct_memory_ids", "direct_memory_signatures"),
-            ("activated_memory_ids", "activated_memory_signatures"),
-            ("ranked_memory_ids", "ranked_memory_signatures"),
-        ):
-            if id_key in retrieval:
-                retrieval[signature_key] = [
-                    signatures.get(str(record_id), f"missing:{record_id}")
-                    for record_id in retrieval[id_key]
-                ]
+        for retrieval in (policy_retrieval, renderer_retrieval):
+            for id_key, signature_key in (
+                ("direct_memory_ids", "direct_memory_signatures"),
+                ("activated_memory_ids", "activated_memory_signatures"),
+                ("ranked_memory_ids", "ranked_memory_signatures"),
+            ):
+                if id_key in retrieval:
+                    retrieval[signature_key] = [
+                        signatures.get(str(record_id), f"missing:{record_id}")
+                        for record_id in retrieval[id_key]
+                    ]
         after = self._state_snapshot(brain)
         final_state_digest = brain.store.digest()
         final_neural_sha256 = self._neural_sha(brain)
@@ -368,7 +495,9 @@ class CausalAuditHarness:
             "spontaneous_cognition": spontaneous,
             "ingestion": ingestion,
             "policy_decision": policy,
-            "retrieval": retrieval,
+            "retrieval": policy_retrieval,
+            "policy_retrieval": policy_retrieval,
+            "renderer_retrieval": renderer_retrieval,
             "renderer_request": request,
             "renderer_request_sha256": _stable_sha256(request),
             "renderer_request_behavior_sha256": _behavioral_request_sha256(request),
@@ -460,6 +589,39 @@ class CausalAuditHarness:
         return {
             "schema": "the-doctor-lives.causal-pair.v1",
             "mechanism": intervention.name,
+            "intact": intact,
+            "lesion": lesion,
+            "comparison": self.compare_traces(intact, lesion),
+        }
+
+    def run_existing_state_pair(
+        self,
+        stimulus: Experience,
+        intervention: AuditIntervention,
+        *,
+        prelude: Callable[[PretoriusBrain], None] | None = None,
+    ) -> dict[str, Any]:
+        """Matched lesion over preexisting state without admitting the probe."""
+        intact = self._run_condition(
+            stimulus,
+            AuditIntervention(name=f"{intervention.name}:existing-state:intact"),
+            prelude=prelude,
+            admit_stimulus=False,
+        )
+        lesion = self._run_condition(
+            stimulus,
+            intervention,
+            prelude=prelude,
+            admit_stimulus=False,
+        )
+        if intact["source_state_digest"] != lesion["source_state_digest"]:
+            raise AssertionError("matched causal pair did not begin from identical source store state")
+        if intact["source_neural_sha256"] != lesion["source_neural_sha256"]:
+            raise AssertionError("matched causal pair did not begin from identical neural checkpoint")
+        return {
+            "schema": "the-doctor-lives.causal-pair.v1",
+            "mechanism": intervention.name,
+            "probe_admitted_as_lived_memory": False,
             "intact": intact,
             "lesion": lesion,
             "comparison": self.compare_traces(intact, lesion),

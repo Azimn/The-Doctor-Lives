@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from doctor_lives import Experience, PretoriusBrain
-from doctor_lives.causal_audit import AuditIntervention, CausalAuditHarness
+from doctor_lives.causal_audit import (
+    AuditIntervention,
+    CausalAuditHarness,
+    cross_version_row,
+    deterministic_audit_identity,
+    experiment_fingerprint,
+)
+from doctor_lives.history import install_deep_history
 from doctor_lives.neural import DEFAULT_CONFIG
 
 
@@ -29,6 +37,7 @@ class CausalAuditHarnessTests(unittest.TestCase):
         root = Path(temp.name)
         seed = root / "seed"
         brain = PretoriusBrain(seed, neural_config=small_config())
+        install_deep_history(brain.store)
         brain.ingest(Experience(
             "Henry returned a borrowed instrument intact and kept his promise.",
             kind="social",
@@ -79,11 +88,196 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertEqual(intact["source_state_digest"], lesion["source_state_digest"])
         self.assertEqual(intact["source_neural_sha256"], lesion["source_neural_sha256"])
         self.assertIn("policy_decision", intact)
+        self.assertIn("base_action_scores", intact["policy_decision"])
+        self.assertIn("state_pressure", intact["policy_decision"])
+        self.assertIn("families", intact["policy_decision"]["state_pressure"])
+        self.assertIn("config", intact["policy_decision"]["state_pressure"])
+        self.assertIn("config_sha256", intact["policy_decision"]["state_pressure"])
+        self.assertIn("source_state_version", intact["policy_decision"]["state_pressure"])
+        self.assertTrue(intact["policy_decision"]["state_pressure"]["source_ids"]["needs"])
         self.assertIn("retrieval", intact)
+        self.assertIn("policy_retrieval", intact)
+        self.assertIn("renderer_retrieval", intact)
+        self.assertEqual(intact["retrieval"]["id"], intact["policy_retrieval"]["id"])
+        self.assertNotEqual(
+            intact["policy_retrieval"]["id"],
+            intact["renderer_retrieval"]["id"],
+        )
+        self.assertEqual(
+            set(intact["policy_decision"]["state_pressure"]["history_retrieval_ids"]),
+            set(intact["policy_retrieval"]["direct_memory_ids"]),
+        )
+        self.assertTrue(
+            set(intact["policy_decision"]["state_pressure"]["source_ids"]["history"]).issubset(
+                set(intact["policy_retrieval"]["direct_memory_ids"])
+            )
+        )
         self.assertIn("renderer_request", intact)
         self.assertIn("deterministic_audit_render", intact)
         self.assertEqual(lesion["disabled_mechanisms"], ["deep_history"])
         self.assertLess(result["comparison"]["retrieval_jaccard"], 1.0)
+
+    def test_existing_state_history_pair_does_not_admit_probe(self):
+        harness = self.make_harness()
+        history_probe = Experience(
+            "The homunculi creation invites another artificial-life experiment.",
+            kind="observation", novelty=.6, creation=.8,
+            tags=("homunculi", "creation", "artificial_life"),
+        )
+        result = harness.run_existing_state_pair(
+            history_probe,
+            AuditIntervention("deep_history", ("deep_history",)),
+        )
+        self.assertFalse(result["probe_admitted_as_lived_memory"])
+        self.assertFalse(result["intact"]["ingestion"]["admitted"])
+        self.assertFalse(result["lesion"]["ingestion"]["admitted"])
+        self.assertEqual(
+            result["intact"]["source_state_digest"],
+            result["lesion"]["source_state_digest"],
+        )
+        self.assertEqual(
+            result["intact"]["source_neural_sha256"],
+            result["lesion"]["source_neural_sha256"],
+        )
+        intact_history = result["intact"]["policy_decision"]["state_pressure"]["source_ids"]["history"]
+        lesion_history = result["lesion"]["policy_decision"]["state_pressure"]["source_ids"]["history"]
+        self.assertTrue(
+            intact_history,
+            msg=f"intact history sources missing; retrieval={result['intact']['retrieval']!r}",
+        )
+        self.assertEqual(
+            lesion_history, [],
+            msg=f"deep-history lesion leaked policy sources: {lesion_history!r}",
+        )
+        self.assertGreater(
+            result["comparison"]["action_score_l1"], 0.0,
+            msg=f"history sources present but no policy divergence: {intact_history!r}",
+        )
+
+    def test_renderer_retrieval_cannot_overwrite_policy_retrieval_trace(self):
+        harness = self.make_harness()
+        result = harness.run_existing_state_pair(
+            self.probe(),
+            AuditIntervention("trace_retrieval_boundary", ()),
+        )
+        intact = result["intact"]
+        policy_retrieval = intact["policy_retrieval"]
+        renderer_retrieval = intact["renderer_retrieval"]
+        self.assertEqual(intact["retrieval"]["id"], policy_retrieval["id"])
+        self.assertNotEqual(policy_retrieval["id"], renderer_retrieval["id"])
+        self.assertEqual(
+            set(policy_retrieval["direct_memory_ids"]),
+            set(intact["policy_decision"]["state_pressure"]["history_retrieval_ids"]),
+        )
+        self.assertTrue(
+            set(intact["policy_decision"]["state_pressure"]["source_ids"]["history"]).issubset(
+                set(policy_retrieval["direct_memory_ids"])
+            )
+        )
+        self.assertLessEqual(len(renderer_retrieval["ranked_memory_ids"]), 14)
+        self.assertLessEqual(len(policy_retrieval["ranked_memory_ids"]), 48)
+
+    def test_deep_history_lesion_preserves_design_material(self):
+        harness = self.make_harness()
+        clone = harness._clone_seed("deep-history-lesion-scope")
+        brain = PretoriusBrain(clone, neural_config=small_config())
+        with brain.store.connect() as conn:
+            design_id = conn.execute(
+                "SELECT memory_id FROM memory_provenance WHERE history_key=?",
+                ("connectome:self.digital_continuation",),
+            ).fetchone()["memory_id"]
+            autobiography_id = conn.execute(
+                "SELECT memory_id FROM memory_provenance WHERE history_key=?",
+                ("curated:history.homunculi",),
+            ).fetchone()["memory_id"]
+        CausalAuditHarness._apply_static_lesions(brain, {"deep_history"})
+        with brain.store.connect() as conn:
+            design_active = conn.execute(
+                "SELECT active FROM memories WHERE id=?", (design_id,)
+            ).fetchone()["active"]
+            autobiography_active = conn.execute(
+                "SELECT active FROM memories WHERE id=?", (autobiography_id,)
+            ).fetchone()["active"]
+        self.assertEqual(int(design_active), 1)
+        self.assertEqual(int(autobiography_active), 0)
+
+    def test_spreading_activation_lesion_changes_retrieval_not_policy(self):
+        harness = self.make_harness()
+        probe = Experience(
+            "Ingolstadt Henry collaboration and institutional rejection return to attention.",
+            kind="observation", novelty=.4,
+            tags=("ingolstadt", "henry", "collaboration", "institutional_rejection"),
+        )
+
+        def prime_graph_history(brain):
+            with brain.store.transaction() as conn:
+                memory_id = conn.execute(
+                    "SELECT memory_id FROM history_nodes WHERE node_id='memory.ingolstadt'"
+                ).fetchone()["memory_id"]
+                conn.execute(
+                    "UPDATE memories SET base_salience=2.0 WHERE id=?", (memory_id,)
+                )
+                brain.store.bump_state_version(conn)
+
+        result = harness.run_existing_state_pair(
+            probe,
+            AuditIntervention("spreading_activation", ("spreading_activation",)),
+            prelude=prime_graph_history,
+        )
+        self.assertTrue(result["intact"]["retrieval"]["activated_memory_ids"])
+        self.assertEqual(result["lesion"]["retrieval"]["activated_memory_ids"], [])
+        self.assertAlmostEqual(result["comparison"]["action_score_l1"], 0.0, places=12)
+        self.assertFalse(result["comparison"]["selected_action_diverged"])
+
+    def test_causal_experiment_fingerprint_changes_with_probe_or_method(self):
+        probe_a = Experience("The homunculi creation invites another experiment.")
+        probe_b = Experience("Henry invokes authority over the procedure.")
+        a = experiment_fingerprint("deep_history", probe_a, "run_existing_state_pair:v1")
+        b = experiment_fingerprint("deep_history", probe_b, "run_existing_state_pair:v1")
+        c = experiment_fingerprint("deep_history", probe_a, "run_pair:v1")
+        self.assertNotEqual(a, b)
+        self.assertNotEqual(a, c)
+
+    def test_cross_version_comparison_fails_closed_on_identity_mismatch(self):
+        current = {
+            "mechanism": "deep_history",
+            "experiment_fingerprint": "new-fingerprint",
+            "action_score_l1": .1,
+            "selected_action_diverged": False,
+            "renderer_request_changed": True,
+        }
+        prior = {
+            "comparable": True,
+            "experiment_fingerprint": "old-fingerprint",
+            "action_score_l1": 0.0,
+            "selected_action_diverged": False,
+        }
+        with self.assertRaises(RuntimeError):
+            cross_version_row(prior, current)
+
+        prior_without_fingerprint = {
+            "action_score_l1": 0.0,
+            "selected_action_diverged": False,
+        }
+        historical = cross_version_row(prior_without_fingerprint, current)
+        self.assertFalse(historical["comparable"])
+        self.assertEqual(historical["v03_historical_action_score_l1"], 0.0)
+
+    def test_bridge_lesion_restores_recurrent_only_path(self):
+        harness = self.make_harness()
+        result = harness.run_pair(
+            self.probe(),
+            AuditIntervention("state_policy_bridge", ("state_policy_bridge",)),
+        )
+        lesion = result["lesion"]["policy_decision"]
+        self.assertEqual(lesion["base_action_scores"], lesion["action_scores"])
+        self.assertFalse(lesion["state_pressure"]["enabled"])
+        self.assertTrue(all(
+            abs(float(value)) < 1e-12
+            for family in lesion["state_pressure"]["families"].values()
+            for value in family.values()
+        ))
+        self.assertGreater(result["comparison"]["action_score_l1"], 0.0)
 
     def test_action_values_are_currently_not_a_decision_variable(self):
         harness = self.make_harness()
@@ -152,6 +346,50 @@ class CausalAuditHarnessTests(unittest.TestCase):
             0.0,
         )
 
+    def test_v04_recurrent_and_reinforcement_paths_remain_load_bearing(self):
+        harness = self.make_harness()
+        recurrent = harness.run_pair(
+            self.probe(),
+            AuditIntervention("recurrent_policy", ("recurrent_policy",)),
+        )
+        self.assertGreater(recurrent["comparison"]["action_score_l1"], 0.0)
+        self.assertNotEqual(
+            recurrent["intact"]["policy_decision"]["base_action_scores"],
+            recurrent["lesion"]["policy_decision"]["base_action_scores"],
+        )
+
+        harness = self.make_harness()
+        reinforcement = harness.run_reinforcement_triplet(
+            self.probe(), action="create", repetitions=4
+        )
+        self.assertGreater(
+            reinforcement["intact_vs_no_neural"]["action_score_l1"], 0.0
+        )
+        self.assertAlmostEqual(
+            reinforcement["intact_vs_neutral_action_values"]["action_score_l1"],
+            0.0,
+            places=12,
+        )
+
+    def test_v04_sleep_pair_preserves_waking_clock_isolation(self):
+        harness = self.make_harness()
+        result = harness.run_sleep_pair(self.probe(), sleep_ticks=4)
+        intact = result["intact"]
+        absent = result["lesion"]
+        self.assertEqual(
+            intact["state_before_stimulus"]["needs"].keys(),
+            absent["state_before_stimulus"]["needs"].keys(),
+        )
+        self.assertEqual(
+            intact["policy_decision"]["state_pressure"]["version"],
+            absent["policy_decision"]["state_pressure"]["version"],
+        )
+        # Sleep may alter the recurrent checkpoint, but must not consume waking store ticks.
+        self.assertEqual(
+            intact["policy_decision"]["tick"],
+            absent["policy_decision"]["tick"],
+        )
+
     def test_concern_accumulation_characterization_exposes_high_alert_failure_mode(self):
         harness = self.make_harness()
         result = harness.characterize_concern_accumulation(
@@ -161,7 +399,40 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertGreaterEqual(result["open_concerns_after_pressures"], 3)
         self.assertTrue(result["neutral_probe_warrants_cognition"])
         self.assertEqual(result["heartbeat_thoughts"], 2)
-        self.assertFalse(result["public_resolve_concern_method"])
+        self.assertTrue(result["public_resolve_concern_method"])
+
+
+    def test_audit_identity_clock_and_retrieval_are_repeatable(self):
+        def one_run():
+            with tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                with deterministic_audit_identity():
+                    seed = root / "seed"
+                    brain = PretoriusBrain(seed, neural_config=small_config())
+                    install_deep_history(brain.store)
+                    brain.ingest(Experience(
+                        "Henry returned a borrowed instrument intact and kept his promise.",
+                        kind="social",
+                        actor="Henry Frankenstein",
+                        social=.8,
+                        valence=.7,
+                        tags=("determinism_seed",),
+                    ))
+                    brain.save()
+                    harness = CausalAuditHarness(seed, root / "work")
+                    result = harness.run_existing_state_pair(
+                        Experience(
+                            "The homunculi creation invites another artificial-life experiment.",
+                            kind="observation",
+                            novelty=.4,
+                            creation=.7,
+                            tags=("homunculi", "creation", "artificial_life"),
+                        ),
+                        AuditIntervention("deep_history", ("deep_history",)),
+                    )
+                    return json.dumps(result, sort_keys=True, separators=(",", ":"))
+
+        self.assertEqual(one_run(), one_run())
 
 
 if __name__ == "__main__":

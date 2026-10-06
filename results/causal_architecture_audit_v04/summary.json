@@ -1,0 +1,4313 @@
+{
+  "concern_resolution": {
+    "concern_id": "concern_e07abe8fb0fd41978edd902e83d1cb69",
+    "heartbeat_thoughts_after_resolution": 0,
+    "lifecycle_events": [
+      {
+        "actor": null,
+        "outcome": "A containment failure threatens the laboratory.",
+        "source": "world",
+        "transition": "opened"
+      },
+      {
+        "actor": "PretoriusBrain",
+        "outcome": "Containment restored and independently verified.",
+        "source": "runtime_concern_lifecycle",
+        "transition": "resolved"
+      }
+    ],
+    "open_after_resolution": false,
+    "open_before_resolution": true,
+    "pressure_after": {
+      "approach": 0.0,
+      "avoid": 0.0,
+      "challenge": 0.0,
+      "comply": 0.0,
+      "conceal": 0.0,
+      "cooperate": 0.0,
+      "create": 0.0,
+      "dominate": 0.0,
+      "explore": 0.0,
+      "persist": 0.0
+    },
+    "pressure_before": {
+      "approach": 0.0,
+      "avoid": 0.0,
+      "challenge": 0.0,
+      "comply": 0.0,
+      "conceal": 0.0,
+      "cooperate": 0.0,
+      "create": 0.0,
+      "dominate": 0.0,
+      "explore": 0.0,
+      "persist": 0.018750000000000003
+    }
+  },
+  "pair_measures": [
+    {
+      "action_score_l1": 0.0853657019720969,
+      "experiment_fingerprint": "5c79edf981172bb2459bc38edb7acf4d153f48ba752891a8d003ac8c10d36e16",
+      "experiment_method": "run_existing_state_pair:v1",
+      "intact_activated_memory_count": 0,
+      "intact_final_scores": {
+        "approach": 0.10697324150034195,
+        "avoid": 0.10624038796165057,
+        "challenge": 0.11161150054755074,
+        "comply": 0.06414975094957372,
+        "conceal": 0.09729903424153506,
+        "cooperate": 0.09433247624354062,
+        "create": 0.11592731202041542,
+        "dominate": 0.09533431906860229,
+        "explore": 0.07834125868704374,
+        "persist": 0.12979071877974582
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10369202607036505,
+        "avoid": 0.09456393652266938,
+        "challenge": 0.09578939962122338,
+        "comply": 0.100374476780172,
+        "conceal": 0.10434589604100447,
+        "cooperate": 0.10147299060373015,
+        "create": 0.09949322105865258,
+        "dominate": 0.10259617261043809,
+        "explore": 0.09586467911634117,
+        "persist": 0.10180720157540378
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.020703692307692312,
+          "avoid": 0.028979570207570207,
+          "challenge": 0.033999999999999996,
+          "comply": -0.025776808791208784,
+          "conceal": 0.008799999999999999,
+          "cooperate": 0.00822319120879121,
+          "create": 0.03531489596349714,
+          "dominate": 0.008265019780219781,
+          "explore": -0.004764166349464976,
+          "persist": 0.04912222222222222
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "4a39f974530032c10c768c9bb6ed34c9c0194bd70fc148d37a531b139deddece",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.020703692307692312,
+            "avoid": 0.004090681318681319,
+            "challenge": 0.0,
+            "comply": 0.00822319120879121,
+            "conceal": 0.0,
+            "cooperate": 0.00822319120879121,
+            "create": 0.045938980219780226,
+            "dominate": 0.008265019780219781,
+            "explore": 0.00822319120879121,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_01a631f922e94ae992c1e07e7a9ac4b0",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_82508d03a280402bb59bb191faecf1e6",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_518ced72216c404f9593e7b210b5d324",
+          "mem_538ce49b6ae74fcdb3e3970c1873d92d",
+          "mem_b7b9063c97dd43759cba446a81cc9519",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_fdd85ee1c5f949389bf7cf969d5467cb",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca"
+        ],
+        "normalization": {
+          "denominator": 1.1628676165493192,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.12439571837805737,
+            "avoid": 0.12354350673023959,
+            "challenge": 0.12978939962122338,
+            "comply": 0.07459766798896322,
+            "conceal": 0.11314589604100447,
+            "cooperate": 0.10969618181252136,
+            "create": 0.13480811702214973,
+            "dominate": 0.11086119239065786,
+            "explore": 0.0911005127668762,
+            "persist": 0.150929423797626
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+            "mem_ced1842386bd45b898c70a1580cc00a2",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_1e65cff907234818993d5083be510960",
+            "mem_82508d03a280402bb59bb191faecf1e6"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 5,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.020703692307692312,
+            "avoid": 0.004090681318681319,
+            "challenge": 0.0,
+            "comply": 0.00822319120879121,
+            "conceal": 0.0,
+            "cooperate": 0.00822319120879121,
+            "create": 0.045938980219780226,
+            "dominate": 0.008265019780219781,
+            "explore": 0.00822319120879121,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_activated_memory_count": 0,
+      "lesion_final_scores": {
+        "approach": 0.09789658085828921,
+        "avoid": 0.11277649424766949,
+        "challenge": 0.12253534756805408,
+        "comply": 0.06266474462199571,
+        "conceal": 0.10682206511275265,
+        "cooperate": 0.09580156937843425,
+        "create": 0.08390215686282136,
+        "dominate": 0.0968619756826147,
+        "explore": 0.07824522982822009,
+        "persist": 0.1424938358391484
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10369202607036505,
+        "avoid": 0.09456393652266938,
+        "challenge": 0.09578939962122338,
+        "comply": 0.100374476780172,
+        "conceal": 0.10434589604100447,
+        "cooperate": 0.10147299060373015,
+        "create": 0.09949322105865258,
+        "dominate": 0.10259617261043809,
+        "explore": 0.09586467911634117,
+        "persist": 0.10180720157540378
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.0,
+          "avoid": 0.024888888888888887,
+          "challenge": 0.033999999999999996,
+          "comply": -0.033999999999999996,
+          "conceal": 0.008799999999999999,
+          "cooperate": 0.0,
+          "create": -0.010624084256283084,
+          "dominate": 0.0,
+          "explore": -0.012987357558256186,
+          "persist": 0.04912222222222222
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "4a39f974530032c10c768c9bb6ed34c9c0194bd70fc148d37a531b139deddece",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_01a631f922e94ae992c1e07e7a9ac4b0",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_518ced72216c404f9593e7b210b5d324",
+          "mem_538ce49b6ae74fcdb3e3970c1873d92d",
+          "mem_b7b9063c97dd43759cba446a81cc9519",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_fdd85ee1c5f949389bf7cf969d5467cb",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984",
+          "mem_f9abb9231842480c97c95d79eeeee102",
+          "mem_9263b9a3b79f4529bacce16b0ae888b7",
+          "mem_79a9bdc8b3a34e5ea9bd17d3739a1b4b",
+          "mem_241c8ef9016e413eb0f3639671c42f83",
+          "mem_1cacea539ce847b5bfbb588ad06a5dc6"
+        ],
+        "normalization": {
+          "denominator": 1.059199669296572,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10369202607036505,
+            "avoid": 0.11945282541155827,
+            "challenge": 0.12978939962122338,
+            "comply": 0.066374476780172,
+            "conceal": 0.11314589604100447,
+            "cooperate": 0.10147299060373015,
+            "create": 0.08886913680236949,
+            "dominate": 0.10259617261043809,
+            "explore": 0.08287732155808498,
+            "persist": 0.150929423797626
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "deep_history",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 0.6842105263157895,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.0,
+      "experiment_fingerprint": "054d421f306b7446581dcc06ed449e22652fc42b910ee96a2e922ca6967c456a",
+      "experiment_method": "run_existing_state_pair:v1+prime_spreading_activation:v1",
+      "intact_activated_memory_count": 15,
+      "intact_final_scores": {
+        "approach": 0.11069334842179453,
+        "avoid": 0.10370125787264806,
+        "challenge": 0.11284736988982855,
+        "comply": 0.06694526953408084,
+        "conceal": 0.10143918230578515,
+        "cooperate": 0.10717346294164036,
+        "create": 0.08546608302330798,
+        "dominate": 0.10020644478560972,
+        "explore": 0.08119592424820259,
+        "persist": 0.13033165697710225
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10369202607036505,
+        "avoid": 0.09456393652266938,
+        "challenge": 0.09578939962122338,
+        "comply": 0.100374476780172,
+        "conceal": 0.10434589604100447,
+        "cooperate": 0.10147299060373015,
+        "create": 0.09949322105865258,
+        "dominate": 0.10259617261043809,
+        "explore": 0.09586467911634117,
+        "persist": 0.10180720157540378
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.024495428021978023,
+          "avoid": 0.025526388888888887,
+          "challenge": 0.03489249999999999,
+          "comply": -0.022849098901098895,
+          "conceal": 0.013124852747252747,
+          "cooperate": 0.022638291208791208,
+          "create": -0.0005199787617775897,
+          "dominate": 0.013447015384615386,
+          "explore": -0.0018364564593550854,
+          "persist": 0.04912222222222222
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "49ce0fd1465a4ce8acf8f7cc2c6fde7f2c0a7e9151a9b3f4766ce4882e342230",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.024189178021978022,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0111509010989011,
+            "conceal": 0.004324852747252748,
+            "cooperate": 0.00744079120879121,
+            "create": 0.010104105494505494,
+            "dominate": 0.013447015384615386,
+            "explore": 0.0111509010989011,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.00030624999999999934,
+            "avoid": 0.0006374999999999992,
+            "challenge": 0.000892499999999999,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.00043749999999999903,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_b9db5585fbc34ce8b0b130933379dde8",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_d967d51a06eb4fdfba14cfea13a24d25",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_8300b9358f724aca8a2087bb4afa25a3",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984"
+        ],
+        "normalization": {
+          "denominator": 1.158041164351517,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.12818745409234308,
+            "avoid": 0.12009032541155827,
+            "challenge": 0.13068189962122337,
+            "comply": 0.0775253778790731,
+            "conceal": 0.11747074878825722,
+            "cooperate": 0.12411128181252136,
+            "create": 0.09897324229687499,
+            "dominate": 0.11604318799505348,
+            "explore": 0.09402822265698609,
+            "persist": 0.150929423797626
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_b9db5585fbc34ce8b0b130933379dde8",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+            "mem_f38410cdb4fa4774a78a37a3b52b303a",
+            "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+            "mem_b5c7111011704fe4bf881cd1839ebb26",
+            "mem_d967d51a06eb4fdfba14cfea13a24d25"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.024189178021978022,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0111509010989011,
+            "conceal": 0.004324852747252748,
+            "cooperate": 0.00744079120879121,
+            "create": 0.010104105494505494,
+            "dominate": 0.013447015384615386,
+            "explore": 0.0111509010989011,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.00030624999999999934,
+            "avoid": 0.0006374999999999992,
+            "challenge": 0.000892499999999999,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.00043749999999999903,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_activated_memory_count": 0,
+      "lesion_final_scores": {
+        "approach": 0.11069334842179453,
+        "avoid": 0.10370125787264806,
+        "challenge": 0.11284736988982855,
+        "comply": 0.06694526953408084,
+        "conceal": 0.10143918230578515,
+        "cooperate": 0.10717346294164036,
+        "create": 0.08546608302330798,
+        "dominate": 0.10020644478560972,
+        "explore": 0.08119592424820259,
+        "persist": 0.13033165697710225
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10369202607036505,
+        "avoid": 0.09456393652266938,
+        "challenge": 0.09578939962122338,
+        "comply": 0.100374476780172,
+        "conceal": 0.10434589604100447,
+        "cooperate": 0.10147299060373015,
+        "create": 0.09949322105865258,
+        "dominate": 0.10259617261043809,
+        "explore": 0.09586467911634117,
+        "persist": 0.10180720157540378
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.024495428021978023,
+          "avoid": 0.025526388888888887,
+          "challenge": 0.03489249999999999,
+          "comply": -0.022849098901098895,
+          "conceal": 0.013124852747252747,
+          "cooperate": 0.022638291208791208,
+          "create": -0.0005199787617775897,
+          "dominate": 0.013447015384615386,
+          "explore": -0.0018364564593550854,
+          "persist": 0.04912222222222222
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "49ce0fd1465a4ce8acf8f7cc2c6fde7f2c0a7e9151a9b3f4766ce4882e342230",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.024189178021978022,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0111509010989011,
+            "conceal": 0.004324852747252748,
+            "cooperate": 0.00744079120879121,
+            "create": 0.010104105494505494,
+            "dominate": 0.013447015384615386,
+            "explore": 0.0111509010989011,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.00030624999999999934,
+            "avoid": 0.0006374999999999992,
+            "challenge": 0.000892499999999999,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.00043749999999999903,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_b9db5585fbc34ce8b0b130933379dde8",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_d967d51a06eb4fdfba14cfea13a24d25",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_8300b9358f724aca8a2087bb4afa25a3",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984"
+        ],
+        "normalization": {
+          "denominator": 1.158041164351517,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.12818745409234308,
+            "avoid": 0.12009032541155827,
+            "challenge": 0.13068189962122337,
+            "comply": 0.0775253778790731,
+            "conceal": 0.11747074878825722,
+            "cooperate": 0.12411128181252136,
+            "create": 0.09897324229687499,
+            "dominate": 0.11604318799505348,
+            "explore": 0.09402822265698609,
+            "persist": 0.150929423797626
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_b9db5585fbc34ce8b0b130933379dde8",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+            "mem_f38410cdb4fa4774a78a37a3b52b303a",
+            "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+            "mem_b5c7111011704fe4bf881cd1839ebb26",
+            "mem_d967d51a06eb4fdfba14cfea13a24d25"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.024189178021978022,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0111509010989011,
+            "conceal": 0.004324852747252748,
+            "cooperate": 0.00744079120879121,
+            "create": 0.010104105494505494,
+            "dominate": 0.013447015384615386,
+            "explore": 0.0111509010989011,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.024888888888888887,
+            "challenge": 0.033999999999999996,
+            "comply": -0.033999999999999996,
+            "conceal": 0.008799999999999999,
+            "cooperate": 0.0,
+            "create": -0.010624084256283084,
+            "dominate": 0.0,
+            "explore": -0.012987357558256186,
+            "persist": 0.012222222222222221
+          },
+          "relationships": {
+            "approach": 0.00030624999999999934,
+            "avoid": 0.0006374999999999992,
+            "challenge": 0.000892499999999999,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.00043749999999999903,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "spreading_activation",
+      "renderer_request_changed": false,
+      "retrieval_jaccard": 0.9591836734693877,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.1277399157880004,
+      "experiment_fingerprint": "f9ed90362c49f202adac64fe0477096ae669408bdd6b471cb1e8776697c7e629",
+      "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
+      "intact_final_scores": {
+        "approach": 0.10504166966882816,
+        "avoid": 0.10671482241122963,
+        "challenge": 0.11151131087452101,
+        "comply": 0.06202237574119059,
+        "conceal": 0.09673772448613019,
+        "cooperate": 0.09301321996749617,
+        "create": 0.11413036889860458,
+        "dominate": 0.09437870537416772,
+        "explore": 0.08736802257851635,
+        "persist": 0.12908177999931564
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10369160026079217,
+        "avoid": 0.0945881294413763,
+        "challenge": 0.09579834556764219,
+        "comply": 0.10035789955008163,
+        "conceal": 0.10432644708204053,
+        "cooperate": 0.10147600374004134,
+        "create": 0.0995020677929023,
+        "dominate": 0.10261121400638759,
+        "explore": 0.095854451103771,
+        "persist": 0.10179384145496477
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.019821974025974028,
+          "avoid": 0.030892826706257617,
+          "challenge": 0.03532257647156749,
+          "comply": -0.027428695952086968,
+          "conceal": 0.009422907410523663,
+          "cooperate": 0.00789388051948052,
+          "create": 0.03469848177735176,
+          "dominate": 0.00836428051948052,
+          "explore": 0.006877510231776867,
+          "persist": 0.049987371403505086
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "cc08f2b3ef00a75cc5fcfac6f56dbcc215de6c38df725bf190c8d230e5c70378",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.019821974025974028,
+            "avoid": 0.00371174025974026,
+            "challenge": 0.0,
+            "comply": 0.00789388051948052,
+            "conceal": 0.0,
+            "cooperate": 0.00789388051948052,
+            "create": 0.045300654545454545,
+            "dominate": 0.00836428051948052,
+            "explore": 0.01989388051948052,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027181086446517358,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.010602172768102781,
+            "dominate": 0.0,
+            "explore": -0.013016370287703654,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_0d141d0a15874625a8f57cfcba3226cc",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_01a631f922e94ae992c1e07e7a9ac4b0",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_518ced72216c404f9593e7b210b5d324",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_b7b9063c97dd43759cba446a81cc9519",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_bab348b17ac0433385202f954e0e467e"
+        ],
+        "normalization": {
+          "denominator": 1.1758531131138303,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.12351357428676621,
+            "avoid": 0.1254809561476339,
+            "challenge": 0.13112092203920966,
+            "comply": 0.07292920359799467,
+            "conceal": 0.1137493544925642,
+            "cooperate": 0.10936988425952186,
+            "create": 0.13420054957025407,
+            "dominate": 0.1109754945258681,
+            "explore": 0.10273196133554786,
+            "persist": 0.15178121285846985
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_0d141d0a15874625a8f57cfcba3226cc",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+            "mem_1e65cff907234818993d5083be510960"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.019821974025974028,
+            "avoid": 0.00371174025974026,
+            "challenge": 0.0,
+            "comply": 0.00789388051948052,
+            "conceal": 0.0,
+            "cooperate": 0.00789388051948052,
+            "create": 0.045300654545454545,
+            "dominate": 0.00836428051948052,
+            "explore": 0.01989388051948052,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027181086446517358,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.010602172768102781,
+            "dominate": 0.0,
+            "explore": -0.013016370287703654,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_activated_memory_count": 0,
+      "lesion_final_scores": {
+        "approach": 0.10742363150885842,
+        "avoid": 0.08549448140513377,
+        "challenge": 0.08331882736648565,
+        "comply": 0.09414997015122888,
+        "conceal": 0.09073598487199087,
+        "cooperate": 0.0951224204522126,
+        "create": 0.1259394716392872,
+        "dominate": 0.0965188700861481,
+        "explore": 0.1006699562850685,
+        "persist": 0.12062638623358592
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10369160026079217,
+        "avoid": 0.0945881294413763,
+        "challenge": 0.09579834556764219,
+        "comply": 0.10035789955008163,
+        "conceal": 0.10432644708204053,
+        "cooperate": 0.10147600374004134,
+        "create": 0.0995020677929023,
+        "dominate": 0.10261121400638759,
+        "explore": 0.095854451103771,
+        "persist": 0.10179384145496477
+      },
+      "lesion_selected_action": "create",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.019821974025974028,
+          "avoid": 0.00371174025974026,
+          "challenge": 0.0,
+          "comply": 0.00789388051948052,
+          "conceal": 0.0,
+          "cooperate": 0.00789388051948052,
+          "create": 0.045300654545454545,
+          "dominate": 0.00836428051948052,
+          "explore": 0.01989388051948052,
+          "persist": 0.036899999999999995
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "cc08f2b3ef00a75cc5fcfac6f56dbcc215de6c38df725bf190c8d230e5c70378",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.019821974025974028,
+            "avoid": 0.00371174025974026,
+            "challenge": 0.0,
+            "comply": 0.00789388051948052,
+            "conceal": 0.0,
+            "cooperate": 0.00789388051948052,
+            "create": 0.045300654545454545,
+            "dominate": 0.00836428051948052,
+            "explore": 0.01989388051948052,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_e870980221774e3db27c4bd157f7e533",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_01a631f922e94ae992c1e07e7a9ac4b0",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_518ced72216c404f9593e7b210b5d324",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_b7b9063c97dd43759cba446a81cc9519",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_bab348b17ac0433385202f954e0e467e"
+        ],
+        "normalization": {
+          "denominator": 1.1497802909090908,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.12351357428676621,
+            "avoid": 0.09829986970111657,
+            "challenge": 0.09579834556764219,
+            "comply": 0.10825178006956215,
+            "conceal": 0.10432644708204053,
+            "cooperate": 0.10936988425952186,
+            "create": 0.14480272233835684,
+            "dominate": 0.1109754945258681,
+            "explore": 0.11574833162325152,
+            "persist": 0.13869384145496477
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_e870980221774e3db27c4bd157f7e533",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+            "mem_1e65cff907234818993d5083be510960"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.019821974025974028,
+            "avoid": 0.00371174025974026,
+            "challenge": 0.0,
+            "comply": 0.00789388051948052,
+            "conceal": 0.0,
+            "cooperate": 0.00789388051948052,
+            "create": 0.045300654545454545,
+            "dominate": 0.00836428051948052,
+            "explore": 0.01989388051948052,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "needs",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": true
+    },
+    {
+      "action_score_l1": 0.002378277372023438,
+      "experiment_fingerprint": "0d106a026a38f552d9d8afa43f677c01f3f9f49494fba132544f74ef843b61f5",
+      "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
+      "intact_final_scores": {
+        "approach": 0.12244363313554542,
+        "avoid": 0.10421725494582257,
+        "challenge": 0.11246679213870438,
+        "comply": 0.06126897331245638,
+        "conceal": 0.09705238883138714,
+        "cooperate": 0.11559357204404204,
+        "create": 0.08221309526472095,
+        "dominate": 0.09434809674245145,
+        "explore": 0.0808986431228097,
+        "persist": 0.1294975504620599
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10368462418837776,
+        "avoid": 0.09457982354497238,
+        "challenge": 0.09579659058128655,
+        "comply": 0.1003661400607914,
+        "conceal": 0.10433513783217732,
+        "cooperate": 0.10145935875352247,
+        "create": 0.09950501988301193,
+        "dominate": 0.10262106707636216,
+        "explore": 0.09586077732094822,
+        "persist": 0.10179146075854982
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.040047220604395604,
+          "avoid": 0.027756780890961803,
+          "challenge": 0.03622382647156749,
+          "comply": -0.028444862185853202,
+          "conceal": 0.009590907410523663,
+          "cooperate": 0.03423146428571428,
+          "create": -0.002998247371277381,
+          "dominate": 0.008130514285714286,
+          "explore": -0.0008969893353226992,
+          "persist": 0.050220704736838415
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "80d8b596f5bf55337277bec9cd52893438d299affbdc244d03c14450bf32e565",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.03963159560439561,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.006877714285714286,
+            "conceal": 0.0,
+            "cooperate": 0.018877714285714286,
+            "create": 0.008255314285714285,
+            "dominate": 0.008130514285714286,
+            "explore": 0.012877714285714287,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.00041562499999999895,
+            "avoid": 0.0006437499999999985,
+            "challenge": 0.000901249999999998,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0005937499999999985,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_c3636a5ecbd44fcea173b7a4e762caad",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_f9abb9231842480c97c95d79eeeee102"
+        ],
+        "normalization": {
+          "denominator": 1.1738613197932624,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.14373184479277337,
+            "avoid": 0.12233660443593418,
+            "challenge": 0.13202041705285403,
+            "comply": 0.07192127787493821,
+            "conceal": 0.11392604524270099,
+            "cooperate": 0.13569082303923674,
+            "create": 0.09650677251173455,
+            "dominate": 0.11075158136207645,
+            "explore": 0.09496378798562552,
+            "persist": 0.15201216549538824
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_c3636a5ecbd44fcea173b7a4e762caad",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_f38410cdb4fa4774a78a37a3b52b303a",
+            "mem_b5c7111011704fe4bf881cd1839ebb26"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.03963159560439561,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.006877714285714286,
+            "conceal": 0.0,
+            "cooperate": 0.018877714285714286,
+            "create": 0.008255314285714285,
+            "dominate": 0.008130514285714286,
+            "explore": 0.012877714285714287,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.00041562499999999895,
+            "avoid": 0.0006437499999999985,
+            "challenge": 0.000901249999999998,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0005937499999999985,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_activated_memory_count": 0,
+      "lesion_final_scores": {
+        "approach": 0.12235581837011043,
+        "avoid": 0.10389493119364471,
+        "challenge": 0.11194261899983594,
+        "comply": 0.06140258810437809,
+        "conceal": 0.09726403975416464,
+        "cooperate": 0.11533874501451163,
+        "create": 0.08239238479779369,
+        "dominate": 0.0945538501708656,
+        "explore": 0.08107506611120349,
+        "persist": 0.12977995748349178
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10368462418837776,
+        "avoid": 0.09457982354497238,
+        "challenge": 0.09579659058128655,
+        "comply": 0.1003661400607914,
+        "conceal": 0.10433513783217732,
+        "cooperate": 0.10145935875352247,
+        "create": 0.09950501988301193,
+        "dominate": 0.10262106707636216,
+        "explore": 0.09586077732094822,
+        "persist": 0.10179146075854982
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.03963159560439561,
+          "avoid": 0.027113030890961804,
+          "challenge": 0.03532257647156749,
+          "comply": -0.028444862185853202,
+          "conceal": 0.009590907410523663,
+          "cooperate": 0.033637714285714285,
+          "create": -0.002998247371277381,
+          "dominate": 0.008130514285714286,
+          "explore": -0.0008969893353226992,
+          "persist": 0.050220704736838415
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "80d8b596f5bf55337277bec9cd52893438d299affbdc244d03c14450bf32e565",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.03963159560439561,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.006877714285714286,
+            "conceal": 0.0,
+            "cooperate": 0.018877714285714286,
+            "create": 0.008255314285714285,
+            "dominate": 0.008130514285714286,
+            "explore": 0.012877714285714287,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_92bd2b3640c14b159dd57ec294c51c35",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_f9abb9231842480c97c95d79eeeee102"
+        ],
+        "normalization": {
+          "denominator": 1.1713069447932623,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.14331621979277337,
+            "avoid": 0.12169285443593418,
+            "challenge": 0.13111916705285404,
+            "comply": 0.07192127787493821,
+            "conceal": 0.11392604524270099,
+            "cooperate": 0.13509707303923674,
+            "create": 0.09650677251173455,
+            "dominate": 0.11075158136207645,
+            "explore": 0.09496378798562552,
+            "persist": 0.15201216549538824
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_92bd2b3640c14b159dd57ec294c51c35",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_f38410cdb4fa4774a78a37a3b52b303a",
+            "mem_b5c7111011704fe4bf881cd1839ebb26"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": []
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.03963159560439561,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.006877714285714286,
+            "conceal": 0.0,
+            "cooperate": 0.018877714285714286,
+            "create": 0.008255314285714285,
+            "dominate": 0.008130514285714286,
+            "explore": 0.012877714285714287,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009590907410523663,
+            "cooperate": 0.0,
+            "create": -0.011253561656991666,
+            "dominate": 0.0,
+            "explore": -0.013774703621036987,
+            "persist": 0.013320704736838421
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "relationships",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.0686587527205425,
+      "experiment_fingerprint": "b75dc51c01079647e7c51ef3d4f39ffb5c5734353c9f556c0a86f1aac8ea4526",
+      "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
+      "intact_final_scores": {
+        "approach": 0.11310244900736778,
+        "avoid": 0.10465607328833888,
+        "challenge": 0.11290593777043782,
+        "comply": 0.061687950015156555,
+        "conceal": 0.09739008188379071,
+        "cooperate": 0.11107957675602134,
+        "create": 0.08266692986074578,
+        "dominate": 0.09493517447842072,
+        "explore": 0.08135433841843412,
+        "persist": 0.1402214885212864
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10370104887021205,
+        "avoid": 0.09458225393814033,
+        "challenge": 0.09578910117954632,
+        "comply": 0.10035765153519516,
+        "conceal": 0.10433521407577254,
+        "cooperate": 0.10146779455325212,
+        "create": 0.09948588661673906,
+        "dominate": 0.10261725421568495,
+        "explore": 0.09586310075918135,
+        "persist": 0.10180069425627619
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.028410167032967035,
+          "avoid": 0.027663030890961803,
+          "challenge": 0.03609257647156749,
+          "comply": -0.02830200504299606,
+          "conceal": 0.009422907410523663,
+          "cooperate": 0.028280571428571426,
+          "create": -0.0029253902284202445,
+          "dominate": 0.00827337142857143,
+          "explore": -0.0008357988591322311,
+          "persist": 0.06198737140350508
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "ed17f438e5df8c9bbe9bceac23f699348f0d05db1493244f7a96969d55cb7c13",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.028060167032967036,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.007020571428571429,
+            "conceal": 0.0,
+            "cooperate": 0.01302057142857143,
+            "create": 0.00839817142857143,
+            "dominate": 0.00827337142857143,
+            "explore": 0.01302057142857143,
+            "persist": 0.012
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_de4d99506a874f1da6d94bea2eca59a4",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_f9abb9231842480c97c95d79eeeee102"
+        ],
+        "normalization": {
+          "denominator": 1.1680668019361193,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.1321112159031791,
+            "avoid": 0.12224528482910213,
+            "challenge": 0.1318816776511138,
+            "comply": 0.0720556464921991,
+            "conceal": 0.1137581214862962,
+            "cooperate": 0.12974836598182354,
+            "create": 0.09656049638831882,
+            "dominate": 0.11089062564425638,
+            "explore": 0.09502730190004911,
+            "persist": 0.16378806565978127
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [],
+          "history": [
+            "mem_de4d99506a874f1da6d94bea2eca59a4",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_f38410cdb4fa4774a78a37a3b52b303a",
+            "mem_b5c7111011704fe4bf881cd1839ebb26"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.028060167032967036,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.007020571428571429,
+            "conceal": 0.0,
+            "cooperate": 0.01302057142857143,
+            "create": 0.00839817142857143,
+            "dominate": 0.00827337142857143,
+            "explore": 0.01302057142857143,
+            "persist": 0.012
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_activated_memory_count": 0,
+      "lesion_final_scores": {
+        "approach": 0.11624692207159833,
+        "avoid": 0.11046808340126385,
+        "challenge": 0.11917609899006557,
+        "comply": 0.06413780005600939,
+        "conceal": 0.10279857967108778,
+        "cooperate": 0.10272560421182433,
+        "create": 0.08628183453426655,
+        "dominate": 0.09923138850691142,
+        "explore": 0.08468760385176066,
+        "persist": 0.11424608470521208
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10370104887021205,
+        "avoid": 0.09458225393814033,
+        "challenge": 0.09578910117954632,
+        "comply": 0.10035765153519516,
+        "conceal": 0.10433521407577254,
+        "cooperate": 0.10146779455325212,
+        "create": 0.09948588661673906,
+        "dominate": 0.10261725421568495,
+        "explore": 0.09586310075918135,
+        "persist": 0.10180069425627619
+      },
+      "lesion_selected_action": "challenge",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.024939167032967034,
+          "avoid": 0.027663030890961803,
+          "challenge": 0.03609257647156749,
+          "comply": -0.02938200504299606,
+          "conceal": 0.009422907410523663,
+          "cooperate": 0.012209571428571426,
+          "create": -0.004005390228420245,
+          "dominate": 0.00719337142857143,
+          "explore": -0.0021467988591322325,
+          "persist": 0.02462537140350509
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "ed17f438e5df8c9bbe9bceac23f699348f0d05db1493244f7a96969d55cb7c13",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.024589167032967034,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.005940571428571429,
+            "conceal": 0.0,
+            "cooperate": 0.011709571428571429,
+            "create": 0.007318171428571429,
+            "dominate": 0.00719337142857143,
+            "explore": 0.011709571428571429,
+            "persist": 0.011538
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_631c5ef93b3348ba9d8ee714a82bfbc2",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984",
+          "mem_09cf60389bac4964ab29457bc3ffbad5",
+          "mem_f9abb9231842480c97c95d79eeeee102"
+        ],
+        "normalization": {
+          "denominator": 1.1066118019361195,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.1286402159031791,
+            "avoid": 0.12224528482910213,
+            "challenge": 0.1318816776511138,
+            "comply": 0.07097564649219909,
+            "conceal": 0.1137581214862962,
+            "cooperate": 0.11367736598182356,
+            "create": 0.09548049638831882,
+            "dominate": 0.10981062564425638,
+            "explore": 0.09371630190004912,
+            "persist": 0.1264260656597813
+          }
+        },
+        "source_ids": {
+          "commitments": [],
+          "concerns": [],
+          "history": [
+            "mem_631c5ef93b3348ba9d8ee714a82bfbc2",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_f38410cdb4fa4774a78a37a3b52b303a",
+            "mem_b5c7111011704fe4bf881cd1839ebb26"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 7,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.024589167032967034,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.005940571428571429,
+            "conceal": 0.0,
+            "cooperate": 0.011709571428571429,
+            "create": 0.007318171428571429,
+            "dominate": 0.00719337142857143,
+            "explore": 0.011709571428571429,
+            "persist": 0.011538
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027113030890961804,
+            "challenge": 0.03532257647156749,
+            "comply": -0.03532257647156749,
+            "conceal": 0.009422907410523663,
+            "cooperate": 0.0,
+            "create": -0.011323561656991674,
+            "dominate": 0.0,
+            "explore": -0.013856370287703661,
+            "persist": 0.01308737140350509
+          },
+          "relationships": {
+            "approach": 0.0003499999999999984,
+            "avoid": 0.0005499999999999992,
+            "challenge": 0.0007699999999999988,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0004999999999999977,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "commitments",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": true
+    },
+    {
+      "action_score_l1": 0.022817539020053137,
+      "experiment_fingerprint": "0934e283fa01bd0ef4ff81520de943cd3ad02bd89f624fdbac734657d3bcfe9c",
+      "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
+      "intact_final_scores": {
+        "approach": 0.1073622614422668,
+        "avoid": 0.10369254541967715,
+        "challenge": 0.12726851034977973,
+        "comply": 0.05997813296917401,
+        "conceal": 0.09348017566981055,
+        "cooperate": 0.096782250459472,
+        "create": 0.08476734027232691,
+        "dominate": 0.09324163907042071,
+        "explore": 0.09627722306210289,
+        "persist": 0.13714992128496928
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10370570259374756,
+        "avoid": 0.09457929790314605,
+        "challenge": 0.0957882157262719,
+        "comply": 0.10034433788462163,
+        "conceal": 0.10435295014788404,
+        "cooperate": 0.10147100981718274,
+        "create": 0.09948914493887925,
+        "dominate": 0.10261762800775717,
+        "explore": 0.09585838613245026,
+        "persist": 0.1017933268480594
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.030722914285714286,
+          "avoid": 0.0352544562877872,
+          "challenge": 0.06356507647156749,
+          "comply": -0.025245533614424633,
+          "conceal": 0.012693864553380807,
+          "cooperate": 0.01971034285714286,
+          "create": 0.006648301835071814,
+          "dominate": 0.014130514285714286,
+          "explore": 0.024690620188486813,
+          "persist": 0.06993251029239397
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "61bd76e78b020d5106eb64ce027dfb99d55278daa5bd3168be3d702173f285e4",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.030722914285714286,
+            "avoid": 0.006905314285714285,
+            "challenge": 0.006,
+            "comply": 0.026929542857142857,
+            "conceal": 0.002770457142857143,
+            "cooperate": 0.01971034285714286,
+            "create": 0.018069085714285713,
+            "dominate": 0.014130514285714286,
+            "explore": 0.03866365714285714,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_a9fabb04aeda440bb3e67121344b952f",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_241c8ef9016e413eb0f3639671c42f83",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_0141ae5ec1ff4f97954048d3f9e18bdf",
+          "mem_b7b9063c97dd43759cba446a81cc9519",
+          "mem_0e110e24267749558ef84a29bc877453",
+          "mem_01a631f922e94ae992c1e07e7a9ac4b0",
+          "mem_fdd85ee1c5f949389bf7cf969d5467cb",
+          "mem_857360df345444f58ecd21b394dd1ec4",
+          "mem_8fad21dd8d3249889042e8541677040e",
+          "mem_5fdc4529654c476abae52b1904c1e985",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_22c113c7b3a3418abb528f7498f5aa59",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_dc16cb55c4274b1c9d26ea1f5a5ba231",
+          "mem_bcb2155a762d420d86cf9aaabba33868",
+          "mem_5ae474a3d03b4f7ab8c115898bf4e538",
+          "mem_54b0bbc1c548410a8ad305f605c84fbb",
+          "mem_0c75d0b40c1f46db905b28169cc162ae"
+        ],
+        "normalization": {
+          "denominator": 1.2521030674428348,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.13442861687946184,
+            "avoid": 0.12983375419093324,
+            "challenge": 0.1593532921978394,
+            "comply": 0.075098804270197,
+            "conceal": 0.11704681470126485,
+            "cooperate": 0.1211813526743256,
+            "create": 0.10613744677395107,
+            "dominate": 0.11674814229347145,
+            "explore": 0.12054900632093707,
+            "persist": 0.17172583714045336
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [
+            "concern_07a64c72cf6d4ef790662dbb92026d55"
+          ],
+          "history": [
+            "mem_a9fabb04aeda440bb3e67121344b952f",
+            "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+            "mem_1e65cff907234818993d5083be510960",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_0141ae5ec1ff4f97954048d3f9e18bdf",
+            "mem_b5c7111011704fe4bf881cd1839ebb26",
+            "mem_54b0bbc1c548410a8ad305f605c84fbb"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "senior_authority"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.030722914285714286,
+            "avoid": 0.006905314285714285,
+            "challenge": 0.006,
+            "comply": 0.026929542857142857,
+            "conceal": 0.002770457142857143,
+            "cooperate": 0.01971034285714286,
+            "create": 0.018069085714285713,
+            "dominate": 0.014130514285714286,
+            "explore": 0.03866365714285714,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_activated_memory_count": 0,
+      "lesion_final_scores": {
+        "approach": 0.10440267872890782,
+        "avoid": 0.10802182328649418,
+        "challenge": 0.13063227838393193,
+        "comply": 0.059703125349134495,
+        "conceal": 0.09000366462126401,
+        "cooperate": 0.09560741920521514,
+        "create": 0.08517533788402837,
+        "dominate": 0.09115105397737151,
+        "explore": 0.0995849490594588,
+        "persist": 0.13571766950419384
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.1,
+        "avoid": 0.1,
+        "challenge": 0.1,
+        "comply": 0.1,
+        "conceal": 0.1,
+        "cooperate": 0.1,
+        "create": 0.1,
+        "dominate": 0.1,
+        "explore": 0.1,
+        "persist": 0.1
+      },
+      "lesion_selected_action": "persist",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.030722914285714286,
+          "avoid": 0.0352544562877872,
+          "challenge": 0.06356507647156749,
+          "comply": -0.025245533614424633,
+          "conceal": 0.012693864553380807,
+          "cooperate": 0.01971034285714286,
+          "create": 0.006648301835071814,
+          "dominate": 0.014130514285714286,
+          "explore": 0.024690620188486813,
+          "persist": 0.06993251029239397
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "61bd76e78b020d5106eb64ce027dfb99d55278daa5bd3168be3d702173f285e4",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.030722914285714286,
+            "avoid": 0.006905314285714285,
+            "challenge": 0.006,
+            "comply": 0.026929542857142857,
+            "conceal": 0.002770457142857143,
+            "cooperate": 0.01971034285714286,
+            "create": 0.018069085714285713,
+            "dominate": 0.014130514285714286,
+            "explore": 0.03866365714285714,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_9519e6c7131442458723c9736677908a",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_241c8ef9016e413eb0f3639671c42f83",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_0141ae5ec1ff4f97954048d3f9e18bdf",
+          "mem_b7b9063c97dd43759cba446a81cc9519",
+          "mem_0e110e24267749558ef84a29bc877453",
+          "mem_01a631f922e94ae992c1e07e7a9ac4b0",
+          "mem_fdd85ee1c5f949389bf7cf969d5467cb",
+          "mem_857360df345444f58ecd21b394dd1ec4",
+          "mem_8fad21dd8d3249889042e8541677040e",
+          "mem_5fdc4529654c476abae52b1904c1e985",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_22c113c7b3a3418abb528f7498f5aa59",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_dc16cb55c4274b1c9d26ea1f5a5ba231",
+          "mem_bcb2155a762d420d86cf9aaabba33868",
+          "mem_5ae474a3d03b4f7ab8c115898bf4e538",
+          "mem_54b0bbc1c548410a8ad305f605c84fbb",
+          "mem_0c75d0b40c1f46db905b28169cc162ae"
+        ],
+        "normalization": {
+          "denominator": 1.2521030674428348,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.13072291428571428,
+            "avoid": 0.1352544562877872,
+            "challenge": 0.16356507647156748,
+            "comply": 0.07475446638557537,
+            "conceal": 0.11269386455338082,
+            "cooperate": 0.11971034285714287,
+            "create": 0.10664830183507182,
+            "dominate": 0.11413051428571429,
+            "explore": 0.12469062018848681,
+            "persist": 0.16993251029239398
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [
+            "concern_f469e70e054b4fbb9f7a132db66a1b4a"
+          ],
+          "history": [
+            "mem_9519e6c7131442458723c9736677908a",
+            "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+            "mem_1e65cff907234818993d5083be510960",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_0141ae5ec1ff4f97954048d3f9e18bdf",
+            "mem_b5c7111011704fe4bf881cd1839ebb26",
+            "mem_54b0bbc1c548410a8ad305f605c84fbb"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "senior_authority"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.019250000000000003,
+            "comply": -0.0154,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.019250000000000003
+          },
+          "history": {
+            "approach": 0.030722914285714286,
+            "avoid": 0.006905314285714285,
+            "challenge": 0.006,
+            "comply": 0.026929542857142857,
+            "conceal": 0.002770457142857143,
+            "cooperate": 0.01971034285714286,
+            "create": 0.018069085714285713,
+            "dominate": 0.014130514285714286,
+            "explore": 0.03866365714285714,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.03677507647156749,
+            "comply": -0.03677507647156749,
+            "conceal": 0.009923407410523664,
+            "cooperate": 0.0,
+            "create": -0.011420783879213898,
+            "dominate": 0.0,
+            "explore": -0.013973036954370329,
+            "persist": 0.01378251029239398
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0011000000000000003,
+            "challenge": 0.0015400000000000006,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "recurrent_policy",
+      "renderer_request_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false
+    },
+    {
+      "action_score_l1": 0.21732209983671216,
+      "experiment_fingerprint": "7b00b650c6547080459262242990d650747a9f9fa78292922c8a771733b7f00e",
+      "experiment_method": "run_pair:v1",
+      "intact_activated_memory_count": 0,
+      "intact_final_scores": {
+        "approach": 0.10875288295171133,
+        "avoid": 0.10744837732504445,
+        "challenge": 0.13909384593080104,
+        "comply": 0.04953807175587627,
+        "conceal": 0.09486936440098263,
+        "cooperate": 0.10212404368140353,
+        "create": 0.07956932877269153,
+        "dominate": 0.09677902621143514,
+        "explore": 0.07326066016756036,
+        "persist": 0.1485643988024938
+      },
+      "intact_raw_recurrent_scores": {
+        "approach": 0.10370685102036044,
+        "avoid": 0.09457989691423956,
+        "challenge": 0.09578830854405071,
+        "comply": 0.100350265276476,
+        "conceal": 0.10434807414643696,
+        "cooperate": 0.10146841139576968,
+        "create": 0.09948755191892103,
+        "dominate": 0.10262687455667811,
+        "explore": 0.09586473532838992,
+        "persist": 0.10177903089867771
+      },
+      "intact_selected_action": "persist",
+      "intact_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.027375792032967035,
+          "avoid": 0.034930392002072916,
+          "challenge": 0.07186507647156751,
+          "comply": -0.04064075504299607,
+          "conceal": 0.010000407410523663,
+          "cooperate": 0.021624321428571423,
+          "create": -0.0035805962740320246,
+          "dominate": 0.014023371428571428,
+          "explore": -0.007561779986420046,
+          "persist": 0.07728945473683842
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "69df6cd472e881e93c93dfe42ce0d89d557adbeff1352bc4f3bb6c1bf7c9241c",
+        "enabled": true,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.020500000000000004,
+            "comply": -0.0164,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.020500000000000004
+          },
+          "history": {
+            "approach": 0.027310167032967035,
+            "avoid": 0.006,
+            "challenge": 0.012,
+            "comply": 0.012770571428571428,
+            "conceal": 0.0,
+            "cooperate": 0.006770571428571428,
+            "create": 0.008148171428571428,
+            "dominate": 0.014023371428571428,
+            "explore": 0.006770571428571428,
+            "persist": 0.006
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010000407410523663,
+            "cooperate": 0.0,
+            "create": -0.011728767702603452,
+            "dominate": 0.0,
+            "explore": -0.014332351414991474,
+            "persist": 0.013889454736838423
+          },
+          "relationships": {
+            "approach": 6.562499999999861e-05,
+            "avoid": 0.0016812499999999996,
+            "challenge": 0.0023537499999999995,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 9.374999999999801e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_af995f886f1746dca81328507cac0aa3",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_8fad21dd8d3249889042e8541677040e",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984",
+          "mem_09cf60389bac4964ab29457bc3ffbad5"
+        ],
+        "normalization": {
+          "denominator": 1.2053256842076643,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.13108264305332748,
+            "avoid": 0.12951028891631247,
+            "challenge": 0.16765338501561822,
+            "comply": 0.05970951023347993,
+            "conceal": 0.11434848155696062,
+            "cooperate": 0.1230927328243411,
+            "create": 0.095906955644889,
+            "dominate": 0.11665024598524953,
+            "explore": 0.08830295534196987,
+            "persist": 0.17906848563551614
+          }
+        },
+        "source_ids": {
+          "commitments": [
+            "commit_bc1255298fff481783bdd593072d6671"
+          ],
+          "concerns": [
+            "concern_87fd6c894f7a405199343782da52e6f0"
+          ],
+          "history": [
+            "mem_af995f886f1746dca81328507cac0aa3",
+            "mem_d9ccee47d103436fba703d5a7fc3d58a",
+            "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+            "mem_f38410cdb4fa4774a78a37a3b52b303a",
+            "mem_b5c7111011704fe4bf881cd1839ebb26"
+          ],
+          "needs": [
+            "affiliation",
+            "autonomy",
+            "competence",
+            "continuity",
+            "curiosity",
+            "fatigue"
+          ],
+          "relationships": [
+            "henry_frankenstein"
+          ]
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.020500000000000004,
+            "comply": -0.0164,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.020500000000000004
+          },
+          "history": {
+            "approach": 0.027310167032967035,
+            "avoid": 0.006,
+            "challenge": 0.012,
+            "comply": 0.012770571428571428,
+            "conceal": 0.0,
+            "cooperate": 0.006770571428571428,
+            "create": 0.008148171428571428,
+            "dominate": 0.014023371428571428,
+            "explore": 0.006770571428571428,
+            "persist": 0.006
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010000407410523663,
+            "cooperate": 0.0,
+            "create": -0.011728767702603452,
+            "dominate": 0.0,
+            "explore": -0.014332351414991474,
+            "persist": 0.013889454736838423
+          },
+          "relationships": {
+            "approach": 6.562499999999861e-05,
+            "avoid": 0.0016812499999999996,
+            "challenge": 0.0023537499999999995,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 9.374999999999801e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "lesion_activated_memory_count": 0,
+      "lesion_final_scores": {
+        "approach": 0.10370685102036044,
+        "avoid": 0.09457989691423956,
+        "challenge": 0.09578830854405071,
+        "comply": 0.100350265276476,
+        "conceal": 0.10434807414643696,
+        "cooperate": 0.10146841139576968,
+        "create": 0.09948755191892103,
+        "dominate": 0.10262687455667811,
+        "explore": 0.09586473532838992,
+        "persist": 0.10177903089867771
+      },
+      "lesion_raw_recurrent_scores": {
+        "approach": 0.10370685102036044,
+        "avoid": 0.09457989691423956,
+        "challenge": 0.09578830854405071,
+        "comply": 0.100350265276476,
+        "conceal": 0.10434807414643696,
+        "cooperate": 0.10146841139576968,
+        "create": 0.09948755191892103,
+        "dominate": 0.10262687455667811,
+        "explore": 0.09586473532838992,
+        "persist": 0.10177903089867771
+      },
+      "lesion_selected_action": "conceal",
+      "lesion_state_pressure": {
+        "clipping": {
+          "aggregate": [
+            -0.12,
+            0.12
+          ],
+          "family": [
+            -0.05,
+            0.05
+          ]
+        },
+        "combined": {
+          "approach": 0.0,
+          "avoid": 0.0,
+          "challenge": 0.0,
+          "comply": 0.0,
+          "conceal": 0.0,
+          "cooperate": 0.0,
+          "create": 0.0,
+          "dominate": 0.0,
+          "explore": 0.0,
+          "persist": 0.0
+        },
+        "config": {
+          "action_values": "retained as durable accounting but not double-counted into the bridge while recurrent reinforcement is already causal",
+          "clipping": "each mechanism/action contribution is clipped to family_cap, aggregate/action pressure to total_cap, then a 1e-9 positive floor is applied and scores are normalized to sum to one",
+          "enabled_families": [
+            "needs",
+            "relationships",
+            "commitments",
+            "history",
+            "concerns"
+          ],
+          "excluded_pending_evidence": [
+            "self_model",
+            "spreading_activation"
+          ],
+          "family_cap": 0.05,
+          "lesion": "bridge_enabled=false zeroes all state pressure and returns the normalized recurrent-only path without mutating recurrent weights",
+          "relevance_gate": "relationships require current decision actor overlap; commitments require current decision overlap; autobiographical history requires retrieved record overlap with current decision; concerns require current decision overlap when a decision context is supplied",
+          "rule": "The recurrent distribution is the baseline. Existing state may apply bounded deterministic pressure before selection; all family contributions are audited.",
+          "total_cap": 0.12,
+          "version": "state-policy-bridge-v0.4"
+        },
+        "config_sha256": "dd4f6b33b7aeaf7545f405a9d48d09779afe558d9da868f05fe1e6c68d6b0427",
+        "decision_text_sha256": "69df6cd472e881e93c93dfe42ce0d89d557adbeff1352bc4f3bb6c1bf7c9241c",
+        "enabled": false,
+        "families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "history": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          },
+          "relationships": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "family_cap": 0.05,
+        "history_retrieval_ids": [
+          "mem_ab2e07a84dcd41e0bb526324cacd9622",
+          "mem_6324d883924c41449c0a5d9b8a72de9a",
+          "mem_dde17a2e0dd446dab2273e5a362a94fe",
+          "mem_d48459eb31dc4c10898b2ee815ec254e",
+          "mem_8686763d11ff429dadb9080e60e8c931",
+          "mem_80233b8db3c44cd29f21b77ec083c840",
+          "mem_69cd49c0bbae4b97b8fe0c29d0333bd9",
+          "mem_52d0bfe83e3e4ab5ac7e4cf05058ac09",
+          "mem_26f7929965b7496aba2eda6962ff3fb8",
+          "mem_6b676ce4e9ab4765bdc30e8fbb5e496c",
+          "mem_faf9f2a82a214166b5c7bfa62b09465e",
+          "mem_9dfaabb9fbdb486d895aba27f20d971c",
+          "mem_d9ccee47d103436fba703d5a7fc3d58a",
+          "mem_17d97fe48fd740d7971c2c7af6f6bde0",
+          "mem_40abe17232b04bad84b836ac2c2c436e",
+          "mem_ef73ce42ae8c4e67bb24c32b51ccc588",
+          "mem_f38410cdb4fa4774a78a37a3b52b303a",
+          "mem_cb1de49cea5542ff87aab70f6e69b194",
+          "mem_a9e7e8d887bc40659eb12d6e3bfeb54a",
+          "mem_83480e51bc7d447780bdde3e5009e6c2",
+          "mem_ced1842386bd45b898c70a1580cc00a2",
+          "mem_edcae53b20034e07ade83e08ff5777cc",
+          "mem_2bd78b6612d449c2967ee4a04cb23d0e",
+          "mem_57a1be7added4773a7f3fd5fe0ab3171",
+          "mem_60cf599eabf54cbb8303e1a9ff6fcf46",
+          "mem_2ca0d75fbed3484cad68ed9fce8bdb29",
+          "mem_1e65cff907234818993d5083be510960",
+          "mem_fdcb64a328c84d35a05180b0be3b820c",
+          "mem_4d4eb2662de74159a25e827c2def5981",
+          "mem_f5a30ffc54b34b42809d8262e7c9acb6",
+          "mem_a69b462c8b83416599a3473f617e7a66",
+          "mem_8fad21dd8d3249889042e8541677040e",
+          "mem_b5c7111011704fe4bf881cd1839ebb26",
+          "mem_a743d3eea89d459f86fc470309e14c48",
+          "mem_5f850522c8864d08a1d65f5d281748ea",
+          "mem_690ff95a052848c489ad313608776709",
+          "mem_db4dbaa759ad4e6da7f979be94a316a7",
+          "mem_28b2d0923190453190f4ff0b8580d590",
+          "mem_a4a6ce72bd194e2fb0aec4dea8625e78",
+          "mem_b58e7507721d4b12bbe7a7dbe45fd3ac",
+          "mem_6cf7f3debdbb4974bdda1b5ee39101f2",
+          "mem_9f1fa112c90547a8bdf12f3a157eadca",
+          "mem_fac0ff935cbf4334b47124577596128d",
+          "mem_2209cd8912344edb8db44b9eb13127ce",
+          "mem_bab348b17ac0433385202f954e0e467e",
+          "mem_6285083a713844428d6e9bed9ad3f89e",
+          "mem_2653ed8c1b9446ce8eb6653fa796d984",
+          "mem_09cf60389bac4964ab29457bc3ffbad5"
+        ],
+        "normalization": {
+          "denominator": 1.0,
+          "method": "positive_floor_then_sum_to_one",
+          "positive_floor": 1e-09,
+          "pre_normalization": {
+            "approach": 0.10370685102036044,
+            "avoid": 0.09457989691423956,
+            "challenge": 0.09578830854405071,
+            "comply": 0.100350265276476,
+            "conceal": 0.10434807414643696,
+            "cooperate": 0.10146841139576968,
+            "create": 0.09948755191892103,
+            "dominate": 0.10262687455667811,
+            "explore": 0.09586473532838992,
+            "persist": 0.10177903089867771
+          }
+        },
+        "source_ids": {
+          "commitments": [],
+          "concerns": [],
+          "history": [],
+          "needs": [],
+          "relationships": []
+        },
+        "source_state_version": 6,
+        "total_cap": 0.12,
+        "unclipped_families": {
+          "commitments": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.0,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 0.014759999999999999,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.036899999999999995
+          },
+          "concerns": {
+            "approach": 0.0,
+            "avoid": 0.0,
+            "challenge": 0.020500000000000004,
+            "comply": -0.0164,
+            "conceal": 0.0,
+            "cooperate": 0.0,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.020500000000000004
+          },
+          "history": {
+            "approach": 0.027310167032967035,
+            "avoid": 0.006,
+            "challenge": 0.012,
+            "comply": 0.012770571428571428,
+            "conceal": 0.0,
+            "cooperate": 0.006770571428571428,
+            "create": 0.008148171428571428,
+            "dominate": 0.014023371428571428,
+            "explore": 0.006770571428571428,
+            "persist": 0.006
+          },
+          "needs": {
+            "approach": 0.0,
+            "avoid": 0.027249142002072915,
+            "challenge": 0.0370113264715675,
+            "comply": -0.0370113264715675,
+            "conceal": 0.010000407410523663,
+            "cooperate": 0.0,
+            "create": -0.011728767702603452,
+            "dominate": 0.0,
+            "explore": -0.014332351414991474,
+            "persist": 0.013889454736838423
+          },
+          "relationships": {
+            "approach": 6.562499999999861e-05,
+            "avoid": 0.0016812499999999996,
+            "challenge": 0.0023537499999999995,
+            "comply": 0.0,
+            "conceal": 0.0,
+            "cooperate": 9.374999999999801e-05,
+            "create": 0.0,
+            "dominate": 0.0,
+            "explore": 0.0,
+            "persist": 0.0
+          }
+        },
+        "version": "state-policy-bridge-v0.4"
+      },
+      "mechanism": "state_policy_bridge",
+      "renderer_request_changed": false,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": true
+    }
+  ],
+  "reinforcement": {
+    "intact_vs_neutral_action_values": {
+      "action_score_l1": 0.0,
+      "deterministic_render_changed": false,
+      "renderer_request_changed": false,
+      "renderer_request_raw_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    },
+    "intact_vs_no_neural": {
+      "action_score_l1": 0.1053858651845167,
+      "deterministic_render_changed": false,
+      "renderer_request_changed": true,
+      "renderer_request_raw_changed": true,
+      "retrieval_jaccard": 1.0,
+      "selected_action_diverged": false,
+      "selected_memory_jaccard": 1.0,
+      "spontaneous_cognition_diverged": false
+    }
+  },
+  "sleep_replay": {
+    "action_score_l1": 0.000596187518838158,
+    "deterministic_render_changed": true,
+    "renderer_request_changed": true,
+    "renderer_request_raw_changed": true,
+    "retrieval_jaccard": 1.0,
+    "selected_action_diverged": false,
+    "selected_memory_jaccard": 1.0,
+    "spontaneous_cognition_diverged": false
+  },
+  "v03_vs_v04": [
+    {
+      "comparable": false,
+      "comparison_reason": "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only",
+      "mechanism": "deep_history",
+      "v03_experiment_fingerprint": null,
+      "v03_historical_action_score_l1": 0.0,
+      "v03_historical_selected_action_diverged": false,
+      "v04_action_score_l1": 0.0853657019720969,
+      "v04_experiment_fingerprint": "5c79edf981172bb2459bc38edb7acf4d153f48ba752891a8d003ac8c10d36e16",
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "comparable": false,
+      "comparison_reason": "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only",
+      "mechanism": "spreading_activation",
+      "v03_experiment_fingerprint": null,
+      "v03_historical_action_score_l1": 0.0,
+      "v03_historical_selected_action_diverged": false,
+      "v04_action_score_l1": 0.0,
+      "v04_experiment_fingerprint": "054d421f306b7446581dcc06ed449e22652fc42b910ee96a2e922ca6967c456a",
+      "v04_renderer_request_changed": false,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "comparable": false,
+      "comparison_reason": "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only",
+      "mechanism": "needs",
+      "v03_experiment_fingerprint": null,
+      "v03_historical_action_score_l1": 0.0,
+      "v03_historical_selected_action_diverged": false,
+      "v04_action_score_l1": 0.1277399157880004,
+      "v04_experiment_fingerprint": "f9ed90362c49f202adac64fe0477096ae669408bdd6b471cb1e8776697c7e629",
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": true
+    },
+    {
+      "comparable": false,
+      "comparison_reason": "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only",
+      "mechanism": "relationships",
+      "v03_experiment_fingerprint": null,
+      "v03_historical_action_score_l1": 0.0,
+      "v03_historical_selected_action_diverged": false,
+      "v04_action_score_l1": 0.002378277372023438,
+      "v04_experiment_fingerprint": "0d106a026a38f552d9d8afa43f677c01f3f9f49494fba132544f74ef843b61f5",
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "comparable": false,
+      "comparison_reason": "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only",
+      "mechanism": "commitments",
+      "v03_experiment_fingerprint": null,
+      "v03_historical_action_score_l1": 0.0,
+      "v03_historical_selected_action_diverged": false,
+      "v04_action_score_l1": 0.0686587527205425,
+      "v04_experiment_fingerprint": "b75dc51c01079647e7c51ef3d4f39ffb5c5734353c9f556c0a86f1aac8ea4526",
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": true
+    },
+    {
+      "comparable": false,
+      "comparison_reason": "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only",
+      "mechanism": "recurrent_policy",
+      "v03_experiment_fingerprint": null,
+      "v03_historical_action_score_l1": 0.02856991059850507,
+      "v03_historical_selected_action_diverged": true,
+      "v04_action_score_l1": 0.022817539020053137,
+      "v04_experiment_fingerprint": "0934e283fa01bd0ef4ff81520de943cd3ad02bd89f624fdbac734657d3bcfe9c",
+      "v04_renderer_request_changed": true,
+      "v04_selected_action_diverged": false
+    },
+    {
+      "comparable": false,
+      "comparison_reason": "historical v0.3 result lacks a matching experiment fingerprint; numeric values are retained as historical evidence only",
+      "mechanism": "state_policy_bridge",
+      "v03_experiment_fingerprint": null,
+      "v03_historical_action_score_l1": null,
+      "v03_historical_selected_action_diverged": null,
+      "v04_action_score_l1": 0.21732209983671216,
+      "v04_experiment_fingerprint": "7b00b650c6547080459262242990d650747a9f9fa78292922c8a771733b7f00e",
+      "v04_renderer_request_changed": false,
+      "v04_selected_action_diverged": true
+    }
+  ]
+}
