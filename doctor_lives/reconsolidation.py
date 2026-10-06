@@ -22,6 +22,12 @@ from pathlib import Path
 from typing import Any
 
 from .awareness import AwarenessDecision
+from .distortion import (
+    DistortionCandidate,
+    RepresentationOperation,
+    build_representation_operation,
+    propose_temporal_generalization,
+)
 from .phenomenology import (
     AwarenessLevel,
     CertaintyBand,
@@ -33,6 +39,9 @@ from .recollection import (
     OmissionCause,
     ProtectedEvidenceRef,
     RecollectionCandidate,
+    SubjectiveDetailRepresentation,
+    SubjectiveTemporalForm,
+    TemporalSemantics,
     TraceDetail,
     TraceDetailState,
 )
@@ -44,7 +53,7 @@ from .source_monitoring import (
 
 
 _RECONSOLIDATION_DECISION_FACTORY_TOKEN = object()
-_LEDGER_SCHEMA_VERSION = "uppb-p6c-ledger-v4"
+_LEDGER_SCHEMA_VERSION = "uppb-p6d-ledger-v5"
 _ALLOWED_OPERATION_FIELDS = {
     "strength",
     "accessibility",
@@ -127,7 +136,8 @@ class ReconsolidationContext:
     temporal_disorientation: float = 0.0
     association_drift_enabled: bool = False
     context_mismatch: float = 0.0
-    rule_version: str = "uppb-p6c-v1"
+    temporal_generalization_enabled: bool = False
+    rule_version: str = "uppb-p6d-v1"
 
     def __post_init__(self) -> None:
         if not isinstance(self.enabled, bool):
@@ -140,6 +150,8 @@ class ReconsolidationContext:
             raise TypeError("temporal_drift_enabled must be bool")
         if not isinstance(self.association_drift_enabled, bool):
             raise TypeError("association_drift_enabled must be bool")
+        if not isinstance(self.temporal_generalization_enabled, bool):
+            raise TypeError("temporal_generalization_enabled must be bool")
         for name in (
             "reactivation_strength",
             "prediction_error",
@@ -160,10 +172,10 @@ class ReconsolidationContext:
 
 @dataclass(frozen=True)
 class ReconsolidationPolicy:
-    """Bounded P6A/P6B/P6C plasticity policy.
+    """Bounded P6A-P6D plasticity policy.
 
-    P6C adds degradative temporal confidence and contextual association while
-    keeping retention and semantic detail content read-only.
+    P6D may transform only a separate subjective temporal representation.
+    Stable TraceDetail semantic truth and retention remain read-only.
     """
 
     min_reactivation: float = 0.35
@@ -184,6 +196,7 @@ class ReconsolidationPolicy:
     min_context_mismatch: float = 0.35
     max_association_strength_loss: float = 0.10
     association_strength_floor: float = 0.20
+    max_temporal_confidence_for_generalization: float = 0.35
 
     def __post_init__(self) -> None:
         for name in (
@@ -212,6 +225,7 @@ class ReconsolidationPolicy:
             "min_context_mismatch",
             "max_association_strength_loss",
             "association_strength_floor",
+            "max_temporal_confidence_for_generalization",
         ):
             object.__setattr__(self, name, _unit(getattr(self, name), name))
 
@@ -323,6 +337,9 @@ class ReconsolidationDecision:
     operations: tuple[ReconsolidationOperation, ...]
     detail_operations: tuple[DetailStateOperation, ...]
     detail_reason_codes: tuple[str, ...]
+    distortion_candidates: tuple[DistortionCandidate, ...]
+    representation_operations: tuple[RepresentationOperation, ...]
+    distortion_reason_codes: tuple[str, ...]
     reason_codes: tuple[str, ...]
     decision_fingerprint: str
 
