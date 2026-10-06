@@ -2816,6 +2816,152 @@ class ReconsolidationTests(unittest.TestCase):
             ],
         )
 
+    def test_p6d_ledger_rejects_successor_without_audited_representation_change(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-fabricated-successor",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=decision,
+        )
+        assert successor is not None
+        fabricated = dataclasses.replace(
+            successor,
+            subjective_representations=trace.subjective_representations,
+        )
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        with self.assertRaises(ValueError):
+            ledger.append_successor(
+                parent=trace,
+                successor=fabricated,
+                decision=decision,
+            )
+
+    def test_p6d_restart_rejects_missing_or_tampered_representation(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        payload = json.loads(ledger.stable_json())
+
+        missing = json.loads(json.dumps(payload))
+        missing["traces"][0].pop("subjective_representations")
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(
+                json.dumps(missing, sort_keys=True, separators=(",", ":"))
+            )
+
+        tampered = json.loads(json.dumps(payload))
+        tampered["traces"][0]["subjective_representations"][0][
+            "representation_fingerprint"
+        ] = "subjective_detail_corrupt"
+        with self.assertRaises(ValueError):
+            TraceVersionLedger.from_json(
+                json.dumps(tampered, sort_keys=True, separators=(",", ":"))
+            )
+
+    def test_p6d_generalization_is_one_way_and_does_not_repeat(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-first-generalization",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        first_decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=first_decision,
+        )
+        assert successor is not None
+
+        later_candidate = self.reconstruct(
+            successor,
+            episode_id="episode:p6d-second-generalization",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        later_source, later_finalized, later_awareness = (
+            self.finalized_from_candidate(later_candidate)
+        )
+        later_decision = evaluate_reconsolidation(
+            old_trace=successor,
+            candidate=later_candidate,
+            source_decision=later_source,
+            finalized_recollection=later_finalized,
+            awareness_decision=later_awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        self.assertEqual(later_decision.distortion_candidates, ())
+        self.assertEqual(later_decision.representation_operations, ())
+        self.assertIn(
+            "sometime that evening",
+            later_candidate.reconstructed_scene,
+        )
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
