@@ -906,6 +906,24 @@ def _contextual_association(state: TraceDetailState) -> ContextAssociation:
     return ContextAssociation.WEAK
 
 
+def _subjective_detail_text(
+    trace: MemoryTrace,
+    detail: TraceDetail,
+) -> str:
+    representation = trace.subjective_representation(detail.detail_id)
+    if (
+        representation.temporal_form is SubjectiveTemporalForm.GENERALIZED
+    ):
+        if detail.temporal_semantics is None or detail.temporal_template is None:
+            raise ValueError(
+                "generalized subjective representation lacks temporal semantics"
+            )
+        return detail.temporal_template.format(
+            temporal=detail.temporal_semantics.generalized_phrase
+        )
+    return detail.text
+
+
 def reconstruct_recollection(
     traces: Iterable[MemoryTrace],
     episode: RetrievalEpisode,
@@ -998,12 +1016,25 @@ def reconstruct_recollection(
             contextual_association=_contextual_association(
                 ordered[trace_index].detail_state(detail.detail_id)
             ),
+            subjective_representation_fingerprint=(
+                ordered[trace_index]
+                .subjective_representation(detail.detail_id)
+                .representation_fingerprint
+            ),
+            temporal_form=(
+                ordered[trace_index]
+                .subjective_representation(detail.detail_id)
+                .temporal_form
+            ),
         )
         for _, trace_index, detail, _ in included
     )
 
     gist_parts = [trace.gist.strip().rstrip(".") for trace in ordered]
-    detail_parts = [item[2].text.strip().rstrip(".") for item in included]
+    detail_parts = [
+        _subjective_detail_text(ordered[item[1]], item[2]).strip().rstrip(".")
+        for item in included
+    ]
     scene_parts = gist_parts + detail_parts
     reconstructed_scene = ". ".join(part for part in scene_parts if part) + "."
     if any(
