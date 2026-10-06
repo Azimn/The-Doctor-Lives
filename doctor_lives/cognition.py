@@ -16,7 +16,7 @@ from .history import (
     spreading_activation,
 )
 from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
-from .neural import ACTIONS, PretoriusRecurrentSubstrate
+from .neural import ACTIONS, DEFAULT_CONFIG, PretoriusRecurrentSubstrate
 from .store import BrainStore, clamp, new_id, utc_now
 
 
@@ -45,6 +45,27 @@ class PretoriusBrain:
         install_deep_history(self.store)
         if self.neural_path.exists():
             self.neural = PretoriusRecurrentSubstrate.load(self.neural_path)
+            if neural_config is not None:
+                requested_config = dict(DEFAULT_CONFIG)
+                requested_config.update(neural_config)
+                persisted_config = dict(self.neural.cfg)
+                requested_json = json.dumps(
+                    requested_config, sort_keys=True, separators=(",", ":")
+                )
+                persisted_json = json.dumps(
+                    persisted_config, sort_keys=True, separators=(",", ":")
+                )
+                if requested_json != persisted_json:
+                    differing_keys = sorted(
+                        key
+                        for key in set(requested_config) | set(persisted_config)
+                        if requested_config.get(key) != persisted_config.get(key)
+                    )
+                    raise RuntimeError(
+                        "explicit neural checkpoint migration required: "
+                        "requested configuration does not match persisted checkpoint "
+                        f"(differing keys: {', '.join(differing_keys)})"
+                    )
         else:
             self.neural = PretoriusRecurrentSubstrate(neural_config)
             self.neural.save(self.neural_path)
@@ -437,9 +458,16 @@ class PretoriusBrain:
         thought = self.think("event", decision_text=exp.text) if self._warrants_cognition(exp) else None
         if thought is not None:
             action_tendencies = dict(thought["action_scores"])
+            state_pressure = dict(thought["state_pressure"])
         else:
-            ranked = self._ranked_memories(14, audit=False)
-            _, action_tendencies, _ = self._state_policy_scores(ranked, decision_text=exp.text)
+            direct_ranked, ranked = self._ranked_memory_sets(
+                14, query=exp.text, audit=False
+            )
+            _, action_tendencies, state_pressure = self._state_policy_scores(
+                ranked,
+                decision_text=exp.text,
+                direct_history_ranked=direct_ranked,
+            )
         return {
             "tick": self.store.tick,
             "event_id": event_id,
@@ -447,6 +475,7 @@ class PretoriusBrain:
             "thought": thought,
             "recurrent_action_tendencies": recurrent_tendencies,
             "action_tendencies": action_tendencies,
+            "state_pressure": state_pressure,
             "felt_state": self._felt_state(),
         }
 

@@ -50,3 +50,15 @@ From a clean checkout:
 `python -m unittest discover -s tests -v`
 
 The pull request description records the exact-head push and pull-request workflow run IDs used for the final handoff.
+
+
+## Assessor correction gate
+
+Following independent review of the initial RC1 head, this release line now requires four additional invariants before acceptance:
+
+1. Low-pressure `ingest()` must use the same query-aware direct pre-spreading history retrieval semantics as the thinking path without changing the cognition-trigger threshold.
+2. Causal-audit identity and clock data must be deterministic within the audit harness only; production UUID and wall-clock behavior must remain unchanged. A release workflow executes the complete audit twice in independent directories and requires byte-identical canonical outputs.
+3. An explicitly supplied neural configuration for an existing checkpoint must match the persisted configuration exactly or fail closed with an explicit migration-required error. No implicit checkpoint migration is permitted.
+4. The archived v0.4 causal workflow is read-only in this release tree: manual dispatch and repository writeback are removed.
+
+These corrections do not reopen the accepted v0.4 bridge design, Deep-History v2, UPPB P0-P6D, or Neural Convergence mechanisms.

@@ -11,6 +11,7 @@ from doctor_lives.causal_audit import (
     AuditIntervention,
     CausalAuditHarness,
     cross_version_row,
+    deterministic_audit_identity,
     experiment_fingerprint,
 )
 from doctor_lives.history import install_deep_history
@@ -180,97 +181,103 @@ def load_v03_summary() -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def generate_audit_result() -> dict:
+    """Generate one canonical causal-audit result under audit-only determinism."""
+    with deterministic_audit_identity():
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            seed = root / "seed"
+            build_seed(seed)
+            harness = CausalAuditHarness(seed, root / "conditions")
+            p = probes()
+
+            pairs = {
+                "deep_history": harness.run_existing_state_pair(
+                    p["deep_history"],
+                    AuditIntervention("deep_history", ("deep_history",)),
+                ),
+                "spreading_activation": harness.run_existing_state_pair(
+                    p["spreading_activation"],
+                    AuditIntervention("spreading_activation", ("spreading_activation",)),
+                    prelude=prime_spreading_activation,
+                ),
+            }
+            for mechanism in (
+                "needs",
+                "relationships",
+                "commitments",
+                "recurrent_policy",
+                "state_policy_bridge",
+            ):
+                pairs[mechanism] = harness.run_pair(
+                    p[mechanism], AuditIntervention(mechanism, (mechanism,))
+                )
+
+            sleep_pair = harness.run_sleep_pair(p["sleep_replay"], sleep_ticks=8)
+            reinforcement = harness.run_reinforcement_triplet(
+                p["reinforcement"], action="create", success=True, reward=1.0, repetitions=6
+            )
+            concern_resolution = concern_resolution_characterization()
+
+            methods = {
+                "deep_history": "run_existing_state_pair:v1",
+                "spreading_activation": "run_existing_state_pair:v1+prime_spreading_activation:v1",
+                "needs": "run_pair:v1",
+                "relationships": "run_pair:v1",
+                "commitments": "run_pair:v1",
+                "recurrent_policy": "run_pair:v1",
+                "state_policy_bridge": "run_pair:v1",
+            }
+            rows = [
+                pair_row(name, result, p[name], methods[name])
+                for name, result in pairs.items()
+            ]
+            v03 = load_v03_summary()
+            v03_rows = {
+                row["mechanism"]: row
+                for row in v03.get("pair_measures", [])
+                if isinstance(row, dict) and "mechanism" in row
+            }
+            comparison = [
+                cross_version_row(v03_rows.get(row["mechanism"]), row)
+                for row in rows
+            ]
+
+            return {
+                "schema": "the-doctor-lives.causal-architecture-audit.v04",
+                "issue": ISSUE,
+                "production_base": PRODUCTION_BASE,
+                "audit_code_sha": os.environ.get("GITHUB_SHA", "local-unpinned"),
+                "audit_identity_mode": "deterministic-audit-only-v1",
+                "interpretation_boundary": (
+                    "Production software causal characterization only. These lesions measure "
+                    "software-level effects and do not establish consciousness, biological "
+                    "equivalence, or general human cognition."
+                ),
+                "pairs": pairs,
+                "sleep_replay": sleep_pair,
+                "reinforcement": reinforcement,
+                "concern_resolution": concern_resolution,
+                "summary": {
+                    "pair_measures": rows,
+                    "v03_vs_v04": comparison,
+                    "sleep_replay": sleep_pair["comparison"],
+                    "reinforcement": {
+                        "intact_vs_no_neural": reinforcement["intact_vs_no_neural"],
+                        "intact_vs_neutral_action_values": reinforcement["intact_vs_neutral_action_values"],
+                    },
+                    "concern_resolution": concern_resolution,
+                },
+            }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("results/causal_architecture_audit_v04/audit.json"))
     parser.add_argument("--summary", type=Path, default=Path("results/causal_architecture_audit_v04/summary.json"))
     args = parser.parse_args()
 
-    with tempfile.TemporaryDirectory() as td:
-        root = Path(td)
-        seed = root / "seed"
-        build_seed(seed)
-        harness = CausalAuditHarness(seed, root / "conditions")
-        p = probes()
-
-        pairs = {
-            "deep_history": harness.run_existing_state_pair(
-                p["deep_history"],
-                AuditIntervention("deep_history", ("deep_history",)),
-            ),
-            "spreading_activation": harness.run_existing_state_pair(
-                p["spreading_activation"],
-                AuditIntervention("spreading_activation", ("spreading_activation",)),
-                prelude=prime_spreading_activation,
-            ),
-        }
-        for mechanism in (
-            "needs",
-            "relationships",
-            "commitments",
-            "recurrent_policy",
-            "state_policy_bridge",
-        ):
-            pairs[mechanism] = harness.run_pair(
-                p[mechanism], AuditIntervention(mechanism, (mechanism,))
-            )
-
-        sleep_pair = harness.run_sleep_pair(p["sleep_replay"], sleep_ticks=8)
-        reinforcement = harness.run_reinforcement_triplet(
-            p["reinforcement"], action="create", success=True, reward=1.0, repetitions=6
-        )
-        concern_resolution = concern_resolution_characterization()
-
-        methods = {
-            "deep_history": "run_existing_state_pair:v1",
-            "spreading_activation": "run_existing_state_pair:v1+prime_spreading_activation:v1",
-            "needs": "run_pair:v1",
-            "relationships": "run_pair:v1",
-            "commitments": "run_pair:v1",
-            "recurrent_policy": "run_pair:v1",
-            "state_policy_bridge": "run_pair:v1",
-        }
-        rows = [
-            pair_row(name, result, p[name], methods[name])
-            for name, result in pairs.items()
-        ]
-        v03 = load_v03_summary()
-        v03_rows = {
-            row["mechanism"]: row
-            for row in v03.get("pair_measures", [])
-            if isinstance(row, dict) and "mechanism" in row
-        }
-        comparison = [
-            cross_version_row(v03_rows.get(row["mechanism"]), row)
-            for row in rows
-        ]
-
-        result = {
-            "schema": "the-doctor-lives.causal-architecture-audit.v04",
-            "issue": ISSUE,
-            "production_base": PRODUCTION_BASE,
-            "audit_code_sha": os.environ.get("GITHUB_SHA", "local-unpinned"),
-            "interpretation_boundary": (
-                "Production software causal characterization only. These lesions measure "
-                "software-level effects and do not establish consciousness, biological "
-                "equivalence, or general human cognition."
-            ),
-            "pairs": pairs,
-            "sleep_replay": sleep_pair,
-            "reinforcement": reinforcement,
-            "concern_resolution": concern_resolution,
-            "summary": {
-                "pair_measures": rows,
-                "v03_vs_v04": comparison,
-                "sleep_replay": sleep_pair["comparison"],
-                "reinforcement": {
-                    "intact_vs_no_neural": reinforcement["intact_vs_no_neural"],
-                    "intact_vs_neutral_action_values": reinforcement["intact_vs_neutral_action_values"],
-                },
-                "concern_resolution": concern_resolution,
-            },
-        }
-
+    result = generate_audit_result()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True), encoding="utf-8")

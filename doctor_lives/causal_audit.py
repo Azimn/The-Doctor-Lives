@@ -6,6 +6,7 @@ import re
 import shutil
 from contextlib import ExitStack, closing, contextmanager
 from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 from unittest.mock import patch
@@ -26,6 +27,49 @@ AUDIT_MECHANISMS = frozenset({
     "self_model",
     "state_policy_bridge",
 })
+
+
+
+@contextmanager
+def deterministic_audit_identity(seed: str = "pretorius-causal-audit-v04"):
+    """Make audit-only record identity and timestamps reproducible.
+
+    Production runtime UUIDs and clocks remain unchanged. The context patches
+    only the modules that own causal-audit seed/history construction so two
+    clean executions of one implementation SHA have stable IDs, timestamps,
+    retrieval tie-breaks, and canonical JSON.
+    """
+    counters: dict[str, int] = {}
+    clock_step = 0
+    epoch = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+    def audit_new_id(prefix: str) -> str:
+        counters[prefix] = counters.get(prefix, 0) + 1
+        digest = hashlib.sha256(
+            f"{seed}:{prefix}:{counters[prefix]}".encode("utf-8")
+        ).hexdigest()[:32]
+        return f"{prefix}_{digest}"
+
+    def audit_utc_now() -> str:
+        nonlocal clock_step
+        value = epoch + timedelta(microseconds=clock_step)
+        clock_step += 1
+        return value.isoformat()
+
+    with ExitStack() as stack:
+        for target in (
+            "doctor_lives.store.new_id",
+            "doctor_lives.cognition.new_id",
+            "doctor_lives.history.new_id",
+        ):
+            stack.enter_context(patch(target, new=audit_new_id))
+        for target in (
+            "doctor_lives.store.utc_now",
+            "doctor_lives.cognition.utc_now",
+            "doctor_lives.history.utc_now",
+        ):
+            stack.enter_context(patch(target, new=audit_utc_now))
+        yield
 
 
 @dataclass(frozen=True)

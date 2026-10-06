@@ -1,0 +1,52 @@
+name: causal-audit-repeatability-v05
+
+on:
+  push:
+    branches:
+      - release/pretorius-v0.5-rc1
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  repeatability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Clean-install release candidate
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+      - name: Execute causal audit twice in independent output directories
+        run: |
+          mkdir -p /tmp/pretorius-audit-a /tmp/pretorius-audit-b
+          python tools/run_causal_architecture_audit_v04.py \
+            --output /tmp/pretorius-audit-a/audit.json \
+            --summary /tmp/pretorius-audit-a/summary.json
+          python tools/run_causal_architecture_audit_v04.py \
+            --output /tmp/pretorius-audit-b/audit.json \
+            --summary /tmp/pretorius-audit-b/summary.json
+
+      - name: Require byte-identical audit artifacts
+        run: |
+          cmp /tmp/pretorius-audit-a/audit.json /tmp/pretorius-audit-b/audit.json
+          cmp /tmp/pretorius-audit-a/summary.json /tmp/pretorius-audit-b/summary.json
+          sha256sum /tmp/pretorius-audit-a/audit.json /tmp/pretorius-audit-b/audit.json
+          sha256sum /tmp/pretorius-audit-a/summary.json /tmp/pretorius-audit-b/summary.json
+
+      - name: Preserve both independent audit executions
+        uses: actions/upload-artifact@v4
+        with:
+          name: causal-audit-repeatability-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            /tmp/pretorius-audit-a/
+            /tmp/pretorius-audit-b/
+          if-no-files-found: error

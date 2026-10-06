@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ from doctor_lives.causal_audit import (
     AuditIntervention,
     CausalAuditHarness,
     cross_version_row,
+    deterministic_audit_identity,
     experiment_fingerprint,
 )
 from doctor_lives.history import install_deep_history
@@ -398,6 +400,39 @@ class CausalAuditHarnessTests(unittest.TestCase):
         self.assertTrue(result["neutral_probe_warrants_cognition"])
         self.assertEqual(result["heartbeat_thoughts"], 2)
         self.assertTrue(result["public_resolve_concern_method"])
+
+
+    def test_audit_identity_clock_and_retrieval_are_repeatable(self):
+        def one_run():
+            with tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                with deterministic_audit_identity():
+                    seed = root / "seed"
+                    brain = PretoriusBrain(seed, neural_config=small_config())
+                    install_deep_history(brain.store)
+                    brain.ingest(Experience(
+                        "Henry returned a borrowed instrument intact and kept his promise.",
+                        kind="social",
+                        actor="Henry Frankenstein",
+                        social=.8,
+                        valence=.7,
+                        tags=("determinism_seed",),
+                    ))
+                    brain.save()
+                    harness = CausalAuditHarness(seed, root / "work")
+                    result = harness.run_existing_state_pair(
+                        Experience(
+                            "The homunculi creation invites another artificial-life experiment.",
+                            kind="observation",
+                            novelty=.4,
+                            creation=.7,
+                            tags=("homunculi", "creation", "artificial_life"),
+                        ),
+                        AuditIntervention("deep_history", ("deep_history",)),
+                    )
+                    return json.dumps(result, sort_keys=True, separators=(",", ":"))
+
+        self.assertEqual(one_run(), one_run())
 
 
 if __name__ == "__main__":
