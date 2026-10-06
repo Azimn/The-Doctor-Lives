@@ -8,6 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from .evidence_authority import CanonicalEvidenceAuthority
 from .history import (
     history_status as deep_history_status,
     install_deep_history,
@@ -28,21 +29,23 @@ class PretoriusBrain:
     renderer requests are owned here. Tool authority is intentionally not.
     """
 
-    BOOTSTRAP_FILE = Path(__file__).with_name("data") / "bootstrap.json"
-    SOURCE_MANIFEST = Path(__file__).with_name("data") / "source_manifest.json"
-    EVOLUTION_POLICY = Path(__file__).with_name("data") / "evolution_policy.json"
-
     def __init__(self, state_dir: str | Path, *, neural_config: dict[str, Any] | None = None):
         self.state_dir = Path(state_dir)
         self.state_dir.mkdir(parents=True, exist_ok=True)
+        self.evidence = CanonicalEvidenceAuthority(self.state_dir).prepare()
         self.store = BrainStore(self.state_dir / "brain.sqlite3")
+        self._bind_canonical_evidence()
         self.neural_path = self.state_dir / "pretorius_recurrent.npz"
-        self.bootstrap = json.loads(self.BOOTSTRAP_FILE.read_text(encoding="utf-8"))
-        self.evolution_policy = json.loads(self.EVOLUTION_POLICY.read_text(encoding="utf-8"))
+        self.bootstrap = json.loads(
+            self.evidence.artifact_path("bootstrap").read_text(encoding="utf-8")
+        )
+        self.evolution_policy = json.loads(
+            self.evidence.artifact_path("evolution_policy").read_text(encoding="utf-8")
+        )
         self._validate_bootstrap_boundary()
         self.identity = tuple(str(x) for x in self.bootstrap["identity"])
         self._bootstrap_once()
-        install_deep_history(self.store)
+        install_deep_history(self.store, evidence_root=self.evidence.active_root)
         if self.neural_path.exists():
             self.neural = PretoriusRecurrentSubstrate.load(self.neural_path)
             if neural_config is not None:
@@ -69,6 +72,63 @@ class PretoriusBrain:
         else:
             self.neural = PretoriusRecurrentSubstrate(neural_config)
             self.neural.save(self.neural_path)
+
+    def _bind_canonical_evidence(self) -> None:
+        expected_version = str(self.evidence.manifest_version)
+        expected_fingerprint = self.evidence.manifest_fingerprint
+        stored_version = self.store.meta("canonical_evidence_manifest_version", "") or ""
+        stored_fingerprint = self.store.meta("canonical_evidence_manifest_fingerprint", "") or ""
+        if bool(stored_version) != bool(stored_fingerprint):
+            raise RuntimeError(
+                "canonical evidence state is partially bound; explicit repair or migration is required"
+            )
+        if stored_version:
+            if (
+                stored_version != expected_version
+                or stored_fingerprint != expected_fingerprint
+            ):
+                raise RuntimeError(
+                    "explicit canonical evidence migration required: persisted state is bound to "
+                    f"version={stored_version} fingerprint={stored_fingerprint!r}, "
+                    f"runtime requires version={expected_version} "
+                    f"fingerprint={expected_fingerprint!r}"
+                )
+            return
+
+        raw_lineage = self.store.meta("canonical_evidence_lineage_json", "[]") or "[]"
+        try:
+            lineage = json.loads(raw_lineage)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("canonical evidence lineage metadata is malformed") from exc
+        if not isinstance(lineage, list):
+            raise RuntimeError("canonical evidence lineage metadata must be a list")
+        lineage.append({
+            "from_version": None,
+            "from_fingerprint": None,
+            "to_version": expected_version,
+            "to_fingerprint": expected_fingerprint,
+            "migration": "gate1_initial_evidence_authority_adoption",
+            "semantic_change": False,
+        })
+        with self.store.transaction() as conn:
+            self.store.set_meta("canonical_evidence_manifest_version", expected_version, conn)
+            self.store.set_meta(
+                "canonical_evidence_manifest_fingerprint",
+                expected_fingerprint,
+                conn,
+            )
+            self.store.set_meta(
+                "canonical_evidence_lineage_json",
+                json.dumps(lineage, sort_keys=True),
+                conn,
+            )
+            self.store.bump_state_version(conn)
+
+    @classmethod
+    def recover_canonical_evidence(
+        cls, state_dir: str | Path, *, reason: str
+    ) -> dict[str, Any]:
+        return CanonicalEvidenceAuthority(state_dir).recover_from_distribution(reason=reason)
 
     def _validate_bootstrap_boundary(self) -> None:
         """Fail closed if the Calibos donor crosses from mechanism into identity."""
@@ -1203,7 +1263,9 @@ class PretoriusBrain:
         return deep_history_status(self.store)
 
     def status(self) -> dict[str, Any]:
-        manifest = json.loads(self.SOURCE_MANIFEST.read_text(encoding="utf-8"))
+        manifest = json.loads(
+            self.evidence.artifact_path("source_manifest").read_text(encoding="utf-8")
+        )
         evolution = dict(self.evolution_policy)
         with closing(self.store.connect()) as conn:
             needs = {
@@ -1242,5 +1304,6 @@ class PretoriusBrain:
             "archived_memories": archived,
             "deep_history_migration_snapshots": migration_snapshots,
             "source_manifest": manifest,
+            "canonical_evidence": self.evidence.status(),
             "evolution_policy": evolution,
         }

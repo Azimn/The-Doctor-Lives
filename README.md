@@ -69,3 +69,12 @@ The v0.5 release candidate is the single review target for current Pretorius dev
 The production default remains the accepted v0.4 behavioral path. This is intentional. UPPB P0 through P6D is included as a complete standalone subsystem but is not yet allowed to replace the live subject-facing Pretorius path. Neural Convergence is included behind the explicit `NEURAL_CONVERGENCE_CONFIG` profile while the legacy v0.4 neural configuration remains the control. The release candidate therefore gives the assessor one repository state that contains all validated work without silently promoting an experimental mechanism past its evidence gate.
 
 The release provenance and assessor scope are recorded in `ASSESSOR_REVIEW.md`.
+
+
+## Gate 1 canonical evidence authority
+
+Post-RC1 production hardening now places canonical package evidence behind a versioned runtime authority. The installed distribution is verified against doctor_lives/data/canonical_evidence_manifest_v1.json before the cognitive store is opened. Pretorius then consumes an immutable state-local snapshot rather than reading identity and deep-history files directly from package paths.
+
+The active snapshot is append-only. Corruption or a missing artifact fails closed. Explicit recovery creates and verifies a new snapshot from the installed distribution before atomically advancing the active pointer, leaving the damaged snapshot available for audit and leaving subjective or lived state untouched. The SQLite store binds itself to the exact manifest version and fingerprint and rejects partial or incompatible bindings. See EVIDENCE_AUTHORITY_CONTRACT.md.
+
+This is the repository-side canonical-evidence portion of Issue #17 and Gate 1 in Issue #14. It does not claim completion of the separate fresh physical user-machine validation in Issue #8.

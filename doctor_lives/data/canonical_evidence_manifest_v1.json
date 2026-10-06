@@ -1,0 +1,16 @@
+{
+  "schema": "pretorius-canonical-evidence-manifest-v1",
+  "version": 1,
+  "authority": "The-Doctor-Lives installed distribution",
+  "mutation_policy": "append_version_only",
+  "recovery_policy": "copy verified installed distribution into a new state snapshot and atomically advance the active pointer",
+  "artifacts": [
+    {"id": "bootstrap", "path": "bootstrap.json", "git_blob_sha1": "fac76d9c5c6015722cc89672513a1cd227002b4f"},
+    {"id": "deep_history", "path": "deep_history.json", "git_blob_sha1": "4dc8f503a20e53c30bebb76192782356484a2e65"},
+    {"id": "deep_history_policy", "path": "deep_history_v2_policy.json", "git_blob_sha1": "013039232a9be8c0c174b3f59a5b8d7d35029b60"},
+    {"id": "evolution_policy", "path": "evolution_policy.json", "git_blob_sha1": "f5520310a2b5755657bb098f5b8d88c88b0e0a2f"},
+    {"id": "pretorius_connectome", "path": "pretorius_connectome_v0.2.json", "git_blob_sha1": "60b0af075628c170bf9855aada1ad52877387a1e"},
+    {"id": "pretorius_seed_agenda", "path": "pretorius_seed_agenda.json", "git_blob_sha1": "bb77a5116d32d29a1edf61b68bd8e94752084dda"},
+    {"id": "source_manifest", "path": "source_manifest.json", "git_blob_sha1": "9d1631babd303ad22c9a675b595868f4cec171d7"}
+  ]
+}

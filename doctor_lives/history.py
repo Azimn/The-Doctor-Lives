@@ -650,7 +650,9 @@ def retract_synthesis_admission(store: BrainStore, admission_id: str, *,
     }
 
 
-def install_deep_history(store: BrainStore) -> dict[str, Any]:
+def install_deep_history(
+    store: BrainStore, *, evidence_root: str | Path | None = None
+) -> dict[str, Any]:
     current = store.meta("deep_history_version", "") or ""
     if current == DEEP_HISTORY_VERSION:
         return history_status(store)
@@ -659,10 +661,11 @@ def install_deep_history(store: BrainStore) -> dict[str, Any]:
             f"deep-history version {current!r} is installed; no migration to {DEEP_HISTORY_VERSION!r} is defined"
         )
 
-    connectome = _load(CONNECTOME_FILE)
-    agenda = _load(AGENDA_FILE)
-    curated = _load(CURATED_FILE)
-    policy = _load(POLICY_FILE)
+    root = Path(evidence_root) if evidence_root is not None else DATA_DIR
+    connectome = _load(root / "pretorius_connectome_v0.2.json")
+    agenda = _load(root / "pretorius_seed_agenda.json")
+    curated = _load(root / "deep_history.json")
+    policy = _load(root / "deep_history_v2_policy.json")
     if policy.get("version") != DEEP_HISTORY_VERSION:
         raise RuntimeError("Deep-History v2 policy version does not match runtime migration version")
     _validate_boundary(connectome, agenda, curated, policy)
