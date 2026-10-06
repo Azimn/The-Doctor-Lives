@@ -2498,6 +2498,80 @@ class ReconsolidationTests(unittest.TestCase):
             SubjectiveTemporalForm.GENERALIZED,
         )
 
+    def test_p6d_disabled_or_high_confidence_does_not_generalize(self):
+        for label, temporal_confidence, enabled in (
+            ("disabled", 0.25, False),
+            ("high-confidence", 0.80, True),
+        ):
+            with self.subTest(label=label):
+                trace = self.trace_with_structured_time(
+                    label=f"p6d-{label}",
+                    temporal_confidence=temporal_confidence,
+                )
+                candidate = self.reconstruct(
+                    trace,
+                    episode_id=f"episode:p6d-{label}",
+                    cue_text="Henry apparatus",
+                    config=ReconstructionConfig(max_details=1),
+                )
+                source_decision, finalized, awareness = (
+                    self.finalized_from_candidate(candidate)
+                )
+                decision = evaluate_reconsolidation(
+                    old_trace=trace,
+                    candidate=candidate,
+                    source_decision=source_decision,
+                    finalized_recollection=finalized,
+                    awareness_decision=awareness,
+                    context=ReconsolidationContext(
+                        enabled=True,
+                        reactivation_strength=0.95,
+                        prediction_error=0.65,
+                        emotional_activation=0.55,
+                        goal_relevance=0.65,
+                        explicit_rehearsal=True,
+                        temporal_generalization_enabled=enabled,
+                    ),
+                )
+                self.assertEqual(decision.distortion_candidates, ())
+                self.assertEqual(decision.representation_operations, ())
+
+    def test_p6d_requires_detail_to_be_in_current_recollection(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-omitted",
+            cue_text="unrelated signal",
+            config=ReconstructionConfig(
+                max_details=1,
+                minimum_detail_score=0.99,
+            ),
+        )
+        self.assertEqual(candidate.included_detail_refs, ())
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        self.assertEqual(decision.distortion_candidates, ())
+        self.assertEqual(decision.representation_operations, ())
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
