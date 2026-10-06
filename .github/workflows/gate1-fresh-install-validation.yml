@@ -1,0 +1,59 @@
+name: gate1-fresh-install-validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'prod/gate1-*'
+      - 'release/**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clean-wheel-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build non-editable wheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip wheel . --no-deps --wheel-dir dist
+
+      - name: Create isolated user environment
+        run: |
+          python -m venv "$RUNNER_TEMP/pretorius-gate1-venv"
+          "$RUNNER_TEMP/pretorius-gate1-venv/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/pretorius-gate1-venv/bin/python" -m pip install dist/*.whl
+          cp tools/gate1_fresh_install_validate.py "$RUNNER_TEMP/gate1_fresh_install_validate.py"
+
+      - name: Validate installed package outside checkout with runtime networking forbidden
+        run: |
+          cd "$RUNNER_TEMP"
+          env -u PYTHONPATH "$RUNNER_TEMP/pretorius-gate1-venv/bin/python"             "$RUNNER_TEMP/gate1_fresh_install_validate.py"             --source-root "$GITHUB_WORKSPACE"             --state "$RUNNER_TEMP/pretorius-gate1-state"             --output "$RUNNER_TEMP/gate1-validation.json"
+
+      - name: Capture environment
+        if: always()
+        run: |
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "runner_os=$RUNNER_OS"
+            "$RUNNER_TEMP/pretorius-gate1-venv/bin/python" --version || true
+            "$RUNNER_TEMP/pretorius-gate1-venv/bin/python" -m pip freeze || true
+          } > "$RUNNER_TEMP/gate1-environment.txt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gate1-fresh-install-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/gate1-validation.json
+            ${{ runner.temp }}/gate1-environment.txt
+          if-no-files-found: error

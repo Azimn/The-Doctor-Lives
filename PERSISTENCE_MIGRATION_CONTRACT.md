@@ -42,3 +42,12 @@ Checkpoint saves are write-validate-replace operations. The runtime writes a tem
 Loading validates required arrays, neuron-dependent shapes, recurrent CSR structure, motor shapes, eligibility alignment, optional convergence-state shapes, configuration JSON, and schema compatibility before constructing the recurrent substrate. Truncated checkpoints and future checkpoint schemas fail closed.
 
 This hardening preserves the accepted neural configuration mismatch boundary. It does not promote Neural Convergence or change the production-default recurrent profile.
+
+
+## Clean-install and offline-runtime validation
+
+The repository carries tools/gate1_fresh_install_validate.py and a dedicated gate1-fresh-install-validation workflow. The workflow builds a wheel, installs it non-editably in an isolated virtual environment, runs the validator outside the source checkout, and records package location, environment, restart continuity, provenance/classification preservation, relationship and commitment recovery, deterministic retrieval, and renderer read-only behavior.
+
+Runtime validation installs a Python audit hook that rejects socket operations. Dependency acquisition occurs before that guard is enabled; the core mind is then exercised with networking unavailable to Python runtime code.
+
+This CI path is an equivalent clean user environment for repository regression evidence, but it does not replace the separate physical or equivalent end-user-machine validation required by Issue #8.
