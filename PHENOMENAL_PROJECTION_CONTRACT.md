@@ -865,7 +865,7 @@ For the initial P6D gate, a detail may optionally provide structured `TemporalSe
 - approved coarser/generalized temporal phrase;
 - a single-slot temporal template.
 
-The template is validated at construction time: inserting the exact phrase must reproduce the immutable `TraceDetail.text` exactly. P6D therefore does not discover or replace timestamps through ad-hoc string parsing.
+The template is validated at construction time: inserting the exact phrase must reproduce the immutable `TraceDetail.text` exactly. The generalized phrase may not retain the complete exact phrase or exact numeric tokens, the exact form must expose at least one nontrivial specificity token, and those specificity tokens may not also be hidden in the literal template outside the structured slot. P6D therefore does not discover or replace timestamps through ad-hoc string parsing.
 
 Example stable semantic structure:
 - template: `Henry stood beside the apparatus {temporal}`
@@ -909,12 +909,17 @@ The proposal binds:
 - exact parent subjective-representation fingerprint;
 - exact P4 candidate ID and digest;
 - exact recalled detail ref;
+- exact P4 recalled temporal precision;
+- exact P4 recalled subjective-representation fingerprint;
 - exact mnemonic driver-state fingerprint and temporal-confidence value;
+- exact policy threshold used to authorize generalization;
 - exact stable temporal phrase;
 - exact allowed generalized phrase;
 - output temporal form;
 - reason code and rule version;
 - deterministic distortion fingerprint.
+
+The proposal is blocked if the always-recalled trace gist contains the exact temporal specificity tokens that the generalized representation is supposed to lose. A P6D transition therefore cannot claim that the subject forgot an exact value while P4 would immediately reveal the same exact value from the unconditional gist path.
 
 The source-monitoring decision is not an input to the distortion proposal. A memory feeling `LIVED`, `READ`, or another source category therefore cannot by itself manufacture generalized remembered content.
 
@@ -928,12 +933,14 @@ Each accepted proposal yields an immutable `RepresentationOperation` containing:
 
 The P6 reconsolidation decision binds both the complete DistortionCandidate and RepresentationOperation. Runtime application independently reconstructs the expected operation from the proposal before changing the successor representation.
 
-The P6D ledger uses schema `uppb-p6d-ledger-v5`. P6D adds subjective-representation state to MemoryTrace snapshot identity and structured temporal semantics to TraceDetail serialization, so experimental P6C/v4 trace IDs are not silently interchangeable with P6D/v5 trace IDs. Live integration requires an explicit migration/reconstruction policy rather than reinterpretation of older snapshots.
+The hardened P6D ledger uses schema `uppb-p6d-ledger-v6`. P6D adds subjective-representation state to MemoryTrace snapshot identity and structured temporal semantics to TraceDetail serialization, while v6 additionally binds the exact P4 recall condition and policy threshold into distortion audit. Experimental P6C/v4 and early P6D/v5 ledgers are not silently interchangeable with v6. Live integration requires an explicit migration/reconstruction policy rather than reinterpretation of older snapshots.
 
 Restart verification:
 - verifies the complete decision fingerprint;
 - recomputes every persisted distortion-candidate fingerprint;
 - binds distortion candidates to the exact P4 candidate and parent trace audit;
+- verifies that P4 recall precision was UNCERTAIN and its representation fingerprint matched the exact parent representation;
+- verifies that the persisted driver confidence was at/below the exact persisted policy threshold;
 - verifies semantic-detail fingerprint, exact/generalized temporal phrases, and mnemonic driver state against the parent;
 - replays the representation transition;
 - requires the successor representation tuple to equal the audited transition exactly;
@@ -941,8 +948,10 @@ Restart verification:
 
 P6D retrieval privilege boundary:
 - P4 retrieval scoring must use the current subjective detail rendering for structured temporal content;
-- after generalization, exact-only temporal tokens from stable TraceDetail truth must not remain available as a hidden retrieval oracle;
-- stable cue metadata is filtered for exact-only temporal tokens once the subjective representation has generalized;
+- after generalization, exact-only temporal specificity from stable TraceDetail truth must not remain available as a hidden retrieval oracle;
+- stable cue metadata is filtered for exact temporal specificity once the subjective representation has generalized;
+- a trace gist that would reveal the suppressed exact specificity makes initial P6D generalization ineligible;
+- structured temporal templates cannot retain the suppressed exact specificity outside their temporal slot;
 - external re-learning of an exact value would require an explicit perceptual/learning path, not silent access to protected semantic truth.
 
 P6D behavioral acceptance:
@@ -958,9 +967,13 @@ P6D behavioral acceptance:
 - an omitted/non-recalled detail does not generalize;
 - already-generalized content does not generalize again;
 - an audited P6C temporal-confidence degradation sequence can make a later exact recollection eligible for P6D, establishing a causal `P6C -> later P4 -> P6D -> later P4` chain;
-- deterministic save/load preserves the generalized representation and complete distortion audit.
+- deterministic save/load preserves the generalized representation and complete distortion audit;
+- persisted distortion audit retains the exact P4 UNCERTAIN recall state and exact policy threshold that authorized the transformation;
+- exact temporal specificity cannot survive in the structured template or unconditional gist path while the representation is generalized.
 
 This gate models loss of temporal specificity, not arbitrary false memory. Engineering truth remains `8:15 PM`; the subject's versioned remembered representation may become `sometime that evening`.
+
+The allowed generalized phrase is trusted stable semantic metadata, not a phrase invented by P6D. P6D mechanically prevents several obvious non-generalizations/leak paths, but it does not claim to prove natural-language entailment between arbitrary phrases. A future live importer/admission boundary must validate that an approved generalized phrase is truth-preserving relative to the protected semantic evidence rather than accepting arbitrary replacement text.
 
 P6D deliberately does not use `CUE_MISMATCH`, `BELOW_RETRIEVAL_THRESHOLD`, or `CAPACITY_LIMITED` as direct content-distortion provenance. The P6C omission labels remain retrieval-condition audit until a stronger counterfactual causal classifier exists.
 
