@@ -2669,6 +2669,153 @@ class ReconsolidationTests(unittest.TestCase):
             read_decision.representation_operations,
         )
 
+    def test_p6d_matched_temporal_generalization_lesion(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-lesion",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        base_context = dict(
+            enabled=True,
+            reactivation_strength=0.95,
+            prediction_error=0.65,
+            emotional_activation=0.55,
+            goal_relevance=0.65,
+            explicit_rehearsal=True,
+        )
+        disabled = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                **base_context,
+                temporal_generalization_enabled=False,
+            ),
+        )
+        enabled = evaluate_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                **base_context,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        self.assertEqual(disabled.operations, enabled.operations)
+        self.assertEqual(
+            disabled.detail_operations,
+            enabled.detail_operations,
+        )
+        self.assertEqual(disabled.distortion_candidates, ())
+        self.assertEqual(disabled.representation_operations, ())
+        self.assertEqual(len(enabled.distortion_candidates), 1)
+        self.assertEqual(len(enabled.representation_operations), 1)
+
+        disabled_successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=disabled,
+        )
+        enabled_successor = apply_reconsolidation(
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            decision=enabled,
+        )
+        assert disabled_successor is not None
+        assert enabled_successor is not None
+        self.assertIs(
+            disabled_successor.subjective_representation(
+                "detail:henry-time"
+            ).temporal_form,
+            SubjectiveTemporalForm.EXACT,
+        )
+        self.assertIs(
+            enabled_successor.subjective_representation(
+                "detail:henry-time"
+            ).temporal_form,
+            SubjectiveTemporalForm.GENERALIZED,
+        )
+        self.assertEqual(
+            disabled_successor.details,
+            enabled_successor.details,
+        )
+        self.assertEqual(
+            disabled_successor.protected_evidence,
+            enabled_successor.protected_evidence,
+        )
+
+    def test_p6d_representation_and_distortion_audit_survive_restart(self):
+        trace = self.trace_with_structured_time(
+            temporal_confidence=0.25,
+        )
+        ledger = TraceVersionLedger()
+        ledger.register_initial(trace)
+        candidate = self.reconstruct(
+            trace,
+            episode_id="episode:p6d-restart",
+            cue_text="Henry apparatus",
+            config=ReconstructionConfig(max_details=1),
+        )
+        source_decision, finalized, awareness = self.finalized_from_candidate(
+            candidate
+        )
+        decision, successor = reconsolidate_and_record(
+            ledger=ledger,
+            old_trace=trace,
+            candidate=candidate,
+            source_decision=source_decision,
+            finalized_recollection=finalized,
+            awareness_decision=awareness,
+            context=ReconsolidationContext(
+                enabled=True,
+                reactivation_strength=0.95,
+                prediction_error=0.65,
+                emotional_activation=0.55,
+                goal_relevance=0.65,
+                explicit_rehearsal=True,
+                temporal_generalization_enabled=True,
+            ),
+        )
+        assert successor is not None
+        restored = TraceVersionLedger.from_json(ledger.stable_json())
+        restored_successor = restored.latest(trace.trace_lineage_id)
+        self.assertEqual(restored_successor, successor)
+        representation = restored_successor.subjective_representation(
+            "detail:henry-time"
+        )
+        self.assertIs(
+            representation.temporal_form,
+            SubjectiveTemporalForm.GENERALIZED,
+        )
+        audit = restored.decision_audit(successor.trace_id)
+        self.assertEqual(len(audit["distortion_candidates"]), 1)
+        self.assertEqual(len(audit["representation_operations"]), 1)
+        self.assertEqual(
+            audit["representation_operations"][0][
+                "distortion_candidate_fingerprint"
+            ],
+            audit["distortion_candidates"][0][
+                "distortion_fingerprint"
+            ],
+        )
+
     def test_ledger_rejects_silent_fork(self):
         trace = self.trace()
         ledger = TraceVersionLedger()
