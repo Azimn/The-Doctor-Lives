@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "the-doctor-lives"
-version = "0.5.0rc1"
+version = "0.5.0rc2"
 description = "Renderer-neutral persistent cognitive brain for Doctor Septimus Pretorius"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -96,3 +96,8 @@ The separate physical or equivalent fresh end-user-machine procedure remains doc
 
 
 Gate 1 migration CI now also executes exact historical commit 7be60ed46add7c74359b322cc033aa7dfabb08e8 to generate a real older Pretorius state directory, then opens and migrates that directory with the current candidate. This supplements the deterministic SQL schema fixture with an actual old-code state-generation path.
+
+
+## v0.5.0rc2 review candidate
+
+The Gate 1 persistence and migration hardening branch is packaged as 0.5.0rc2 for independent review. This version label does not mean Gate 1 is fully accepted. The external fresh end-user-machine evidence required by Issue #8 remains outstanding until it is actually run and preserved. See GATE1_ASSESSOR_REVIEW.md.
