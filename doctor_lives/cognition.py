@@ -228,6 +228,20 @@ class PretoriusBrain:
             out[str(row["key"])] = f"{band}:{direction}" if band != "settled" else "settled"
         return out
 
+    def _neural_state_scalars(self) -> dict[str, float]:
+        """Project felt interoception into generic signed neural input channels.
+
+        Only felt values are exposed here. Hidden homeostatic actuals remain
+        outside the recurrent substrate, preserving the existing subject-access
+        boundary while allowing the convergence profile to become embodied.
+        """
+        with closing(self.store.connect()) as conn:
+            rows = conn.execute("SELECT key,felt FROM needs ORDER BY key").fetchall()
+        return {
+            f"need_{str(row['key'])}": max(-1.0, min(1.0, (float(row["felt"]) - 0.5) * 2.0))
+            for row in rows
+        }
+
     def _update_relationship(self, conn, tick: int, exp: Experience, event_id: str) -> None:
         if not exp.actor:
             return
@@ -414,8 +428,10 @@ class PretoriusBrain:
             self._maybe_add_concern(conn, tick, exp)
             self._update_commitments_due(conn, tick)
 
+        neural_scalars = exp.scalars()
+        neural_scalars.update(self._neural_state_scalars())
         recurrent_tendencies = self.neural.step(
-            exp.text, exp.scalars(), reward=0.0, learn=True, confidence=exp.confidence
+            exp.text, neural_scalars, reward=0.0, learn=True, confidence=exp.confidence
         )
         self.neural.save(self.neural_path)
         thought = self.think("event", decision_text=exp.text) if self._warrants_cognition(exp) else None
@@ -1009,7 +1025,7 @@ class PretoriusBrain:
             offset = index % len(ranked)
             chosen = [ranked[(offset + j) % len(ranked)][1] for j in range(width)]
             text = " | ".join(str(row["text"]) for row in chosen)
-            self.neural.step(text, {}, reward=0.0, learn=True)
+            self.neural.step(text, self._neural_state_scalars(), reward=0.0, learn=True)
             with self.store.transaction() as conn:
                 for row in chosen:
                     self.store.rehearse(conn, row["id"], start_tick)

@@ -132,5 +132,66 @@ class NeuralConvergenceTests(unittest.TestCase):
             self.assertGreaterEqual(status["neural_diagnostics"]["homeostasis_events"], 0)
 
 
+    def test_convergence_profile_adds_felt_interoceptive_input_channels(self):
+        net = PretoriusRecurrentSubstrate(convergence_config())
+        self.assertIn("need_fatigue", net.encoder.scalar_keys)
+        self.assertIn("need_affiliation", net.encoder.scalar_keys)
+        legacy = PretoriusRecurrentSubstrate({
+            **DEFAULT_CONFIG,
+            "neurons": 64,
+            "sensory_dim": 32,
+            "avg_recurrent_degree": 6,
+            "input_degree": 3,
+            "action_population_size": 4,
+        })
+        self.assertNotIn("need_fatigue", legacy.encoder.scalar_keys)
+
+    def test_felt_body_state_changes_convergence_neural_dynamics(self):
+        cfg = convergence_config()
+        with tempfile.TemporaryDirectory() as left_dir, tempfile.TemporaryDirectory() as right_dir:
+            left = PretoriusBrain(Path(left_dir), neural_config=cfg)
+            right = PretoriusBrain(Path(right_dir), neural_config=cfg)
+            with left.store.transaction() as conn:
+                conn.execute("UPDATE needs SET actual=.10,felt=.10 WHERE key='fatigue'")
+                left.store.bump_state_version(conn)
+            with right.store.transaction() as conn:
+                conn.execute("UPDATE needs SET actual=.90,felt=.90 WHERE key='fatigue'")
+                right.store.bump_state_version(conn)
+            event = Experience("A neutral instrument reading is recorded.", confidence=1.0)
+            left.ingest(event)
+            right.ingest(event)
+            self.assertFalse(np.allclose(left.neural.v, right.neural.v))
+
+    def test_legacy_recurrent_path_ignores_new_felt_body_channels(self):
+        cfg = dict(DEFAULT_CONFIG)
+        cfg.update({
+            "neurons": 96,
+            "sensory_dim": 48,
+            "avg_recurrent_degree": 8,
+            "input_degree": 4,
+            "action_population_size": 6,
+            "plasticity_interval": 1,
+            "seed": 1842,
+        })
+        with tempfile.TemporaryDirectory() as left_dir, tempfile.TemporaryDirectory() as right_dir:
+            left = PretoriusBrain(Path(left_dir), neural_config=cfg)
+            right = PretoriusBrain(Path(right_dir), neural_config=cfg)
+            with left.store.transaction() as conn:
+                conn.execute("UPDATE needs SET actual=.10,felt=.10 WHERE key='fatigue'")
+                left.store.bump_state_version(conn)
+            with right.store.transaction() as conn:
+                conn.execute("UPDATE needs SET actual=.90,felt=.90 WHERE key='fatigue'")
+                right.store.bump_state_version(conn)
+            event = Experience("A neutral instrument reading is recorded.", confidence=1.0)
+            left_result = left.ingest(event)
+            right_result = right.ingest(event)
+            for action in left_result["recurrent_action_tendencies"]:
+                self.assertAlmostEqual(
+                    left_result["recurrent_action_tendencies"][action],
+                    right_result["recurrent_action_tendencies"][action],
+                    places=12,
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -61,6 +61,8 @@ DEFAULT_CONFIG = {
     "excitability_homeostasis_rate": 0.015,
     "min_state_gain": 0.20,
     "max_state_gain": 1.20,
+    # Optional subject-accessible interoceptive channels. Empty in v0.4 control.
+    "state_scalar_keys": [],
 }
 
 # Versioned candidate profile transplanted from mechanisms already validated in
@@ -81,15 +83,28 @@ NEURAL_CONVERGENCE_CONFIG.update({
     "endogenous_noise": 0.008,
     "noise_persistence": 0.92,
     "intrinsic_excitability_homeostasis": True,
+    "state_scalar_keys": [
+        "need_fatigue",
+        "need_affiliation",
+        "need_competence",
+        "need_autonomy",
+        "need_curiosity",
+        "need_continuity",
+    ],
 })
 
 
 
 class ExperienceEncoder:
-    def __init__(self, sensory_dim: int = 512):
+    def __init__(
+        self,
+        sensory_dim: int = 512,
+        scalar_keys: list[str] | tuple[str, ...] | None = None,
+    ):
         self.sensory_dim = int(sensory_dim)
+        self.scalar_keys = tuple(scalar_keys or SCALAR_KEYS)
         self.scalar_offset = self.sensory_dim
-        self.action_offset = self.scalar_offset + len(SCALAR_KEYS)
+        self.action_offset = self.scalar_offset + len(self.scalar_keys)
         self.input_dim = self.action_offset + len(ACTIONS)
 
     @staticmethod
@@ -110,7 +125,7 @@ class ExperienceEncoder:
         norm = float(np.linalg.norm(x[:self.sensory_dim]))
         if norm > 1e-8:
             x[:self.sensory_dim] /= norm
-        for i, key in enumerate(SCALAR_KEYS):
+        for i, key in enumerate(self.scalar_keys):
             x[self.scalar_offset+i] = float(np.clip((scalars or {}).get(key, 0.0), -1.0, 1.0))
         if action is not None:
             x[self.action_offset + ACTIONS.index(action)] = 1.0
@@ -128,7 +143,14 @@ class PretoriusRecurrentSubstrate:
         self.cfg = dict(DEFAULT_CONFIG)
         if cfg is not None:
             self.cfg.update(cfg)
-        self.encoder = ExperienceEncoder(int(self.cfg["sensory_dim"]))
+        extra_scalar_keys = [
+            str(key) for key in self.cfg.get("state_scalar_keys", [])
+            if str(key) and str(key) not in SCALAR_KEYS
+        ]
+        self.encoder = ExperienceEncoder(
+            int(self.cfg["sensory_dim"]),
+            scalar_keys=[*SCALAR_KEYS, *extra_scalar_keys],
+        )
         self.n = int(self.cfg["neurons"])
         self.rng = np.random.default_rng(int(self.cfg.get("seed", 1842)))
         self.target_rate = float(self.cfg["target_rate"])
