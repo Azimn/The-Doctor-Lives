@@ -78,3 +78,8 @@ Post-RC1 production hardening now places canonical package evidence behind a ver
 The active snapshot is append-only. Corruption or a missing artifact fails closed. Explicit recovery creates and verifies a new snapshot from the installed distribution before atomically advancing the active pointer, leaving the damaged snapshot available for audit and leaving subjective or lived state untouched. The SQLite store binds itself to the exact manifest version and fingerprint and rejects partial or incompatible bindings. See EVIDENCE_AUTHORITY_CONTRACT.md.
 
 This is the repository-side canonical-evidence portion of Issue #17 and Gate 1 in Issue #14. It does not claim completion of the separate fresh physical user-machine validation in Issue #8.
+
+
+## Gate 1 state-schema migration safety
+
+Long-lived SQLite state now checks its declared schema version before mutation. Supported older state is snapshotted through SQLite backup, migrated, structurally validated, and recorded in an append-only migration lineage. A failed migration restores the exact pre-migration snapshot. Future schemas, malformed versions, and partial current schemas fail closed rather than being rewritten to the runtime version. See PERSISTENCE_MIGRATION_CONTRACT.md.

@@ -56,3 +56,8 @@ Canonical runtime evidence is now a frozen, versioned authority boundary. The in
 Evidence snapshots are append-only. Recovery may create a new verified snapshot and advance the active pointer, but it may not rewrite a damaged snapshot in place or roll subjective or lived state backward. The cognitive store records the exact manifest version and fingerprint it adopted. A stale, partially bound, or incompatible evidence manifest fails closed and requires an explicit migration.
 
 Protected-evidence references used by future live UPPB integration must resolve through this authority and match the admitted artifact digest. A caller-controlled path or arbitrary provenance string is not sufficient evidence authority.
+
+
+## Persistent state migration boundary
+
+BrainStore now treats schema_version as an authority boundary. Existing state is inspected before SCHEMA is applied. Supported older schemas receive a content-addressed pre-migration snapshot, explicit migration, structural validation, and lineage record. Any failure restores the snapshot. A future schema, malformed version, or current-version database missing required structure is rejected before repair can silently reinterpret it.
