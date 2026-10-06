@@ -551,6 +551,8 @@ It must not contain:
 - archival/canonical/reconstructed status;
 - any field equivalent to "this is actually reconstructed."
 
+Future integration must treat SourceMonitoringCues construction as a reviewed causal boundary in its own right. An integration layer may not inspect protected objective provenance and simply translate it into a psychologically named cue (for example, objective READ -> textual_signature=1.0). Cue values must be derived from subject-available trace/retrieval state with their own auditable lineage. P5H validates the scorer boundary; it does not yet claim to provide that upstream cue-generation mechanism.
+
 The canonical P5 boundary accepts the factory-controlled `RecollectionCandidate` itself, but the source-scoring function receives only `SourceMonitoringCues`. The decision binds both candidate ID and full candidate digest for lineage. Candidate content, candidate vividness, candidate content confidence, protected evidence, and trace lineage do not enter the source-score calculation.
 
 The no-evidence default is epistemically neutral: an empty/default cue set must yield `UNKNOWN`, not silently bias toward `LIVED`.
@@ -801,6 +803,8 @@ Association-strength drift requires:
 - contextual mismatch above threshold;
 - an exact omitted detail whose cause is not `capacity_limited`;
 - per-transition loss cap and absolute floor.
+
+At this isolated gate, temporal_disorientation and context_mismatch are explicit experimental inputs, not claimed outputs of a complete psychological signal-construction system. Future integration must derive them from subject-available state rather than protected objective truth, and that derivation must be independently auditable/lesionable before it becomes live causal input.
 
 Both mechanisms use DetailStateOperation. Multiple fields may change on the same detail in one transition, but operations form an ordered state-fingerprint chain: each operation's old-state fingerprint must equal the immediately preceding state and its new-state fingerprint becomes the parent for the next operation.
 
