@@ -255,6 +255,112 @@ This mechanism should be usable both for scientific evaluation and for Pretorius
 
 Run a sequence in which the outcome is intentionally surprising. Verify that the post-outcome system can explain its error while the stored pre-outcome forecast remains byte-for-byte recoverable.
 
+## 9. Separate external knowledge plane from autobiographical memory
+
+### Gap
+
+Pretorius already distinguishes lived-runtime memory from external statements with evidence classes, provenance, source custody, source monitoring, and protected evidence boundaries. However, ordinary external statements are still persisted through the generic `memories` table and participate in a memory-oriented storage model.
+
+That is sufficient for provenance, but it leaves a conceptual and engineering ambiguity between:
+
+`something Pretorius experienced or remembers`
+
+and:
+
+`something Pretorius has learned about the world from an external source`
+
+The Second Brain OS review reinforces a useful boundary here: canonical source material and derived knowledge should not be the same substrate as autobiographical memory.
+
+### Implement
+
+Introduce a distinct runtime external-knowledge plane without replacing or weakening the existing autobiographical system.
+
+At minimum, distinguish:
+
+- immutable or append-only source/evidence records
+- atomic externally derived claims
+- entities or subjects those claims concern
+- confidence and evidence strength
+- provenance back to exact source records
+- claim status: active, disputed, superseded, retracted, unresolved
+- links from a derived claim to supporting and contradicting evidence
+- optional projection into working cognition without promotion into autobiography
+
+External knowledge may be retrieved alongside autobiographical memories through a unified retrieval interface, but storage authority must remain distinct. A claim learned from a paper, user statement, tool result, or document must not become a lived event merely because it was salient or repeatedly retrieved.
+
+Existing `source_custody`, `reference_material`, protected evidence, and external-statement records should be reused or migrated where appropriate rather than duplicated.
+
+### Acceptance idea
+
+Give Pretorius an externally sourced fact, a directly lived event about the same topic, and a later contradictory source. After restart and retrieval, he should be able to distinguish what he experienced from what he was told or read, preserve the conflicting external claims, and avoid silently converting either external claim into lived autobiography.
+
+## 10. Runtime typed claim graph for external knowledge
+
+### Gap
+
+Pretorius already has the 70-node Persona Connectome, typed `history_edges`, source provenance, conflict resolutions, and reviewed synthesis admissions. Those mechanisms are strong, but the persistent graph is primarily tied to preawakening/persona history rather than a growing runtime knowledge graph for newly learned world information.
+
+The useful missing capability is not another generic belief database. It is a typed relation layer that allows externally learned claims to accumulate, connect, disagree, and support later synthesis without being flattened into independent memory rows.
+
+### Implement
+
+Build a runtime claim graph over the external-knowledge plane from Item 9.
+
+Use a deliberately small typed relation vocabulary, for example:
+
+- `supports`
+- `contradicts`
+- `extends`
+- `derived_from`
+- `about`
+- `part_of`
+- `supersedes`
+
+Each edge must carry provenance or a deterministic derivation rule. Do not infer a relationship merely to make the graph denser.
+
+The graph should preserve individual source claims even when a current best-supported projection exists. A contradiction should therefore create an explicit relation and an engineer-visible unresolved state rather than overwriting the losing claim.
+
+Runtime synthesis may create a new derived claim only through a review/admission contract modeled on the existing synthesis discipline. The original source claims remain reconstructable after synthesis, correction, or supersession.
+
+Do not repurpose the Persona Connectome as this graph. The connectome remains psychological/preawakening topology; the runtime claim graph represents acquired external knowledge.
+
+### Acceptance idea
+
+Ingest three sources about the same subject, including one contradiction and one extension. Verify that Pretorius can retrieve the competing claims, identify the contradiction, trace every claim and edge back to evidence, generate a reviewed synthesis when justified, and reconstruct the original pre-synthesis state from the audit trail.
+
+## 11. Knowledge-plane health, review, and consolidation loop
+
+### Gap
+
+Pretorius has strong causal testing and memory auditing, but a growing external-knowledge graph needs maintenance signals that are different from autobiographical-memory health.
+
+The Second Brain OS material is particularly useful here. It treats orphaned knowledge, broken provenance, disconnected components, unresolved contradictions, over-centralized hubs, stale synthesis, and unreviewed gaps as measurable degradation rather than as cosmetic organization problems.
+
+### Implement
+
+Add an engineer-visible maintenance pass for the external-knowledge plane and runtime claim graph.
+
+Track at minimum:
+
+- claims with no valid source provenance
+- orphan claims or entities with no meaningful graph connection
+- broken or dangling claim relations
+- unresolved contradictions and their age
+- superseded claims still projected as current
+- synthesis records whose source set has materially changed
+- graph components and unusually dominant hubs
+- stale open questions or gaps that continue to be referenced
+
+The maintenance loop should be read-only by default. Repair, merge, retraction, or synthesis should require explicit versioned actions rather than silent cleanup.
+
+Add a bounded periodic review artifact that summarizes what changed in acquired knowledge, which contradictions remain unresolved, what new synthesis became possible, and which gaps are repeatedly blocking reasoning. This review is an engineer-visible knowledge-maintenance product unless a separate gate later proves that selected parts should influence Pretorius's metacognition.
+
+Do not use page count, raw record count, or graph density alone as health signals. The objective is trustworthy retrieval and reconstructable reasoning, not a visually dense graph.
+
+### Acceptance idea
+
+Seed a knowledge store containing an orphan claim, a broken provenance reference, a stale synthesis, a contradictory claim pair, and a disconnected cluster. The health pass must identify each condition deterministically without mutating canonical state. Apply explicit repairs, rerun the pass, and verify that only the intended defects disappear.
+
 ## What not to duplicate
 
 The Reddit architecture also describes several capabilities Pretorius already has in equal or stronger form. Do not add parallel systems merely to match terminology.
@@ -277,13 +383,16 @@ After the current production gate is accepted, the most useful implementation se
 
 1. Prediction/calibration ledger plus frozen preregistration.
 2. Correction/supersession ledger.
-3. Session handover/epoch contract.
-4. Agency seam ledger.
-5. Wake-intent contract.
-6. Quarantined offline hypothesis generation.
-7. Renderer-versus-developmental-state variance benchmark.
+3. Separate external knowledge plane from autobiographical memory.
+4. Runtime typed claim graph for external knowledge.
+5. Knowledge-plane health, review, and consolidation loop.
+6. Session handover/epoch contract.
+7. Agency seam ledger.
+8. Wake-intent contract.
+9. Quarantined offline hypothesis generation.
+10. Renderer-versus-developmental-state variance benchmark.
 
-Prediction and correction should come first because they create durable epistemic history that later offline hypotheses can use safely. Handover and agency seams strengthen standalone and body integration. Offline hypothesis generation should wait until the prediction/correction machinery exists so generated ideas have a safe lifecycle. The variance benchmark should be run once the renderer-substitution gate has real implementations to compare.
+Prediction and correction should come first because they create durable epistemic history that later offline hypotheses can use safely. The external-knowledge plane should then establish the storage authority boundary before the runtime claim graph is allowed to grow on top of it. Health and review tooling should arrive with that graph rather than after it has accumulated silent structural debt. Handover and agency seams strengthen standalone and body integration. Offline hypothesis generation should wait until prediction, correction, and knowledge-claim lifecycle machinery exists so generated ideas have a safe destination and cannot leak into lived autobiography. The variance benchmark should be run once the renderer-substitution gate has real implementations to compare.
 
 ## Completion rule
 
@@ -301,3 +410,8 @@ Each addition must follow the existing Pretorius standard:
 - independent review before becoming production authority
 
 The goal is not to make Pretorius resemble the Reddit agent. The goal is to keep the parts of that discussion that expose a real missing capability and implement them under Pretorius's stricter architecture.
+
+
+---
+
+*Footnote, 2026-10-06: Items 9 through 11 were added after reviewing `undefined-ui/second-brain-os` and comparing its strongest knowledge-management ideas against the current Pretorius architecture. The review specifically considered immutable source material, source-versus-interpretation separation, linked claims, contradiction preservation, graph health, provenance, periodic synthesis, and maintenance. Existing Pretorius mechanisms already cover substantial parts of that territory through source custody, protected evidence, synthesis admissions, conflict resolution, the Persona Connectome, typed history edges, retrieval audits, and archive-never-delete rules. The additions above therefore capture only the remaining nonduplicative gaps: separating acquired external knowledge from autobiographical memory at runtime, giving that knowledge its own typed claim graph, and adding deterministic maintenance/review tooling for the resulting knowledge plane. Reference: https://github.com/undefined-ui/second-brain-os*
