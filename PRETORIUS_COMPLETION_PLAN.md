@@ -8,9 +8,11 @@ Authoritative production main at planning start: `288cb14ab9b65adbf2d916c4eb597e
 
 Current Gate 1 review head: `bd83eab994717a315399ef4b8e3d6b9a6beeee67`
 
-Current Reddit-derived planning commit: `a174b91c8746347f35681c2f1a824e10069945c7`
+Planning branch donor-audit parent: `04f3da4f3a51136c01bd14673dc872f70856a5bf`
 
-This plan combines the production roadmap in Issue #14, the UPPB roadmap in Issue #15, the production-integrity requirements in Issue #17, the Gate 1 persistence work in PR #20, and the mechanisms identified in NEXT_THINGS_TO_DO.md.
+This plan combines the production roadmap in Issue #14, the UPPB roadmap in Issue #15, the production-integrity requirements in Issue #17, the Gate 1 persistence work in PR #20, the mechanisms identified in NEXT_THINGS_TO_DO.md, and the cross-repository semantic audit recorded in PRETORIUS_DONOR_BRANCH_AUDIT.md.
+
+The donor audit is additive. It does not reopen accepted production behavior merely because an older project used different terminology. A donor mechanism enters this plan only when it exposes a genuine missing capability, a demonstrated current failure, or a stronger production/evaluation gate.
 
 The goal is one definitive Pretorius implementation in The-Doctor-Lives. Historical branches and donor repositories are evidence and reference material only. They are not parallel products.
 
@@ -32,7 +34,7 @@ Do not squash the accepted review history.
 
 `docs/reddit-derived-next-things`
 
-This branch contains only net-new planning documentation based on accepted main. It currently contributes NEXT_THINGS_TO_DO.md and this completion plan.
+This branch contains only net-new planning documentation based on accepted main. It currently contributes NEXT_THINGS_TO_DO.md, this completion plan, and PRETORIUS_DONOR_BRANCH_AUDIT.md.
 
 Do not merge this branch before PR #20 is accepted, because moving main during review would unnecessarily change the review base.
 
@@ -97,6 +99,7 @@ This brings in:
 
 - `NEXT_THINGS_TO_DO.md`
 - `PRETORIUS_COMPLETION_PLAN.md`
+- `PRETORIUS_DONOR_BRANCH_AUDIT.md`
 
 No behavioral code enters production in this merge.
 
@@ -125,15 +128,24 @@ Gate 1 persistence and migration hardening
         v
 Gate 2 provenance-bearing lived-memory ingress
         |
+        +--> renderer/runtime/affordance-aware developmental evidence
+        +--> explicit person/source attribution
+        |
         v
 Gate 3 standalone offline runtime
         |
         +--> session epochs and handovers
         +--> two-seat continuity
         +--> wake-intent contract
+        +--> OPENED / RECONCILED wake transaction
+        +--> operator recovery, backup, health, capability boundary
         |
         v
 UPPB production signal construction
+        |
+        +--> authoritative body -> interoceptive observation -> felt state
+        +--> familiarity near-miss producer
+        +--> conflict / ambivalence producer
         |
         v
 UPPB live-memory integration
@@ -141,39 +153,60 @@ UPPB live-memory integration
         v
 P7 private cognition / communicative intention separation
         |
+        +--> communicative-act and withholding ledger
+        |
         v
 P8 independent motor / outward expression
+        |
+        +--> involuntary-expression boundary
         |
         v
 P9 explicit self-perception
         |
         v
-Gate 4 + P10 renderer contract and renderer migration
+Gate 4 + P10 renderer and retrieval contract
         |
+        +--> exact Subjective Frame receipts
+        +--> disposable retrieval projection and regime binding
         +--> renderer substitution experiment
         +--> renderer-versus-developmental-state benchmark
         |
         v
-Gate 5 closed-loop world / situation / action interface
+Gate 5 closed-loop world / perception / action interface
         |
+        +--> bounded perception adapter
         +--> agency-seam ledger
         +--> Bride/chassis adapter
+        |
+        v
+Gate 5A bounded endogenous planning
+        |
+        +--> lived-event goal formation
+        +--> alternative routes and hierarchical subgoals
+        +--> outcome-driven replanning
         |
         v
 Gate 6 constrained deliberation and verification
         |
         v
-Gate 7 predictive causal world model
+Gate 7 predictive and epistemic development
         |
         +--> prediction/calibration ledger
         +--> frozen preregistration
         +--> autobiographical correction/supersession ledger
+        +--> external-knowledge plane and typed claim graph
+        +--> knowledge health/review
         |
         v
 Quarantined offline hypothesis generation
         |
         v
 Gate 8 richer social, temporal, multimodal, and developmental cognition
+        |
+        +--> theory of mind
+        +--> contextual procedural habits
+        +--> richer relationship dynamics
+        +--> evidence-backed self-model development
         |
         v
 P11 full experimental validation and long-run release characterization
@@ -218,7 +251,15 @@ Measure:
 - divergence under controlled different lived histories;
 - checkpoint/restart equivalence;
 - sustained fatigue, threat, novelty, and social-pressure response;
-- parameter sensitivity.
+- parameter sensitivity;
+- high-change recurrent-core sufficiency and necessity;
+- relearning after targeted recurrent-core lesions;
+- within-topology causal-core stability under curriculum reorder;
+- cross-seed and cross-topology functional homology without treating raw edge indices as identity;
+- learned-delta distribution and clipping susceptibility;
+- whether a compact learned core is robust or becomes a brittle single point of phenotype failure.
+
+These additions come from the unmerged Pretorius-Neural-Network v0.4 experiment line. They are characterization requirements, not authority to transplant donor weights into the production individual.
 
 Outcome:
 
@@ -256,6 +297,16 @@ Required properties:
 Start the agency-seam schema here so the system can record who supplied an opportunity, goal, proposal, choice, authorization, execution, observation, and evaluation. Do not yet claim full agency-loop coverage until Gate 5.
 
 Issue #17 causal provenance should begin here. Consequential transitions must record which mechanism/version produced them.
+
+### Developmental evidence context
+
+For behavior that may later be interpreted as development, preserve the circumstances under which it occurred. At minimum, where known, retain renderer/model/provider/runtime identity, modality, available tools, platform affordances, whether initiative was possible, whether a refusal was externally constrained, and whether an explicit user request supplied the opportunity. Unknown context remains unknown.
+
+Canonical evidence records that a self-report, choice, commitment transition, or correction occurred. Psychological interpretation remains a versioned derived claim. Repeated self-report does not become independent corroboration merely through frequency.
+
+### Person and source attribution
+
+Actor identity and source category are separate axes. A human or agent name must be supplied explicitly by ingress or a trusted adapter rather than inferred from free text. Generic categories such as world, invitation, tool, or scheduler must never accidentally become relationship identities.
 
 ## 7. Gate 3: standalone offline Pretorius runtime
 
@@ -311,6 +362,18 @@ Add a bounded mind-side future-wake request containing:
 
 The host owns real scheduling. Pretorius requests a wake but does not become the scheduler.
 
+### Wake transaction and crash inheritance
+
+Each autonomous wake should have an engineer-visible OPENED record written before consequential work begins and a RECONCILED record after its intended reconciliation set is processed. A later wake that finds OPENED without RECONCILED must treat the inherited work as potentially half-completed rather than untouched. The mechanism must be idempotent and must not turn the wake log into autobiographical memory.
+
+Handover provenance should distinguish what was weighed, what was deliberately carried forward, what was discarded, and what remained genuinely unsure when those distinctions materially affect continuation. Carrying and uncertainty must not be collapsed into one summary field.
+
+### Show-floor runtime hardening
+
+Before Gate 3 is accepted, the standalone host must have an operator-facing health/doctor surface, portable backup and restore, safe refusal of corrupt or future state, crash-resume tests, explicit single-writer or transaction ownership, and a default-deny external capability boundary. If a local service/API is exposed, localhost alone is not an authentication boundary. Installed-package and packaged-runtime smoke tests must run outside the source checkout.
+
+A retrieval cache, projection, handover, or other convenience state must never become a shadow brain. For every behaviorally load-bearing derived store, document whether it is rebuildable from canonical state, version-bound and verifiable, or itself canonical. If deleting a supposedly derived store destroys unique identity or developmental state, the authority contract is wrong and must be corrected before 1.0.
+
 ## 8. UPPB production-signal construction
 
 P0 through P6D are accepted isolated mechanisms. Before live integration, implement subject-available producers for the psychological cues that currently exist only as explicit experimental inputs.
@@ -337,6 +400,18 @@ Each producer requires:
 - adversarial proof that protected objective truth alone cannot determine the cue.
 
 No producer may translate engineer truth directly into a psychological label that Pretorius could not actually derive.
+
+### Body and interoception boundary
+
+Use three mechanically distinct layers: authoritative body/physiological state, an interoceptive observation produced from that state, and subject-facing felt/phenomenal state. The observation layer may be lagged, quantized, noisy, or otherwise fallible under a declared seeded mechanism. Model output or probe readback cannot write primary physiology directly.
+
+### Familiarity and near-miss retrieval
+
+Familiarity should be generated from actual retrieval history rather than supplied as a convenient scalar. A candidate repeatedly ranking just below access may accumulate a bounded near-miss trace that can later nudge accessibility without changing source truth, base salience, or evidence authority. Admission resets the near-miss trace. The mechanism must be bounded, restart-safe, and lesionable.
+
+### Conflict and ambivalence
+
+When action or motive competition produces a genuine thin margin, preserve an auditable conflict signal instead of reconstructing ambivalence from the winning choice afterward. This signal does not script hesitation or prose. It is evidence that the selection was contested and may become a subject-available metacognitive cue only after an explicit projection gate.
 
 ## 9. UPPB live-memory integration
 
@@ -397,6 +472,10 @@ Acceptance:
 - renderer cannot retrieve hidden private content independently;
 - lesioning communicative-intention formation changes expression without rewriting thought or memory.
 
+Add an engine-authored communicative-act ledger for consequential expression. It should record the selected act class, whether content was deliberately withheld, and a bounded reason class such as privacy, distrust, uncertainty/confusion, fatigue, strategy, or another explicitly modeled cause. The renderer realizes an authorized act but does not decide after the fact what Pretorius intended. Refusal, silence, evasion, disclosure, question, assertion, and repair must be distinguishable when they matter causally.
+
+Confidentiality and other commitments must be able to influence disclosure choice through the existing policy authority without creating a second selector. An unrelated commitment must remain behaviorally neutral.
+
 ## 11. P8: independent motor and outward expression
 
 Allow outward behavior to arise without requiring focal conscious awareness.
@@ -418,6 +497,8 @@ Acceptance:
 - an action may occur without a matching focal thought;
 - motor output cannot rewrite autobiography;
 - the host/body reports consequences back through Gate 2 ingress.
+
+A bounded involuntary-expression channel is part of this separation. A startle, pain response, hesitation, or other reflexive emission may occur without being represented as a deliberate selected speech/action. It must not overwrite deliberate last-action state or receive chosen-action reinforcement merely because it was externally visible.
 
 ## 12. P9: explicit self-perception
 
@@ -481,6 +562,14 @@ Measure renderer-independent outcomes:
 
 Report renderer variance, developmental-state variance, interaction, and residual variance by task family.
 
+### Retrieval projection and exact Subjective Frame receipt
+
+Renderer neutrality is not sufficient if retrieval convenience can silently change authority. The renderer-facing context path must preserve an immutable epistemic envelope for each retrieved item, bind disposable retrieval state to an exact canonical head and declared retrieval regime, and fail closed on stale or corrupt index state.
+
+Constitutional context that protects authority boundaries must be selected deterministically, not by semantic retrieval luck. A frame must fail rather than silently omit required constitutional material because of a token budget.
+
+For each consequential renderer call, preserve an engineer-visible Subjective Frame receipt binding the canonical sequence/tail, retrieval-policy and selector versions, renderer adapter and renderer identity, selected source record IDs, deterministic omissions where material, context budget, and a digest of the structured frame. Retrieval score, repetition, or nearest-neighbor rank changes accessibility only. It cannot promote external, synthetic, derived, predicted, or fork material into lived autobiography.
+
 ## 14. Gate 5: closed-loop world and action interface
 
 Complete the causal loop:
@@ -529,7 +618,39 @@ Pretorius owns identity, memory, cognition, subjective state, policy, commitment
 
 The body may report state and consequences through the public ingress contract. It may not become the canonical mind.
 
-## 15. Gate 6: constrained deliberation and verification
+### Bounded perception adapter
+
+The host owns objective stimuli. A perception adapter may expose only the subset available to Pretorius under declared modality, range, occlusion, attention-capacity, or equivalent constraints. The adapter cannot rewrite or delete host truth. What Pretorius perceived, what objectively existed, and what he later remembers must remain separable.
+
+The same principle applies to body state: the body reports authoritative physiology, interoception produces subject-available observation, and UPPB produces felt experience. No layer may silently skip the one below it.
+
+## 15. Gate 5A: bounded endogenous planning
+
+Pretorius needs a non-LLM executive planning path before any optional slow reasoning organ is allowed to help.
+
+The qualified donor pattern is DUCK v0.9 as independently challenged through the Bride program. Implement the mechanism behind Pretorius-owned contracts rather than importing a second identity store or action selector.
+
+Required behavior:
+
+- a meaningful lived event can create a bounded goal without an explicit task command;
+- one goal may have more than one candidate route;
+- the selected route decomposes into one active subgoal at a time;
+- the current subgoal competes through the existing policy/action authority rather than receiving privileged execution;
+- action attempt and world outcome remain separate;
+- failure can invalidate a route and cause bounded replanning while preserving the original goal reason;
+- success advances the route and final success completes the plan;
+- exhausted routes can abandon the plan rather than loop forever;
+- plan state survives restart;
+- completed or abandoned plans stop generating behavior;
+- ordinary events are negative controls and must not manufacture goals.
+
+All core planning tests must run with language-model private cognition disabled. An LLM may later propose richer routes, but route proposals remain bounded candidates and never become the executive merely because they are fluent.
+
+Control metadata used to track plans must not leak into outcome memory in a way that manufactures ghost intentions. Environmental consequence semantics and executive bookkeeping require separate tags/fields.
+
+Acceptance requires matched lesions, restart, interruption, plan-versus-homeostatic competition, failure-driven replanning, quiet-time non-obsession, and no second selector.
+
+## 16. Gate 6: constrained deliberation and verification
 
 Add slow deliberation only after the world loop is stable.
 
@@ -558,7 +679,7 @@ Verification must check:
 
 The recurrent/state policy remains separately observable so the effect of deliberation can be lesioned.
 
-## 16. Gate 7: predictive causal world model and epistemic development
+## 17. Gate 7: predictive causal world model and epistemic development
 
 Gate 7 receives the Reddit-derived prediction, preregistration, correction, and calibration mechanisms.
 
@@ -611,7 +732,29 @@ The original mistaken state remains reconstructable.
 
 Two subjects that reach the same current fact through different error histories should be able to diverge later only where that history is relevant.
 
-## 17. Quarantined offline hypothesis generation
+### Prospective-state taxonomy
+
+Do not collapse obligations, expectations, and formal predictions because they all point toward the future.
+
+- A commitment records what Pretorius intends or owes.
+- A subject-level expectation records what Pretorius currently anticipates.
+- A preregistered prediction is an evaluation-grade frozen forecast with explicit probability, evidence set, creation-state fingerprint, and scoring.
+
+Each type needs an explicit lifecycle. Where appropriate, prospective items may be fulfilled/confirmed, violated, expired, superseded, released, lapsed when the opportunity has disappeared, or invalidated. Closure must be evidence-backed and append-only. A debt that can no longer be discharged should not nag forever, and a superseded item should not be misclassified as a failed forecast.
+
+### Acquired external-knowledge plane
+
+External knowledge must no longer depend on the autobiographical memory table as its only durable substrate. Preserve a distinct runtime plane for source/evidence records, atomic externally derived claims, source authority, confidence, status, supporting and contradicting evidence, and links to entities or topics. A paper, user statement, tool result, or document can become learned knowledge without becoming something Pretorius lived.
+
+Build a small typed claim graph over that plane with relations such as supports, contradicts, extends, derived_from, about, part_of, and supersedes. Preserve conflicting source claims even when a current best-supported projection exists. Do not repurpose the Persona Connectome for this job.
+
+New synthesis must use an explicit reviewed/admission path, retain the original claims, and never self-promote model prose into confirmed knowledge.
+
+### Knowledge-plane health and review
+
+Add deterministic engineer-visible checks for missing provenance, orphan claims/entities, dangling relations, unresolved contradictions, superseded claims still projected as current, stale synthesis whose evidence set changed, unusually dominant hubs, and repeatedly blocking gaps. Maintenance is read-only by default. Repair, retraction, merge, or synthesis is an explicit versioned action.
+
+## 18. Quarantined offline hypothesis generation
 
 Implement only after prediction, correction, and preregistration infrastructure exists.
 
@@ -648,7 +791,7 @@ On wake, hypotheses may weakly affect curiosity, attention, or information-seeki
 
 Run matched wake-only versus offline-hypothesis subjects under equal compute budgets.
 
-## 18. Gate 8: richer human-like cognition
+## 19. Gate 8: richer human-like cognition
 
 Only after the core closed loop and epistemic safeguards are stable should Pretorius gain broader cognitive richness.
 
@@ -663,9 +806,25 @@ Candidate subgates:
 - richer habit formation;
 - longer-run social adaptation;
 - controlled associative plasticity;
-- richer forgetting and consolidation where evidence justifies it.
+- richer forgetting and consolidation where evidence justifies it;
+- context-sensitive procedural habit formation, reinforcement, extinction, and disuse decay;
+- richer relationship dynamics only where a challenger beats the current five-axis model;
+- evidence-backed self-model development and contradiction/dissonance handling;
+- a subject-level theory-of-mind model that can be wrong about another person's beliefs, goals, or preferences rather than reading engineer truth.
 
 Each mechanism must remain optional, lesionable, and separately versioned.
+
+### Contextual procedural habits
+
+Current global action values are not sufficient evidence of human-like habits. A habit challenger should form only from repeated behavior in a recognizable context, strengthen with successful repetition, weaken through disuse or contradictory conduct, and remain distinct from authored identity rules. It must pass opposite-context tests so a useful behavior learned in one context does not become a global default. Fatigue or low attention may increase habit influence only through an explicit causal bridge.
+
+### Theory of mind and social models
+
+A theory-of-mind mechanism must be tested with asymmetric-information and false-belief scenarios. Pretorius should act on what he has evidence another person believes, not on omniscient world truth. Person-specific belief, goal, preference, reliability, obligation, threat, intimacy, resentment, dependency, admiration, or other social dimensions are candidates, not a mandatory checklist. Add a dimension only when it changes held-out social behavior better than the simpler current relationship state.
+
+### Self-model and dissonance
+
+The current self-model is not accepted as load-bearing merely because a table exists. Define an evidence-backed developmental update path first. If typed self-discrepancy or dissonance is tested, it must arise from conflicts among observed conduct, endorsed commitments/values, and self-model claims, and it must demonstrate bounded causal leverage. Do not install defensive behavior as theater.
 
 ### Connectome-to-neural mapping research gate
 
@@ -680,7 +839,7 @@ Compare:
 
 Retain the mapping only if it causes stable, interpretable, useful behavioral differences.
 
-## 19. P11: full experimental validation
+## 20. P11: full experimental validation
 
 Before Pretorius 1.0, run a frozen preregistered evaluation suite.
 
@@ -755,6 +914,28 @@ Compare:
 
 The agency seam must identify the actual dependency path.
 
+### Developmental trajectory persistence and timing
+
+Do not accept a mechanism solely because it creates an immediate post-intervention difference. Preserve post-intervention trajectories and measure whether effects persist, decay, or reconverge. Where developmental timing is plausibly causal, compare preregistered early/late interventions while holding event content, opportunities, rewards, founder state, and other protected fields fixed.
+
+A transient effect is still evidence, but it is not a durable identity mechanism unless the later trajectory remains meaningfully altered.
+
+### Planning and procedural behavior
+
+Run endogenous-planning tests with language generation disabled, including lived-event goal formation, multi-route planning, failure-driven replanning, interruption, restart, completion, abandonment, and extended quiet-time controls. Run contextual habit formation, opposite-context transfer, extinction/disuse, restart, and lesion tests.
+
+### Prospective state
+
+Test commitment, expectation, wake-intent, and preregistered-prediction lifecycles separately, including expiry, supersession, missed opportunity, late evidence, and closure without permanent nagging.
+
+### Retrieval and frame integrity
+
+Delete/corrupt disposable retrieval state and require rebuild without identity loss. Substitute retrieval policies and renderers while preserving epistemic envelopes. Verify exact Subjective Frame receipts. Required constitutional context omission must fail closed.
+
+### Runtime and show-floor resilience
+
+Exercise backup/restore, crash during wake, crash during checkpoint/state transition, local-service restart, capability denial, multi-process/single-writer boundaries, offline startup, packaged/installed execution, and operator health/doctor diagnostics. Demonstrate that a failed convenience projection or cache cannot become unrecoverable identity loss.
+
 ### Long-run stability
 
 Run representative long-duration subjects including:
@@ -770,7 +951,7 @@ Run representative long-duration subjects including:
 
 Preserve null results and failures.
 
-## 20. Definition of Pretorius 1.0 complete
+## 21. Definition of Pretorius 1.0 complete
 
 Pretorius is ready for a 1.0 production release when all of the following are true:
 
@@ -791,6 +972,11 @@ Pretorius is ready for a 1.0 production release when all of the following are tr
 - Session handovers and wake intents support long-running standalone continuity.
 - Agency seams distinguish Pretorius choice from host, human, scheduler, renderer, tool, and body contributions.
 - Neural Convergence has a documented promote-or-retain-control decision based on 4,096-unit evidence.
+- Bounded endogenous planning works without an LLM and remains subordinate to the existing action authority.
+- Renderer-facing retrieval uses verifiable ephemeral projections and exact Subjective Frame receipts without acquiring epistemic authority.
+- External learned knowledge is durably distinct from lived autobiography and preserves correction/contradiction lineage.
+- Every promoted procedural habit, expectation, theory-of-mind, relationship, or self-model mechanism has current causal evidence rather than merely stored state.
+- Runtime health, backup/restore, crash inheritance, capability boundaries, and packaged/offline operation are sufficient for an operator to recover the system during a live deployment.
 - Long-run causal characterization is current for every production-load-bearing mechanism.
 - Historical donor branches are no longer required to understand or reconstruct the production architecture.
 - README, architecture contracts, migration contracts, public adapter contracts, experimental methods, and exact release evidence are sufficient for a new engineer to continue without conversation history.
@@ -798,7 +984,7 @@ Pretorius is ready for a 1.0 production release when all of the following are tr
 
 This definition describes an artificial cognitive architecture and persistent artificial individual. It does not claim consciousness, sentience, biological equivalence, or human-level cognition.
 
-## 21. Development and branch discipline for every remaining gate
+## 22. Development and branch discipline for every remaining gate
 
 For each gate:
 
