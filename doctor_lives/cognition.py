@@ -966,12 +966,11 @@ class PretoriusBrain:
         if selected:
             lead = selected[0].first_person
             second = selected[1].first_person if len(selected) > 1 else ""
-            text = f"Attention returns to: {lead}"
+            text = f"I keep coming back to this thought: {lead}"
             if second and second != lead:
-                text += f" Context in tension with it: {second}"
+                text += f" Another thought pulls at me too: {second}"
         else:
-            text = "No current experience has enough weight to dominate attention."
-        text += f" Current behavioral pressure is strongest toward {tendency}."
+            text = "I do not feel any particular thought holding my attention right now."
         record_ids = [item.record_id for item in selected]
         candidate_ids = [row["id"] for _, row in candidates]
         checkpoint_sha = self._neural_checkpoint_sha256()

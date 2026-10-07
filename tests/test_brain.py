@@ -181,6 +181,39 @@ class BrainAssemblyTests(unittest.TestCase):
         self.assertEqual(json.loads(row["state_pressure_json"]), result["state_pressure"])
         self.assertEqual(json.loads(row["action_scores_json"]), result["action_scores"])
 
+    def test_private_thought_does_not_expose_hidden_policy_labels(self):
+        temp, brain = self.make_brain()
+        self.addCleanup(temp.cleanup)
+        brain.add_commitment("Complete the continuity experiment.", importance=.9)
+        result = brain.think(
+            "test",
+            decision_text="Complete the continuity experiment.",
+        )
+
+        text = result["text"]
+        self.assertTrue(text.startswith("I "))
+        for forbidden in (
+            "current behavioral pressure",
+            "selected_action",
+            "state_pressure",
+            "action_scores",
+            "policy_decision_id",
+            "neural_policy",
+        ):
+            self.assertNotIn(forbidden, text.lower())
+
+        self.assertIn("selected_action", result)
+        self.assertIn("state_pressure", result)
+        self.assertIn("action_scores", result)
+        with brain.store.connect() as conn:
+            row = conn.execute(
+                "SELECT text,generated_by,action_tendencies_json FROM thoughts WHERE id=?",
+                (result["id"],),
+            ).fetchone()
+        self.assertEqual(row["text"], text)
+        self.assertTrue(str(row["generated_by"]).startswith("neural_policy:"))
+        self.assertTrue(json.loads(row["action_tendencies_json"]))
+
     def test_irrelevant_relationship_and_commitment_do_not_apply_global_pressure(self):
         temp, brain = self.make_brain()
         self.addCleanup(temp.cleanup)

@@ -11,6 +11,7 @@ from doctor_lives.history import (
     resolve_canon_conflict,
     retract_synthesis_admission,
     review_synthesis_proposal,
+    render_memory_for_workspace,
     spreading_activation,
 )
 from doctor_lives.neural import DEFAULT_CONFIG
@@ -390,7 +391,9 @@ class DeepHistoryMigrationTests(unittest.TestCase):
             if x.record_id == mid
         )
         self.assertEqual(item.provenance.autobiographical_class, "synthesized_preawakening_memory")
-        self.assertIn("not canonical or lived memory", item.first_person)
+        self.assertIn("I have a later synthesis of this", item.first_person)
+        self.assertIn("not a memory I lived", item.first_person)
+        self.assertFalse(item.first_person.startswith("["))
 
     def test_approved_synthesis_is_bound_to_exact_reviewed_claim(self):
         _, brain = self.make_brain()
@@ -436,8 +439,73 @@ class DeepHistoryMigrationTests(unittest.TestCase):
             if item.provenance.autobiographical_class == "reconstructed_preawakening_memory"
         ]
         self.assertTrue(reconstructed)
-        self.assertTrue(any("reconstructed preawakening" in item.first_person.lower() for item in reconstructed))
+        self.assertTrue(
+            all("I have a reconstructed account of this" in item.first_person for item in reconstructed)
+        )
+        self.assertTrue(
+            all("not a lived memory" in item.first_person for item in reconstructed)
+        )
+        self.assertTrue(all(not item.first_person.startswith("[") for item in reconstructed))
         self.assertTrue(all(item.provenance.classification_reasoning for item in reconstructed))
+
+    def test_workspace_provenance_is_subject_native_not_engineer_labels(self):
+        cases = (
+            (
+                {
+                    "text": "The apparatus stood beside the window.",
+                    "autobiographical_class": "canonical_preawakening_memory",
+                    "material_category": "autobiography",
+                },
+                "I carry this as part of my established preawakening history:",
+            ),
+            (
+                {
+                    "text": "The apparatus may have stood beside the window.",
+                    "autobiographical_class": "reconstructed_preawakening_memory",
+                    "material_category": "autobiography",
+                },
+                "I have a reconstructed account of this, not a lived memory:",
+            ),
+            (
+                {
+                    "text": "A later reconstruction places the apparatus there.",
+                    "autobiographical_class": "synthesized_preawakening_memory",
+                    "material_category": "autobiography",
+                },
+                "I have a later synthesis of this, not a memory I lived:",
+            ),
+            (
+                {
+                    "text": "Precision matters to my characterization.",
+                    "autobiographical_class": None,
+                    "material_category": "design_material",
+                },
+                "I recognize this as part of the description I was built from,",
+            ),
+            (
+                {
+                    "text": "This archive is useful background.",
+                    "autobiographical_class": None,
+                    "material_category": "reference_only",
+                },
+                "I know this only as reference material,",
+            ),
+        )
+        for row, expected in cases:
+            with self.subTest(row=row):
+                rendered = render_memory_for_workspace(row)
+                self.assertTrue(rendered.startswith(expected))
+                self.assertFalse(rendered.startswith("["))
+                for forbidden in (
+                    "canonical_preawakening_memory",
+                    "reconstructed_preawakening_memory",
+                    "synthesized_preawakening_memory",
+                    "design_material",
+                    "reference_only",
+                    "canon_rank",
+                    "material_category",
+                ):
+                    self.assertNotIn(forbidden, rendered)
 
     def test_spreading_activation_is_deterministic_decayed_and_nonmutating(self):
         _, brain = self.make_brain()
