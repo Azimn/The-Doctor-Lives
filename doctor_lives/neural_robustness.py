@@ -380,6 +380,32 @@ def run_robustness(
         if not path.is_file():
             raise FileNotFoundError(f"required B07 checkpoint missing: {path}")
 
+    checkpoint_hash_checks = (
+        (
+            b04_stabilized_path,
+            control["checkpoint_files"]["stabilized"]["sha256"],
+            "B04 stabilized checkpoint hash mismatch",
+        ),
+        (
+            b05_stabilized_path,
+            challenger["checkpoint_files"]["stabilized"]["sha256"],
+            "B05 stabilized checkpoint hash mismatch",
+        ),
+        (
+            b05_developed_path,
+            challenger["checkpoint_files"]["developed"]["sha256"],
+            "B05 developed checkpoint hash mismatch",
+        ),
+        (
+            independent_stabilized_path,
+            independent_control["checkpoint_files"]["stabilized"]["sha256"],
+            "independent B04 stabilized checkpoint hash mismatch",
+        ),
+    )
+    for path, expected_hash, message in checkpoint_hash_checks:
+        if _file_sha256(path) != expected_hash:
+            raise ValueError(message)
+
     b04_stabilized = PretoriusRecurrentSubstrate.load(b04_stabilized_path)
     b05_stabilized = PretoriusRecurrentSubstrate.load(b05_stabilized_path)
     b05_developed = PretoriusRecurrentSubstrate.load(b05_developed_path)
