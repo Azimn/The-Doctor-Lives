@@ -49,7 +49,7 @@ If the current step is blocked or fails, stay on the same step and make only the
 
 ## Global first-person subject-interface invariant
 
-Every step that creates information which may become available to Pretorius must obey FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md. Raw machine state may remain causally active and engineer-visible, but character-visible content must be natural-language subject-native experience. A mechanism without an approved projection path remains hidden from introspection.
+`SUBJECTIVE_PERSPECTIVE_NORTH_STAR.md` has precedence over donor implementations, optimization shortcuts, and lower-level design choices. Every step that creates information which may become available to Pretorius must obey both that North Star and `FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md`. Raw machine state may remain causally active and engineer-visible, but character-visible content must be natural-language subject-native experience. A mechanism without an approved projection path remains hidden from introspection.
 
 # Phase A: finish Gate 1 and converge the planning line
 

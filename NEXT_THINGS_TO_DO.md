@@ -485,7 +485,7 @@ That means the project currently has the correct research architecture but not y
 
 ### Implement
 
-Adopt FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md as a cross-cutting production invariant.
+Adopt `SUBJECTIVE_PERSPECTIVE_NORTH_STAR.md` as the governing research principle and FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md as its production enforcement contract. The North Star takes precedence over donor mechanisms and lower-level implementation choices whenever they conflict.
 
 Create a renderer-visible Subject Frame containing only authorized natural-language subject-native content. Keep all raw telemetry, IDs, scores, hashes, provenance classifications, body variables, tool payloads, scheduler records, causal audit state, and state versions in a separate engineer/audit envelope.
 

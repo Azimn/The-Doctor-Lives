@@ -12,6 +12,8 @@ Planning branch donor-audit parent: `04f3da4f3a51136c01bd14673dc872f70856a5bf`
 
 This plan combines the production roadmap in Issue #14, the UPPB roadmap in Issue #15, the production-integrity requirements in Issue #17, the Gate 1 persistence work in PR #20, the mechanisms identified in NEXT_THINGS_TO_DO.md, and the cross-repository semantic audit recorded in PRETORIUS_DONOR_BRANCH_AUDIT.md.
 
+`SUBJECTIVE_PERSPECTIVE_NORTH_STAR.md` is the governing research doctrine for the completed system. If any donor mechanism, gate detail, optimization, or later implementation choice conflicts with its no-bypass first-person subjective-access principle, the North Star wins. The conflicting mechanism must be adapted behind a subject-native projection boundary, kept hidden from introspection, or rejected.
+
 The donor audit is additive. It does not reopen accepted production behavior merely because an older project used different terminology. A donor mechanism enters this plan only when it exposes a genuine missing capability, a demonstrated current failure, or a stronger production/evaluation gate.
 
 The goal is one definitive Pretorius implementation in The-Doctor-Lives. Historical branches and donor repositories are evidence and reference material only. They are not parallel products.

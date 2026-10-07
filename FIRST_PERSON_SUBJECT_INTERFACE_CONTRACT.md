@@ -2,6 +2,8 @@
 
 Status: cross-cutting production invariant for Pretorius. This contract sharpens the existing Universal Phenomenal-Projection Boundary (UPPB) and applies to every future production gate.
 
+Governing research principle: `SUBJECTIVE_PERSPECTIVE_NORTH_STAR.md`. If this implementation contract, a donor mechanism, or a later subsystem conflicts with the North Star's no-bypass first-person subjective-access principle, the North Star takes precedence and the lower-level mechanism must be adapted, isolated from subject access, or rejected.
+
 ## Purpose
 
 Pretorius has two fundamentally different information surfaces.
