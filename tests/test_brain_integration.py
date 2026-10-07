@@ -2,10 +2,26 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 from doctor_lives.cognition import PretoriusBrain
-from doctor_lives.models import Experience
+from doctor_lives.models import (
+    EngineerAuditCapability,
+    EngineerAuditEnvelope,
+    Experience,
+    SubjectFrame,
+    SubjectFrameError,
+    SubjectFrameItem,
+    SubjectRendererCapability,
+)
+from doctor_lives.phenomenology import (
+    AwarenessLevel,
+    ObjectiveProvenance,
+    PhenomenalEvent,
+    PhenomenalMode,
+    PrivacyState,
+)
 from doctor_lives.neural import DEFAULT_CONFIG
 
 
@@ -127,6 +143,119 @@ class BrainIntegrationTests(unittest.TestCase):
         self.assertIn("calibos_structure_only_no_identity_or_memory", policy["frozen"])
         self.assertIn("neural_policy_decision_audit", policy["frozen"])
         self.assertIn("recurrent_weights_and_fast_state", policy["mutable"])
+
+
+class SubjectInterfaceBoundaryTests(unittest.TestCase):
+    def event(
+        self,
+        text: str = "I feel a cold draft against my hands.",
+        *,
+        awareness: AwarenessLevel = AwarenessLevel.CONSCIOUS,
+        subject_id: str = "pretorius",
+    ) -> PhenomenalEvent:
+        return PhenomenalEvent(
+            tick=17,
+            subject_id=subject_id,
+            mode=PhenomenalMode.BODILY_SENSATION,
+            awareness=awareness,
+            canonical_first_person=text,
+            privacy=PrivacyState.PRIVATE,
+            projection_rule_version="subject-interface-a09-test",
+            source_state_digest="sha256:engineer-only-state",
+            objective_provenance=ObjectiveProvenance(
+                evidence_class="mechanistic_projection",
+                source="temperature_sensor",
+                confidence=0.97,
+                record_ids=("sensor-record-17",),
+            ),
+            source_state_refs=("temperature_c", "thermal_discomfort"),
+        )
+
+    def test_subject_frame_strips_engineer_lineage(self):
+        event = self.event()
+        frame = SubjectFrame.from_events((event,))
+        payload = SubjectRendererCapability.read(frame)
+
+        self.assertEqual(payload, ("I feel a cold draft against my hands.",))
+        encoded = json.dumps(payload)
+        for forbidden in (
+            "mechanistic_projection",
+            "temperature_sensor",
+            "sensor-record-17",
+            "sha256:engineer-only-state",
+            "temperature_c",
+            "thermal_discomfort",
+            "0.97",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+    def test_subject_frame_item_is_factory_controlled(self):
+        with self.assertRaises(TypeError):
+            SubjectFrameItem(text="I feel cold.")
+
+    def test_subject_frame_rejects_nonconscious_events(self):
+        for awareness in (AwarenessLevel.LATENT, AwarenessLevel.PRECONSCIOUS):
+            with self.subTest(awareness=awareness):
+                with self.assertRaises(SubjectFrameError):
+                    SubjectFrame.from_events((self.event(awareness=awareness),))
+
+    def test_subject_frame_rejects_raw_numeric_and_structured_payloads(self):
+        raw_number = self.event("13.2")
+        raw_json = self.event('{"temperature_c":13.2,"confidence":0.97}')
+
+        with self.assertRaisesRegex(SubjectFrameError, "natural-language"):
+            SubjectFrame.from_events((raw_number,))
+        with self.assertRaisesRegex(SubjectFrameError, "structured payload"):
+            SubjectFrame.from_events((raw_json,))
+
+    def test_terse_involuntary_language_is_valid_subject_content(self):
+        frame = SubjectFrame.from_events((self.event("Brrrr."), self.event("Ow!")))
+        self.assertEqual(
+            SubjectRendererCapability.read(frame),
+            ("Brrrr.", "Ow!"),
+        )
+
+    def test_subject_frame_cannot_mix_subjects(self):
+        with self.assertRaisesRegex(SubjectFrameError, "multiple subjects"):
+            SubjectFrame.from_events(
+                (
+                    self.event(subject_id="pretorius"),
+                    self.event(subject_id="other-subject"),
+                )
+            )
+
+    def test_engineer_envelope_preserves_raw_diagnostics_separately(self):
+        raw = {
+            "action_scores": {"create": 0.63, "withdraw": 0.11},
+            "state_version": 44,
+            "record_id": "memory-17",
+            "temperature_c": 13.2,
+        }
+        envelope = EngineerAuditEnvelope.capture(raw)
+        self.assertEqual(EngineerAuditCapability.read(envelope), raw)
+
+        raw["action_scores"]["create"] = 0.99
+        self.assertEqual(
+            EngineerAuditCapability.read(envelope)["action_scores"]["create"],
+            0.63,
+        )
+
+    def test_renderer_capability_refuses_engineer_envelope(self):
+        envelope = EngineerAuditEnvelope.capture(
+            {"state_pressure": {"create": 0.4}}
+        )
+        with self.assertRaises(TypeError):
+            SubjectRendererCapability.read(envelope)  # type: ignore[arg-type]
+
+    def test_engineer_capability_refuses_subject_frame(self):
+        frame = SubjectFrame.from_events((self.event(),))
+        with self.assertRaises(TypeError):
+            EngineerAuditCapability.read(frame)  # type: ignore[arg-type]
+
+    def test_subject_frame_is_immutable(self):
+        frame = SubjectFrame.from_events((self.event(),))
+        with self.assertRaises(FrozenInstanceError):
+            frame.items = ()  # type: ignore[misc]
 
 
 if __name__ == "__main__":

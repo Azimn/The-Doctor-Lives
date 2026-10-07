@@ -54,7 +54,19 @@ from .reconsolidation import (
 )
 from .chassis import PretoriusBrainPort
 from .cognition import PretoriusBrain
-from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
+from .models import (
+    CognitiveView,
+    EngineerAuditCapability,
+    EngineerAuditEnvelope,
+    Experience,
+    Provenance,
+    RenderRequest,
+    SubjectFrame,
+    SubjectFrameError,
+    SubjectFrameItem,
+    SubjectRendererCapability,
+    ViewItem,
+)
 from .phenomenology import (
     AwarenessLevel,
     CertaintyBand,
@@ -95,6 +107,12 @@ __all__ = [
     "ViewItem",
     "CognitiveView",
     "RenderRequest",
+    "SubjectFrameError",
+    "SubjectFrameItem",
+    "SubjectFrame",
+    "EngineerAuditEnvelope",
+    "SubjectRendererCapability",
+    "EngineerAuditCapability",
     "PhenomenalMode",
     "AwarenessLevel",
     "PrivacyState",

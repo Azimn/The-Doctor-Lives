@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any
+import json
+from typing import Any, Iterable, Mapping
+
+from .phenomenology import AwarenessLevel, PhenomenalEvent, assert_subject_text_safe
 
 
 @dataclass(frozen=True)
@@ -97,3 +100,153 @@ class RenderRequest:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+class SubjectFrameError(ValueError):
+    """Subject-facing content is not eligible for the renderer-visible frame."""
+
+
+_SUBJECT_FRAME_ITEM_FACTORY_TOKEN = object()
+_ENGINEER_AUDIT_FACTORY_TOKEN = object()
+
+
+def _assert_natural_subject_text(text: str) -> str:
+    if not isinstance(text, str):
+        raise TypeError("subject frame text must be a string")
+    normalized = text.strip()
+    if not normalized:
+        raise SubjectFrameError("subject frame text cannot be blank")
+    assert_subject_text_safe(normalized)
+    if not any(char.isalpha() for char in normalized):
+        raise SubjectFrameError(
+            "subject frame content must be natural-language experience, not a raw value"
+        )
+    if normalized[:1] in {"{", "["}:
+        try:
+            decoded = json.loads(normalized)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, (dict, list)):
+            raise SubjectFrameError(
+                "subject frame content cannot be a raw structured payload"
+            )
+    return normalized
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class SubjectFrameItem:
+    """Renderer-visible subject text stripped of engineer lineage and raw state."""
+
+    text: str
+
+    def __init__(self, *, _factory_token: object = None, text: str = "") -> None:
+        if _factory_token is not _SUBJECT_FRAME_ITEM_FACTORY_TOKEN:
+            raise TypeError(
+                "SubjectFrameItem is factory-controlled; "
+                "construct SubjectFrame from PhenomenalEvent values"
+            )
+        object.__setattr__(self, "text", _assert_natural_subject_text(text))
+
+
+def _subject_frame_item(event: PhenomenalEvent) -> SubjectFrameItem:
+    if not isinstance(event, PhenomenalEvent):
+        raise TypeError("subject frame accepts PhenomenalEvent values only")
+    if event.awareness not in {AwarenessLevel.CONSCIOUS, AwarenessLevel.FOCAL}:
+        raise SubjectFrameError(
+            "only conscious or focal phenomenal events may enter SubjectFrame"
+        )
+    return SubjectFrameItem(
+        _factory_token=_SUBJECT_FRAME_ITEM_FACTORY_TOKEN,
+        text=event.subject_text,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class SubjectFrame:
+    """The only character-state capability a subject renderer may read.
+
+    The frame intentionally stores no subject IDs, ticks, scores, record IDs,
+    provenance, state versions, hashes, body telemetry, or policy diagnostics.
+    """
+
+    items: tuple[SubjectFrameItem, ...] = ()
+
+    def __post_init__(self) -> None:
+        normalized = tuple(self.items)
+        if any(not isinstance(item, SubjectFrameItem) for item in normalized):
+            raise TypeError("SubjectFrame.items must contain SubjectFrameItem values only")
+        object.__setattr__(self, "items", normalized)
+
+    @classmethod
+    def from_events(cls, events: Iterable[PhenomenalEvent]) -> "SubjectFrame":
+        events = tuple(events)
+        if any(not isinstance(event, PhenomenalEvent) for event in events):
+            raise TypeError("SubjectFrame.from_events accepts PhenomenalEvent values only")
+        subject_ids = {event.subject_id for event in events}
+        if len(subject_ids) > 1:
+            raise SubjectFrameError("one SubjectFrame cannot mix multiple subjects")
+        return cls(items=tuple(_subject_frame_item(event) for event in events))
+
+    def renderer_context(self) -> tuple[str, ...]:
+        """Return only authorized natural-language subject content."""
+        return tuple(item.text for item in self.items)
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class EngineerAuditEnvelope:
+    """Immutable engineer-only diagnostics, never a renderer subject frame."""
+
+    _payload_json: str
+
+    def __init__(self, *, _factory_token: object = None, payload_json: str = "") -> None:
+        if _factory_token is not _ENGINEER_AUDIT_FACTORY_TOKEN:
+            raise TypeError("EngineerAuditEnvelope is factory-controlled; use capture()")
+        object.__setattr__(self, "_payload_json", payload_json)
+
+    @classmethod
+    def capture(cls, payload: Mapping[str, Any]) -> "EngineerAuditEnvelope":
+        if not isinstance(payload, Mapping):
+            raise TypeError("engineer audit payload must be a mapping")
+        try:
+            encoded = json.dumps(
+                dict(payload),
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+        except (TypeError, ValueError) as exc:
+            raise TypeError(
+                "engineer audit payload must be finite JSON-serializable data"
+            ) from exc
+        return cls(
+            _factory_token=_ENGINEER_AUDIT_FACTORY_TOKEN,
+            payload_json=encoded,
+        )
+
+    def inspect(self) -> dict[str, Any]:
+        """Return a detached engineer-side copy of captured diagnostics."""
+        decoded = json.loads(self._payload_json)
+        if not isinstance(decoded, dict):
+            raise RuntimeError("engineer audit envelope payload is not an object")
+        return decoded
+
+
+class SubjectRendererCapability:
+    """Capability that can read SubjectFrame and nothing else."""
+
+    @staticmethod
+    def read(frame: SubjectFrame) -> tuple[str, ...]:
+        if not isinstance(frame, SubjectFrame):
+            raise TypeError("subject renderer capability requires SubjectFrame")
+        return frame.renderer_context()
+
+
+class EngineerAuditCapability:
+    """Capability that can inspect EngineerAuditEnvelope and nothing else."""
+
+    @staticmethod
+    def read(envelope: EngineerAuditEnvelope) -> dict[str, Any]:
+        if not isinstance(envelope, EngineerAuditEnvelope):
+            raise TypeError("engineer audit capability requires EngineerAuditEnvelope")
+        return envelope.inspect()
