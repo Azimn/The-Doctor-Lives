@@ -227,7 +227,7 @@ def _condition_summary(
     net: PretoriusRecurrentSubstrate,
     probes: tuple[Stimulus, ...],
     intact_records: list[dict[str, Any]] | None = None,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+) -> tuple[dict[str, Any], list[dict[str, Any]], np.ndarray]:
     records, states = _run_rows(
         net,
         probes,
@@ -253,7 +253,7 @@ def _condition_summary(
     }
     if intact_records is not None:
         summary["mean_js_from_intact"] = _mean_pairwise_js(records, intact_records)
-    return summary, records
+    return summary, records, states
 
 
 def _delta_similarity(current: np.ndarray, reference: np.ndarray) -> dict[str, float]:
@@ -386,20 +386,36 @@ def run_causal_lesions(
     development = developmental_exposure(seed)
 
     intact_net = PretoriusRecurrentSubstrate.load(developed_path)
-    intact_summary, intact_records = _condition_summary(
+    intact_summary, intact_records, intact_states = _condition_summary(
         "intact_developed_sham", intact_net, probes
     )
-    intact_sham_exact_match = (
-        intact_records == challenger["restart_probe_records"]
+    preserved_restart_records = challenger["restart_probe_records"]
+    if len(intact_records) != len(preserved_restart_records):
+        raise RuntimeError("B06 intact sham record count differs from preserved B05 restart")
+    intact_score_max_abs_diff = max(
+        abs(float(current["scores"][action]) - float(preserved["scores"][action]))
+        for current, preserved in zip(intact_records, preserved_restart_records)
+        for action in current["scores"]
     )
+    intact_score_match = intact_score_max_abs_diff <= 1e-12
+
+    state_artifact_path = challenger_dir / challenger["state_artifact"]["path"]
+    if not state_artifact_path.is_file():
+        raise FileNotFoundError("B05 evaluation-state artifact is required")
+    if _file_sha256(state_artifact_path) != challenger["state_artifact"]["sha256"]:
+        raise ValueError("B05 evaluation-state artifact hash mismatch")
+    with np.load(state_artifact_path, allow_pickle=False) as payload:
+        preserved_restart_states = np.asarray(payload["restart"]).copy()
+    intact_state_match = np.array_equal(intact_states, preserved_restart_states)
+    intact_sham_exact_match = intact_score_match and intact_state_match
     if not intact_sham_exact_match:
         raise RuntimeError(
-            "B06 intact sham does not reproduce preserved B05 restart records"
+            "B06 intact sham does not satisfy the preserved B05 restart equivalence contract"
         )
 
     necessity_net = PretoriusRecurrentSubstrate.load(developed_path)
     revert_learned_edges(necessity_net, stabilized)
-    necessity_summary, _ = _condition_summary(
+    necessity_summary, _, _ = _condition_summary(
         "necessity_full_delta_reversion",
         necessity_net,
         probes,
@@ -407,7 +423,7 @@ def run_causal_lesions(
     )
 
     sufficiency_sham_net = PretoriusRecurrentSubstrate.load(stabilized_path)
-    sufficiency_sham_summary, _ = _condition_summary(
+    sufficiency_sham_summary, _, _ = _condition_summary(
         "sufficiency_stabilized_sham",
         sufficiency_sham_net,
         probes,
@@ -416,7 +432,7 @@ def run_causal_lesions(
 
     sufficiency_net = PretoriusRecurrentSubstrate.load(stabilized_path)
     transplant_full_delta(sufficiency_net, stabilized, developed)
-    sufficiency_summary, _ = _condition_summary(
+    sufficiency_summary, _, _ = _condition_summary(
         "sufficiency_full_delta_transplant",
         sufficiency_net,
         probes,
@@ -425,7 +441,7 @@ def run_causal_lesions(
 
     targeted_net = PretoriusRecurrentSubstrate.load(developed_path)
     revert_learned_edges(targeted_net, stabilized, targeted)
-    targeted_summary, _ = _condition_summary(
+    targeted_summary, _, _ = _condition_summary(
         "causal_core_targeted_top_5pct",
         targeted_net,
         probes,
@@ -434,7 +450,7 @@ def run_causal_lesions(
 
     random_net = PretoriusRecurrentSubstrate.load(developed_path)
     revert_learned_edges(random_net, stabilized, random_matched)
-    random_summary, _ = _condition_summary(
+    random_summary, _, _ = _condition_summary(
         "causal_core_random_ei_matched_5pct",
         random_net,
         probes,
@@ -554,6 +570,9 @@ def run_causal_lesions(
             "b05_developed_checkpoint_sha256": _file_sha256(
                 developed_path
             ),
+            "b05_evaluation_states_sha256": _file_sha256(
+                state_artifact_path
+            ),
         },
         "lesion_definition": {
             "necessity": (
@@ -641,6 +660,8 @@ def run_causal_lesions(
             "intact_sham_exact_match_to_b05_restart": (
                 intact_sham_exact_match
             ),
+            "intact_sham_score_max_abs_diff": intact_score_max_abs_diff,
+            "intact_sham_state_exact_match": intact_state_match,
             "necessity_damage_expected_action_probability": (
                 intact_mean - necessity_mean
             ),
