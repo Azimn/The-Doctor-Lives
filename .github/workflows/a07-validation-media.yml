@@ -1,0 +1,40 @@
+name: a07-validation-media
+
+on:
+  push:
+    branches:
+      - validation/a07-media
+
+permissions:
+  contents: read
+
+jobs:
+  package-exact-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact production candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 46233fad60efd7b97204320b68db440851a4848e
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Build offline installation media
+        run: |
+          mkdir -p a07-media
+          python -m pip install --upgrade pip
+          python -m pip wheel . --wheel-dir a07-media
+          git archive --format=tar.gz --output a07-media/source-46233fad60efd7b97204320b68db440851a4848e.tar.gz HEAD
+          printf '%s\n' 46233fad60efd7b97204320b68db440851a4848e > a07-media/candidate-sha.txt
+          python --version > a07-media/build-environment.txt
+          uname -a >> a07-media/build-environment.txt
+          sha256sum a07-media/* >> a07-media/build-environment.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a07-validation-media-46233fad60efd7b97204320b68db440851a4848e
+          path: a07-media/
+          if-no-files-found: error
