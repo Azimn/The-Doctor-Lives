@@ -1,0 +1,197 @@
+name: neural-causal-lesions-b06
+
+on:
+  push:
+    branches:
+      - prod/neural-convergence-characterization
+    paths:
+      - ".github/workflows/neural-causal-lesions-b06.yml"
+      - "doctor_lives/neural_lesions.py"
+      - "tools/run_neural_lesions.py"
+      - "tests/test_neural_lesions.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate-harness:
+    name: validate-b06-harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install exact branch package
+        run: python -m pip install -e .
+
+      - name: Validate frozen B06 surface
+        run: python tools/run_neural_lesions.py --validate-only
+
+      - name: Run focused lesion and characterization tests
+        run: python -m unittest tests.test_neural_lesions tests.test_neural_characterization
+
+  causal-lesions:
+    name: b06-seed-${{ matrix.seed }}
+    needs: validate-harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1842, 1843, 1844, 1845, 1846, 1847]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install exact branch package
+        run: python -m pip install -e .
+
+      - name: Download preserved B04 control artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: b04-legacy-v04-seed-${{ matrix.seed }}-*
+          path: inputs/b04
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37674813225
+
+      - name: Download preserved B05 challenger artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: b05-convergence-v05-seed-${{ matrix.seed }}-*
+          path: inputs/b05
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37676112099
+
+      - name: Verify preserved B04 and B05 result provenance
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          seed = ${{ matrix.seed }}
+          expected_b04 = {
+              1842: "a253b6a0e40b426e0f667071d659e028a3afa1167741e638aec002fd2354b67f",
+              1843: "d0cdab0be020986b73b1140fac39c78ca613e2c38f5780ae5cb90e55025ef1e5",
+              1844: "ea9ec2ae0c6859bf4013a28bebbd7ee85cb36a0ecbec20cfce57e3efd7fda9fa",
+              1845: "3e5877dfe8a676efbad633f3617a53ba843d2c069f6b6b5236ca719670114434",
+              1846: "9350406cef1729662a78faea1754aedb95025b0d9d545b2a268f2257122711e9",
+              1847: "8dd2507f4f93abb307e3150b5ce4a82d23db3fa06ffac58aa5d41bcf23b8af66",
+          }
+          expected_b05 = {
+              1842: "893f208cfeb0e4b1ef24a6953d8a4a33b9e8c883d6847c401026532323daff91",
+              1843: "84d42fe418722a4af75561015b1834abb905f7e73ce1c499a2eea0a0c1f955e1",
+              1844: "8c02f87b51d996026d63400d3b234ab03f881f411159648ec06d94323b952b97",
+              1845: "3b48a69b4be311548400080b7b84fbafa9f5c38a568b9f3f1ca9983de7641150",
+              1846: "f627ee4142f4972de641e3cbdd9c4e3f99a5f4b13ce6a02701d2be3e53c9b295",
+              1847: "1254569223b12ce0fc410a7fb6c9c92a0f5f70cb1cb84b542da6902e100e9ca0",
+          }
+
+          for label, root, expected_sha, expected_repo, expected_profile in (
+              (
+                  "B04",
+                  Path("inputs/b04"),
+                  expected_b04[seed],
+                  "4346ffb95be634c9695009d21317a2f80e5fccc5",
+                  "legacy_v04",
+              ),
+              (
+                  "B05",
+                  Path("inputs/b05"),
+                  expected_b05[seed],
+                  "311c651e4c2f3af563890e91ad2cebef3751c5ac",
+                  "neural_convergence_v05",
+              ),
+          ):
+              result_path = root / "result.json"
+              actual_sha = hashlib.sha256(result_path.read_bytes()).hexdigest()
+              assert actual_sha == expected_sha, (label, seed, actual_sha, expected_sha)
+              result = json.loads(result_path.read_text(encoding="utf-8"))
+              assert result["repository_sha"] == expected_repo
+              assert result["profile"] == expected_profile
+              assert result["seed"] == seed
+              assert result["status"] == "complete"
+              assert result["restart_exact_match"] is True
+
+          b04 = json.loads(Path("inputs/b04/result.json").read_text(encoding="utf-8"))
+          b05 = json.loads(Path("inputs/b05/result.json").read_text(encoding="utf-8"))
+          assert b04["curriculum_sha256"] == b05["curriculum_sha256"]
+          assert b04["outcome_schedule_sha256"] == b05["outcome_schedule_sha256"]
+          print(f"verified preserved B04/B05 provenance for seed {seed}")
+          PY
+
+      - name: Run frozen B06 causal lesions
+        run: |
+          mkdir -p "results/neural_characterization/b06/seed_${{ matrix.seed }}"
+          python tools/run_neural_lesions.py --seed ${{ matrix.seed }} --control-dir inputs/b04 --challenger-dir inputs/b05 --output-dir "results/neural_characterization/b06/seed_${{ matrix.seed }}"
+
+      - name: Validate finalized B06 artifact
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          seed = ${{ matrix.seed }}
+          root = Path(f"results/neural_characterization/b06/seed_{seed}")
+          result_path = root / "result.json"
+          result = json.loads(result_path.read_text(encoding="utf-8"))
+
+          assert result["status"] == "complete"
+          assert result["seed"] == seed
+          assert result["profile"] == "neural_convergence_v05"
+          assert result["configuration"]["neurons"] == 4096
+          assert result["lesion_definition"]["causal_core_fraction"] == 0.05
+          assert result["causal_contrasts"]["intact_sham_exact_match_to_b05_restart"] is True
+          assert result["causal_core"]["targeted_edge_count"] == result["causal_core"]["random_edge_count"]
+          assert result["causal_core"]["targeted_exc_count"] == result["causal_core"]["random_exc_count"]
+          assert len(result["relearning"]) == 7
+          assert (root / result["artifacts"]["lesion_masks"]["path"]).is_file()
+          assert (root / result["artifacts"]["relearned_final_checkpoint"]["path"]).is_file()
+
+          result_sha = hashlib.sha256(result_path.read_bytes()).hexdigest()
+          summary = {
+              "schema": "the-doctor-lives.b06-lesion-ci-summary.v1",
+              "seed": seed,
+              "repository_sha": result["repository_sha"],
+              "result_json_sha256": result_sha,
+              "artifact_sha256": result["artifact_sha256"],
+              "curriculum_sha256": result["curriculum_sha256"],
+              "outcome_schedule_sha256": result["outcome_schedule_sha256"],
+              "delta_sha256": result["delta"]["sha256"],
+              "targeted_indices_sha256": result["causal_core"]["targeted_indices_sha256"],
+              "random_indices_sha256": result["causal_core"]["random_indices_sha256"],
+              "causal_contrasts": result["causal_contrasts"],
+              "final_relearning": result["relearning"][-1],
+              "finished_at_utc": result["finished_at_utc"],
+          }
+          (root / "ci_summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, sort_keys=True))
+          PY
+
+      - name: Upload immutable B06 seed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: b06-causal-lesions-seed-${{ matrix.seed }}-${{ github.sha }}-${{ github.run_id }}
+          path: results/neural_characterization/b06/seed_${{ matrix.seed }}/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
