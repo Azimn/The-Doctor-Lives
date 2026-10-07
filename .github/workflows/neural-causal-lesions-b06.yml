@@ -157,7 +157,7 @@ jobs:
           assert result["profile"] == "neural_convergence_v05"
           assert result["configuration"]["neurons"] == 4096
           assert result["lesion_definition"]["causal_core_fraction"] == 0.05
-          assert result["causal_contrasts"]["intact_sham_behavioral_match_to_b05_restart"] is True
+          assert result["causal_contrasts"]["same_run_zero_edge_sham_exact_match"] is True
           assert result["causal_core"]["targeted_edge_count"] == result["causal_core"]["random_edge_count"]
           assert result["causal_core"]["targeted_exc_count"] == result["causal_core"]["random_exc_count"]
           assert len(result["relearning"]) == 7
