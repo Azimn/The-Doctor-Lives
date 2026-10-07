@@ -476,6 +476,14 @@ Add an engine-authored communicative-act ledger for consequential expression. It
 
 Confidentiality and other commitments must be able to influence disclosure choice through the existing policy authority without creating a second selector. An unrelated commitment must remain behaviorally neutral.
 
+### Private-visibility and disclosure firewall
+
+If raw private cognition is exposed to an expression renderer, the privacy-protection set must be derived from the exact private material visible in that renderer frame. There must not be an independent fixed `last N thoughts` guard that protects less content than the renderer can see.
+
+Unauthorized verbatim or near-verbatim reproduction of visible private text is rejected. Deliberate disclosure or semantic paraphrase remains possible only through an explicit communicative act. Prefer authorized communicative representations over unrestricted raw private text where practical.
+
+This is a causal privacy boundary, not a semantic mind-reading claim. It prevents the architecture from leaking private text merely because that text was supplied as rendering context.
+
 ## 11. P8: independent motor and outward expression
 
 Allow outward behavior to arise without requiring focal conscious awareness.
@@ -515,6 +523,18 @@ Examples:
 - noticing another character's reaction.
 
 Self-perception returns as provenance-bearing observation and may differ from engineer truth.
+
+### Limited introspection and self-explanation
+
+Pretorius does not receive privileged explanations of hidden implementation causes.
+
+An action may be influenced by non-focal or subject-inaccessible state. If Pretorius later explains why he acted, that explanation is a subject inference or self-model hypothesis unless the causal basis was actually available through an approved subjective channel.
+
+Engineer-visible policy scores, neural state, routing decisions, private processor state, and other hidden causal variables cannot be converted into first-person certainty merely because the runtime can inspect them.
+
+Self-expression also obeys temporal order. Spoken output may enter later cognition through self-hearing only after the utterance was emitted and returned through the self-perception ingress. It cannot causally influence the decision that preceded its own expression.
+
+Acceptance should include differential-access cases in which behavior changes while the immediate report channel lacks the decisive cause, followed by later evidence that may support a revised, provenance-bearing explanation.
 
 ## 13. Gate 4 and P10: renderer interface and migration
 
@@ -742,6 +762,36 @@ Do not collapse obligations, expectations, and formal predictions because they a
 
 Each type needs an explicit lifecycle. Where appropriate, prospective items may be fulfilled/confirmed, violated, expired, superseded, released, lapsed when the opportunity has disappeared, or invalidated. Closure must be evidence-backed and append-only. A debt that can no longer be discharged should not nag forever, and a superseded item should not be misclassified as a failed forecast.
 
+
+### Action-outcome expectations and causal sequence model
+
+Do not treat every prediction as the same epistemic object.
+
+A world-fact expectation predicts an external fact and resolves only from subject-available evidence about that fact. An action-outcome expectation is bound to one exact pending canonical action and resolves only when the outcome for that action is registered. Unrelated later observations cannot resolve it.
+
+A separate bounded causal-sequence model may learn predictive transitions between adjacent enacted actions inside one canonical plan or other explicitly declared sequence. Preserve observational sequence evidence, preregistered intervention evidence, and matched comparison evidence separately. Temporal succession alone does not establish a causal effect.
+
+Intervention markers must be created before the relevant outcome is known, survive restart while genuinely pending, and be retired if their exact action is abandoned or invalidated. Stronger causal influence is allowed only after an eligible comparison condition exists, and even then remains bounded, defeasible, and lesionable.
+
+Calibration and causal learning use only evidence available to the subject through approved ingress. Hidden host truth cannot silently train the predictor.
+
+### Counterfactual model predictions
+
+Planning may estimate routes that were available but not enacted. Those estimates have fixed non-experience provenance such as `model_prediction`.
+
+An unchosen route is not:
+
+- lived memory;
+- observed world fact;
+- a resolved expectation;
+- an action outcome;
+- causal training evidence;
+- calibration evidence.
+
+Counterfactual route comparisons should remain transient or live in explicit engineer/evaluation logs. If Pretorius later actually takes the formerly unchosen route, that execution is a new lived event and only its real outcome may train the relevant predictive mechanisms.
+
+Subject-facing counterfactual thought, if later implemented, must be generated through an approved subjective mechanism rather than by leaking route tables, hidden scores, or developer-only causal statistics.
+
 ### Acquired external-knowledge plane
 
 External knowledge must no longer depend on the autobiographical memory table as its only durable substrate. Preserve a distinct runtime plane for source/evidence records, atomic externally derived claims, source authority, confidence, status, supporting and contradicting evidence, and links to entities or topics. A paper, user statement, tool result, or document can become learned knowledge without becoming something Pretorius lived.
@@ -936,6 +986,19 @@ Delete/corrupt disposable retrieval state and require rebuild without identity l
 
 Exercise backup/restore, crash during wake, crash during checkpoint/state transition, local-service restart, capability denial, multi-process/single-writer boundaries, offline startup, packaged/installed execution, and operator health/doctor diagnostics. Demonstrate that a failed convenience projection or cache cannot become unrecoverable identity loss.
 
+
+### Bounded-capacity and information-loss frontier
+
+For every bounded production-load-bearing store, test the capacity boundary as a causal property rather than only a memory-size setting.
+
+The suite must identify the overflow policy, verify restart/replay at capacity, and compare an overflow history with a matched history in which the displaced item never existed. If the resulting subject-owned state becomes identical, the displaced information is unrecoverable by any later deterministic policy unless stronger canonical history is explicitly reconsulted.
+
+Apply this audit to concerns, prospective commitments/cues, wake intents, handovers, active predictions/hypotheses, and any later bounded social or self-model stores. Do not assume a universal numeric capacity. Establish the minimum sufficient bound for each required behavior and record the tested information-loss frontier.
+
+### Private access and self-explanation
+
+Run differential-access probes in which action-relevant state is deliberately unavailable to the immediate report channel. Verify that behavior can remain causally affected without giving Pretorius privileged introspective access to engineer-only state. Later explanations must change only when new subject-available evidence arrives, and the explanation's provenance must remain distinguishable from the original hidden cause.
+
 ### Long-run stability
 
 Run representative long-duration subjects including:
@@ -978,6 +1041,10 @@ Pretorius is ready for a 1.0 production release when all of the following are tr
 - Every promoted procedural habit, expectation, theory-of-mind, relationship, or self-model mechanism has current causal evidence rather than merely stored state.
 - Runtime health, backup/restore, crash inheritance, capability boundaries, and packaged/offline operation are sufficient for an operator to recover the system during a live deployment.
 - Long-run causal characterization is current for every production-load-bearing mechanism.
+
+- World-fact expectations, action-outcome expectations, causal-sequence evidence, and counterfactual model predictions remain mechanically distinct and cannot train one another through the wrong evidence path.
+- Private cognition visible to an expression renderer cannot leak by direct copy merely because it is present in context, and Pretorius does not receive privileged self-explanations of hidden implementation causes.
+- Every bounded load-bearing state store has an explicit, tested capacity/overflow policy and a documented information-loss frontier rather than silent continuity destruction.
 - Historical donor branches are no longer required to understand or reconstruct the production architecture.
 - README, architecture contracts, migration contracts, public adapter contracts, experimental methods, and exact release evidence are sufficient for a new engineer to continue without conversation history.
 - One definitive release candidate passes independent assessment before merge.

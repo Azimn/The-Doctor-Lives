@@ -229,6 +229,58 @@ The audit adds or strengthens these production requirements:
 11. Neural Convergence characterization incorporates the unmerged v0.4 causal-core experiments.
 12. P11 gains trajectory-persistence/timing tests, planning/habit/prospective-state suites, retrieval/frame-integrity tests, and show-floor resilience.
 
+
+## Follow-on branch stress audit after the initial donor pass
+
+The first audit was then stress-tested against donor development lines that were not yet fully represented in the audit narrative.
+
+### Finding 16: DUCK v0.10 sharpens the predictive-causality boundary
+
+Directly inspected donor: `Azimn/DUCK@30a11ea8308ebd0fc89a06bb994ab0e23bd02886` on `motivated-cognition-v0.10`.
+
+DUCK now distinguishes world-fact expectations from action-outcome expectations, and it keeps sequence-conditioned prediction separate from stronger intervention evidence. A preregistered intervention must exist before the outcome, and stronger causal route influence is withheld until an eligible matched direct baseline exists. Counterfactual route estimates are explicitly `model_prediction`, are not persisted as lived experience, and cannot train from outcomes that never happened.
+
+The existing Pretorius Gate 7 had prediction and calibration but did not state these separations strongly enough.
+
+Disposition: STRENGTHEN Gate 7 with action-bound outcome expectations, observational-versus-intervention causal evidence, matched comparison requirements, and strict counterfactual non-experience provenance.
+
+### Finding 17: FirstPersonLoop exposes a renderer-visible privacy mismatch and a limited-introspection requirement
+
+Directly inspected donor: `Azimn/FirstPersonLoopTest@337555030af09b15f4515604c5f193a5b1fbef42` on `gpt56-four-cycle-hardening-20260913`.
+
+Its late freeze work found a structural privacy bug class: a renderer may be shown more private thought than the copy-protection layer actually protects. The corrected invariant is that the set of private thought visible to speech and the set protected from unauthorized verbatim or near-verbatim copy-out must coincide.
+
+The same line also preserves a more important cognitive boundary. Hidden causes may influence behavior without becoming introspectively available. First-person explanation is therefore not automatically a readout of the real implementation cause.
+
+Disposition: STRENGTHEN P7 with exact visible-private protection and explicit disclosure authority. STRENGTHEN P9 with limited introspection, provenance-bearing self-explanation, and temporal self-hearing after actual expression.
+
+### Finding 18: bounded representational capacity can silently erase developmental history
+
+Directly inspected donor: `Azimn/champion-versus-challenger@79f747707dadfce9092d89ad19a17a9fcd7dd79b` on `champion-v9-5-habit-temporal-plasticity`.
+
+EXP-010 and EXP-011 establish an information-theoretic failure that applies beyond their toy architecture. When a bounded unresolved concern or prospective identity+cue record is evicted, the remaining canonical subject-owned state can become identical to a matched history in which the lost item never existed. Once that happens, no later deterministic policy over that state can recover the missing distinction.
+
+The useful lesson is not the donor's numeric capacity of three. The lesson is that every bounded load-bearing store needs an explicit overflow meaning and a tested information-loss frontier.
+
+Disposition: ADD a pre-1.0 capacity/overflow audit covering concerns, prospective state, wake intents, handovers, hypotheses/predictions, and any later bounded social/self-model store. Silent identity-relevant eviction is not acceptable merely because the runtime stayed within a memory budget.
+
+### Finding 19: persistent information asymmetry supports limited report access, while PEMA reinforces temporal attribution
+
+The champion-versus-challenger persistent-information-asymmetry experiment shows that deterministic differential access can preserve distinct local histories long enough to change later action while the language/report path lacks the decisive causal basis. Later explicit communication can change the report without merging hidden states. This is an existence proof for action/report asymmetry, not a requirement to split Pretorius into multiple processors.
+
+The PEMA developmental work also preserves a failed primary result where radically different evidence endpoints did not explain the mature behavioral split. Its successor freezes a temporal-attribution ladder because within-history ordering itself may be causal.
+
+Disposition: do not add a second multi-processor cognitive architecture. Instead use differential-access cases as P9/P11 tests of limited introspection, and retain the existing P11 developmental timing/trajectory-persistence requirement with frozen one-factor attribution when aggregate-history explanations fail.
+
+## Follow-on authoritative additions
+
+This follow-on pass adds four concrete requirements to the completion program:
+
+1. Gate 7 explicitly separates world-fact expectation, action-outcome expectation, observational sequence learning, intervention evidence, and counterfactual model prediction.
+2. P7/P9 gain exact renderer-visible private protection, explicit disclosure authority, limited introspection, and evidence-bearing self-explanation.
+3. P11 gains bounded-capacity/overflow tests with matched-history information-loss probes.
+4. NEXT_THINGS_TO_DO.md now records these mechanisms plus developmental timing/trajectory persistence so the to-do list and authoritative completion plan remain synchronized.
+
 ## Completion criterion after the audit
 
 No donor repository should remain necessary to understand how production Pretorius works. Donor repositories remain evidence, history, and experimental provenance.

@@ -361,6 +361,120 @@ Do not use page count, raw record count, or graph density alone as health signal
 
 Seed a knowledge store containing an orphan claim, a broken provenance reference, a stale synthesis, a contradictory claim pair, and a disconnected cluster. The health pass must identify each condition deterministically without mutating canonical state. Apply explicit repairs, rerun the pass, and verify that only the intended defects disappear.
 
+## 12. Action-outcome expectations, causal sequence learning, and counterfactual provenance
+
+### Gap
+
+The existing prediction item correctly requires frozen forecasts and calibration, but it does not yet distinguish several epistemically different predictive structures that DUCK v0.10 now keeps separate: predictions about world facts, predictions about the outcome of one exact action, observational action-sequence evidence, intervention-supported causal evidence, and estimates for routes that were never enacted.
+
+Collapsing those into one prediction table would create two errors. First, an unrelated observation could appear to resolve an action prediction. Second, an imagined alternative route could silently become training evidence or autobiographical material.
+
+### Implement
+
+Keep at least these representations mechanically distinct:
+
+- world-fact expectations, resolved only by subject-available evidence about the relevant fact;
+- action-outcome expectations, bound to one exact pending canonical action and resolved only by that action's registered outcome;
+- bounded sequence-conditioned predictive state for adjacent actions inside one canonical plan or other explicitly declared causal sequence;
+- pre-outcome intervention markers that cannot be added retroactively after the result is known;
+- matched comparison evidence before intervention-supported sequence information receives stronger causal weight;
+- counterfactual route estimates with fixed provenance such as `model_prediction`, never `lived_runtime_memory`, observed outcome, or confirmed fact.
+
+Observational succession may update a weak predictive association. It must not be labeled a causal effect merely because A happened before B. Intervention evidence must remain separately counted, and stronger causal use should require an eligible comparison condition rather than a narrative assertion that one action caused another.
+
+Counterfactual route comparisons should be transient or stored only in engineer/evaluation logs with explicit non-experience provenance. Unchosen routes have no actual outcome and therefore cannot train calibration, belief confidence, causal learning, or autobiographical memory. If a formerly counterfactual route is later enacted, that later execution is a new lived event with its own outcome.
+
+Raw probabilities, transition counts, plan IDs, route scores, and causal statistics remain behind the experiential firewall. Subject-facing cognition receives only approved qualitative consequences such as uncertainty, surprise, hesitation, or a first-person intention to test an approach.
+
+### Acceptance idea
+
+Create matched plans in which the same target action appears directly, after an ordinary preceding action, and after a preregistered intervention. Verify that observational and intervention evidence remain separate, that stronger causal influence is impossible before the matched comparison is eligible, and that a non-enacted alternative route leaves no autobiographical or learning trace. Restart mid-intervention and require exact continuation without retroactive relabeling.
+
+## 13. Private-cognition visibility, disclosure firewall, and limited introspection
+
+### Gap
+
+The completion plan already separates private cognition, communicative intention, and external expression, but later FirstPersonLoop hardening exposes a stricter requirement. If private text is deliberately shown to the speech renderer, every piece of private text visible to that renderer must remain inside the same privacy-protection domain. Protecting only the newest thought or an arbitrary last-N window creates an architectural leak.
+
+A second gap is introspective authority. Behavior may be causally influenced by state that is not focal or report-accessible. Pretorius must not automatically gain a privileged explanation of why he acted merely because engineer-visible machinery can identify the cause.
+
+### Implement
+
+For any expression path that exposes raw private text to a renderer:
+
+- derive the protection set from the exact private material present in that renderer frame, including older visible background thought;
+- reject unauthorized verbatim or near-verbatim copy-out rather than protecting only a fixed recent-thought count;
+- require an explicit communicative/disclosure act before private content is deliberately made public;
+- do not confuse this direct-copy guard with semantic secrecy: authorized paraphrase or disclosure remains a separate policy decision.
+
+Prefer renderer frames that contain an authorized communicative representation rather than unrestricted raw private text when practical.
+
+Preserve temporal causality around self-expression. Spoken output becomes available to Pretorius as self-hearing only after it is actually emitted and returned through the self-perception channel. It cannot influence the action that supposedly preceded its own emission.
+
+For self-explanation, distinguish:
+
+- engineer-known causal state;
+- subject-accessible cues;
+- the explanation Pretorius infers from those cues.
+
+A later statement such as "I did that because..." is a subject inference or self-model hypothesis unless Pretorius had direct evidence for the cause. Hidden utility values, routing decisions, neural statistics, or non-focal state must not be converted into autobiographical certainty through explanation.
+
+### Acceptance idea
+
+Expose six distinct private thoughts to a renderer, place sensitive material in the oldest still-visible thought, and force a verbatim/near-verbatim speech proposal. It must be blocked unless disclosure was explicitly authorized. Separately, create matched conditions in which an action is altered by a non-focal causal signal while the report channel lacks that signal. Behavior should diverge, but the immediate self-report must not hallucinate privileged access to the hidden cause. After later evidence becomes available, a revised explanation may be formed with provenance.
+
+## 14. Bounded-capacity and silent-information-loss audit
+
+### Gap
+
+Pretorius deliberately uses bounded stores and bounded working sets, but capacity itself can destroy continuity-relevant information. Champion-versus-challenger experiments demonstrated a precise failure mode: once an unresolved or prospective record is evicted, the remaining subject-owned state can become identical to a matched history in which that item never existed. No later deterministic policy can reconstruct information that the subject no longer contains.
+
+This is not a demand for unbounded memory. It is a demand that boundedness have explicit semantics.
+
+### Implement
+
+For every bounded production-load-bearing store, declare:
+
+- capacity and why the bound exists;
+- what counts toward the bound;
+- overflow policy: reject, defer, compress, archive, evict, or another explicit transition;
+- whether lost information is recoverable from canonical history;
+- whether eviction changes later behavioral eligibility;
+- restart/replay semantics at and beyond capacity.
+
+At minimum audit unresolved concerns, prospective commitments/cues, wake intents, handover carrying state, active hypotheses/predictions, and any future limited-capacity social or self-model store. Disposable retrieval caches are different: deleting them is acceptable only because they must be rebuildable from stronger authority.
+
+Do not hard-code another project's capacity of three. Use matched-history lower-bound tests to discover the minimum sufficient capacity for Pretorius's required behavior, and preserve the explicit information-loss frontier when the bound is exceeded.
+
+Silent destruction of unique identity/developmental state is prohibited. If the architecture intentionally forgets, the forgetting mechanism and its evidence must be explicit enough to distinguish "forgotten after existing" from "never existed" whenever that distinction is supposed to matter later.
+
+### Acceptance idea
+
+Fill each bounded store to capacity, add one more distinct item, then compare against a matched history in which the displaced item never existed. Verify the declared overflow policy, restart/replay behavior, and whether later relevant cues can or cannot recover the displaced item. If the two histories become intentionally indistinguishable, record that as the tested forgetting frontier rather than pretending continuity was preserved.
+
+## 15. Developmental timing and trajectory-persistence attribution
+
+### Gap
+
+A mechanism can change the next action yet fail to produce durable development. Kurzweil and PEMA experiments show two related hazards: intervention effects can reconverge later, and two histories with similar aggregate content can produce different mature behavior because temporal ordering differs.
+
+### Implement
+
+For any mechanism claimed to alter long-term identity or development:
+
+- preserve post-intervention trajectories rather than measuring only the immediate response;
+- compare early versus late interventions when timing is plausibly causal;
+- hold event content, opportunity counts, reward/cost structure, founder state, and evaluation probes fixed wherever possible;
+- include identical-history replicate controls;
+- use non-learning mature probes so measurement does not create the phenotype being measured;
+- if an aggregate-history result is surprising, use a frozen one-factor attribution ladder for temporal order, content, opportunity, or another preregistered construction difference.
+
+A transient divergence remains useful engineering evidence, but it is not a durable identity effect unless later common probes still detect it.
+
+### Acceptance idea
+
+Give matched Pretorius instances the same intervention at different developmental times, then continue both through an identical post-intervention history and evaluate them with a frozen non-learning probe battery. Report immediate divergence, decay/reconvergence, and mature divergence separately. A claimed persistent-identity mechanism must meet a preregistered persistence criterion rather than relying on its largest immediate effect.
+
 ## What not to duplicate
 
 The Reddit architecture also describes several capabilities Pretorius already has in equal or stronger form. Do not add parallel systems merely to match terminology.
