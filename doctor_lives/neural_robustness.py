@@ -37,7 +37,7 @@ from .neural_lesions import (
 )
 
 ROBUSTNESS_PROTOCOL_VERSION = "neural-convergence-robustness-b07-v1"
-RECURRENT_WEIGHT_CLIP_FRACTIONS = (0.75, 0.50)
+RECURRENT_WEIGHT_CLIP_QUANTILES = (0.99, 0.95)
 DELTA_CLIP_QUANTILES = (0.95, 0.75)
 MODEST_WEIGHT_PERTURBATION_FRACTION = 0.02
 HIGH_CHANGE_FRACTION = CAUSAL_CORE_FRACTION
@@ -204,19 +204,22 @@ def apply_delta(
 
 def clip_recurrent_weights(
     net: PretoriusRecurrentSubstrate,
-    fraction: float,
+    quantile: float,
 ) -> dict[str, Any]:
-    fraction = float(fraction)
-    if not 0.0 < fraction <= 1.0:
-        raise ValueError("weight clip fraction must be in (0, 1]")
-    limit = fraction * float(net.cfg["max_abs_weight"])
+    quantile = float(quantile)
+    if not 0.0 < quantile < 1.0:
+        raise ValueError("weight clip quantile must be in (0, 1)")
     before = net.W.data.copy()
+    limit = float(np.quantile(np.abs(before.astype(np.float64)), quantile))
     net.W.data[:] = np.clip(net.W.data, -limit, limit)
     net._enforce_sign_and_bounds()
+    affected = int(np.count_nonzero(before != net.W.data))
+    if affected <= 0:
+        raise RuntimeError("recurrent-weight quantile clipping must affect at least one edge")
     return {
-        "fraction_of_configured_limit": fraction,
+        "quantile": quantile,
         "absolute_limit": limit,
-        "affected_edge_count": int(np.count_nonzero(before != net.W.data)),
+        "affected_edge_count": affected,
     }
 
 
@@ -539,17 +542,17 @@ def run_robustness(
     )
 
     weight_clip_summaries: dict[str, Any] = {}
-    for fraction in RECURRENT_WEIGHT_CLIP_FRACTIONS:
-        name = f"developed_weight_clip_{int(round(fraction * 100))}pct_limit"
+    for quantile in RECURRENT_WEIGHT_CLIP_QUANTILES:
+        name = f"developed_weight_clip_q{int(round(quantile * 100))}"
 
-        def builder(f: float = fraction) -> PretoriusRecurrentSubstrate:
+        def builder(q: float = quantile) -> PretoriusRecurrentSubstrate:
             net = PretoriusRecurrentSubstrate.load(b05_developed_path)
-            clip_recurrent_weights(net, f)
+            clip_recurrent_weights(net, q)
             return net
 
         summary, records, _ = _repeatable_condition(name, builder, probes, intact_records)
         metadata_net = PretoriusRecurrentSubstrate.load(b05_developed_path)
-        summary["clip_definition"] = clip_recurrent_weights(metadata_net, fraction)
+        summary["clip_definition"] = clip_recurrent_weights(metadata_net, quantile)
         weight_clip_summaries[name] = summary
 
     delta_clip_summaries: dict[str, Any] = {}
@@ -684,7 +687,7 @@ def run_robustness(
             "high_change_vs_ordinary": (
                 "Compare top 5 percent absolute learned-delta edge reversion against an equal-size, E/I-matched set closest to the median absolute learned-delta magnitude."
             ),
-            "recurrent_weight_clipping": [float(x) for x in RECURRENT_WEIGHT_CLIP_FRACTIONS],
+            "recurrent_weight_clipping_quantiles": [float(x) for x in RECURRENT_WEIGHT_CLIP_QUANTILES],
             "delta_clipping_quantiles": [float(x) for x in DELTA_CLIP_QUANTILES],
             "modest_perturbation": MODEST_WEIGHT_PERTURBATION_FRACTION,
             "fixed_seed_rerun": (
@@ -757,7 +760,7 @@ def validate_robustness_protocol_surface() -> dict[str, Any]:
         "independent_seed_rule": "next decisive seed cyclically",
         "evaluation_steps_per_condition": EVALUATION_STEPS,
         "high_change_fraction": HIGH_CHANGE_FRACTION,
-        "recurrent_weight_clip_fractions": list(RECURRENT_WEIGHT_CLIP_FRACTIONS),
+        "recurrent_weight_clip_quantiles": list(RECURRENT_WEIGHT_CLIP_QUANTILES),
         "delta_clip_quantiles": list(DELTA_CLIP_QUANTILES),
         "modest_weight_perturbation_fraction": MODEST_WEIGHT_PERTURBATION_FRACTION,
         "assignment_permutation": "deterministic within E/I strata; exact per-stratum delta multiset preserved",

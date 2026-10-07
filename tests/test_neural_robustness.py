@@ -18,7 +18,7 @@ from doctor_lives.neural_robustness import (
     DELTA_CLIP_QUANTILES,
     HIGH_CHANGE_FRACTION,
     MODEST_WEIGHT_PERTURBATION_FRACTION,
-    RECURRENT_WEIGHT_CLIP_FRACTIONS,
+    RECURRENT_WEIGHT_CLIP_QUANTILES,
     apply_delta,
     clip_delta_by_quantile,
     clip_recurrent_weights,
@@ -83,8 +83,8 @@ class NeuralRobustnessHarnessTests(unittest.TestCase):
             HIGH_CHANGE_FRACTION,
         )
         self.assertEqual(
-            tuple(surface["recurrent_weight_clip_fractions"]),
-            RECURRENT_WEIGHT_CLIP_FRACTIONS,
+            tuple(surface["recurrent_weight_clip_quantiles"]),
+            RECURRENT_WEIGHT_CLIP_QUANTILES,
         )
         self.assertEqual(
             tuple(surface["delta_clip_quantiles"]),
@@ -205,16 +205,19 @@ class NeuralRobustnessHarnessTests(unittest.TestCase):
 
     def test_weight_and_delta_clipping_preserve_sign_contract(self):
         stabilized, developed = _small_pair()
-        clip_recurrent_weights(
-            developed, 0.50
+        metadata = clip_recurrent_weights(
+            developed, 0.95
         )
         self.assertTrue(
             verify_sign_contract(developed)["pass"]
         )
+        self.assertGreater(
+            metadata["affected_edge_count"],
+            0,
+        )
         self.assertLessEqual(
             float(np.max(np.abs(developed.W.data))),
-            0.5 * float(developed.cfg["max_abs_weight"])
-            + 1e-7,
+            metadata["absolute_limit"] + 1e-7,
         )
 
         delta = learned_recurrent_delta(
