@@ -34,7 +34,8 @@ At the end of every turn, record:
 4. focused tests run and result;
 5. workflow status if already available;
 6. any residual defect;
-7. the next allowed step ID.
+7. the next allowed step ID;
+8. whether the step created or changed any subject-accessible surface and, if so, which first-person projection and leak tests protect it.
 
 If CI has not completed by the end of the turn, stop anyway. The next numbered validation turn inspects CI. Do not wait in the background.
 
@@ -42,7 +43,7 @@ If CI has not completed by the end of the turn, stop anyway. The next numbered v
 
 Use this form:
 
-Continue The-Doctor-Lives using PRETORIUS_ONE_TURN_EXECUTION_RUNBOOK.md. Perform only step [STEP ID]. Inspect current main, the active branch, and the runbook first. Do not start the next step. Push the completed step to GitHub, report the exact head SHA and focused test result, then stop.
+Continue The-Doctor-Lives using PRETORIUS_ONE_TURN_EXECUTION_RUNBOOK.md. Perform only step [STEP ID]. Inspect current main, the active branch, and the runbook first. Enforce FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md on every surface that could become available to Pretorius. Raw machine state may remain engineer-visible or causally active but must never enter subject-accessible context except through an approved natural-language subject projection. Do not start the next step. Push the completed step to GitHub, report the exact head SHA and focused test result, then stop.
 
 If the current step is blocked or fails, stay on the same step and make only the minimum repair needed for that step.
 
