@@ -176,6 +176,21 @@ class NeuralLesionHarnessTests(unittest.TestCase):
             ),
         )
 
+    def test_zero_edge_reversion_is_exact_noop(self):
+        stabilized, developed = _small_pair()
+        before = developed.W.data.copy()
+        revert_learned_edges(
+            developed,
+            stabilized,
+            np.asarray([], dtype=np.int64),
+        )
+        self.assertTrue(
+            np.array_equal(
+                developed.W.data,
+                before,
+            )
+        )
+
     def test_partial_reversion_changes_only_selected_edges(self):
         stabilized, developed = _small_pair()
         before = developed.W.data.copy()
