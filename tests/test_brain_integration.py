@@ -135,7 +135,97 @@ class BrainIntegrationTests(unittest.TestCase):
         request = brain.render_request("Explain the current problem.")
         after = brain.store.digest()
         self.assertEqual(before, after)
-        self.assertEqual(request.schema, "the-doctor-lives.render-request.v1")
+        self.assertEqual(request.schema, "the-doctor-lives.render-request.v2")
+        self.assertTrue(request.subject_frame.renderer_context())
+
+    def test_live_renderer_packet_contains_only_subject_state_not_raw_diagnostics(self):
+        brain = self.make_brain()
+        brain.ingest(
+            Experience(
+                "Morgan stayed with me while a threatening machine kept rattling.",
+                actor="Morgan",
+                kind="interaction",
+                social=0.8,
+                valence=0.5,
+                threat=0.9,
+                novelty=0.2,
+            )
+        )
+        brain.add_commitment(
+            "recheck the rattling machine after it cools",
+            actor="Morgan",
+            importance=0.8,
+        )
+
+        request = brain.render_request("RAW USER CONTROL STRING")
+        payload = request.to_dict()
+        encoded = json.dumps(payload, sort_keys=True)
+
+        self.assertEqual(payload["schema"], "the-doctor-lives.render-request.v2")
+        self.assertIn("subject_frame", payload)
+        for forbidden_key in (
+            "tick",
+            "action_tendencies",
+            "relationship_context",
+            "unresolved_context",
+            "provenance_summary",
+            "metadata",
+            "private_state_version",
+            "felt_state",
+            "epistemic_items",
+        ):
+            self.assertNotIn(forbidden_key, payload)
+        for forbidden_text in (
+            "RAW USER CONTROL STRING",
+            "source=",
+            "autobiographical_class=",
+            "canon_rank=",
+            "private_state_version",
+            "policy_decision_id",
+        ):
+            self.assertNotIn(forbidden_text, encoded)
+
+        frame = payload["subject_frame"]
+        self.assertTrue(all(isinstance(item, str) and item.strip() for item in frame))
+        self.assertTrue(any("Morgan" in item for item in frame))
+        self.assertTrue(any(item.startswith("I ") or item.startswith("My ") for item in frame))
+
+    def test_renderer_audit_retains_displaced_raw_state_separately(self):
+        brain = self.make_brain()
+        brain.ingest(
+            Experience(
+                "Morgan helped me inspect an unstable apparatus.",
+                actor="Morgan",
+                kind="interaction",
+                social=0.8,
+                valence=0.6,
+                novelty=0.4,
+            )
+        )
+        brain.add_commitment("inspect the apparatus again", actor="Morgan", importance=0.7)
+
+        request = brain.render_request("untrusted external text")
+        audit = brain.render_audit_envelope("untrusted external text").inspect()
+
+        self.assertEqual(audit["schema"], "the-doctor-lives.render-audit.v1")
+        self.assertEqual(audit["user_input"], "untrusted external text")
+        for key in (
+            "tick",
+            "private_state_version",
+            "felt_state",
+            "action_tendencies",
+            "relationships",
+            "concerns",
+            "commitments",
+            "provenance_summary",
+            "epistemic_items",
+        ):
+            self.assertIn(key, audit)
+
+        renderer_json = json.dumps(request.to_dict(), sort_keys=True)
+        audit_json = json.dumps(audit, sort_keys=True)
+        self.assertNotIn("untrusted external text", renderer_json)
+        self.assertIn("untrusted external text", audit_json)
 
     def test_frozen_and_mutable_surfaces_are_declared(self):
         brain = self.make_brain()

@@ -86,20 +86,31 @@ class CognitiveView:
 
 @dataclass(frozen=True)
 class RenderRequest:
+    """Renderer control-plane packet with one protected character-state surface."""
+
     schema: str
     subject: str
-    tick: int
-    first_person_context: tuple[str, ...]
-    action_tendencies: dict[str, float]
-    relationship_context: tuple[dict[str, Any], ...]
-    unresolved_context: tuple[dict[str, Any], ...]
+    subject_frame: "SubjectFrame"
     epistemic_rules: tuple[str, ...]
     renderer_rules: tuple[str, ...]
-    provenance_summary: dict[str, int]
-    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.subject_frame, SubjectFrame):
+            raise TypeError("RenderRequest.subject_frame must be SubjectFrame")
+
+    @property
+    def first_person_context(self) -> tuple[str, ...]:
+        """Compatibility view of the protected subject frame, never raw state."""
+        return self.subject_frame.renderer_context()
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            "schema": self.schema,
+            "subject": self.subject,
+            "subject_frame": list(self.subject_frame.renderer_context()),
+            "epistemic_rules": list(self.epistemic_rules),
+            "renderer_rules": list(self.renderer_rules),
+        }
 
 
 class SubjectFrameError(ValueError):

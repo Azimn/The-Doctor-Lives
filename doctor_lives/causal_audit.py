@@ -183,13 +183,12 @@ def deterministic_audit_render(
     observable without allowing a renderer to mutate or reinterpret brain state.
     """
     normalized = _behavioral_request_payload(render_request)
+    subject_frame = normalized.get("subject_frame", ())
+    if not isinstance(subject_frame, list):
+        subject_frame = []
     payload = {
         "selected_action": selected_action,
-        "first_person_context": list(normalized.get("first_person_context", ()))[:4],
-        "felt_state": dict(normalized.get("metadata", {}).get("felt_state", {})),
-        "relationship_context": list(normalized.get("relationship_context", ())),
-        "unresolved_context": list(normalized.get("unresolved_context", ()))[:6],
-        "provenance_summary": dict(normalized.get("provenance_summary", {})),
+        "subject_frame": list(subject_frame)[:8],
     }
     text = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return {"text": text, "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()}

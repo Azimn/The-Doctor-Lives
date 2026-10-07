@@ -111,19 +111,23 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
         assert cls["autobiographical_class"] == "lived_runtime_memory"
 
         digest_before_render = brain.store.digest()
-        request = brain.render_request("What does Ingolstadt mean in my history?").to_dict()
+        query = "What does Ingolstadt mean in my history?"
+        request = brain.render_request(query).to_dict()
+        audit = brain.render_audit_envelope(query).inspect()
         digest_after_render = brain.store.digest()
         assert digest_before_render == digest_after_render
-        assert request["schema"] == "the-doctor-lives.render-request.v1"
-        assert request["metadata"]["epistemic_items"]
+        assert request["schema"] == "the-doctor-lives.render-request.v2"
+        assert audit["epistemic_items"]
         assert any(
             item.get("autobiographical_class") == "reconstructed_preawakening_memory"
-            for item in request["metadata"]["epistemic_items"]
+            for item in audit["epistemic_items"]
         )
         assert any(
             "reconstructed preawakening" in line.lower()
-            for line in request["first_person_context"]
+            for line in request["subject_frame"]
         )
+        assert "metadata" not in request
+        assert "action_tendencies" not in request
         assert "tool_authority" not in repr(request).lower()
         assert "capability_grant" not in repr(request).lower()
 
