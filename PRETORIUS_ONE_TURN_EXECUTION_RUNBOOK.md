@@ -46,6 +46,10 @@ Continue The-Doctor-Lives using PRETORIUS_ONE_TURN_EXECUTION_RUNBOOK.md. Perform
 
 If the current step is blocked or fails, stay on the same step and make only the minimum repair needed for that step.
 
+## Global first-person subject-interface invariant
+
+Every step that creates information which may become available to Pretorius must obey FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md. Raw machine state may remain causally active and engineer-visible, but character-visible content must be natural-language subject-native experience. A mechanism without an approved projection path remains hidden from introspection.
+
 # Phase A: finish Gate 1 and converge the planning line
 
 | Step | One-turn objective | Required output | Completion proof |
@@ -58,6 +62,11 @@ If the current step is blocked or fails, stay on the same step and make only the
 | A06 | Verify post-merge Gate 1 production CI | Inspect fresh main workflows and installed-wheel/historical-migration evidence | All required production workflows green |
 | A07 | Complete Issue #8 end-user-machine validation | Run the documented fresh physical or equivalent user-machine procedure and preserve evidence | Exact machine/environment result recorded. If user action is required, stop with exact instructions |
 | A08 | Merge the planning branch after Gate 1 is stable | Bring NEXT_THINGS_TO_DO.md, completion plan, donor audit, and this runbook into main | Planning docs present on main and post-merge docs/CI clean |
+| A09 | Introduce the production Subject Frame versus Engineer Audit Envelope boundary | Add explicit data types/capabilities so character-visible content and engineer diagnostics cannot share one renderer payload | Construction tests prove Subject Frame contains natural-language subject content only |
+| A10 | Migrate current live renderer context to subject-native projections | Replace raw action tendencies, relationship/concern/commitment rows, felt-state metadata, provenance labels, and state metadata in renderer-visible context with deterministic first-person realizations | Renderer packet leak/adversarial tests green while engineer audit remains complete |
+| A11 | Harden live private thought and memory-workspace text | Remove hidden policy labels and engineer classification prefixes from character-visible thought/recollection text; retain raw causal data only in audit records | Internal-thought and recollection tests show natural subject wording with no privileged introspection |
+| A12 | Add raw-input/prompt-injection subject firewall | Raw user/world/body/tool/scheduler input remains protected until an ingress/perception projector creates a subject-native percept or communication event | Raw telemetry/JSON/system-like input cannot become lived character content directly |
+| A13 | Review and merge the Subject Interface Firewall gate | Run full subject-interface adversarial suite and independent review | Accepted gate proves the live renderer/subject path obeys FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md |
 
 # Phase B: retire branch ambiguity and characterize Neural Convergence
 
@@ -348,6 +357,7 @@ No feature work may be added after O01 without invalidating the final preregistr
 | Private-cognition visibility and limited introspection | G05, G09-G10, O15 |
 | Bounded-capacity silent-information-loss audit | L17, O14 |
 | Developmental timing and trajectory persistence | O09, plus per-challenger preregistration where required |
+| Universal first-person subject-interface firewall | A09-A13; reinforced by E01-E10, G01-G11, H01-H10, I01-I09, J01-J07, K01-K06, L01-L18, M01-M06, O15 |
 
 # Completion rule
 

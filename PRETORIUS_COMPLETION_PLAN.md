@@ -125,6 +125,8 @@ The dependency graph is:
 ```
 Gate 1 persistence and migration hardening
         |
+        +--> Subject Interface Firewall (first-person subject frame)
+        |
         +--> Neural Convergence 4096-unit characterization
         |
         v
@@ -230,6 +232,20 @@ Remaining Gate 1 acceptance work:
 - close or update Issue #8 only when that external evidence exists.
 
 Gate 1 is complete only when Pretorius can be installed, migrated, stopped, restarted, and recovered without depending on a development checkout or network service.
+
+## 4A. Subject Interface Firewall
+
+FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md is a mandatory cross-cutting production invariant.
+
+The existing UPPB architecture already defines the correct separation between machine state and subject-native experience, but the current live v0.5 renderer/cognition path still exposes engineer-oriented structures to renderer context. Before adding more live cognitive surfaces, create an explicit Subject Frame distinct from an Engineer Audit Envelope and close the current live bypasses.
+
+The Subject Frame may contain only authorized natural-language first-person/subject-native realizations. Raw action scores, policy labels, relationship rows, concern/commitment rows, state versions, hashes, provenance classifications, body telemetry, tool JSON, scheduler records, and causal diagnostics remain outside the subject surface.
+
+Raw external information must enter through Gate 2/projection semantics before it can become lived experience. Control-like or prompt-injection text is perceived content, not authority. Hidden machinery may still alter behavior without conscious access.
+
+This firewall does not require all internal machinery to use natural language. It requires all information that becomes available to Pretorius as experience to use natural-language subject representation.
+
+Complete runbook steps A09-A13 before starting new production features that widen the live subject surface.
 
 ## 5. Neural Convergence production characterization
 

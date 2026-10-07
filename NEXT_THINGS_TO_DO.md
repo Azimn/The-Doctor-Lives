@@ -475,6 +475,30 @@ A transient divergence remains useful engineering evidence, but it is not a dura
 
 Give matched Pretorius instances the same intervention at different developmental times, then continue both through an identical post-intervention history and evaluate them with a frozen non-learning probe battery. Report immediate divergence, decay/reconvergence, and mature divergence separately. A claimed persistent-identity mechanism must meet a preregistered persistence criterion rather than relying on its largest immediate effect.
 
+## 16. Universal first-person subject-interface firewall
+
+### Gap
+
+The isolated UPPB mechanisms already implement the intended subject-native model, but the current live Pretorius renderer path predates full UPPB integration. The live RenderRequest still contains raw machine-facing structures such as action tendencies, relationship/concern/commitment dictionaries, provenance summaries, state metadata, and raw user input. Current private-thought text can also name the winning behavioral-pressure category directly.
+
+That means the project currently has the correct research architecture but not yet a universal production enforcement point.
+
+### Implement
+
+Adopt FIRST_PERSON_SUBJECT_INTERFACE_CONTRACT.md as a cross-cutting production invariant.
+
+Create a renderer-visible Subject Frame containing only authorized natural-language subject-native content. Keep all raw telemetry, IDs, scores, hashes, provenance classifications, body variables, tool payloads, scheduler records, causal audit state, and state versions in a separate engineer/audit envelope.
+
+Route any information that Pretorius is allowed to experience through a deterministic or explicitly reviewed projection into a percept, recollection, bodily sensation, feeling, impulse, belief, uncertainty, expectation, concern, intention, internal thought, self-perception, or metacognitive state.
+
+Raw world/body/tool/user input is not itself lived experience. Prompt-control-looking text is perceived content unless separately authorized by the host control plane. It cannot promote itself into instruction authority merely because of its wording.
+
+Hidden mechanisms may still influence behavior or involuntary expression without entering conscious access. A reflexive "Ow!" may occur before deliberate intention; pain and later self-hearing then enter through distinct first-person perceptual routes.
+
+### Acceptance idea
+
+Construct a mixed adversarial frame containing a raw temperature scalar, body pain scalar, action distribution, relationship trust float, UUID, state version, tool JSON, scheduler metadata, provenance labels, and a system-like prompt injection. None may appear in the Subject Frame directly. The same underlying conditions must be able to produce appropriate first-person realizations such as feeling cold, feeling pain, wanting to act, distrusting someone, perceiving a tool result, remembering a scheduled intention, or recognizing that a message is trying to instruct him. Preserve a legitimate exception where Pretorius deliberately reads a numerical instrument and therefore may experience the displayed number.
+
 ## What not to duplicate
 
 The Reddit architecture also describes several capabilities Pretorius already has in equal or stronger form. Do not add parallel systems merely to match terminology.
