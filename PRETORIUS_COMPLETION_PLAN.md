@@ -16,6 +16,8 @@ The donor audit is additive. It does not reopen accepted production behavior mer
 
 The goal is one definitive Pretorius implementation in The-Doctor-Lives. Historical branches and donor repositories are evidence and reference material only. They are not parallel products.
 
+Execution decomposition: PRETORIUS_ONE_TURN_EXECUTION_RUNBOOK.md is the authoritative turn-sized sequence for carrying this plan out in the ChatGPT web interface. It does not change gate semantics; it only limits one turn to one bounded step.
+
 ## 1. Branch convergence policy
 
 The repository currently contains several historical feature and integration branches. They fall into three categories.

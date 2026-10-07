@@ -489,6 +489,10 @@ Do not weaken the renderer boundary. Model output remains proposal or wording, n
 
 Do not treat first-person continuity claims as evidence that continuity exists. Continue using restart, migration, lesion, renderer substitution, provenance, and behavioral causality as the evidence.
 
+## Execution decomposition
+
+Implementation must follow PRETORIUS_ONE_TURN_EXECUTION_RUNBOOK.md. Each numbered runbook step is one ChatGPT web turn. Do not combine adjacent steps merely because they are in the same gate. Failed steps remain on the same ID until repaired. Validation/review and merge are separate turns.
+
 ## Suggested order
 
 These items should not interrupt the current Gate 1 review and persistence-hardening work.
