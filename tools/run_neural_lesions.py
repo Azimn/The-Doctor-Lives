@@ -58,9 +58,9 @@ def main() -> int:
             {
                 "seed": result["seed"],
                 "artifact_sha256": result["artifact_sha256"],
-                "intact_sham_exact_match_to_b05_restart": result[
+                "intact_sham_behavioral_match_to_b05_restart": result[
                     "causal_contrasts"
-                ]["intact_sham_exact_match_to_b05_restart"],
+                ]["intact_sham_behavioral_match_to_b05_restart"],
                 "targeted_minus_random_damage": result[
                     "causal_contrasts"
                 ]["targeted_minus_random_damage"],
