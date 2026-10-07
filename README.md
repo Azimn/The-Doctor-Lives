@@ -69,3 +69,35 @@ The v0.5 release candidate is the single review target for current Pretorius dev
 The production default remains the accepted v0.4 behavioral path. This is intentional. UPPB P0 through P6D is included as a complete standalone subsystem but is not yet allowed to replace the live subject-facing Pretorius path. Neural Convergence is included behind the explicit `NEURAL_CONVERGENCE_CONFIG` profile while the legacy v0.4 neural configuration remains the control. The release candidate therefore gives the assessor one repository state that contains all validated work without silently promoting an experimental mechanism past its evidence gate.
 
 The release provenance and assessor scope are recorded in `ASSESSOR_REVIEW.md`.
+
+
+## Gate 1 canonical evidence authority
+
+Post-RC1 production hardening now places canonical package evidence behind a versioned runtime authority. The installed distribution is verified against doctor_lives/data/canonical_evidence_manifest_v1.json before the cognitive store is opened. Pretorius then consumes an immutable state-local snapshot rather than reading identity and deep-history files directly from package paths.
+
+The active snapshot is append-only. Corruption or a missing artifact fails closed. Explicit recovery creates and verifies a new snapshot from the installed distribution before atomically advancing the active pointer, leaving the damaged snapshot available for audit and leaving subjective or lived state untouched. The SQLite store binds itself to the exact manifest version and fingerprint and rejects partial or incompatible bindings. See EVIDENCE_AUTHORITY_CONTRACT.md.
+
+This is the repository-side canonical-evidence portion of Issue #17 and Gate 1 in Issue #14. It does not claim completion of the separate fresh physical user-machine validation in Issue #8.
+
+
+## Gate 1 state-schema migration safety
+
+Long-lived SQLite state now checks its declared schema version before mutation. Supported older state is snapshotted through SQLite backup, migrated, structurally validated, and recorded in an append-only migration lineage. A failed migration restores the exact pre-migration snapshot. Future schemas, malformed versions, and partial current schemas fail closed rather than being rewritten to the runtime version. See PERSISTENCE_MIGRATION_CONTRACT.md.
+
+
+The recurrent NPZ checkpoint now uses an atomic write-validate-replace path. New checkpoints carry an explicit checkpoint schema marker, legacy RC1 checkpoints remain structurally validated and loadable, and truncated or future-schema checkpoints fail closed without overwriting the previous valid recurrent state.
+
+
+## Gate 1 clean-install validation
+
+The repository now has a dedicated non-editable wheel-install workflow, gate1-fresh-install-validation. It installs the built wheel into an isolated virtual environment, runs outside the source checkout, forbids Python socket activity during runtime validation, creates real production-size Pretorius state, ingests lived experience, persists relationship and commitment state, verifies render read-only behavior and deterministic retrieval, saves, restarts, and emits a preserved JSON validation artifact.
+
+The separate physical or equivalent fresh end-user-machine procedure remains documented in GATE1_FRESH_MACHINE_VALIDATION.md. CI evidence is supporting evidence and does not by itself close Issue #8.
+
+
+Gate 1 migration CI now also executes exact historical commit 7be60ed46add7c74359b322cc033aa7dfabb08e8 to generate a real older Pretorius state directory, then opens and migrates that directory with the current candidate. This supplements the deterministic SQL schema fixture with an actual old-code state-generation path.
+
+
+## v0.5.0rc2 review candidate
+
+The Gate 1 persistence and migration hardening branch is packaged as 0.5.0rc2 for independent review. This version label does not mean Gate 1 is fully accepted. The external fresh end-user-machine evidence required by Issue #8 remains outstanding until it is actually run and preserved. See GATE1_ASSESSOR_REVIEW.md.

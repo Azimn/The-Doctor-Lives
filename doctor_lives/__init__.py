@@ -1,6 +1,7 @@
 """The Doctor Lives: persistent renderer-neutral Pretorius cognition."""
 
 from .causal_audit import AuditIntervention, CausalAuditHarness
+from .evidence_authority import CanonicalEvidenceAuthority, EvidenceIntegrityError
 from .awareness import AwarenessCandidate, AwarenessDecision, AwarenessPolicy, AwarenessRouter
 from .recollection import (
     ContextAssociation,
@@ -84,6 +85,8 @@ from .projection import (
 
 __all__ = [
     "PretoriusBrain",
+    "CanonicalEvidenceAuthority",
+    "EvidenceIntegrityError",
     "CausalAuditHarness",
     "AuditIntervention",
     "PretoriusBrainPort",

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 import sqlite3
 import uuid
 from contextlib import closing, contextmanager
@@ -11,6 +13,12 @@ from typing import Any, Iterable
 
 
 SCHEMA_VERSION = 6
+MIN_SUPPORTED_SCHEMA_VERSION = 2
+
+
+class StateMigrationError(RuntimeError):
+    """Raised when persisted state cannot be safely opened or migrated."""
+
 
 WORDING_KINDS = frozenset({"quoted", "paraphrased", "reconstructed", "synthesized"})
 
@@ -342,17 +350,251 @@ class BrainStore:
                 "ALTER TABLE policy_decisions ADD COLUMN state_pressure_json TEXT NOT NULL DEFAULT '{}'"
             )
 
-    def init(self) -> None:
-        with closing(self.connect()) as conn:
+    @staticmethod
+    def _schema_shape(conn: sqlite3.Connection) -> dict[str, set[str]]:
+        tables = [
+            str(row[0])
+            for row in conn.execute(
+                """SELECT name FROM sqlite_master
+                WHERE type='table' AND name NOT LIKE 'sqlite_%'
+                ORDER BY name"""
+            ).fetchall()
+        ]
+        return {
+            table: {
+                str(row["name"])
+                for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+            for table in tables
+        }
+
+    @classmethod
+    def _expected_schema_shape(cls) -> dict[str, set[str]]:
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        try:
             conn.executescript(SCHEMA)
-            self._migrate_schema(conn)
-            conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('schema_version',?)", (str(SCHEMA_VERSION),))
-            conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('tick','0')")
-            conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('state_version','0')")
-            conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('bootstrap_version','')")
-            conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('deep_history_version','')")
-            conn.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),))
-            conn.commit()
+            return cls._schema_shape(conn)
+        finally:
+            conn.close()
+
+    def _inspect_schema_version(self) -> int | None:
+        if not self.path.exists() or self.path.stat().st_size == 0:
+            return None
+        try:
+            with closing(self.connect()) as conn:
+                table = conn.execute(
+                    """SELECT name FROM sqlite_master
+                    WHERE type='table' AND name='meta'"""
+                ).fetchone()
+                if table is None:
+                    raise StateMigrationError(
+                        "existing state database has no meta table; refusing schema inference"
+                    )
+                row = conn.execute(
+                    "SELECT value FROM meta WHERE key='schema_version'"
+                ).fetchone()
+                if row is None:
+                    raise StateMigrationError(
+                        "existing state database has no schema_version; refusing schema inference"
+                    )
+                try:
+                    return int(row[0])
+                except (TypeError, ValueError) as exc:
+                    raise StateMigrationError(
+                        f"persisted schema_version {row[0]!r} is not an integer"
+                    ) from exc
+        except sqlite3.DatabaseError as exc:
+            raise StateMigrationError(
+                f"persisted state database is unreadable: {self.path}"
+            ) from exc
+
+    def _validate_current_schema(self) -> None:
+        expected = self._expected_schema_shape()
+        with closing(self.connect()) as conn:
+            integrity = [str(row[0]) for row in conn.execute("PRAGMA integrity_check").fetchall()]
+            if integrity != ["ok"]:
+                raise StateMigrationError(
+                    f"SQLite integrity check failed: {integrity!r}"
+                )
+            actual = self._schema_shape(conn)
+        missing_tables = sorted(set(expected) - set(actual))
+        missing_columns = {
+            table: sorted(expected[table] - actual.get(table, set()))
+            for table in expected
+            if expected[table] - actual.get(table, set())
+        }
+        if missing_tables or missing_columns:
+            raise StateMigrationError(
+                "persisted schema does not match its declared current version: "
+                f"missing_tables={missing_tables!r}, missing_columns={missing_columns!r}"
+            )
+
+    @staticmethod
+    def _sha256_file(path: Path) -> str:
+        h = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    def _create_migration_snapshot(self, source_version: int) -> tuple[Path, str]:
+        snapshot_dir = self.path.parent / "migration_snapshots"
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        temp = snapshot_dir / f".{self.path.name}.migration.tmp"
+        if temp.exists():
+            temp.unlink()
+        source = sqlite3.connect(self.path)
+        destination = sqlite3.connect(temp)
+        try:
+            source.backup(destination)
+            destination.commit()
+        finally:
+            destination.close()
+            source.close()
+        digest = self._sha256_file(temp)
+        final = snapshot_dir / (
+            f"{self.path.stem}-schema-v{source_version}-to-v{SCHEMA_VERSION}-"
+            f"{digest[:16]}.sqlite3"
+        )
+        if final.exists():
+            if self._sha256_file(final) != digest:
+                temp.unlink(missing_ok=True)
+                raise StateMigrationError(
+                    f"migration snapshot collision for {final.name}"
+                )
+            temp.unlink()
+        else:
+            os.replace(temp, final)
+        return final, digest
+
+    def _restore_migration_snapshot(self, snapshot: Path) -> None:
+        temp = self.path.with_name(f".{self.path.name}.restore.tmp")
+        temp.unlink(missing_ok=True)
+        shutil.copyfile(snapshot, temp)
+        for suffix in ("-wal", "-shm"):
+            self.path.with_name(self.path.name + suffix).unlink(missing_ok=True)
+        os.replace(temp, self.path)
+
+    def _record_schema_migration(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        source_version: int,
+        snapshot: Path,
+        snapshot_sha256: str,
+    ) -> None:
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key='state_schema_migrations_json'"
+        ).fetchone()
+        raw = "[]" if row is None else str(row[0])
+        try:
+            lineage = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise StateMigrationError(
+                "state_schema_migrations_json is malformed"
+            ) from exc
+        if not isinstance(lineage, list):
+            raise StateMigrationError(
+                "state_schema_migrations_json must contain a list"
+            )
+        lineage.append({
+            "from_version": source_version,
+            "to_version": SCHEMA_VERSION,
+            "migration": "BrainStore._migrate_schema",
+            "pre_migration_snapshot": snapshot.name,
+            "pre_migration_snapshot_sha256": snapshot_sha256,
+        })
+        conn.execute(
+            "INSERT OR REPLACE INTO meta(key,value) VALUES('state_schema_migrations_json',?)",
+            (json.dumps(lineage, sort_keys=True),),
+        )
+
+    def _migrate_existing_state(self, source_version: int) -> None:
+        snapshot, snapshot_sha256 = self._create_migration_snapshot(source_version)
+        try:
+            with closing(self.connect()) as conn:
+                conn.executescript(SCHEMA)
+                self._migrate_schema(conn)
+                conn.execute(
+                    "INSERT OR IGNORE INTO meta(key,value) VALUES('state_version','0')"
+                )
+                self._record_schema_migration(
+                    conn,
+                    source_version=source_version,
+                    snapshot=snapshot,
+                    snapshot_sha256=snapshot_sha256,
+                )
+                row = conn.execute(
+                    "SELECT value FROM meta WHERE key='state_version'"
+                ).fetchone()
+                state_version = int(row[0] if row is not None else 0) + 1
+                conn.execute(
+                    "INSERT OR REPLACE INTO meta(key,value) VALUES('state_version',?)",
+                    (str(state_version),),
+                )
+                conn.execute(
+                    "UPDATE meta SET value=? WHERE key='schema_version'",
+                    (str(SCHEMA_VERSION),),
+                )
+                conn.commit()
+            self._validate_current_schema()
+        except Exception as exc:
+            self._restore_migration_snapshot(snapshot)
+            if isinstance(exc, StateMigrationError):
+                raise
+            raise StateMigrationError(
+                f"schema migration v{source_version} to v{SCHEMA_VERSION} failed; "
+                f"pre-migration state restored from {snapshot.name}"
+            ) from exc
+
+    def _create_fresh_state(self) -> None:
+        try:
+            with closing(self.connect()) as conn:
+                conn.executescript(SCHEMA)
+                conn.execute(
+                    "INSERT OR IGNORE INTO meta(key,value) VALUES('schema_version',?)",
+                    (str(SCHEMA_VERSION),),
+                )
+                conn.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('tick','0')")
+                conn.execute(
+                    "INSERT OR IGNORE INTO meta(key,value) VALUES('state_version','0')"
+                )
+                conn.execute(
+                    "INSERT OR IGNORE INTO meta(key,value) VALUES('bootstrap_version','')"
+                )
+                conn.execute(
+                    "INSERT OR IGNORE INTO meta(key,value) VALUES('deep_history_version','')"
+                )
+                conn.execute(
+                    "INSERT OR IGNORE INTO meta(key,value) VALUES('state_schema_migrations_json','[]')"
+                )
+                conn.commit()
+            self._validate_current_schema()
+        except Exception:
+            for suffix in ("", "-wal", "-shm"):
+                self.path.with_name(self.path.name + suffix).unlink(missing_ok=True)
+            raise
+
+    def init(self) -> None:
+        version = self._inspect_schema_version()
+        if version is None:
+            self._create_fresh_state()
+            return
+        if version > SCHEMA_VERSION:
+            raise StateMigrationError(
+                f"persisted schema v{version} is newer than runtime schema v{SCHEMA_VERSION}; "
+                "explicit forward-compatible migration is required"
+            )
+        if version < MIN_SUPPORTED_SCHEMA_VERSION:
+            raise StateMigrationError(
+                f"persisted schema v{version} predates the minimum supported schema "
+                f"v{MIN_SUPPORTED_SCHEMA_VERSION}; staged migration is required"
+            )
+        if version < SCHEMA_VERSION:
+            self._migrate_existing_state(version)
+            return
+        self._validate_current_schema()
 
     def meta(self, key: str, default: str | None = None) -> str | None:
         with closing(self.connect()) as conn:

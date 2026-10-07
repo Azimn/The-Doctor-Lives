@@ -47,3 +47,22 @@ The `release/pretorius-v0.5-rc1` line is the sole integration target for assesso
 The accepted v0.4 behavior is the production-default control. UPPB P0 through P6D is present and fully testable but remains outside the live Pretorius subject-facing path until an explicit later integration gate changes that boundary. Neural Convergence is present as an opt-in recurrent profile and must not become the default merely because it is available in the package.
 
 A release candidate is acceptable only when the exact head passes the complete repository test suite on both push and pull-request paths, package installation succeeds from a clean runner, default v0.4 behavior remains regression-compatible, UPPB protected-evidence invariants remain intact, and Neural Convergence remains separately selectable from the legacy control.
+
+
+## Canonical evidence authority
+
+Canonical runtime evidence is now a frozen, versioned authority boundary. The installed distribution carries the admitted artifact set and exact Git blob digests in canonical_evidence_manifest_v1.json. Startup verifies that distribution before opening the cognitive store, then verifies the active state-local evidence snapshot before bootstrap or Deep-History loading.
+
+Evidence snapshots are append-only. Recovery may create a new verified snapshot and advance the active pointer, but it may not rewrite a damaged snapshot in place or roll subjective or lived state backward. The cognitive store records the exact manifest version and fingerprint it adopted. A stale, partially bound, or incompatible evidence manifest fails closed and requires an explicit migration.
+
+Protected-evidence references used by future live UPPB integration must resolve through this authority and match the admitted artifact digest. A caller-controlled path or arbitrary provenance string is not sufficient evidence authority.
+
+
+## Persistent state migration boundary
+
+BrainStore now treats schema_version as an authority boundary. Existing state is inspected before SCHEMA is applied. Supported older schemas receive a content-addressed pre-migration snapshot, explicit migration, structural validation, and lineage record. Any failure restores the snapshot. A future schema, malformed version, or current-version database missing required structure is rejected before repair can silently reinterpret it.
+
+
+## Recurrent checkpoint persistence
+
+The recurrent substrate checkpoint is a versioned persistence surface. Saving occurs through a temporary sibling file followed by structural validation and atomic replacement. Loading validates checkpoint schema, required arrays, CSR dimensions, motor dimensions, and configuration before reconstruction. The legacy RC1 checkpoint format remains accepted as schema 0; future checkpoint formats require an explicit migration.
