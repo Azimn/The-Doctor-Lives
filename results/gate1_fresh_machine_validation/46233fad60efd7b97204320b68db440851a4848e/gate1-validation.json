@@ -1,0 +1,51 @@
+{
+  "checks": {
+    "bootstrap_version_preserved": true,
+    "canonical_evidence_fingerprint_preserved": true,
+    "canonical_evidence_snapshot_preserved": true,
+    "commitment_recovered": true,
+    "deep_history_version_preserved": true,
+    "deterministic_retrieval_preserved": true,
+    "lived_autobiographical_class_preserved": true,
+    "lived_wording_provenance_preserved": true,
+    "network_attempts": 0,
+    "relationship_recovered": true,
+    "renderer_read_only_digest_preserved": true,
+    "restart_state_digest_preserved": true,
+    "restart_tick_preserved": true
+  },
+  "commitment_id": "commit_e3e2d862f84e47c78fb27612f90aead5",
+  "initial": {
+    "bootstrap_version": "pretorius-bootstrap-v1",
+    "canonical_evidence_manifest_version": 1,
+    "deep_history_version": "pretorius-deep-history-v2",
+    "schema_version": "6"
+  },
+  "memory_id": "mem_ed6016249d64451aa2c4a126fcf16a0a",
+  "network_events": [],
+  "network_guard": "python audit hook rejects all socket.* events",
+  "package_path": "/tmp/pretorius-a07/user/venv/lib/python3.13/site-packages/doctor_lives/__init__.py",
+  "package_version": "0.5.0rc2",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "python": "3.13.5 (main, Jun 25 2025, 18:55:22) [GCC 14.2.0]",
+  "render_schema": "the-doctor-lives.render-request.v1",
+  "retrieval_signature": [
+    {"record_id":"mem_2efd312fcfab4e31a0bbb85b5facd1c6","score":2.443846153846},
+    {"record_id":"mem_f4ffb8eca2ff453a8e152bef7697fc3c","score":1.943846153846},
+    {"record_id":"mem_d2447acdc18e424baac45d199bb9b3b9","score":1.943846153846},
+    {"record_id":"mem_a776ad281c0b46ae9de961d9315e800b","score":1.943846153846},
+    {"record_id":"mem_527b583f469f4d3cbdbd2ac80f35dcb3","score":1.943846153846},
+    {"record_id":"mem_4b0b7c906e404844b1ba4b0921bb9336","score":1.943846153846},
+    {"record_id":"mem_118dd8e201ea4d4e8cdf3380b07a08f2","score":1.943846153846},
+    {"record_id":"mem_000fae7bd69e4c6c9c9004bc11fbf307","score":1.943846153846},
+    {"record_id":"mem_4b47ac4e41474d6aa980a10a4617234f","score":1.789846153846},
+    {"record_id":"mem_c0b0d22c2d6e4d5e9d5cb0bc8a33bef2","score":1.669846153846},
+    {"record_id":"mem_30a797377ee8401a952083989b2abf08","score":1.653846153846},
+    {"record_id":"mem_87c035a5cc0443f5933d1cce28f0f6ef","score":1.636246153846},
+    {"record_id":"mem_c986e484f4d24b788605118271f196ad","score":1.629846153846},
+    {"record_id":"mem_ed6016249d64451aa2c4a126fcf16a0a","score":1.617}
+  ],
+  "schema": "the-doctor-lives.gate1-fresh-install-validation.v1",
+  "state_dir": "/tmp/pretorius-a07/user/state",
+  "status": "pass"
+}
