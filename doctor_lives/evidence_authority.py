@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import shutil
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -361,21 +362,79 @@ class CanonicalEvidenceAuthority:
         )
         return self
 
+    def _persisted_manifest_binding(self) -> tuple[str | None, str | None]:
+        database = self.state_dir / "brain.sqlite3"
+        if not database.is_file():
+            return None, None
+        try:
+            uri = f"file:{database.resolve().as_posix()}?mode=ro"
+            conn = sqlite3.connect(uri, uri=True)
+            try:
+                rows = dict(conn.execute(
+                    """SELECT key,value FROM meta
+                    WHERE key IN (
+                        'canonical_evidence_manifest_version',
+                        'canonical_evidence_manifest_fingerprint'
+                    )"""
+                ).fetchall())
+            finally:
+                conn.close()
+        except sqlite3.DatabaseError as exc:
+            raise EvidenceIntegrityError(
+                "cannot verify canonical evidence recovery against persisted state binding"
+            ) from exc
+
+        version = str(rows.get("canonical_evidence_manifest_version") or "") or None
+        fingerprint = (
+            str(rows.get("canonical_evidence_manifest_fingerprint") or "") or None
+        )
+        if (version is None) != (fingerprint is None):
+            raise EvidenceIntegrityError(
+                "canonical evidence persisted state binding is partial; "
+                "explicit repair or migration is required"
+            )
+        return version, fingerprint
+
     def recover_from_distribution(self, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
             raise ValueError("canonical evidence recovery requires a non-empty reason")
         self.verify_distribution_snapshot()
-        self.snapshots_dir.mkdir(parents=True, exist_ok=True)
-        self.audit_dir.mkdir(parents=True, exist_ok=True)
-        self._discard_staging()
+
+        stored_version, stored_fingerprint = self._persisted_manifest_binding()
+        if stored_version is not None and (
+            stored_version != str(self.manifest_version)
+            or stored_fingerprint != self.manifest_fingerprint
+        ):
+            raise EvidenceIntegrityError(
+                "explicit canonical evidence migration required: persisted state is bound to "
+                f"version={stored_version} fingerprint={stored_fingerprint!r}, "
+                f"runtime recovery offers version={self.manifest_version} "
+                f"fingerprint={self.manifest_fingerprint!r}"
+            )
 
         parent_snapshot_id: str | None = None
         if self.active_pointer_path.exists():
             try:
                 pointer = self._read_active_pointer()
-                parent_snapshot_id = str(pointer.get("snapshot_id") or "") or None
             except EvidenceIntegrityError:
-                parent_snapshot_id = None
+                pointer = None
+            if pointer is not None:
+                pointer_version = int(pointer.get("manifest_version", -1))
+                pointer_fingerprint = str(pointer.get("manifest_fingerprint", ""))
+                if (
+                    pointer_version != self.manifest_version
+                    or pointer_fingerprint != self.manifest_fingerprint
+                ):
+                    raise EvidenceIntegrityError(
+                        "explicit canonical evidence migration required: active pointer is "
+                        "bound to an incompatible manifest; recovery cannot rewrite "
+                        "manifest identity"
+                    )
+                parent_snapshot_id = self._validate_active_pointer(pointer)
+
+        self.snapshots_dir.mkdir(parents=True, exist_ok=True)
+        self.audit_dir.mkdir(parents=True, exist_ok=True)
+        self._discard_staging()
 
         snapshot_id = self._copy_distribution_snapshot(
             kind="recovery",

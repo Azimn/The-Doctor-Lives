@@ -648,6 +648,41 @@ class PretoriusRecurrentSubstrate:
             raise NeuralCheckpointError(
                 "recurrent checkpoint CSR data and indices lengths differ"
             )
+        if not np.issubdtype(arrays["w_indices"].dtype, np.integer):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR indices must use an integer dtype"
+            )
+        if not np.issubdtype(arrays["w_indptr"].dtype, np.integer):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR indptr must use an integer dtype"
+            )
+        indptr = arrays["w_indptr"]
+        indices = arrays["w_indices"]
+        if (
+            int(indptr[0]) != 0
+            or int(indptr[-1]) != len(arrays["w_data"])
+            or np.any(np.diff(indptr) < 0)
+        ):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR indptr invariants are invalid"
+            )
+        if len(indices) and (
+            int(indices.min()) < 0 or int(indices.max()) >= n
+        ):
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR index is outside neuron bounds"
+            )
+        try:
+            csr_probe = sparse.csr_matrix(
+                (arrays["w_data"], indices, indptr),
+                shape=(n, n),
+                dtype=np.float32,
+            )
+            csr_probe.check_format(full_check=True)
+        except Exception as exc:
+            raise NeuralCheckpointError(
+                "recurrent checkpoint CSR structure is invalid"
+            ) from exc
         if arrays["eligibility"].shape != arrays["w_data"].shape:
             raise NeuralCheckpointError(
                 "recurrent checkpoint eligibility shape does not match recurrent weights"

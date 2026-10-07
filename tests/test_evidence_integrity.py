@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
-from doctor_lives import EvidenceIntegrityError, Experience, PretoriusBrain
+from doctor_lives import (
+    CanonicalEvidenceAuthority,
+    EvidenceIntegrityError,
+    Experience,
+    PretoriusBrain,
+)
 from doctor_lives.neural import DEFAULT_CONFIG
 
 
@@ -129,6 +135,52 @@ class CanonicalEvidenceAuthorityTests(unittest.TestCase):
         self.assertEqual(restored.store.digest(), digest_before)
         self.assertEqual(restored.evidence.active_snapshot_id, recovery["snapshot_id"])
         self.assertTrue(restored.evidence.artifact_path("deep_history").is_file())
+
+    def test_recovery_refuses_incompatible_manifest_without_changing_pointer(self):
+        state, brain = self.make_brain()
+        pointer_path = brain.evidence.active_pointer_path
+        pointer_before = pointer_path.read_bytes()
+        stored_version = brain.store.meta("canonical_evidence_manifest_version")
+        stored_fingerprint = brain.store.meta(
+            "canonical_evidence_manifest_fingerprint"
+        )
+
+        alternate_root = state / "alternate_distribution"
+        shutil.copytree(brain.evidence.distribution_root, alternate_root)
+        manifest_path = alternate_root / "canonical_evidence_manifest_v1.json"
+        alternate_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        alternate_manifest["version"] = int(alternate_manifest["version"]) + 1
+        manifest_path.write_text(
+            json.dumps(alternate_manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        incompatible = CanonicalEvidenceAuthority(
+            state,
+            distribution_root=alternate_root,
+        )
+        with self.assertRaisesRegex(
+            EvidenceIntegrityError,
+            "explicit canonical evidence migration required",
+        ):
+            incompatible.recover_from_distribution(
+                reason="must not cross a manifest migration boundary"
+            )
+
+        self.assertEqual(pointer_path.read_bytes(), pointer_before)
+        self.assertEqual(
+            brain.store.meta("canonical_evidence_manifest_version"),
+            stored_version,
+        )
+        self.assertEqual(
+            brain.store.meta("canonical_evidence_manifest_fingerprint"),
+            stored_fingerprint,
+        )
+        restored = PretoriusBrain(state)
+        self.assertEqual(
+            restored.evidence.manifest_fingerprint,
+            stored_fingerprint,
+        )
 
     def test_partial_store_binding_fails_closed(self):
         state, brain = self.make_brain()

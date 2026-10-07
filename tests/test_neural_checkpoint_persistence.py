@@ -129,6 +129,44 @@ class NeuralCheckpointPersistenceTests(unittest.TestCase):
             ):
                 PretoriusRecurrentSubstrate.load(path)
 
+    def test_out_of_range_csr_index_fails_closed(self):
+        net = PretoriusRecurrentSubstrate(small_config())
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "pretorius_recurrent.npz"
+            net.save(path)
+            with np.load(path, allow_pickle=False) as payload:
+                arrays = {
+                    name: np.asarray(payload[name]).copy()
+                    for name in payload.files
+                }
+            arrays["w_indices"][0] = net.n
+            np.savez_compressed(path, **arrays)
+
+            with self.assertRaisesRegex(
+                NeuralCheckpointError,
+                "outside neuron bounds",
+            ):
+                PretoriusRecurrentSubstrate.load(path)
+
+    def test_non_monotonic_csr_indptr_fails_closed(self):
+        net = PretoriusRecurrentSubstrate(small_config())
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "pretorius_recurrent.npz"
+            net.save(path)
+            with np.load(path, allow_pickle=False) as payload:
+                arrays = {
+                    name: np.asarray(payload[name]).copy()
+                    for name in payload.files
+                }
+            arrays["w_indptr"][1] = arrays["w_indptr"][2] + 1
+            np.savez_compressed(path, **arrays)
+
+            with self.assertRaisesRegex(
+                NeuralCheckpointError,
+                "indptr invariants are invalid",
+            ):
+                PretoriusRecurrentSubstrate.load(path)
+
     def test_legacy_rc1_checkpoint_without_schema_marker_still_loads(self):
         net = PretoriusRecurrentSubstrate(small_config())
         with tempfile.TemporaryDirectory() as td:
