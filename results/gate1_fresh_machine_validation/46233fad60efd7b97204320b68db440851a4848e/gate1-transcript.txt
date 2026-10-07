@@ -1,0 +1,80 @@
+$ cat media/candidate-sha.txt
+46233fad60efd7b97204320b68db440851a4848e
+$ tar -xzf media/source-46233...tar.gz -C source
+$ python3 -m venv venv
+$ venv/bin/python -m pip install --no-index --find-links media the-doctor-lives==0.5.0rc2
+WARNING: The directory '/home/oai/.cache/pip' or its parent directory is not owned or is not writable by the current user. The cache has been disabled. Check the permissions and owner of that directory. If executing pip with sudo, you should use sudo's -H flag.
+Looking in links: /tmp/pretorius-a07/user/media
+Processing /tmp/pretorius-a07/user/media/the_doctor_lives-0.5.0rc2-py3-none-any.whl
+Processing /tmp/pretorius-a07/user/media/numpy-2.5.3-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (from the-doctor-lives==0.5.0rc2)
+Processing /tmp/pretorius-a07/user/media/scipy-1.18.1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (from the-doctor-lives==0.5.0rc2)
+Installing collected packages: numpy, scipy, the-doctor-lives
+
+Successfully installed numpy-2.5.3 scipy-1.18.1 the-doctor-lives-0.5.0rc2
+$ venv/bin/python source/tools/gate1_fresh_install_validate.py --source-root source --state state --output gate1-validation.json
+{
+  "checks": {
+    "bootstrap_version_preserved": true,
+    "canonical_evidence_fingerprint_preserved": true,
+    "canonical_evidence_snapshot_preserved": true,
+    "commitment_recovered": true,
+    "deep_history_version_preserved": true,
+    "deterministic_retrieval_preserved": true,
+    "lived_autobiographical_class_preserved": true,
+    "lived_wording_provenance_preserved": true,
+    "network_attempts": 0,
+    "relationship_recovered": true,
+    "renderer_read_only_digest_preserved": true,
+    "restart_state_digest_preserved": true,
+    "restart_tick_preserved": true
+  },
+  "commitment_id": "commit_e3e2d862f84e47c78fb27612f90aead5",
+  "initial": {
+    "bootstrap_version": "pretorius-bootstrap-v1",
+    "canonical_evidence_manifest_version": 1,
+    "deep_history_version": "pretorius-deep-history-v2",
+    "schema_version": "6"
+  },
+  "memory_id": "mem_ed6016249d64451aa2c4a126fcf16a0a",
+  "network_events": [],
+  "network_guard": "python audit hook rejects all socket.* events",
+  "package_path": "/tmp/pretorius-a07/user/venv/lib/python3.13/site-packages/doctor_lives/__init__.py",
+  "package_version": "0.5.0rc2",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "python": "3.13.5 (main, Jun 25 2025, 18:55:22) [GCC 14.2.0]",
+  "render_schema": "the-doctor-lives.render-request.v1",
+  "retrieval_signature": [
+    {"record_id":"mem_2efd312fcfab4e31a0bbb85b5facd1c6","score":2.443846153846},
+    {"record_id":"mem_f4ffb8eca2ff453a8e152bef7697fc3c","score":1.943846153846},
+    {"record_id":"mem_d2447acdc18e424baac45d199bb9b3b9","score":1.943846153846},
+    {"record_id":"mem_a776ad281c0b46ae9de961d9315e800b","score":1.943846153846},
+    {"record_id":"mem_527b583f469f4d3cbdbd2ac80f35dcb3","score":1.943846153846},
+    {"record_id":"mem_4b0b7c906e404844b1ba4b0921bb9336","score":1.943846153846},
+    {"record_id":"mem_118dd8e201ea4d4e8cdf3380b07a08f2","score":1.943846153846},
+    {"record_id":"mem_000fae7bd69e4c6c9c9004bc11fbf307","score":1.943846153846},
+    {"record_id":"mem_4b47ac4e41474d6aa980a10a4617234f","score":1.789846153846},
+    {"record_id":"mem_c0b0d22c2d6e4d5e9d5cb0bc8a33bef2","score":1.669846153846},
+    {"record_id":"mem_30a797377ee8401a952083989b2abf08","score":1.653846153846},
+    {"record_id":"mem_87c035a5cc0443f5933d1cce28f0f6ef","score":1.636246153846},
+    {"record_id":"mem_c986e484f4d24b788605118271f196ad","score":1.629846153846},
+    {"record_id":"mem_ed6016249d64451aa2c4a126fcf16a0a","score":1.617}
+  ],
+  "schema": "the-doctor-lives.gate1-fresh-install-validation.v1",
+  "state_dir": "/tmp/pretorius-a07/user/state",
+  "status": "pass"
+}
+$ cat gate1-validation.json
+[validation JSON repeated verbatim above]
+$ cat gate1-environment.txt
+candidate_sha=46233fad60efd7b97204320b68db440851a4848e
+validation_environment=isolated OpenAI task container; separate from GitHub Actions; fresh venv; no repository preinstalled
+network_condition=container has no external DNS/network access; package installation used only local wheel media
+kernel=Linux af974fb9718b 6.18.44 #1 SMP Sat Sep 26 20:02:31 UTC 2026 x86_64 GNU/Linux
+python=Python 3.13.5
+package_path=/tmp/pretorius-a07/user/venv/lib/python3.13/site-packages/doctor_lives/__init__.py
+source_root=/tmp/pretorius-a07/user/source
+state_dir=/tmp/pretorius-a07/user/state
+installed_packages:
+numpy==2.5.3
+scipy==1.18.1
+the-doctor-lives==0.5.0rc2

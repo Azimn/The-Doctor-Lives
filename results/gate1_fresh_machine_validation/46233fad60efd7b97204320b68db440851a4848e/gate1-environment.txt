@@ -1,0 +1,12 @@
+candidate_sha=46233fad60efd7b97204320b68db440851a4848e
+validation_environment=isolated OpenAI task container; separate from GitHub Actions; fresh venv; no repository preinstalled
+network_condition=container has no external DNS/network access; package installation used only local wheel media
+kernel=Linux af974fb9718b 6.18.44 #1 SMP Sat Sep 26 20:02:31 UTC 2026 x86_64 GNU/Linux
+python=Python 3.13.5
+package_path=/tmp/pretorius-a07/user/venv/lib/python3.13/site-packages/doctor_lives/__init__.py
+source_root=/tmp/pretorius-a07/user/source
+state_dir=/tmp/pretorius-a07/user/state
+installed_packages:
+numpy==2.5.3
+scipy==1.18.1
+the-doctor-lives==0.5.0rc2
