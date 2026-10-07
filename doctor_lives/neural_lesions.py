@@ -418,10 +418,26 @@ def run_causal_lesions(
     intact_state_max_abs_diff = float(np.max(state_abs_diff))
     intact_state_mean_abs_diff = float(np.mean(state_abs_diff))
     intact_state_different_values = int(np.count_nonzero(state_abs_diff))
-    intact_sham_score_contract_match = intact_score_match
-    if not intact_sham_score_contract_match:
+
+    noop_net = PretoriusRecurrentSubstrate.load(developed_path)
+    revert_learned_edges(
+        noop_net,
+        stabilized,
+        np.asarray([], dtype=np.int64),
+    )
+    noop_summary, noop_records, noop_states = _condition_summary(
+        "intact_developed_zero_edge_sham",
+        noop_net,
+        probes,
+    )
+    same_run_noop_record_match = noop_records == intact_records
+    same_run_noop_state_match = np.array_equal(noop_states, intact_states)
+    same_run_noop_exact_match = (
+        same_run_noop_record_match and same_run_noop_state_match
+    )
+    if not same_run_noop_exact_match:
         raise RuntimeError(
-            "B06 intact sham does not satisfy the preserved B05 behavioral restart tolerance"
+            "B06 same-run zero-edge sham does not reproduce the intact developed condition"
         )
 
     necessity_net = PretoriusRecurrentSubstrate.load(developed_path)
@@ -657,6 +673,7 @@ def run_causal_lesions(
         },
         "conditions": {
             "intact_developed_sham": intact_summary,
+            "intact_developed_zero_edge_sham": noop_summary,
             "necessity_full_delta_reversion": necessity_summary,
             "sufficiency_stabilized_sham": (
                 sufficiency_sham_summary
@@ -668,14 +685,15 @@ def run_causal_lesions(
             "causal_core_random_ei_matched_5pct": random_summary,
         },
         "causal_contrasts": {
-            "intact_sham_behavioral_match_to_b05_restart": (
-                intact_sham_score_contract_match
-            ),
-            "intact_sham_score_max_abs_diff": intact_score_max_abs_diff,
-            "intact_sham_state_exact_match": intact_state_match,
-            "intact_sham_state_max_abs_diff": intact_state_max_abs_diff,
-            "intact_sham_state_mean_abs_diff": intact_state_mean_abs_diff,
-            "intact_sham_state_different_values": intact_state_different_values,
+            "same_run_zero_edge_sham_exact_match": same_run_noop_exact_match,
+            "same_run_zero_edge_sham_record_exact_match": same_run_noop_record_match,
+            "same_run_zero_edge_sham_state_exact_match": same_run_noop_state_match,
+            "cross_run_b05_score_within_1e12": intact_score_match,
+            "cross_run_b05_score_max_abs_diff": intact_score_max_abs_diff,
+            "cross_run_b05_state_exact_match": intact_state_match,
+            "cross_run_b05_state_max_abs_diff": intact_state_max_abs_diff,
+            "cross_run_b05_state_mean_abs_diff": intact_state_mean_abs_diff,
+            "cross_run_b05_state_different_values": intact_state_different_values,
             "necessity_damage_expected_action_probability": (
                 intact_mean - necessity_mean
             ),
@@ -726,7 +744,8 @@ def run_causal_lesions(
         "interpretation_boundary": [
             "B06 tests causal contribution of learned recurrent change under the frozen B02 protocol.",
             "Necessity and sufficiency are asymmetric by design: necessity preserves developed non-recurrent state; sufficiency imports only recurrent delta into the stabilized baseline.",
-            "Cross-run recurrent-state bitwise equality is recorded diagnostically but is not a B06 validity gate because B05 preregistered exact restart equality within each characterization run, not across heterogeneous GitHub runner hardware. The B06 sham hard gate uses the preserved B05 behavioral tolerance of 1e-12.",
+            "B06 validity uses an explicit same-run zero-edge lesion sham: two independently loaded developed checkpoints, one untouched and one passed through a zero-edge recurrent lesion, must match exactly in action records and recurrent states.",
+            "Cross-run replay against the preserved B05 restart artifact is diagnostic only. B05 preregistered exact save/reload equivalence within each characterization run, not bitwise or 1e-12 equivalence across heterogeneous GitHub runner hardware.",
             "A favorable lesion contrast does not establish identity transfer, consciousness, or biological equivalence.",
             "No B06 result alone authorizes production promotion; B07 and B08 remain required.",
         ],
@@ -750,6 +769,9 @@ def validate_lesion_protocol_surface() -> dict[str, Any]:
         ),
         "random_control": (
             "E/I-stratified, size-matched, non-overlapping, deterministic by seed"
+        ),
+        "sham_control": (
+            "same-run independently loaded developed checkpoint passed through a zero-edge recurrent lesion; exact record and state equality required"
         ),
         "lesion_evaluation_steps": LESION_EVALUATION_STEPS,
         "relearning_steps": RELEARNING_STEPS,
