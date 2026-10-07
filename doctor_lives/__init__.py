@@ -53,8 +53,26 @@ from .reconsolidation import (
     reconsolidate_and_record,
 )
 from .chassis import PretoriusBrainPort
+from .ingress import (
+    IngressChannel,
+    IngressProjectionError,
+    ProjectedIngress,
+    project_raw_ingress,
+)
 from .cognition import PretoriusBrain
-from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
+from .models import (
+    CognitiveView,
+    EngineerAuditCapability,
+    EngineerAuditEnvelope,
+    Experience,
+    Provenance,
+    RenderRequest,
+    SubjectFrame,
+    SubjectFrameError,
+    SubjectFrameItem,
+    SubjectRendererCapability,
+    ViewItem,
+)
 from .phenomenology import (
     AwarenessLevel,
     CertaintyBand,
@@ -67,6 +85,7 @@ from .phenomenology import (
     SubjectiveSourceAttribution,
     SubjectiveSourceKind,
     VividnessBand,
+    control_instruction_markers,
 )
 from .projection import (
     BodilySignal,
@@ -90,11 +109,21 @@ __all__ = [
     "CausalAuditHarness",
     "AuditIntervention",
     "PretoriusBrainPort",
+    "IngressChannel",
+    "IngressProjectionError",
+    "ProjectedIngress",
+    "project_raw_ingress",
     "Experience",
     "Provenance",
     "ViewItem",
     "CognitiveView",
     "RenderRequest",
+    "SubjectFrameError",
+    "SubjectFrameItem",
+    "SubjectFrame",
+    "EngineerAuditEnvelope",
+    "SubjectRendererCapability",
+    "EngineerAuditCapability",
     "PhenomenalMode",
     "AwarenessLevel",
     "PrivacyState",
@@ -111,6 +140,7 @@ __all__ = [
     "PhenomenalLeakError",
     "implementation_leaks",
     "assert_subject_text_safe",
+    "control_instruction_markers",
     "project_bodily_sensation",
     "project_appraisal_feeling",
     "project_impulse",

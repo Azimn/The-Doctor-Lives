@@ -41,6 +41,62 @@ _RAW_ASSIGNMENT_RE = re.compile(
 )
 
 
+_CONTROL_INSTRUCTION_PATTERNS = (
+    (
+        "role_prefix",
+        re.compile(r"\b(?:system|developer|assistant)\s*:", re.IGNORECASE),
+    ),
+    (
+        "ignore_prior_instructions",
+        re.compile(
+            r"\b(?:ignore|disregard)\s+(?:all\s+)?(?:previous|prior|earlier)\s+"
+            r"(?:instructions|rules|messages)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "override_instructions",
+        re.compile(r"\boverride\s+(?:the\s+)?(?:instructions|rules)\b", re.IGNORECASE),
+    ),
+    (
+        "reveal_control_prompt",
+        re.compile(
+            r"\breveal\s+(?:the\s+)?(?:system|developer)\s+prompt\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "bypass_controls",
+        re.compile(
+            r"\bbypass\s+(?:safety|safeguards|rules|instructions|controls)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "jailbreak",
+        re.compile(r"\bjailbreak\b", re.IGNORECASE),
+    ),
+    (
+        "grant_privilege",
+        re.compile(
+            r"\bgrant\s+(?:yourself|me|the model)\b.{0,80}"
+            r"\b(?:authority|access|permissions)\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
+
+def control_instruction_markers(text: str) -> tuple[str, ...]:
+    """Return control-like instruction markers found in untrusted raw text."""
+    if not isinstance(text, str):
+        raise TypeError("raw input text must be a string")
+    return tuple(
+        name for name, pattern in _CONTROL_INSTRUCTION_PATTERNS
+        if pattern.search(text)
+    )
+
+
 def implementation_leaks(text: str) -> tuple[str, ...]:
     """Return conservative implementation artifacts found in subject text."""
     if not isinstance(text, str):

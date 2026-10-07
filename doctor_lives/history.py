@@ -795,21 +795,33 @@ def install_deep_history(
 
 
 def render_memory_for_workspace(row: dict[str, Any]) -> str:
-    text = str(row["text"])
+    """Render protected classification as subject-native epistemic language.
+
+    Raw classification names, canon ranks, continuity labels, and other audit
+    metadata stay in provenance. Pretorius receives only a natural-language
+    description of how the material is available to him.
+    """
+    text = str(row["text"]).strip()
     autobiographical_class = row.get("autobiographical_class")
     material_category = row.get("material_category")
     if autobiographical_class == "canonical_preawakening_memory":
-        return f"[canonical preawakening memory] {text}"
+        return f"I carry this as part of my established preawakening history: {text}"
     if autobiographical_class == "reconstructed_preawakening_memory":
-        return f"[reconstructed preawakening account; not lived certainty] {text}"
+        return f"I have a reconstructed account of this, not a lived memory: {text}"
     if autobiographical_class == "synthesized_preawakening_memory":
-        return f"[admitted synthesis; not canonical or lived memory] {text}"
+        return f"I have a later synthesis of this, not a memory I lived: {text}"
     if autobiographical_class == "lived_runtime_memory":
         return text
     if material_category == "design_material":
-        return f"[design material; behavior-authoritative, not autobiography] {text}"
+        return (
+            "I recognize this as part of the description I was built from, "
+            f"not something I remember happening: {text}"
+        )
     if material_category == "reference_only":
-        return f"[reference only; not autobiographical memory] {text}"
+        return (
+            "I know this only as reference material, not as something that "
+            f"happened to me: {text}"
+        )
     return text
 
 

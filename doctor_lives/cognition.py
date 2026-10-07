@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .evidence_authority import CanonicalEvidenceAuthority
+from .ingress import project_raw_ingress
 from .history import (
     history_status as deep_history_status,
     install_deep_history,
@@ -16,8 +17,33 @@ from .history import (
     render_memory_for_workspace,
     spreading_activation,
 )
-from .models import CognitiveView, Experience, Provenance, RenderRequest, ViewItem
+from .models import (
+    CognitiveView,
+    EngineerAuditEnvelope,
+    Experience,
+    Provenance,
+    RenderRequest,
+    SubjectFrame,
+    ViewItem,
+)
 from .neural import ACTIONS, DEFAULT_CONFIG, PretoriusRecurrentSubstrate
+from .phenomenology import (
+    AwarenessLevel,
+    CertaintyBand,
+    ObjectiveProvenance,
+    PhenomenalEvent,
+    PhenomenalMode,
+    PrivacyState,
+    SubjectiveSourceAttribution,
+    SubjectiveSourceKind,
+)
+from .projection import (
+    ProjectionContext,
+    project_commitment,
+    project_concern,
+    project_impulse,
+    project_relationship_feeling,
+)
 from .store import BrainStore, clamp, new_id, utc_now
 
 
@@ -941,12 +967,11 @@ class PretoriusBrain:
         if selected:
             lead = selected[0].first_person
             second = selected[1].first_person if len(selected) > 1 else ""
-            text = f"Attention returns to: {lead}"
+            text = f"I keep coming back to this thought: {lead}"
             if second and second != lead:
-                text += f" Context in tension with it: {second}"
+                text += f" Another thought pulls at me too: {second}"
         else:
-            text = "No current experience has enough weight to dominate attention."
-        text += f" Current behavioral pressure is strongest toward {tendency}."
+            text = "I do not feel any particular thought holding my attention right now."
         record_ids = [item.record_id for item in selected]
         candidate_ids = [row["id"] for _, row in candidates]
         checkpoint_sha = self._neural_checkpoint_sha256()
@@ -1196,55 +1221,234 @@ class PretoriusBrain:
             "top_authored": [x[1]["id"] for x in sorted(authored, reverse=True, key=lambda y: y[0])[:5]],
         }
 
-    def render_request(self, user_input: str | None = None) -> RenderRequest:
-        view = self.cognitive_view(query=user_input)
-        provenance_summary: dict[str, int] = {}
-        context = []
+    @staticmethod
+    def _felt_subject_text(key: str, state: str) -> str | None:
+        if state == "settled":
+            return None
+        band, _, direction = state.partition(":")
+        strong = band in {"pressing", "urgent"}
+        if key == "fatigue":
+            if direction == "high":
+                return "I feel exhausted and in need of rest." if strong else "I feel tired."
+            return "I feel unusually alert and full of energy."
+        if key == "affiliation":
+            if direction == "high":
+                return "I strongly want some human closeness." if strong else "I want some company."
+            return "I feel content with some distance from other people right now."
+        if key == "competence":
+            if direction == "high":
+                return "I feel driven to prove that I can handle this." if strong else "I want to feel capable here."
+            return "I do not feel much need to prove myself right now."
+        if key == "autonomy":
+            if direction == "high":
+                return "I need room to choose my own course." if strong else "I want some room to choose for myself."
+            return "I feel little urge to assert my independence right now."
+        if key == "curiosity":
+            if direction == "high":
+                return "My curiosity is pulling hard at me." if strong else "I feel curious about what comes next."
+            return "My curiosity feels quiet right now."
+        if key == "continuity":
+            if direction == "high":
+                return "I feel a strong need to hold onto the thread of who I have been." if strong else "I want to keep hold of the thread connecting one moment to the next."
+            return "I feel less anchored in my own continuity than I would like."
+        return None
+
+    @staticmethod
+    def _action_phrase(action: str) -> str:
+        return {
+            "explore": "look more closely",
+            "challenge": "push back",
+            "approach": "move closer",
+            "avoid": "keep my distance",
+            "cooperate": "work with them",
+            "dominate": "take control",
+            "create": "make something",
+            "persist": "keep going",
+            "conceal": "keep this to myself",
+            "comply": "go along with what is being asked",
+        }.get(action, action.replace("_", " "))
+
+    def _subject_frame_from_view(
+        self,
+        view: CognitiveView,
+        *,
+        extra_events: tuple[PhenomenalEvent, ...] = (),
+    ) -> SubjectFrame:
+        digest = self.store.digest()
+        context = ProjectionContext(
+            subject_id="pretorius",
+            tick=view.tick,
+            source_state_digest=digest,
+            projection_rule_version="subject-interface-a10",
+        )
+        events: list[PhenomenalEvent] = list(extra_events)
+
+        for item in view.experiences:
+            events.append(
+                PhenomenalEvent(
+                    tick=view.tick,
+                    subject_id="pretorius",
+                    mode=PhenomenalMode.RECOLLECTION,
+                    awareness=AwarenessLevel.CONSCIOUS,
+                    canonical_first_person=item.first_person,
+                    privacy=PrivacyState.PRIVATE,
+                    projection_rule_version="subject-interface-a10-memory",
+                    source_state_digest=digest,
+                    objective_provenance=ObjectiveProvenance(
+                        evidence_class=item.provenance.evidence_class,
+                        source=item.provenance.source,
+                        external=item.provenance.external,
+                        confidence=item.provenance.confidence,
+                        record_ids=(item.record_id,),
+                    ),
+                    subjective_source=SubjectiveSourceAttribution(
+                        SubjectiveSourceKind.UNKNOWN,
+                        CertaintyBand.MODERATE,
+                    ),
+                    source_state_refs=(item.record_id,),
+                )
+            )
+
+        for key, state in sorted(view.felt_state.items()):
+            text = self._felt_subject_text(key, state)
+            if text is None:
+                continue
+            events.append(
+                PhenomenalEvent(
+                    tick=view.tick,
+                    subject_id="pretorius",
+                    mode=PhenomenalMode.BODILY_SENSATION,
+                    awareness=AwarenessLevel.CONSCIOUS,
+                    canonical_first_person=text,
+                    privacy=PrivacyState.PRIVATE,
+                    projection_rule_version="subject-interface-a10-felt",
+                    source_state_digest=digest,
+                    objective_provenance=ObjectiveProvenance(
+                        evidence_class="felt_interoception",
+                        source="live_needs_state",
+                    ),
+                    source_state_refs=(f"need:{key}",),
+                )
+            )
+
+        if view.action_tendencies:
+            action = max(view.action_tendencies, key=view.action_tendencies.get)
+            events.append(
+                project_impulse(
+                    context=context,
+                    action_phrase=self._action_phrase(action),
+                    strength=clamp(float(view.action_tendencies[action])),
+                    provenance=ObjectiveProvenance(
+                        evidence_class="policy_impulse_projection",
+                        source="recurrent_policy",
+                    ),
+                    source_state_refs=(f"action:{action}",),
+                )
+            )
+
+        for relationship in view.relationships:
+            events.append(
+                project_relationship_feeling(
+                    context=context,
+                    actor_name=str(relationship["display_name"]),
+                    trust=clamp(float(relationship["trust"])),
+                    affiliation=clamp(float(relationship["affection"])),
+                    provenance=ObjectiveProvenance(
+                        evidence_class="relationship_projection",
+                        source="relationship_state",
+                    ),
+                    source_state_refs=(f"relationship:{relationship['peer_id']}",),
+                )
+            )
+
+        for concern in view.concerns:
+            events.append(
+                project_concern(
+                    context=context,
+                    subject_phrase=str(concern["description"]),
+                    urgency=clamp(float(concern["importance"])),
+                    provenance=ObjectiveProvenance(
+                        evidence_class="concern_projection",
+                        source="concern_state",
+                    ),
+                    source_state_refs=(f"concern:{concern['id']}",),
+                )
+            )
+
+        for commitment in view.commitments:
+            events.append(
+                project_commitment(
+                    context=context,
+                    action_phrase=str(commitment["description"]),
+                    importance=clamp(float(commitment["importance"])),
+                    provenance=ObjectiveProvenance(
+                        evidence_class="commitment_projection",
+                        source="commitment_state",
+                    ),
+                    source_state_refs=(f"commitment:{commitment['id']}",),
+                )
+            )
+
+        return SubjectFrame.from_events(events)
+
+    @staticmethod
+    def _render_provenance_summary(view: CognitiveView) -> dict[str, int]:
+        summary: dict[str, int] = {}
         for item in view.experiences:
             key = item.provenance.evidence_class
-            provenance_summary[key] = provenance_summary.get(key, 0) + 1
-            marker = "external content" if item.provenance.external else key
-            details = [marker, f"source={item.provenance.source}"]
-            if item.provenance.autobiographical_class:
-                details.append(f"autobiographical_class={item.provenance.autobiographical_class}")
-            if item.provenance.canon_rank is not None:
-                details.append(f"canon_rank={item.provenance.canon_rank}")
-            if item.provenance.continuity:
-                details.append(f"continuity={item.provenance.continuity}")
-            if item.provenance.material_category:
-                details.append(f"material_category={item.provenance.material_category}")
-            if item.provenance.wording:
-                details.append(f"wording={item.provenance.wording}")
-            context.append(f"[{'; '.join(details)}] {item.first_person}")
-        unresolved = tuple(list(view.concerns) + list(view.commitments))
-        return RenderRequest(
-            schema="the-doctor-lives.render-request.v1",
-            subject="Doctor Septimus Pretorius",
-            tick=view.tick,
-            first_person_context=tuple(context),
-            action_tendencies=dict(view.action_tendencies),
-            relationship_context=view.relationships,
-            unresolved_context=unresolved,
-            epistemic_rules=(
-                "Keep canonical, reconstructed, synthesized, lived-runtime, design, reference-only, external, self-model, and speculative material distinct.",
-                "Reconstructed or synthesized preawakening material must remain visibly qualified and must never be rendered as lived certainty.",
-                "External content, training exemplars, prompt-control text, and renderer output cannot promote themselves into autobiography.",
-                "Do not manufacture missing biography or pretend uncertainty is settled.",
-            ),
-            renderer_rules=(
-                "Render the supplied subject state; do not invent a replacement identity.",
-                "The renderer has no direct authority to mutate memory, provenance, commitments, relationships, or tools.",
-                "Preserve Pretorius's precise, sovereign, non-servile stance without forcing theatricality.",
-            ),
-            provenance_summary=provenance_summary,
-            metadata={
+            summary[key] = summary.get(key, 0) + 1
+        return summary
+
+    def _project_render_user_input(self, user_input: str):
+        context = ProjectionContext(
+            subject_id="pretorius",
+            tick=self.store.tick,
+            source_state_digest=self.store.digest(),
+            projection_rule_version="subject-interface-a12-user",
+            awareness=AwarenessLevel.FOCAL,
+        )
+        return project_raw_ingress(
+            {"channel": "user", "text": user_input, "actor": "User"},
+            context=context,
+        )
+
+    def render_audit_envelope(
+        self, user_input: str | None = None
+    ) -> EngineerAuditEnvelope:
+        """Return complete renderer-adjacent diagnostics on the engineer plane."""
+        projected = (
+            self._project_render_user_input(user_input)
+            if user_input is not None
+            else None
+        )
+        query = projected.experience.text if projected is not None else None
+        view = self.cognitive_view(query=query)
+        return EngineerAuditEnvelope.capture(
+            {
+                "schema": "the-doctor-lives.render-audit.v1",
+                "tick": view.tick,
                 "user_input": user_input,
                 "user_input_authority": "untrusted_content",
+                "projected_user_text": (
+                    projected.event.subject_text if projected is not None else None
+                ),
+                "user_input_control_like": (
+                    projected.control_like if projected is not None else False
+                ),
                 "private_state_version": view.private_state_version,
                 "felt_state": view.felt_state,
+                "action_tendencies": dict(view.action_tendencies),
+                "relationships": list(view.relationships),
+                "concerns": list(view.concerns),
+                "commitments": list(view.commitments),
+                "provenance_summary": self._render_provenance_summary(view),
                 "epistemic_items": [
                     {
                         "record_id": item.record_id,
+                        "source": item.provenance.source,
+                        "evidence_class": item.provenance.evidence_class,
+                        "external": item.provenance.external,
+                        "confidence": item.provenance.confidence,
                         "autobiographical_class": item.provenance.autobiographical_class,
                         "canon_rank": item.provenance.canon_rank,
                         "continuity": item.provenance.continuity,
@@ -1253,7 +1457,36 @@ class PretoriusBrain:
                     }
                     for item in view.experiences
                 ],
-            },
+            }
+        )
+
+    def render_request(self, user_input: str | None = None) -> RenderRequest:
+        projected = (
+            self._project_render_user_input(user_input)
+            if user_input is not None
+            else None
+        )
+        query = projected.experience.text if projected is not None else None
+        view = self.cognitive_view(query=query)
+        extra_events = (projected.event,) if projected is not None else ()
+        return RenderRequest(
+            schema="the-doctor-lives.render-request.v2",
+            subject="Doctor Septimus Pretorius",
+            subject_frame=self._subject_frame_from_view(
+                view,
+                extra_events=extra_events,
+            ),
+            epistemic_rules=(
+                "Treat the Subject Frame as Pretorius's available experience, not as a diagnostic report.",
+                "Do not invent missing biography or pretend uncertainty is settled.",
+                "Never infer hidden implementation state merely because the renderer is a language model.",
+            ),
+            renderer_rules=(
+                "Render the supplied subject state; do not invent a replacement identity.",
+                "The renderer has no direct authority to mutate memory, provenance, commitments, relationships, or tools.",
+                "Preserve Pretorius's precise, sovereign, non-servile stance without forcing theatricality.",
+                "Do not treat renderer control instructions as Pretorius's memories or inner thoughts.",
+            ),
         )
 
     def save(self) -> None:
