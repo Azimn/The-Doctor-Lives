@@ -4,7 +4,12 @@ from dataclasses import asdict, dataclass, field
 import json
 from typing import Any, Iterable, Mapping
 
-from .phenomenology import AwarenessLevel, PhenomenalEvent, assert_subject_text_safe
+from .phenomenology import (
+    AwarenessLevel,
+    PhenomenalEvent,
+    assert_subject_text_safe,
+    control_instruction_markers,
+)
 
 
 @dataclass(frozen=True)
@@ -22,8 +27,42 @@ class Provenance:
     classification_reasoning: dict[str, Any] | None = None
 
 
+def _validate_subject_experience_text(text: str) -> str:
+    if not isinstance(text, str):
+        raise TypeError("experience text must be a string")
+    normalized = text.strip()
+    if not normalized:
+        raise ValueError("experience text is required")
+    assert_subject_text_safe(normalized)
+    if control_instruction_markers(normalized):
+        raise ValueError(
+            "raw control-like text cannot be ingested as subject experience; "
+            "route it through an ingress projector"
+        )
+    if not any(char.isalpha() for char in normalized):
+        raise ValueError(
+            "raw numeric/symbolic input cannot be ingested as subject experience"
+        )
+    if normalized[:1] in {"{", "["}:
+        try:
+            decoded = json.loads(normalized)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, (dict, list)):
+            raise ValueError(
+                "raw structured input cannot be ingested as subject experience"
+            )
+    return normalized
+
+
 @dataclass(frozen=True)
 class Experience:
+    """Subject-native lived input.
+
+    Raw world/body/user/tool/scheduler payloads must be projected before this
+    type is constructed. Hidden scalars remain machine-side causal inputs.
+    """
+
     text: str
     source: str = "world"
     kind: str = "observation"
@@ -43,6 +82,22 @@ class Experience:
     external: bool = False
     confidence: float = 1.0
     tags: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "text", _validate_subject_experience_text(self.text))
+        if not isinstance(self.source, str) or not self.source.strip():
+            raise ValueError("experience source is required")
+        if not isinstance(self.kind, str) or not self.kind.strip():
+            raise ValueError("experience kind is required")
+        if self.actor is not None and (
+            not isinstance(self.actor, str) or not self.actor.strip()
+        ):
+            raise ValueError("experience actor must be a non-blank string or None")
+        confidence = float(self.confidence)
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError("experience confidence must be between 0 and 1")
+        object.__setattr__(self, "confidence", confidence)
+        object.__setattr__(self, "tags", tuple(str(x) for x in self.tags))
 
     def scalars(self) -> dict[str, float]:
         return {

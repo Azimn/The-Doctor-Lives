@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .evidence_authority import CanonicalEvidenceAuthority
+from .ingress import project_raw_ingress
 from .history import (
     history_status as deep_history_status,
     install_deep_history,
@@ -1267,7 +1268,12 @@ class PretoriusBrain:
             "comply": "go along with what is being asked",
         }.get(action, action.replace("_", " "))
 
-    def _subject_frame_from_view(self, view: CognitiveView) -> SubjectFrame:
+    def _subject_frame_from_view(
+        self,
+        view: CognitiveView,
+        *,
+        extra_events: tuple[PhenomenalEvent, ...] = (),
+    ) -> SubjectFrame:
         digest = self.store.digest()
         context = ProjectionContext(
             subject_id="pretorius",
@@ -1275,7 +1281,7 @@ class PretoriusBrain:
             source_state_digest=digest,
             projection_rule_version="subject-interface-a10",
         )
-        events: list[PhenomenalEvent] = []
+        events: list[PhenomenalEvent] = list(extra_events)
 
         for item in view.experiences:
             events.append(
@@ -1393,17 +1399,42 @@ class PretoriusBrain:
             summary[key] = summary.get(key, 0) + 1
         return summary
 
+    def _project_render_user_input(self, user_input: str):
+        context = ProjectionContext(
+            subject_id="pretorius",
+            tick=self.store.tick,
+            source_state_digest=self.store.digest(),
+            projection_rule_version="subject-interface-a12-user",
+            awareness=AwarenessLevel.FOCAL,
+        )
+        return project_raw_ingress(
+            {"channel": "user", "text": user_input, "actor": "User"},
+            context=context,
+        )
+
     def render_audit_envelope(
         self, user_input: str | None = None
     ) -> EngineerAuditEnvelope:
         """Return complete renderer-adjacent diagnostics on the engineer plane."""
-        view = self.cognitive_view(query=user_input)
+        projected = (
+            self._project_render_user_input(user_input)
+            if user_input is not None
+            else None
+        )
+        query = projected.experience.text if projected is not None else None
+        view = self.cognitive_view(query=query)
         return EngineerAuditEnvelope.capture(
             {
                 "schema": "the-doctor-lives.render-audit.v1",
                 "tick": view.tick,
                 "user_input": user_input,
                 "user_input_authority": "untrusted_content",
+                "projected_user_text": (
+                    projected.event.subject_text if projected is not None else None
+                ),
+                "user_input_control_like": (
+                    projected.control_like if projected is not None else False
+                ),
                 "private_state_version": view.private_state_version,
                 "felt_state": view.felt_state,
                 "action_tendencies": dict(view.action_tendencies),
@@ -1430,11 +1461,21 @@ class PretoriusBrain:
         )
 
     def render_request(self, user_input: str | None = None) -> RenderRequest:
-        view = self.cognitive_view(query=user_input)
+        projected = (
+            self._project_render_user_input(user_input)
+            if user_input is not None
+            else None
+        )
+        query = projected.experience.text if projected is not None else None
+        view = self.cognitive_view(query=query)
+        extra_events = (projected.event,) if projected is not None else ()
         return RenderRequest(
             schema="the-doctor-lives.render-request.v2",
             subject="Doctor Septimus Pretorius",
-            subject_frame=self._subject_frame_from_view(view),
+            subject_frame=self._subject_frame_from_view(
+                view,
+                extra_events=extra_events,
+            ),
             epistemic_rules=(
                 "Treat the Subject Frame as Pretorius's available experience, not as a diagnostic report.",
                 "Do not invent missing biography or pretend uncertainty is settled.",

@@ -53,6 +53,12 @@ from .reconsolidation import (
     reconsolidate_and_record,
 )
 from .chassis import PretoriusBrainPort
+from .ingress import (
+    IngressChannel,
+    IngressProjectionError,
+    ProjectedIngress,
+    project_raw_ingress,
+)
 from .cognition import PretoriusBrain
 from .models import (
     CognitiveView,
@@ -79,6 +85,7 @@ from .phenomenology import (
     SubjectiveSourceAttribution,
     SubjectiveSourceKind,
     VividnessBand,
+    control_instruction_markers,
 )
 from .projection import (
     BodilySignal,
@@ -102,6 +109,10 @@ __all__ = [
     "CausalAuditHarness",
     "AuditIntervention",
     "PretoriusBrainPort",
+    "IngressChannel",
+    "IngressProjectionError",
+    "ProjectedIngress",
+    "project_raw_ingress",
     "Experience",
     "Provenance",
     "ViewItem",
@@ -129,6 +140,7 @@ __all__ = [
     "PhenomenalLeakError",
     "implementation_leaks",
     "assert_subject_text_safe",
+    "control_instruction_markers",
     "project_bodily_sensation",
     "project_appraisal_feeling",
     "project_impulse",

@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .cognition import PretoriusBrain
-from .models import Experience
+from .ingress import project_raw_ingress
+from .projection import ProjectionContext
 
 
 class PretoriusBrainPort:
@@ -22,20 +23,24 @@ class PretoriusBrainPort:
         self.brain = PretoriusBrain(state_dir, neural_config=neural_config)
 
     def ingest(self, event: Mapping[str, Any]) -> dict[str, Any]:
-        allowed = {
-            "text", "source", "kind", "valence", "arousal", "social", "authority",
-            "autonomy", "novelty", "achievement", "isolation", "threat", "intimacy",
-            "control", "creation", "actor", "external", "confidence", "tags",
+        """Project raw chassis input before it can become Pretorius's experience."""
+        projected = project_raw_ingress(
+            event,
+            context=ProjectionContext(
+                subject_id="pretorius",
+                tick=self.brain.store.tick + 1,
+                source_state_digest=self.brain.store.digest(),
+                projection_rule_version="subject-interface-a12-port",
+            ),
+        )
+        result = self.brain.ingest(projected.experience)
+        result["ingress"] = {
+            "channel": projected.channel.value,
+            "raw_sha256": projected.raw_sha256,
+            "control_like": projected.control_like,
+            "subject_text": projected.event.subject_text,
         }
-        unknown = set(event) - allowed
-        if unknown:
-            raise ValueError(f"unsupported experience fields: {sorted(unknown)}")
-        if not str(event.get("text", "")).strip():
-            raise ValueError("experience text is required")
-        payload = dict(event)
-        if "tags" in payload:
-            payload["tags"] = tuple(str(x) for x in payload["tags"])
-        return self.brain.ingest(Experience(**payload))
+        return result
 
     def cognition(self, trigger: str = "chassis") -> dict[str, Any]:
         return self.brain.think(trigger)
