@@ -49,7 +49,9 @@ B06 removed the entire learned recurrent-weight delta and did not reproducibly d
 
 B07 independently reinforced that result. Same-topology transfer and independent-topology functional-homology transfer were small and seed-dependent. Destroying exact learned-delta edge assignment while preserving its E/I-stratified distribution barely changed the result. The largest learned changes were not disproportionately necessary relative to ordinary edges.
 
-The recurrent learning trajectory itself is highly reproducible, but reproducibility is not causal behavioral necessity. B02 requires at least one claimed Neural Convergence mechanism to be load-bearing under controlled lesion before production-default promotion. That requirement was not satisfied.
+The recurrent learning trajectory itself is highly reproducible, but reproducibility is not causal behavioral necessity. The controlled B06 result is specifically about the **final learned recurrent-weight delta at evaluation time**. The necessity lesion deliberately preserves developed motor weights, motor bias, and other learned non-recurrent state. Phase B therefore does not rule out developmental mediation in which earlier recurrent dynamics influenced learning that was subsequently stored outside the final recurrent delta.
+
+B02 requires at least one claimed Neural Convergence mechanism to be demonstrated as load-bearing under controlled lesion before production-default promotion. That requirement was not satisfied.
 
 **PROMOTE is therefore prohibited.**
 
@@ -71,9 +73,11 @@ B02 requires B08 to test five capacity-warning indicators before rejecting the 4
 
 **PRESENT, 6/6 seeds.**
 
-The challenger improved effective dimensionality substantially, but its absolute context separation remained extremely small. Postdevelopment mean within-context cosine similarities were approximately `0.999943-0.999948`; mean across-context similarities were approximately `0.999941-0.999945`. Context-separation differences were only approximately `2.70e-6-3.00e-6`.
+The challenger improved effective dimensionality substantially, but its preregistered absolute context-separation endpoint remained extremely small. Postdevelopment mean within-context cosine similarities were approximately `0.999943-0.999948`; mean across-context similarities were approximately `0.999941-0.999945`. Context-separation differences were only approximately `2.70e-6-3.00e-6`.
 
-The states are therefore still nearly collinear across distinct probe families even after the approximately 2.31x median dimensionality increase. The behavioral improvement is also modest in absolute probability terms. Under the frozen B02 language, this qualifies as representational crowding.
+Those preregistered cosine values are computed on **uncentered firing-rate vectors**. All neurons carry a substantial common firing-rate component, so the near-1.0 raw cosine values are sensitive to that common offset. As a post hoc falsification check requested by the independent review, the preserved B05 evaluation matrices were centered across observations per neuron before cosine geometry was recomputed. Under that non-preregistered centered calculation, within-minus-across context separation is approximately `0.0509-0.0590` across the six seeds. This check does not replace or retroactively redefine the preregistered metric.
+
+Accordingly, the stronger phrase that the states are intrinsically "nearly collinear" is not warranted without qualification. The capacity-warning judgment instead rests on the preregistered weak raw separation **together with** the low absolute covariance participation ratio, approximately 12-15 effective dimensions in a 4,096-unit state space, and only modest absolute behavioral differentiation. Under the frozen B02 warning rule, that remains sufficient to record representational crowding as a warning, not as proof that neuron count is the cause.
 
 ### Indicator 2: cross-context interference
 
@@ -85,13 +89,15 @@ B08 therefore does not count this indicator as positive.
 
 ### Indicator 3: persistent saturation or gain-bound pressure
 
-**PRESENT, 6/6 seeds.**
+**PRESENT AS A GAIN-BOUND WARNING, 6/6 seeds.**
 
 The measured state-saturation fraction remained `0.0`, so this is not a high-saturation failure. However, the intrinsic excitability homeostat drove `state_gain` from its initial `1.0` to the configured upper bound `1.20` by the end of the 512-step neutral stabilization phase on every seed.
 
 From that point onward, `state_gain` remained exactly `1.20` in every recorded developmental-block snapshot, at the developed checkpoint, and through final evaluation on all six seeds. The recurrent-gain estimator remained inside its configured spectral band and recurrent weights did not hit their hard clipping bound.
 
-This persistent upper-bound occupancy is a genuine gain-bound pressure signal under B02 section 10.1. It does not prove that additional neurons will solve the problem, but the preregistration deliberately treats persistent gain-bound pressure as a warning against inferring adequate representational headroom from one network size.
+This is a genuine preregistered **gain-bound warning**, but it is not evidence that 4,096 neurons are inadequate. The implementation raises `state_gain` whenever measured saturation is below the configured target of `0.18`; this update occurs independently of the `learn` flag. Because measured saturation is `0.0`, the current homeostatic rule is mechanically driven toward the `1.20` ceiling even during the neutral `learn=False` stabilization phase. The observation is therefore compatible with insufficient representational headroom, but it is also compatible with a homeostatic-target or excitability-calibration mismatch. Phase B did not manipulate network size or the homeostatic target, so it cannot distinguish those explanations.
+
+B02 deliberately treats persistent gain-bound occupancy as a warning against inferring adequate headroom from a single network size. B08 therefore counts this indicator procedurally while leaving its cause unresolved.
 
 ### Indicator 4: capacity-like causal concentration
 
@@ -115,7 +121,7 @@ Without the capacity safeguard, the failed causal promotion gate, modest absolut
 
 B02 section 10.2 explicitly prohibits that architectural rejection when at least two of indicators 1-4 are reproducibly present across at least four of six seeds.
 
-That threshold is met.
+That threshold is met under the literal preregistered warning rule. Indicators 1 and 3 are **warnings**, not a diagnosis that neuron count caused the observed limitations. Their alternative explanations remain live, including common-offset sensitivity in the raw cosine endpoint and homeostatic calibration in the gain-bound observation.
 
 The special capacity-unresolved disposition is therefore required:
 
@@ -123,13 +129,13 @@ The special capacity-unresolved disposition is therefore required:
 
 ## What B08 does and does not conclude
 
-B08 concludes that the current 4,096-unit Neural Convergence profile has reproducible descriptive value and acceptable technical stability, but it has not demonstrated a load-bearing recurrent-learning mechanism sufficient for production-default promotion.
+B08 concludes that the current 4,096-unit Neural Convergence profile has reproducible descriptive value and acceptable technical stability, but it has not demonstrated the **final learned recurrent-weight delta** as a load-bearing carrier of the primary behavioral endpoint, nor has Phase B isolated another Neural Convergence mechanism strongly enough to satisfy the production-default causal gate. Developmental mediation through non-recurrent learned state remains an unresolved possibility.
 
 B08 also concludes that the 4,096-unit result cannot fairly support architectural rejection because the frozen capacity-warning rule is triggered.
 
 B08 does **not** conclude that 16,384 or 65,536 units will improve the result. It does not conclude that neuron count is the cause of the weak causal result. It does not conclude that recurrent weights constitute identity, personhood, consciousness, or biological equivalence.
 
-The unresolved scientific question is narrower: whether increased representational capacity changes contextual separation, gain-bound pressure, interference, causal concentration, or behavioral value under an otherwise controlled Neural Convergence experiment.
+The unresolved scientific question is narrower: whether increased representational capacity changes contextual separation, gain-bound pressure, interference, causal concentration, or behavioral value under an otherwise controlled Neural Convergence experiment. Scaling is an unresolved hypothesis requiring experiment, not a prediction that 16,384 or 65,536 units will perform better. A follow-up should also distinguish capacity effects from homeostatic/excitability calibration effects.
 
 ## Required next step before larger-network evidence
 

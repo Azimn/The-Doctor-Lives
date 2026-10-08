@@ -1,5 +1,5 @@
 {
-  "schema": "the-doctor-lives.neural-convergence-b08-disposition.v1",
+  "schema": "the-doctor-lives.neural-convergence-b08-disposition.v1.1",
   "protocol_version": "neural-convergence-characterization-b02-v1",
   "decision_date": "2026-10-07",
   "production_base": "271e87cf1f7c026594720d8ff8c9a58ce54da4fd",
@@ -48,9 +48,10 @@
   },
   "causal_gate": {
     "promotion_gate": "FAIL",
-    "reason": "B06 did not establish learned recurrent-delta necessity, sufficiency, or a disproportionately necessary causal core. B07 transfer and distribution probes remained small and seed-dependent.",
+    "reason": "B06 did not establish final learned recurrent-weight-delta necessity, sufficiency, or a disproportionately necessary causal core at evaluation time. B07 transfer and distribution probes remained small and seed-dependent. Because B06 preserved developed motor weights, motor bias, and other learned non-recurrent state, Phase B does not exclude developmental mediation from earlier recurrent dynamics into those stores.",
     "recurrent_learning_reproducible": true,
-    "recurrent_learning_load_bearing_on_primary_endpoint": false
+    "final_learned_recurrent_weight_delta_load_bearing_on_primary_endpoint": false,
+    "developmental_mediation_through_non_recurrent_learned_state": "UNRESOLVED"
   },
   "brittleness_gate": {
     "status": "PASS",
@@ -60,7 +61,13 @@
     "1_representational_crowding": {
       "present": true,
       "seeds_present": 6,
-      "evidence": "Within- and across-context postdevelopment cosine similarities remain above approximately 0.99994, with context-separation only 2.70e-6 to 3.00e-6 despite higher effective dimensionality and modest behavioral differentiation."
+      "evidence": "Within- and across-context postdevelopment cosine similarities remain above approximately 0.99994, with context-separation only 2.70e-6 to 3.00e-6 despite higher effective dimensionality and modest behavioral differentiation.",
+      "qualification": "The preregistered context cosine uses uncentered firing-rate vectors and is sensitive to a common firing-rate offset. A post hoc feature-centered falsification check yields within-minus-across separation of approximately 0.0509-0.0590 across the six B05 seeds. This does not replace the preregistered endpoint. Low absolute effective dimensionality (approximately 12-15 of 4,096) remains an independent crowding/compression concern.",
+      "posthoc_centered_context_separation_range": [
+        0.05094505842728892,
+        0.05895485629758362
+      ],
+      "posthoc_metric_status": "NON_PREREGISTERED_FALSIFICATION_CHECK_DO_NOT_SUBSTITUTE_FOR_PRIMARY_ENDPOINT"
     },
     "2_cross_context_interference": {
       "present": false,
@@ -69,7 +76,8 @@
     "3_persistent_saturation_or_gain_bound_pressure": {
       "present": true,
       "seeds_present": 6,
-      "evidence": "State gain reaches the configured upper bound 1.20 by the end of phase 1 and remains exactly 1.20 through every development block and final evaluation on all six seeds, while measured saturation remains 0.0."
+      "evidence": "State gain reaches the configured upper bound 1.20 by the end of phase 1 and remains exactly 1.20 through every development block and final evaluation on all six seeds, while measured saturation remains 0.0.",
+      "qualification": "This is a gain-bound warning, not evidence that 4,096 units are inadequate. The homeostat increases state_gain whenever saturation is below its 0.18 target, independent of the learn flag; with saturation at 0.0, the rule is driven toward the 1.20 ceiling even during neutral learn=False stabilization. Insufficient representational headroom and homeostatic/excitability calibration mismatch are both compatible explanations."
     },
     "4_capacity_like_causal_concentration": {
       "present": false,
@@ -87,7 +95,7 @@
       3
     ],
     "threshold_met": true,
-    "interpretation": "At least two preregistered capacity-warning indicators are reproducibly present across at least four of six seeds. Architectural rejection at 4,096 units is therefore prohibited by B02 section 10.2 if the challenger would otherwise be rejected as default."
+    "interpretation": "Indicators 1 and 3 satisfy the literal B02 warning threshold across all six seeds, so architectural rejection at 4,096 units is prohibited if the challenger would otherwise be rejected as default. These indicators are warnings rather than a diagnosis that neuron count caused the limitations."
   },
   "disposition": "RETAIN OPTIONAL - CAPACITY ADEQUACY UNRESOLVED; SCALING STUDY REQUIRED BEFORE REJECTION",
   "production_default": "legacy_v04",
@@ -95,5 +103,16 @@
   "promotion_authorized": false,
   "rejection_authorized": false,
   "scaling_authorized_without_new_preregistration": false,
-  "required_follow_up": "Write a new versioned scaling preregistration before any larger-network decisive run. Preserve the reserved 1,024 -> 4,096 -> 16,384 -> 65,536 ladder or document hardware/runtime infeasibility for an omitted rung."
+  "required_follow_up": "Write a new versioned scaling preregistration before any larger-network decisive run. Preserve the reserved 1,024 -> 4,096 -> 16,384 -> 65,536 ladder or document hardware/runtime infeasibility for an omitted rung. Treat scaling as an unresolved hypothesis and distinguish capacity effects from homeostatic/excitability calibration effects.",
+  "independent_review": {
+    "verdict": "ACCEPT WITH MINOR CORRECTIONS",
+    "reviewed_head": "9c04e744622a3d2cb4efbaa0a77bd0f795e6cb45",
+    "rerun_required": false,
+    "disposition_changed": false,
+    "corrections": [
+      "Treat state_gain=1.20 as a gain-bound warning with unresolved cause, not evidence that 4,096 units are inadequate.",
+      "Disclose that preregistered cosine geometry uses uncentered firing-rate vectors and preserve the post hoc centered falsification check only as a qualification.",
+      "Limit causal language to the final learned recurrent-weight delta at evaluation time; developmental mediation into motor or other non-recurrent learned state remains possible."
+    ]
+  }
 }
