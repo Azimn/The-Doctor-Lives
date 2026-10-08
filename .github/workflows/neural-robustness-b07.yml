@@ -1,0 +1,265 @@
+name: neural-robustness-b07
+
+on:
+  push:
+    branches:
+      - prod/neural-convergence-characterization
+    paths:
+      - ".github/workflows/neural-robustness-b07.yml"
+      - "doctor_lives/neural_robustness.py"
+      - "tools/run_neural_robustness.py"
+      - "tests/test_neural_robustness.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  validate-harness:
+    name: validate-b07-harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install exact branch package
+        run: python -m pip install -e .
+
+      - name: Validate frozen B07 surface
+        run: python tools/run_neural_robustness.py --validate-only
+
+      - name: Run focused B07 and causal harness tests
+        run: python -m unittest tests.test_neural_robustness tests.test_neural_lesions tests.test_neural_characterization
+
+  robustness-probes:
+    name: b07-seed-${{ matrix.seed }}
+    needs: validate-harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - seed: 1842
+            independent_seed: 1843
+          - seed: 1843
+            independent_seed: 1844
+          - seed: 1844
+            independent_seed: 1845
+          - seed: 1845
+            independent_seed: 1846
+          - seed: 1846
+            independent_seed: 1847
+          - seed: 1847
+            independent_seed: 1842
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install exact branch package
+        run: python -m pip install -e .
+
+      - name: Download preserved B04 control artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: b04-legacy-v04-seed-${{ matrix.seed }}-*
+          path: inputs/b04
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37674813225
+
+      - name: Download preserved B05 challenger artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: b05-convergence-v05-seed-${{ matrix.seed }}-*
+          path: inputs/b05
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37676112099
+
+      - name: Download preserved B06 causal artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: b06-causal-lesions-seed-${{ matrix.seed }}-*
+          path: inputs/b06
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37679303736
+
+      - name: Download independent-topology B04 recipient artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: b04-legacy-v04-seed-${{ matrix.independent_seed }}-*
+          path: inputs/b04_independent
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 37674813225
+
+      - name: Verify preserved B04-B06 provenance
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          seed = ${{ matrix.seed }}
+          independent_seed = ${{ matrix.independent_seed }}
+          expected_b04 = {
+              1842: "a253b6a0e40b426e0f667071d659e028a3afa1167741e638aec002fd2354b67f",
+              1843: "d0cdab0be020986b73b1140fac39c78ca613e2c38f5780ae5cb90e55025ef1e5",
+              1844: "ea9ec2ae0c6859bf4013a28bebbd7ee85cb36a0ecbec20cfce57e3efd7fda9fa",
+              1845: "3e5877dfe8a676efbad633f3617a53ba843d2c069f6b6b5236ca719670114434",
+              1846: "9350406cef1729662a78faea1754aedb95025b0d9d545b2a268f2257122711e9",
+              1847: "8dd2507f4f93abb307e3150b5ce4a82d23db3fa06ffac58aa5d41bcf23b8af66",
+          }
+          expected_b05 = {
+              1842: "893f208cfeb0e4b1ef24a6953d8a4a33b9e8c883d6847c401026532323daff91",
+              1843: "84d42fe418722a4af75561015b1834abb905f7e73ce1c499a2eea0a0c1f955e1",
+              1844: "8c02f87b51d996026d63400d3b234ab03f881f411159648ec06d94323b952b97",
+              1845: "3b48a69b4be311548400080b7b84fbafa9f5c38a568b9f3f1ca9983de7641150",
+              1846: "f627ee4142f4972de641e3cbdd9c4e3f99a5f4b13ce6a02701d2be3e53c9b295",
+              1847: "1254569223b12ce0fc410a7fb6c9c92a0f5f70cb1cb84b542da6902e100e9ca0",
+          }
+          expected_b06 = {
+              1842: "9a044467b5e45c72077287f58e8dab70f0e234a15410feea48037afcf5edc8b6",
+              1843: "d396aff84c551aa331131797242b17a5ed1bd3f0287384635eda8a9f920131eb",
+              1844: "7b5dff046bdaa95a5312df7134a39c7df80f6b422f9f5838dd2aa8fc95771211",
+              1845: "0a0ec8ea41ffb077b0a81209ff31e5ed580711ff7050f3f62731fa6cfc69bfe4",
+              1846: "68e16eb6ac0f1f3530db6820a850f27fcbc166bc3539c2c700142339ccf37bdc",
+              1847: "7d131fe99832c38bd62d16c7e0625a222d768103a5b7fc0bbf94225f210eafee",
+          }
+
+          def sha(path: Path) -> str:
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          b04_path = Path("inputs/b04/result.json")
+          b05_path = Path("inputs/b05/result.json")
+          b06_path = Path("inputs/b06/result.json")
+          independent_path = Path("inputs/b04_independent/result.json")
+
+          assert sha(b04_path) == expected_b04[seed]
+          assert sha(b05_path) == expected_b05[seed]
+          assert sha(b06_path) == expected_b06[seed]
+          assert sha(independent_path) == expected_b04[independent_seed]
+
+          b04 = json.loads(b04_path.read_text(encoding="utf-8"))
+          b05 = json.loads(b05_path.read_text(encoding="utf-8"))
+          b06 = json.loads(b06_path.read_text(encoding="utf-8"))
+          independent = json.loads(independent_path.read_text(encoding="utf-8"))
+
+          assert b04["repository_sha"] == "4346ffb95be634c9695009d21317a2f80e5fccc5"
+          assert b05["repository_sha"] == "311c651e4c2f3af563890e91ad2cebef3751c5ac"
+          assert b06["repository_sha"] == "9a88767853fdffa0a9f21d031c4f0b73106a8863"
+          assert independent["repository_sha"] == "4346ffb95be634c9695009d21317a2f80e5fccc5"
+          assert b04["seed"] == seed
+          assert b05["seed"] == seed
+          assert b06["seed"] == seed
+          assert independent["seed"] == independent_seed
+          assert b04["profile"] == "legacy_v04"
+          assert b05["profile"] == "neural_convergence_v05"
+          assert b06["profile"] == "neural_convergence_v05"
+          assert independent["profile"] == "legacy_v04"
+          assert b04["status"] == b05["status"] == b06["status"] == independent["status"] == "complete"
+          assert b04["restart_exact_match"] is True
+          assert b05["restart_exact_match"] is True
+          assert b04["curriculum_sha256"] == b05["curriculum_sha256"]
+          assert b04["outcome_schedule_sha256"] == b05["outcome_schedule_sha256"]
+          assert b06["source_artifacts"]["b04_result_json_sha256"] == expected_b04[seed]
+          assert b06["source_artifacts"]["b05_result_json_sha256"] == expected_b05[seed]
+          print(
+              f"verified preserved B04-B06 provenance for donor seed {seed} "
+              f"and independent recipient seed {independent_seed}"
+          )
+          PY
+
+      - name: Run frozen B07 robustness probes
+        run: |
+          mkdir -p "results/neural_characterization/b07/seed_${{ matrix.seed }}"
+          python tools/run_neural_robustness.py \
+            --seed ${{ matrix.seed }} \
+            --control-dir inputs/b04 \
+            --challenger-dir inputs/b05 \
+            --b06-dir inputs/b06 \
+            --independent-control-dir inputs/b04_independent \
+            --independent-seed ${{ matrix.independent_seed }} \
+            --output-dir "results/neural_characterization/b07/seed_${{ matrix.seed }}"
+
+      - name: Validate finalized B07 artifact
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          seed = ${{ matrix.seed }}
+          independent_seed = ${{ matrix.independent_seed }}
+          root = Path(f"results/neural_characterization/b07/seed_{seed}")
+          result_path = root / "result.json"
+          result = json.loads(result_path.read_text(encoding="utf-8"))
+
+          assert result["status"] == "complete"
+          assert result["seed"] == seed
+          assert result["independent_topology_seed"] == independent_seed
+          assert result["profile"] == "neural_convergence_v05"
+          assert result["configuration"]["neurons"] == 4096
+          assert result["evaluation_steps_per_condition"] == 512
+          assert result["contrasts"]["fixed_seed_rerun_all_exact"] is True
+          assert result["contrasts"]["sign_contract_all_conditions_pass"] is True
+          assert (
+              result["delta_distribution"]["high_change_edge_count"]
+              == result["delta_distribution"]["ordinary_edge_count"]
+          )
+          assert (
+              result["delta_distribution"]["high_change_exc_count"]
+              == result["delta_distribution"]["ordinary_exc_count"]
+          )
+          transform_path = root / result["artifacts"]["transforms"]["path"]
+          assert transform_path.is_file()
+          assert (
+              hashlib.sha256(transform_path.read_bytes()).hexdigest()
+              == result["artifacts"]["transforms"]["sha256"]
+          )
+
+          result_sha = hashlib.sha256(result_path.read_bytes()).hexdigest()
+          summary = {
+              "schema": "the-doctor-lives.b07-robustness-ci-summary.v1",
+              "seed": seed,
+              "independent_topology_seed": independent_seed,
+              "repository_sha": result["repository_sha"],
+              "result_json_sha256": result_sha,
+              "artifact_sha256": result["artifact_sha256"],
+              "curriculum_sha256": result["curriculum_sha256"],
+              "outcome_schedule_sha256": result["outcome_schedule_sha256"],
+              "delta_sha256": result["delta_distribution"]["sha256"],
+              "contrasts": result["contrasts"],
+              "finished_at_utc": result["finished_at_utc"],
+          }
+          (root / "ci_summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, sort_keys=True))
+          PY
+
+      - name: Upload immutable B07 seed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: b07-robustness-seed-${{ matrix.seed }}-${{ github.sha }}-${{ github.run_id }}
+          path: results/neural_characterization/b07/seed_${{ matrix.seed }}/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6

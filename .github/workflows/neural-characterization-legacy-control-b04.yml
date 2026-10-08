@@ -1,0 +1,94 @@
+name: neural-characterization-legacy-control-b04
+
+on:
+  push:
+    branches:
+      - prod/neural-convergence-characterization
+    paths:
+      - ".github/workflows/neural-characterization-legacy-control-b04.yml"
+  workflow_dispatch:
+
+jobs:
+  legacy-control:
+    name: legacy-v04-seed-${{ matrix.seed }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1842, 1843, 1844, 1845, 1846, 1847]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install exact branch package
+        run: python -m pip install -e .
+
+      - name: Run frozen B04 legacy control
+        run: |
+          mkdir -p "results/neural_characterization/b04/legacy_v04/seed_${{ matrix.seed }}"
+          python tools/run_neural_characterization.py \
+            --profile legacy_v04 \
+            --seed ${{ matrix.seed }} \
+            --output-dir "results/neural_characterization/b04/legacy_v04/seed_${{ matrix.seed }}"
+
+      - name: Validate finalized artifact
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          seed = ${{ matrix.seed }}
+          root = Path(f"results/neural_characterization/b04/legacy_v04/seed_{seed}")
+          result = json.loads((root / "result.json").read_text(encoding="utf-8"))
+          manifest = json.loads((root / "run_manifest.json").read_text(encoding="utf-8"))
+          schedule = json.loads((root / "schedule.json").read_text(encoding="utf-8"))
+
+          assert result["status"] == "complete"
+          assert result["profile"] == "legacy_v04"
+          assert result["seed"] == seed
+          assert result["configuration"]["neurons"] == 4096
+          assert result["causal_timeline_steps"] == 5120
+          assert result["restart_exact_match"] is True
+          assert result["curriculum_sha256"] == schedule["curriculum_sha256"]
+          assert result["outcome_schedule_sha256"] == schedule["outcome_schedule_sha256"]
+          assert manifest["status"] == "prepared"
+          assert manifest["profile"] == "legacy_v04"
+          assert manifest["seed"] == seed
+
+          result_sha = hashlib.sha256((root / "result.json").read_bytes()).hexdigest()
+          summary = {
+              "schema": "the-doctor-lives.b04-control-ci-summary.v1",
+              "seed": seed,
+              "profile": result["profile"],
+              "repository_sha": result["repository_sha"],
+              "configuration_sha256": result["configuration_sha256"],
+              "curriculum_sha256": result["curriculum_sha256"],
+              "outcome_schedule_sha256": result["outcome_schedule_sha256"],
+              "result_json_sha256": result_sha,
+              "artifact_sha256": result["artifact_sha256"],
+              "restart_exact_match": result["restart_exact_match"],
+              "state_artifact": result["state_artifact"],
+              "computational_cost": result["computational_cost"],
+              "finished_at_utc": result["finished_at_utc"],
+          }
+          (root / "ci_summary.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True),
+              encoding="utf-8",
+          )
+          print(json.dumps(summary, sort_keys=True))
+          PY
+
+      - name: Upload immutable B04 seed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: b04-legacy-v04-seed-${{ matrix.seed }}-${{ github.sha }}-${{ github.run_id }}
+          path: results/neural_characterization/b04/legacy_v04/seed_${{ matrix.seed }}/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
