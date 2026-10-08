@@ -10,6 +10,7 @@ from doctor_lives.flywire_adapter import (
     random_edge_count_smoke_control,
     summarize_topology,
     topology_fingerprint,
+    uncentered_context_separation,
 )
 
 
@@ -97,6 +98,20 @@ class FlyWireAdapterTests(unittest.TestCase):
         self.assertEqual(result["across_pairs"], 4)
         self.assertGreater(result["separation"], 0.0)
         self.assertGreater(effective_dimensionality(states), 0.0)
+
+    def test_uncentered_context_geometry_reports_same_pair_counts(self):
+        states = np.array(
+            [
+                [4.0, 0.0, 1.0, 1.0],
+                [3.8, 0.2, 1.0, 1.0],
+                [0.0, 4.0, 1.0, 1.0],
+                [0.2, 3.8, 1.0, 1.0],
+            ]
+        )
+        result = uncentered_context_separation(states, ["a", "a", "b", "b"])
+        self.assertEqual(result["within_pairs"], 2)
+        self.assertEqual(result["across_pairs"], 4)
+        self.assertGreater(result["separation"], 0.0)
 
 
 if __name__ == "__main__":

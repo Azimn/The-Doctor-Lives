@@ -262,3 +262,46 @@ def canonical_manifest_sha256(value: object) -> str:
         allow_nan=False,
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def uncentered_context_separation(
+    states: Sequence[Sequence[float]] | np.ndarray,
+    labels: Sequence[str],
+) -> dict[str, float | int]:
+    """Compute within-minus-across cosine on uncentered response vectors."""
+    x = np.asarray(states, dtype=np.float64)
+    if x.ndim != 2:
+        raise ValueError("states must be a 2D probe-by-neuron matrix")
+    if x.shape[0] != len(labels):
+        raise ValueError("label count must equal probe count")
+    if x.shape[0] < 2:
+        raise ValueError("at least two probes are required")
+    if not np.isfinite(x).all():
+        raise ValueError("states contain non-finite values")
+
+    norms = np.linalg.norm(x, axis=1)
+    normalized = np.zeros_like(x)
+    valid = norms >= 1e-12
+    normalized[valid] = x[valid] / norms[valid, None]
+    gram = normalized @ normalized.T
+
+    within: list[float] = []
+    across: list[float] = []
+    for i in range(x.shape[0]):
+        for j in range(i + 1, x.shape[0]):
+            if labels[i] == labels[j]:
+                within.append(float(gram[i, j]))
+            else:
+                across.append(float(gram[i, j]))
+    if not within or not across:
+        raise ValueError("labels must provide at least one within and one across pair")
+
+    within_mean = float(np.mean(within))
+    across_mean = float(np.mean(across))
+    return {
+        "within_pairs": len(within),
+        "across_pairs": len(across),
+        "within_mean": within_mean,
+        "across_mean": across_mean,
+        "separation": within_mean - across_mean,
+    }
