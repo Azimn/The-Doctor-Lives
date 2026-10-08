@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 30
     env:
       FLY_BRAIN_SHA: a3db62f9436074e485c0278290c2164ed6150808
+      FLY_BRAIN_DISABLE_SPIKE_IO: "1"
     steps:
       - name: Checkout Doctor Lives research branch
         uses: actions/checkout@v4
@@ -47,7 +48,23 @@ jobs:
             echo "doctor_lives_protocol=pretorius-flywire-whole-connectome-c01-v2"
             echo "upstream_sha=$(git rev-parse HEAD)"
             python --version
-            python main.py --pytorch --t_run 0.001 --n_run 1 --no_log_file
+            PYTHONPATH=code python - <<'PY'
+from benchmark import BenchmarkLogger, get_experiment
+from run_pytorch import run_single_benchmark
+
+logger = BenchmarkLogger(log_file=None)
+try:
+    result = run_single_benchmark(
+        t_run_sec=0.001,
+        n_run=1,
+        experiment=get_experiment(None),
+        logger=logger,
+    )
+    if result is None:
+        raise SystemExit("upstream PyTorch smoke returned no benchmark result")
+finally:
+    logger.close()
+PY
           } 2>&1 | tee "$GITHUB_WORKSPACE/flywire-c02-smoke.log"
 
       - name: Upload technical smoke log
