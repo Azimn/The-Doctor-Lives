@@ -2,6 +2,8 @@ name: FlyWire C02 backend smoke
 
 on:
   workflow_dispatch:
+  push:
+    branches: [research/neural-capacity-phase-c]
   pull_request:
     branches: [main]
 
