@@ -29,16 +29,21 @@ def sha_file(path: Path) -> str:
 
 
 def row_reduce(values: np.ndarray, row_ptr: np.ndarray, op: str) -> np.ndarray:
-    starts = row_ptr[:-1]
-    if op == "sum":
-        out = np.add.reduceat(values, starts)
-    elif op == "sumsq":
-        out = np.add.reduceat(values.astype(np.float64) ** 2, starts)
-    else:
+    """Reduce CSR edge values per source, including zero-outdegree neurons.
+
+    np.add.reduceat cannot accept a start index equal to len(values), which is
+    exactly what a trailing empty CSR row produces. Reduce only non-empty rows
+    and scatter the results back into a zero-initialized per-neuron vector.
+    """
+    counts = np.diff(row_ptr)
+    nonempty = np.flatnonzero(counts > 0)
+    work = values if op == "sum" else values.astype(np.float64) ** 2 if op == "sumsq" else None
+    if work is None:
         raise ValueError(op)
-    empty = np.diff(row_ptr) == 0
-    out = np.asarray(out)
-    out[empty] = 0
+    out = np.zeros(counts.size, dtype=np.result_type(work.dtype, np.float64 if op == "sumsq" else work.dtype))
+    if nonempty.size:
+        starts = row_ptr[:-1][nonempty]
+        out[nonempty] = np.add.reduceat(work, starts)
     return out
 
 
