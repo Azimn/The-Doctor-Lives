@@ -275,6 +275,7 @@ class SelfBindingModulator:
             "state_version": snapshot.state_version,
             "policy": self.policy.version,
             "cap": self.policy.max_bonus,
+            "source_weights": _SOURCE_WEIGHTS,
             "mode": mode.value,
             "gain": gain,
             "contradiction_freeze": freeze,
