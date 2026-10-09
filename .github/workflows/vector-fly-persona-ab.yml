@@ -76,6 +76,7 @@ jobs:
           exit 1
       - name: Produce actual matched-state A/B renderer packets (no LLM needed)
         run: |
+          mkdir -p results/vector_fly
           python tools/run_vector_fly_ab.py \
             --api http://127.0.0.1:8765 \
             --scope all --top-k 3 \
