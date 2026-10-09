@@ -1,0 +1,22 @@
+{
+  "build_plus_reload_seconds": 1.189183,
+  "building_seconds": 0.646533,
+  "documents": 450,
+  "encoder_code_hash": "5609dd0b39fbc22d5e346d3a2d393270d918a5d76bfe406c9d973720421fbd17",
+  "encoder_name": "sklearn-tfidf-word12-rankstable-v2",
+  "fit_documents": 317,
+  "nonzeros": 31159,
+  "python_tracemalloc_peak_bytes": 13150682,
+  "query_nonzeros": 5,
+  "schema_version": "pretorius.shared-features.v2",
+  "seed": 31,
+  "shards": {
+    "docs.npz": "eaa0e25b0bfd2941a4153372b0c559bd7d7d69956ed9354b7813b9e6350265eb",
+    "idf.npy": "af21ac9e5fdcdc5a586fb4d70bdf281df36471e2e791ded40491bc23641673ed",
+    "records.jsonl": "ce6a13d1608b10cebf64bd8208b5d7fef72ffb338ba18d1ad225f752fb0b7802",
+    "vocabulary.json": "76d3376ae6cfa4f237ea99062ada1c92090589123e8665148f7460a694e163dc"
+  },
+  "source_git_blob": "718dcc2d5ba4feccdef1690d447edfcebaa9bfb5",
+  "status": "operational lexical cache; NOT semantic embeddings",
+  "vector_dim": 8192
+}

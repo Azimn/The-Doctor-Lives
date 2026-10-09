@@ -1,0 +1,15 @@
+{
+  "database": "upstream-connectome/data/derived/dialogue-450.sqlite",
+  "database_bytes": 1986560,
+  "database_sha256": "87e24687cc74e2fdb241496a5d32a49d01658abcd993bcd762ccc8fa56b462ee",
+  "indexed_documents": 450,
+  "l2_encoder": "sklearn-tfidf-word12-rankstable-v2",
+  "l2_manifest_sha256": "b0412d7407ba8ba5af1dc21527dabbe3c4d431285697f107f93b45ee7913accf",
+  "nonzero_postings": 31159,
+  "random_seed": 31,
+  "schema": "vector-fly-sqlite-exact-tfidf/1",
+  "scope": "all",
+  "source_git_blob": "718dcc2d5ba4feccdef1690d447edfcebaa9bfb5",
+  "vector_dim": 8192,
+  "vector_kind": "lexical-tfidf-not-semantic"
+}

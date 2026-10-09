@@ -1,0 +1,8 @@
+{
+  "digest": "a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67",
+  "model": "qwen2.5:0.5b-instruct",
+  "ollama_archive_sha256": "cf95886728959aa09910bb34de5cca1cc5a8f68003b5597197d3f2c2d57c0804",
+  "ollama_release": "v0.34.0",
+  "ollama_version": "ollama version is 0.34.0",
+  "size": 397821319
+}
