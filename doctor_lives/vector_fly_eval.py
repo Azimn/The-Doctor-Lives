@@ -264,11 +264,16 @@ def invoke_ollama(prompt: str, *, model: str, endpoint: str,
             "temperature": 0,
             "seed": int(seed),
             "num_predict": 320,
+            "num_ctx": 8192,
         },
     }, timeout=timeout)
     if not isinstance(reply.get("response"), str):
         raise ValueError("Ollama did not produce a text response")
     return {"renderer": "local-ollama", "model": model, "seed": seed,
+            "temperature": 0, "num_predict": 320, "num_ctx": 8192,
+            "total_duration_ns": reply.get("total_duration"),
+            "prompt_eval_count": reply.get("prompt_eval_count"),
+            "eval_count": reply.get("eval_count"),
             "text": reply["response"],
             "response_sha256": hashlib.sha256(
                 reply["response"].encode("utf-8")
