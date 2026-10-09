@@ -1,0 +1,75 @@
+name: FlyWire C02 backend smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  whole-brain-backend-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FLY_BRAIN_SHA: a3db62f9436074e485c0278290c2164ed6150808
+      FLY_BRAIN_DISABLE_SPIKE_IO: "1"
+    steps:
+      - name: Checkout Doctor Lives research branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Test local FlyWire adapter
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m unittest tests.test_flywire_adapter -v
+
+      - name: Checkout pinned upstream whole-brain backend
+        run: |
+          git clone --filter=blob:none https://github.com/eonsystemspbc/fly-brain.git /tmp/fly-brain
+          cd /tmp/fly-brain
+          git checkout "$FLY_BRAIN_SHA"
+          test "$(git rev-parse HEAD)" = "$FLY_BRAIN_SHA"
+
+      - name: Install minimal PyTorch backend dependencies
+        run: |
+          python -m pip install numpy pandas pyarrow torch
+
+      - name: Run non-scientific full-connectome smoke
+        run: |
+          cd /tmp/fly-brain
+          {
+            echo "doctor_lives_protocol=pretorius-flywire-whole-connectome-c01-v2"
+            echo "upstream_sha=$(git rev-parse HEAD)"
+            python --version
+            PYTHONPATH=code python - <<'PY'
+          from benchmark import BenchmarkLogger, get_experiment
+          from run_pytorch import run_single_benchmark
+
+          logger = BenchmarkLogger(log_file=None)
+          try:
+              result = run_single_benchmark(
+                  t_run_sec=0.001,
+                  n_run=1,
+                  experiment=get_experiment(None),
+                  logger=logger,
+              )
+              if result is None:
+                  raise SystemExit("upstream PyTorch smoke returned no benchmark result")
+              if result.get("status") != "success":
+                  raise SystemExit(f"upstream PyTorch smoke failed: {result.get('status')}")
+          finally:
+              logger.close()
+          PY
+          } 2>&1 | tee "$GITHUB_WORKSPACE/flywire-c02-smoke.log"
+
+      - name: Upload technical smoke log
+        uses: actions/upload-artifact@v4
+        with:
+          name: flywire-c02-backend-smoke
+          path: flywire-c02-smoke.log
+          if-no-files-found: error
