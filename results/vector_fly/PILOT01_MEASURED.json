@@ -1,0 +1,39 @@
+{
+  "schema": "doctor-lives.vector-fly-ab-pilot01-structural-evidence/1",
+  "verified_local_date": "2026-10-08",
+  "executed_ci_run": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/37868957849",
+  "original_raw_packets_artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/37868957849/artifacts/11589816163",
+  "source_repo": "Azimn/Pretorius-Connectome",
+  "source_commit": "2bcdcaeac7dbb57af621a7c4ffa4a95fc425b5bc",
+  "source_git_blob": "718dcc2d5ba4feccdef1690d447edfcebaa9bfb5",
+  "source_events": 450,
+  "feature_fit": "train-only v2 TF-IDF word+bigram",
+  "index_scope": "all (browsing only; not held-out evaluation)",
+  "top_k": 3,
+  "test_count": 5,
+  "test_count_passed": 5,
+  "questions_count": 6,
+  "question_category_split": {
+    "source_linked_or_contradiction": 5,
+    "absent_event": 1
+  },
+  "source_id_smoke_hits": {
+    "cabinet": true,
+    "key-after-funeral": true,
+    "key-conflict": true,
+    "clara-room": true,
+    "false-beetles": true,
+    "false-spaceflight": null
+  },
+  "structural_match": {
+    "subject_frame_identical_within_pairs": true,
+    "brain_state_digest_unchanged": true,
+    "archival_evidence_never_ingested_as_lived": true,
+    "correct_original_source_provenance": true
+  },
+  "renderer": "none_packets_only",
+  "human_blind_validation_performed": false,
+  "behavior_change_measured": false,
+  "scientific_claim": "Engineering source-verified A/B pipeline smoke test only; cases previously examined and not independent",
+  "next_gate": "Run matched local renderer A/B and independently blinded human scoring on fresh cases"
+}

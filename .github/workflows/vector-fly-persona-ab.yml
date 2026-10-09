@@ -1,0 +1,106 @@
+name: Pretorius Vector Fly matched brain-memory A/B pilot
+
+on:
+  push:
+    paths:
+      - 'doctor_lives/vector_fly_eval.py'
+      - 'tools/run_vector_fly_ab.py'
+      - 'tests/test_vector_fly_eval.py'
+      - 'docs/VECTOR_FLY_PERSONA_AB_PILOT01.md'
+      - '.github/workflows/vector-fly-persona-ab.yml'
+  pull_request:
+    paths:
+      - 'doctor_lives/vector_fly_eval.py'
+      - 'tools/run_vector_fly_ab.py'
+      - 'tests/test_vector_fly_eval.py'
+      - 'docs/VECTOR_FLY_PERSONA_AB_PILOT01.md'
+      - '.github/workflows/vector-fly-persona-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-grounded-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - name: Checkout the authoritative Pretorius brain
+        uses: actions/checkout@v4
+      - name: Checkout pinned frozen Vector Fly service from canonical source
+        uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Connectome
+          ref: 2bcdcaeac7dbb57af621a7c4ffa4a95fc425b5bc
+          path: upstream-connectome
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install local-only dependencies
+        run: |
+          python -m pip install -e .
+          python -m pip install 'scikit-learn>=1.5,<2' 'rank-bm25>=0.2,<1'
+      - name: Prove the brain-state, provenance and security invariants
+        run: python -m unittest discover -s tests -p 'test_vector_fly_eval.py' -v
+      - name: Build pinned 450-event lexical source and SQLite index without leakage in fit
+        run: |
+          python upstream-connectome/scripts/build_shared_memory_l2.py \
+            --seed 31 --output-dir upstream-connectome/data/derived/ab-l2 \
+            --report upstream-connectome/data/derived/ab-l2-build-report.json
+          python upstream-connectome/scripts/vector_fly_db.py build \
+            --cache-dir upstream-connectome/data/derived/ab-l2 \
+            --database upstream-connectome/data/derived/ab-all450.sqlite \
+            --scope all
+          python upstream-connectome/scripts/vector_fly_db.py verify \
+            --cache-dir upstream-connectome/data/derived/ab-l2 \
+            --database upstream-connectome/data/derived/ab-all450.sqlite
+      - name: Start local read-only vector API from exact pinned build
+        run: |
+          python upstream-connectome/scripts/serve_vector_fly.py \
+            --database upstream-connectome/data/derived/ab-all450.sqlite \
+            --cache-dir upstream-connectome/data/derived/ab-l2 \
+            --host 127.0.0.1 --port 8765 \
+            > /tmp/pretorius_vector_fly_service.log 2>&1 &
+          echo $! > /tmp/pretorius_vector_fly_service.pid
+          for i in $(seq 1 30); do
+            if python -c 'import json,urllib.request; r=json.load(urllib.request.urlopen("http://127.0.0.1:8765/v1/health",timeout=2)); assert r["scope"]=="all"'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/pretorius_vector_fly_service.log
+          exit 1
+      - name: Produce actual matched-state A/B renderer packets (no LLM needed)
+        run: |
+          mkdir -p results/vector_fly
+          python tools/run_vector_fly_ab.py \
+            --api http://127.0.0.1:8765 \
+            --scope all --top-k 3 \
+            --output results/vector_fly/PILOT01_PACKETS.json \
+            | tee results/vector_fly/PILOT01_RUN_SUMMARY.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("results/vector_fly/PILOT01_PACKETS.json").read_text())
+          assert p["state_unchanged"] is True
+          assert p["renderer"] == "none_packets_only"
+          assert len(p["trials"]) == 6
+          assert all(x["pair"]["matched_subject_frame"] for x in p["trials"])
+          assert all(x["pair"]["brain_mutated"] is False for x in p["trials"])
+          assert all(x["pair"]["baseline_no_archive"]["source_event_ids"] == [] for x in p["trials"])
+          assert all(x["human_evaluation"]["independent_human_review_complete"] is False for x in p["trials"])
+          print("PASS: real Pretorius state fixed; canonical Vector Fly evidence changes only external renderer packets")
+          PY
+      - name: Archive original machine-readable A/B and source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: vector-fly-pretorius-ab-pilot01-source-packets
+          path: |
+            results/vector_fly/PILOT01_*.json
+            upstream-connectome/data/derived/ab-l2-build-report.json
+          retention-days: 90
+          if-no-files-found: error
