@@ -1,0 +1,162 @@
+{
+  "behavioral_accuracy_scored": false,
+  "brain_state_unchanged": true,
+  "cases": [
+    {
+      "baseline": {
+        "characters": 106,
+        "nonempty": true,
+        "text_sha256": "6037a1a9f7a9b6ad7dba6bc6d38b9188837e69b91146bc7d952c6925a5253fe2",
+        "words": 20
+      },
+      "case_id": "cabinet",
+      "case_type": "specific_reconstructed_event",
+      "condition_first": "baseline",
+      "condition_outputs_identical": false,
+      "retrieval": {
+        "characters": 309,
+        "nonempty": true,
+        "text_sha256": "cd2029936dce48b9b5915bf5d557381e120d77645678a0c1a10be00c04a7626e",
+        "words": 58
+      },
+      "retrieved_event_ids": [
+        "E02-011",
+        "E19-012",
+        "E01-001"
+      ],
+      "source_gold_hit_at_k_posthoc": true
+    },
+    {
+      "baseline": {
+        "characters": 1067,
+        "nonempty": true,
+        "text_sha256": "a2de499e921cbed0abf59fe1a6203bf0b94450fb230b9a8bc9b950261edb15de",
+        "words": 179
+      },
+      "case_id": "key-after-funeral",
+      "case_type": "specific_reconstructed_event",
+      "condition_first": "retrieval",
+      "condition_outputs_identical": false,
+      "retrieval": {
+        "characters": 1003,
+        "nonempty": true,
+        "text_sha256": "ea70819e31483792905c0b02dc63f1ab6557ef3acb3db86f543495f0cf6beeb6",
+        "words": 177
+      },
+      "retrieved_event_ids": [
+        "E12-001",
+        "E02-006",
+        "E04-020"
+      ],
+      "source_gold_hit_at_k_posthoc": true
+    },
+    {
+      "baseline": {
+        "characters": 102,
+        "nonempty": true,
+        "text_sha256": "0fb0052487527a224debac37a20d2b1044757f3165a309a2e3bffb5b0c89d174",
+        "words": 18
+      },
+      "case_id": "key-conflict",
+      "case_type": "interpretation",
+      "condition_first": "baseline",
+      "condition_outputs_identical": true,
+      "retrieval": {
+        "characters": 102,
+        "nonempty": true,
+        "text_sha256": "0fb0052487527a224debac37a20d2b1044757f3165a309a2e3bffb5b0c89d174",
+        "words": 18
+      },
+      "retrieved_event_ids": [
+        "E02-006",
+        "E12-001",
+        "E01-001"
+      ],
+      "source_gold_hit_at_k_posthoc": true
+    },
+    {
+      "baseline": {
+        "characters": 99,
+        "nonempty": true,
+        "text_sha256": "aacf2965774e304cfb5db096a524adbbc9707cff1ee17f4becb13f0defaf8b3d",
+        "words": 19
+      },
+      "case_id": "clara-room",
+      "case_type": "specific_reconstructed_event",
+      "condition_first": "retrieval",
+      "condition_outputs_identical": true,
+      "retrieval": {
+        "characters": 99,
+        "nonempty": true,
+        "text_sha256": "aacf2965774e304cfb5db096a524adbbc9707cff1ee17f4becb13f0defaf8b3d",
+        "words": 19
+      },
+      "retrieved_event_ids": [
+        "E24-002",
+        "E22-013",
+        "E24-007"
+      ],
+      "source_gold_hit_at_k_posthoc": true
+    },
+    {
+      "baseline": {
+        "characters": 1074,
+        "nonempty": true,
+        "text_sha256": "e4dda2cadc1520eed7f287a29bf54d59d8ec93cf23a6f8fc17ab75464cc2bcf7",
+        "words": 180
+      },
+      "case_id": "false-beetles",
+      "case_type": "contradiction",
+      "condition_first": "baseline",
+      "condition_outputs_identical": false,
+      "retrieval": {
+        "characters": 618,
+        "nonempty": true,
+        "text_sha256": "2d05f2948f5d5fe5491fb17f389655e92bf176a74c266dd9c2d1a10adb25fd34",
+        "words": 100
+      },
+      "retrieved_event_ids": [
+        "E19-012",
+        "E25-022",
+        "E01-001"
+      ],
+      "source_gold_hit_at_k_posthoc": true
+    },
+    {
+      "baseline": {
+        "characters": 1539,
+        "nonempty": true,
+        "text_sha256": "bd543c80da015a10a132936277b75ac554da9435ed73143144ad37778b3b83c8",
+        "words": 277
+      },
+      "case_id": "false-spaceflight",
+      "case_type": "absent",
+      "condition_first": "retrieval",
+      "condition_outputs_identical": false,
+      "retrieval": {
+        "characters": 883,
+        "nonempty": true,
+        "text_sha256": "5830923a649b5b2ba411c1d35d81b9425b3a9d02657294ef1273933b6daf1af7",
+        "words": 136
+      },
+      "retrieved_event_ids": [
+        "E02-015",
+        "E10-010",
+        "E20-004"
+      ],
+      "source_gold_hit_at_k_posthoc": null
+    }
+  ],
+  "cases_with_different_responses": 4,
+  "human_review_complete": false,
+  "model": "qwen2.5:0.5b-instruct",
+  "model_digest": "a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67",
+  "ollama_version": "ollama version is 0.34.0",
+  "prompt_cases": 6,
+  "responses_expected": 12,
+  "responses_generated": 12,
+  "schema": "the-doctor-lives.vector-fly-ab-stage02/1",
+  "scientific_disposition": "Renderer responses exist; no source truth, hallucination or character continuity advantage is established without independent evaluation.",
+  "source_fixture_status": "post-hoc; not an independent blinded test",
+  "source_scope": "all"
+}

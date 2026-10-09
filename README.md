@@ -103,3 +103,11 @@ Gate 1 migration CI now also executes exact historical commit 7be60ed46add7c7435
 ## v0.5.0rc2 review candidate
 
 The Gate 1 persistence and migration hardening branch is packaged as 0.5.0rc2 for independent review. This version label does not mean Gate 1 is fully accepted. The external fresh end-user-machine evidence required by Issue #8 remains outstanding until it is actually run and preserved. See GATE1_ASSESSOR_REVIEW.md.
+
+## Vector Fly: actual Pretorius A/B memory-assisted dialogue (Stage 02)
+
+The canonical Pretorius brain now has a measured, read-only external-memory A/B testing path. **A** renders with existing state only; **B** renders the identical subject frame but receives top-three source-pinned reconstructed memory excerpts from Vector Fly. No archival input was promoted to lived memory, canon, or neural weights.
+
+[Actual CPU Ollama run 37873205792](https://github.com/Azimn/The-Doctor-Lives/actions/runs/37873205792) produced **12/12 paired replies** with `qwen2.5:0.5b-instruct`; **4/6 questions yielded different replies**. This establishes a measurable renderer-input effect, **not higher autobiographical accuracy**. Preliminary inspection found unsupported homunculus associations, mixed historical episodes, question echoing, and an invented 1982 spacecraft in the no-retrieval control. The memory-equipped reply avoided that specific spaceflight invention but did not directly deny it. Do not publish a positive character-continuity claim from this six-case post-hoc pilot.
+
+**Permanent source-linked case-level data**, including every exact prompt, both genuine model responses, SHA-256 and recorded model digest, is archived at [Stage 02 raw JSON](results/vector_fly/stage02-run37873205792/DIALOGUE_RAW_AB.json), with [complete measured results and negative-case analysis](results/vector_fly/STAGE02_REAL_OLLAMA_DIALOGUE_RESULTS.md), [protocol](docs/VECTOR_FLY_DIALOGUE_STAGE02.md), [code](tools/run_vector_fly_ab.py) and [explicit rerun workflow](.github/workflows/vector-fly-ollama-dialogue-stage02.yml). Model execution is **manual workflow dispatch only** after the frozen original run, to avoid repeated large model downloads on ordinary documentation changes.

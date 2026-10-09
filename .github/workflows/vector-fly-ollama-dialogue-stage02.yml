@@ -1,0 +1,126 @@
+name: Vector Fly real Ollama paired dialogues Stage 02
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vector-fly-dialogue-stage02
+  cancel-in-progress: true
+jobs:
+  paired-dialogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      OLLAMA_HOST: '127.0.0.1:11434'
+      OLLAMA_NUM_PARALLEL: '1'
+      OLLAMA_MAX_LOADED_MODELS: '1'
+      RENDER_MODEL: 'qwen2.5:0.5b-instruct'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Connectome
+          ref: 2bcdcaeac7dbb57af621a7c4ffa4a95fc425b5bc
+          path: upstream-connectome
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install CPU dependencies and actual brain
+        run: |
+          python -m pip install -e .
+          python -m pip install 'scikit-learn>=1.5,<2' 'rank-bm25>=0.2,<1'
+      - name: Test renderer control invariants and scoring guardrails
+        run: |
+          python -m unittest discover -s tests -p 'test_vector_fly_eval.py' -v
+          python -m unittest discover -s tests -p 'test_vector_fly_dialogue.py' -v
+      - name: Install digest-verified, pinned Ollama binary archive
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zstd
+          curl --fail --location --retry 3 --silent --show-error \
+            https://github.com/ollama/ollama/releases/download/v0.34.0/ollama-linux-amd64.tar.zst \
+            -o "$RUNNER_TEMP/ollama-linux-amd64.tar.zst"
+          echo "cf95886728959aa09910bb34de5cca1cc5a8f68003b5597197d3f2c2d57c0804  $RUNNER_TEMP/ollama-linux-amd64.tar.zst" \
+            | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/ollama"
+          tar -I zstd -xf "$RUNNER_TEMP/ollama-linux-amd64.tar.zst" -C "$RUNNER_TEMP/ollama"
+          echo "$RUNNER_TEMP/ollama/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ollama/bin/ollama" --version
+      - name: Start CPU Ollama and pin the exact tiny model digest
+        run: |
+          "$RUNNER_TEMP/ollama/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:11434/api/version
+          "$RUNNER_TEMP/ollama/bin/ollama" pull "$RENDER_MODEL"
+          mkdir -p results/vector_fly
+          curl --fail --silent http://127.0.0.1:11434/api/tags -o results/vector_fly/OLLAMA_TAGS.json
+          "$RUNNER_TEMP/ollama/bin/ollama" --version > results/vector_fly/OLLAMA_VERSION.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          tags=json.loads(Path("results/vector_fly/OLLAMA_TAGS.json").read_text())
+          name="qwen2.5:0.5b-instruct"
+          matches=[m for m in tags.get("models",[]) if m.get("name")==name]
+          assert len(matches)==1 and len(matches[0]["digest"])>=32
+          record={"model":name,"digest":matches[0]["digest"],"size":matches[0]["size"],
+                  "ollama_version":Path("results/vector_fly/OLLAMA_VERSION.txt").read_text().strip(),
+                  "ollama_release":"v0.34.0",
+                  "ollama_archive_sha256":"cf95886728959aa09910bb34de5cca1cc5a8f68003b5597197d3f2c2d57c0804"}
+          Path("results/vector_fly/OLLAMA_MODEL.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
+          print("Actual model digest:",record["digest"])
+          PY
+      - name: Build and verify original 450-memory indexed source
+        run: |
+          python upstream-connectome/scripts/build_shared_memory_l2.py \
+            --seed 31 --output-dir upstream-connectome/data/derived/dialogue-l2 \
+            --report results/vector_fly/DIALOGUE_L2_BUILD.json
+          python upstream-connectome/scripts/vector_fly_db.py build \
+            --cache-dir upstream-connectome/data/derived/dialogue-l2 \
+            --database upstream-connectome/data/derived/dialogue-450.sqlite \
+            --scope all > results/vector_fly/DIALOGUE_DATABASE_BUILD.json
+          python upstream-connectome/scripts/vector_fly_db.py verify \
+            --cache-dir upstream-connectome/data/derived/dialogue-l2 \
+            --database upstream-connectome/data/derived/dialogue-450.sqlite \
+            > results/vector_fly/DIALOGUE_DATABASE_VERIFY.json
+      - name: Start localhost-only pinned Vector Fly source service
+        run: |
+          python upstream-connectome/scripts/serve_vector_fly.py \
+            --database upstream-connectome/data/derived/dialogue-450.sqlite \
+            --cache-dir upstream-connectome/data/derived/dialogue-l2 \
+            --host 127.0.0.1 --port 8765 > "$RUNNER_TEMP/vector-fly.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if python -c 'import json,urllib.request; r=json.load(urllib.request.urlopen("http://127.0.0.1:8765/v1/health",timeout=2)); assert r["scope"]=="all"'; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/vector-fly.log"
+          exit 1
+      - name: Generate actual A/B conversations and conservative audit summary
+        run: |
+          mkdir -p results/vector_fly
+          python tools/run_vector_fly_ab.py \
+            --api http://127.0.0.1:8765 --scope all --top-k 3 \
+            --ollama-url http://127.0.0.1:11434 \
+            --ollama-model "$RENDER_MODEL" --seed 1842 \
+            --output results/vector_fly/DIALOGUE_RAW_AB.json \
+            | tee results/vector_fly/DIALOGUE_EXECUTION_SUMMARY.json
+          python tools/summarize_vector_fly_dialogue.py \
+            --run results/vector_fly/DIALOGUE_RAW_AB.json \
+            --model results/vector_fly/OLLAMA_MODEL.json \
+            --output results/vector_fly/DIALOGUE_MEASURED.json
+      - name: Preserve all raw paired responses and explicit negative outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vector-fly-ollama-real-dialogue-stage02
+          path: |
+            results/vector_fly/OLLAMA_MODEL.json
+            results/vector_fly/OLLAMA_VERSION.txt
+            results/vector_fly/DIALOGUE_*.json
+          if-no-files-found: warn
+          retention-days: 90

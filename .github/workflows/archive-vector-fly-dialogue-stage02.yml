@@ -1,0 +1,64 @@
+name: Archive verified Vector Fly Stage 02 real paired dialogues
+on:
+  push:
+    paths:
+      - '.github/workflows/archive-vector-fly-dialogue-stage02.yml'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  archive:
+    if: github.ref == 'refs/heads/experiment/vector-fly-ollama-ab-stage02'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download named, already executed genuine local Ollama responses
+        run: |
+          mkdir -p "$RUNNER_TEMP/vector-stage02"
+          gh run download 37873205792 --repo Azimn/The-Doctor-Lives \
+            --name vector-fly-ollama-real-dialogue-stage02 \
+            --dir "$RUNNER_TEMP/vector-stage02"
+      - name: Verify original SHA-256 and scientific provenance
+        run: |
+          cd "$RUNNER_TEMP/vector-stage02"
+          echo 'cdb6d5b3153f180dc14bc72969589292ede159de90db2d2b533cbee01114ffbc  DIALOGUE_RAW_AB.json' | sha256sum -c
+          echo '8e5b82fbbed49d281591ad3ca601cb97918b67df5d14f9ea31ba5a997e623157  DIALOGUE_MEASURED.json' | sha256sum -c
+          echo 'fc3e6ba7e55a90780f28fe98a5fae86df158cd5e58bba4694e5a53139f40cef4  OLLAMA_MODEL.json' | sha256sum -c
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          raw=json.loads(Path('DIALOGUE_RAW_AB.json').read_text())
+          report=json.loads(Path('DIALOGUE_MEASURED.json').read_text())
+          model=json.loads(Path('OLLAMA_MODEL.json').read_text())
+          assert raw["state_unchanged"] and len(raw["trials"])==6
+          assert raw["renderer"]==model["model"]==report["model"]=="qwen2.5:0.5b-instruct"
+          assert model["digest"]==report["model_digest"]=="a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67"
+          assert report["responses_generated"]==report["responses_expected"]==12
+          assert report["cases_with_different_responses"]==4
+          assert not report["human_review_complete"]
+          for row in raw["trials"]:
+              assert row["pair"]["brain_mutated"] is False
+              assert row["pair"]["matched_subject_frame"] is True
+              assert set(row["responses"])=={"baseline","retrieval"}
+          print("PASS: authentic immutable 12-model-response archive verified")
+          PY
+      - name: Commit genuine full paired answer and source packet data
+        run: |
+          mkdir -p results/vector_fly/stage02-run37873205792
+          for name in DIALOGUE_RAW_AB.json DIALOGUE_MEASURED.json \
+            DIALOGUE_L2_BUILD.json DIALOGUE_DATABASE_BUILD.json \
+            DIALOGUE_DATABASE_VERIFY.json OLLAMA_MODEL.json; do
+            cp "$RUNNER_TEMP/vector-stage02/$name" \
+              "results/vector_fly/stage02-run37873205792/$name"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/vector_fly/stage02-run37873205792/
+          git commit -m "Archive verified actual Vector Fly Stage 02 complete paired Ollama responses"
+          git push origin HEAD:experiment/vector-fly-ollama-ab-stage02
