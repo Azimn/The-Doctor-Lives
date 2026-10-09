@@ -1,0 +1,59 @@
+name: Vector Fly Stage 03 masked human adjudication protocol
+on:
+  push:
+    paths:
+      - 'tools/vector_fly_review.py'
+      - 'tests/test_vector_fly_review.py'
+      - '.github/workflows/vector-fly-blinded-review.yml'
+      - 'docs/VECTOR_FLY_BLINDED_REVIEW_STAGE03.md'
+  pull_request:
+    paths:
+      - 'tools/vector_fly_review.py'
+      - 'tests/test_vector_fly_review.py'
+      - '.github/workflows/vector-fly-blinded-review.yml'
+      - 'docs/VECTOR_FLY_BLINDED_REVIEW_STAGE03.md'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  masked-real-case-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test actual renderer response checksums and balanced masking
+        run: |
+          python -m unittest discover -s tests -p 'test_vector_fly_review.py' -v
+      - name: Generate reviewer-only A/B packets from original twelve REAL answers
+        run: |
+          python tools/vector_fly_review.py prepare \
+            --run results/vector_fly/stage02-run37873205792/DIALOGUE_RAW_AB.json \
+            --review "$RUNNER_TEMP/VECTOR_FLY_REVIEWER_PACKET.json" \
+            --worksheet "$RUNNER_TEMP/VECTOR_FLY_RATER_WORKSHEET.json" \
+            --key "$RUNNER_TEMP/PRIVATE_CONDITION_KEY_DO_NOT_UPLOAD.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          masked=json.loads((root/"VECTOR_FLY_REVIEWER_PACKET.json").read_text())
+          blank=json.loads((root/"VECTOR_FLY_RATER_WORKSHEET.json").read_text())
+          hidden=json.loads((root/"PRIVATE_CONDITION_KEY_DO_NOT_UPLOAD.json").read_text())
+          assert len(masked["cases"])==6
+          assert len(blank["ratings"])==12
+          assert sum(v["A"]=="retrieval" for v in hidden["case_assignment"].values())==3
+          assert "case_assignment" not in json.dumps(masked)
+          assert hidden["source_run_sha256"]==masked["source_run_sha256"]
+          print("PASS: six real paired questions A/B; no hidden condition key in reviewer files")
+          PY
+      - name: Upload ONLY masked reviewer packet and blank scoring sheet
+        uses: actions/upload-artifact@v4
+        with:
+          name: vector-fly-stage03-reviewer-packets-NO-KEY
+          path: |
+            ${{ runner.temp }}/VECTOR_FLY_REVIEWER_PACKET.json
+            ${{ runner.temp }}/VECTOR_FLY_RATER_WORKSHEET.json
+          retention-days: 30
+          if-no-files-found: error
