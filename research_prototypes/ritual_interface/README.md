@@ -11,7 +11,7 @@ These are **contract prototypes**, not full implementations. In particular, they
 Run offline from repository root:
 
 ```sh
-python -m unittest tests.test_ritual_interface_prototype -v
+python -m unittest discover -s tests -p 'test_ritual_interface_prototype.py' -v
 ```
 
 This does not promote a ritual mechanism. Promotion requires source-independent held-out evidence from Attractomancy, full provenance/firewall regression, performance against simple baselines, migration gates and explicit approval.
