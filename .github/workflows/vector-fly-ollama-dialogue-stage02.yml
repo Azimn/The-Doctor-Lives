@@ -1,19 +1,5 @@
 name: Vector Fly real Ollama paired dialogues Stage 02
 on:
-  push:
-    paths:
-      - 'doctor_lives/vector_fly_eval.py'
-      - 'tools/summarize_vector_fly_dialogue.py'
-      - 'tests/test_vector_fly_dialogue.py'
-      - 'docs/VECTOR_FLY_DIALOGUE_STAGE02.md'
-      - '.github/workflows/vector-fly-ollama-dialogue-stage02.yml'
-  pull_request:
-    paths:
-      - 'doctor_lives/vector_fly_eval.py'
-      - 'tools/summarize_vector_fly_dialogue.py'
-      - 'tests/test_vector_fly_dialogue.py'
-      - 'docs/VECTOR_FLY_DIALOGUE_STAGE02.md'
-      - '.github/workflows/vector-fly-ollama-dialogue-stage02.yml'
   workflow_dispatch:
 permissions:
   contents: read
