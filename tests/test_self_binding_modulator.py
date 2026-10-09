@@ -250,6 +250,18 @@ class SelfBindingModulatorTests(unittest.TestCase):
         self.assertIs(phenomenal.awareness, AwarenessLevel.LATENT)
         self.assertNotIsInstance(result.proposals[0], PhenomenalEvent)
 
+    def test_demo_is_deterministic_and_explicitly_not_behavioral_evidence(self):
+        from research_prototypes.ritual_interface.run_self_binding_demo import run_demo
+        one = run_demo()
+        two = run_demo()
+        self.assertEqual(one, two)
+        self.assertEqual(one["claim_status"], "synthetic_algorithmic_smoke_test_not_behavioral_efficacy")
+        self.assertEqual(one["modes"]["off"]["highest_proposed_salience_event"], "notice-background")
+        self.assertEqual(one["modes"]["high"]["highest_proposed_salience_event"], "recall-promise")
+        self.assertTrue(one["conflict"]["freeze"])
+        self.assertTrue(one["conflict"]["all_identity_bonuses_zero"])
+
+
 
 if __name__ == "__main__":
     unittest.main()
