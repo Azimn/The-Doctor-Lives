@@ -110,6 +110,13 @@ class VectorFlyReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "mismatched"):
             score_review(self.review, self.key, wrong)
 
+    def test_rater_cannot_score_tampered_masked_prompt_or_answer(self):
+        filled = self.populated()
+        tampered = copy.deepcopy(self.review)
+        tampered["cases"][0]["answers"][0]["text"] += " An extra fabricated sentence."
+        with self.assertRaisesRegex(ValueError, "reviewer packet was altered"):
+            score_review(tampered, self.key, filled)
+
     def test_invalid_pair_responses_are_rejected_before_masking(self):
         corrupt = copy.deepcopy(self.original)
         corrupt["trials"][0]["responses"]["retrieval"]["text"] = "invented altered output"
