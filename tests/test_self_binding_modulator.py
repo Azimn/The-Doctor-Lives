@@ -123,6 +123,21 @@ class SelfBindingModulatorTests(unittest.TestCase):
         )
         self.assertAlmostEqual(run(BindingMode.HIGH, (many,)).proposals[0].requested_bonus, .10)
 
+    def test_family_weights_affect_mixed_evidence_without_creating_facts(self):
+        high_invariant = BindingCandidate(
+            "evt-a", SUBJECT, .2,
+            (EvidenceMatch("core:a", 1), EvidenceMatch("self:a", 0)),
+        )
+        high_hypothesis = BindingCandidate(
+            "evt-b", SUBJECT, .2,
+            (EvidenceMatch("core:a", 0), EvidenceMatch("self:a", 1)),
+        )
+        a, b = run(BindingMode.HIGH, (high_invariant, high_hypothesis)).proposals
+        self.assertGreater(a.supported_relevance, b.supported_relevance)
+        self.assertGreater(a.effective_bonus, b.effective_bonus)
+        self.assertEqual(a.source_refs, b.source_refs)
+        self.assertEqual(snapshot(), snapshot())
+
     def test_world_contradiction_suspends_all_identity_bonuses(self):
         conflicting = BindingCandidate("evt-world", SUBJECT, .36, (), True)
         paired = inputs() + (conflicting,)
