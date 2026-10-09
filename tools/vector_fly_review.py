@@ -128,7 +128,11 @@ def make_review(run: dict, *, secret: bytes | None = None) -> tuple[dict, dict, 
     }
     key_doc = {
         "schema": SCHEMA, "kind": "COORDINATOR_ONLY_DO_NOT_SHOW_REVIEWERS",
-        "source_run_sha256": run_hash, "case_assignment": key,
+        "source_run_sha256": run_hash,
+        "reviewer_packet_sha256": _sha256(
+            json.dumps(doc, sort_keys=True, ensure_ascii=False)
+        ),
+        "case_assignment": key,
     }
     blank = {
         "schema": SCHEMA, "kind": "rater_worksheet",
@@ -171,6 +175,10 @@ def score_review(review: dict, key: dict, worksheet: dict) -> dict:
             or not worksheet.get("rater_id")
             or not worksheet.get("original_source_adjudicator")):
         raise ValueError("Invalid, incomplete, or mismatched review provenance")
+    if key.get("reviewer_packet_sha256") != _sha256(
+        json.dumps(review, sort_keys=True, ensure_ascii=False)
+    ):
+        raise ValueError("Original masked reviewer packet was altered")
     cases = review["cases"]
     expected = {(c["case_id"], choice) for c in cases for choice in ("A", "B")}
     rows = worksheet.get("ratings")
