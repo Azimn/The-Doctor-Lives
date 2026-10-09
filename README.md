@@ -1,5 +1,7 @@
 # The Doctor Lives
 
+> **Research coordination (2026-10-08):** The Doctor Lives remains the definitive production Pretorius, not a competitor experimental brain. It participates in the [cumulative Character Continuity Program](https://github.com/Azimn/Artificial-Life-Research-Journal/blob/main/programs/CHARACTER_CONTINUITY_PROGRAM_V1.md) as a candidate for independently gated, opt-in mechanism transfer. Experimental neural, retrieval and conditioning claims are tracked in the [cross-project evidence register](https://github.com/Azimn/Artificial-Life-Research-Journal/blob/main/programs/CHARACTER_CONTINUITY_EVIDENCE_REGISTER_V1.md) and [comparison protocol](https://github.com/Azimn/Artificial-Life-Research-Journal/blob/main/programs/CHARACTER_CONTINUITY_COMPARISON_PROTOCOL_V1.md). Production release, evidence authority, persistence and migration gates remain separate and must not be bypassed by research results.
+
 The Doctor Lives is the production assembly repository for Doctor Septimus Pretorius as a persistent, renderer-neutral cognitive system.
 
 The brain owns identity evidence, autobiographical continuity, relationships, concerns, prospective commitments, interoception, salience, endogenous cognition, offline replay, consolidation, recurrent state, and provenance. A language model is a renderer and cognitive organ, not the identity database. Shell, browser, scheduler, messaging, and other capabilities remain outside the brain until a chassis is attached through the stable port.
