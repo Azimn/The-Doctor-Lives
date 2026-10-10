@@ -21,11 +21,13 @@ SCHEMA = "pretorius.living-lab.ground001-real-model-comparison/1"
 
 def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
                      world_name: str = "world.sqlite3", brain_name: str = "brain",
-                     memory_arm: str = "full") -> dict:
+                     memory_arm: str = "full",
+                     information_arm: str = "names") -> dict:
     argv = [sys.executable, "-m", "research_integrations.concrete_action",
             "--root", str(root), "--gguf", str(gguf),
             "--world", world_name, "--brain", brain_name,
             "--memory-arm", memory_arm,
+            "--information-arm", information_arm,
             "--goal", goal, "--seed", str(seed)]
     proc = subprocess.run(argv, capture_output=True, text=True, check=False,
                           timeout=360)
@@ -36,7 +38,8 @@ def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
 
 
 def matched_memory_presentation(root: Path, gguf: Path,
-                                goal: str, seed: int) -> dict:
+                                goal: str, seed: int,
+                                information_arm: str = "names") -> dict:
     """Equal post-action brain and world snapshots, different UPPB display.
 
     Does not delete source records or change the neural policy. Only the
@@ -51,11 +54,13 @@ def matched_memory_presentation(root: Path, gguf: Path,
     shutil.copytree(root / "brain", root / "cf_mask_brain")
     full = fresh_model_turn(root, gguf, goal, seed,
                             world_name="cf_full_world.sqlite3",
-                            brain_name="cf_full_brain")
+                            brain_name="cf_full_brain",
+                            information_arm=information_arm)
     masked = fresh_model_turn(root, gguf, goal, seed,
                               world_name="cf_mask_world.sqlite3",
                               brain_name="cf_mask_brain",
-                              memory_arm="mask_lab_autobiography")
+                              memory_arm="mask_lab_autobiography",
+                              information_arm=information_arm)
     world_match = all(
         full["world_before"][key] == masked["world_before"][key]
         for key in ("world_epoch", "revision", "state_digest")
@@ -92,15 +97,26 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     world = SpatialHabitat(root / "world.sqlite3")
     before = world.verify()
     world.backup_to(root / "nonneural_control.sqlite3")
+    world.backup_to(root / "names_control_world.sqlite3")
+    shutil.copytree(root / "brain", root / "names_control_brain")
+    # A single matched initial-turn comparison of bare names vs known host
+    # action effects. Both arms get identical subject and world source records.
+    names_control = fresh_model_turn(
+        root, gguf, goal, seed, world_name="names_control_world.sqlite3",
+        brain_name="names_control_brain", information_arm="names",
+    )
     trace = []
     memory_contrast = {"not_run": "No successful first source-backed physical act"}
     for i in range(steps):
-        record = fresh_model_turn(root, gguf, goal, seed)
+        record = fresh_model_turn(root, gguf, goal, seed,
+                                  information_arm="effects")
         record["session_index"] = i
         record["independent_process_restart"] = True
         trace.append(record)
         if i == 0 and record["status"] == "model_action_verified_and_admitted":
-            memory_contrast = matched_memory_presentation(root, gguf, goal, seed)
+            memory_contrast = matched_memory_presentation(
+                root, gguf, goal, seed, information_arm="effects",
+            )
         if (goal_finished(world) or record["status"] in {
             "model_selected_wait", "invalid_proposal_no_execution",
             "host_denied_no_admission", "observation_denied_no_admission",
@@ -128,6 +144,16 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "neural_policy_top_actions": [x["abstract_policy_top"] for x in trace],
         "actual_concrete_proposals": [x["proposed_action"] for x in trace],
         "baseline_goal_complete": baseline_steps[-1]["task_completed"],
+        "same_initial_action_menu_for_names_and_effects": (
+            names_control["offered_action_tokens"] == trace[0]["offered_action_tokens"]
+        ),
+        "same_initial_world_for_names_and_effects": all(
+            names_control["world_before"][key] == trace[0]["world_before"][key]
+            for key in ("world_epoch", "revision", "state_digest")
+        ),
+        "names_first_proposal": names_control["proposed_action"],
+        "effects_first_proposal": trace[0]["proposed_action"],
+        "effects_first_action_executed": trace[0]["executed"],
         "source_attribution": "per-action event hash and source-bound memory id in raw trace",
         "uncontrolled_confounders": [
             "researcher-defined goal and environment",
@@ -141,7 +167,10 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "model_file_sha256": trace[0].get("model_sha256") if trace else None,
         "run_configuration": {"goal": goal, "steps": steps, "seed": seed,
                               "fresh_python_process_per_model_turn": True},
-        "initial_world": before, "trace": trace,
+        "initial_world": before,
+        "names_only_matched_first_turn": names_control,
+        "effects_provided_multi_turn_trace": trace,
+        "trace": trace,
         "final_world": world.verify(),
         "nonneural_same_initial_world_control": baseline_steps,
         "metrics": metrics,
