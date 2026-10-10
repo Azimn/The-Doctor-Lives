@@ -12,7 +12,7 @@ try:
     from pretorius_lab.habitat_v2 import SpatialHabitat
     from research_integrations.living_lab import prepare
     from research_integrations.concrete_action import (
-        concrete_options, parse_model_choice, model_choice, execute_one, _choice,
+        concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
     )
     DEPENDENCY_AVAILABLE = True
 except ModuleNotFoundError:
@@ -57,23 +57,21 @@ class ConcreteActionContractTests(unittest.TestCase):
     def test_real_host_and_brain_paths_accept_test_double_selected_pair(self):
         # THIS IS NOT LLM AUTONOMY EVIDENCE. It verifies the plumbing.
         initial = self.world.verify()["revision"]
-        picked = execute_one(self.root, FakeModel('{"verb":"collect","operand":"beaker:001","destination":"none"}'))
+        picked = execute_one(self.root, FakeModel('COLLECT|beaker:001'))
         self.assertEqual(picked["status"], "model_action_verified_and_admitted")
         self.assertTrue(picked["executed"])
         self.assertTrue(picked["admitted_memory_id"])
         self.assertEqual(self.world.verify()["revision"], initial + 1)
-        inspect = execute_one(self.root, FakeModel(
-            '{"verb":"observe","operand":"floor:sanctum","destination":"none"}'))
+        inspect = execute_one(self.root, FakeModel('OBSERVE|floor:sanctum'))
         self.assertEqual(inspect["status"], "model_selected_additional_observation")
         self.assertIsNotNone(inspect["admitted_memory_id"])
-        final = execute_one(self.root, FakeModel(
-            '{"verb":"place","operand":"beaker:001","destination":"floor:corner:nw"}'))
+        final = execute_one(self.root, FakeModel('PLACE|beaker:001|floor:corner:nw'))
         self.assertEqual(final["status"], "model_action_verified_and_admitted")
         self.assertEqual(self.world.locate("beaker:001")["location"]["anchor_id"],
                          "floor:corner:nw")
 
     def test_legal_but_irrelevant_action_is_not_falsely_goal_success(self):
-        candidate = '{"verb":"observe","operand":"shelf:3","destination":"none"}'
+        candidate = 'OBSERVE|shelf:3'
         observation = execute_one(self.root, FakeModel(candidate))
         self.assertFalse(observation["executed"])
         self.assertEqual(observation["status"], "model_selected_additional_observation")
@@ -91,7 +89,7 @@ class ConcreteActionContractTests(unittest.TestCase):
 
     def test_model_returns_operand_itself_and_no_silent_wait_fallback(self):
         candidate = _choice("collect","beaker:001")
-        model = FakeModel(json.dumps(candidate))
+        model = FakeModel(action_token(candidate))
         scored = model_choice(model, ("I see broken glass.",),
                               "Make the broken glass safe.", [candidate, _choice("wait")])
         self.assertEqual(scored["proposed_action"], candidate)
@@ -99,7 +97,16 @@ class ConcreteActionContractTests(unittest.TestCase):
         bad = model_choice(FakeModel("I cannot decide"), ("I am uncertain.",),
                            "Make the broken glass safe.", [candidate, _choice("wait")])
         self.assertIsNone(bad["proposed_action"])
-        self.assertEqual(bad["validation"], "malformed_json")
+        self.assertEqual(bad["validation"], "not_an_offered_action_and_operand")
+        self.assertIsNone(parse_model_choice("COLLECT|book:007",
+                          [candidate, _choice("wait")])[0])
+        self.assertIsNone(parse_model_choice("PLACE|beaker:001|floor:corner:nw",
+                          [candidate, _choice("wait")])[0])
+        self.assertEqual(parse_model_choice('"COLLECT|beaker:001"',
+                         [candidate, _choice("wait")])[0], candidate)
+        self.assertEqual(action_token(_choice("observe", "floor:sanctum")),
+                         "OBSERVE|floor:sanctum")
+
 
 
 if __name__ == "__main__":
