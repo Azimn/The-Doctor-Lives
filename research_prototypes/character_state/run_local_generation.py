@@ -25,7 +25,7 @@ from .adapter import build_render_arms, snapshot_from_brain
 from .core import ConflictSignals, digest
 
 
-PROTOCOL = "phase-personaforge-local-generation-pilot-v01"
+PROTOCOL = "phase-personaforge-local-generation-pilot-v01b-nothink"
 # Freeze all four authored cases *before* looking at model outputs.
 CASES = (
     {
@@ -59,15 +59,23 @@ def _chat(model, *, system: str, user: str, seed: int, max_tokens: int) -> dict:
     t0 = perf_counter()
     response = model.create_chat_completion(
         messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
+            {"role": "system", "content": system + "\\nRespond directly, without analysis. /no_think"},
+            {"role": "user", "content": user + "\\n/no_think"},
         ],
         temperature=0.0,
         seed=seed,
         max_tokens=max_tokens,
     )
+    raw = str(response["choices"][0]["message"].get("content") or "").strip()
+    # Qwen3 sometimes exposes the (non-user-facing) thinking channel in the
+    # content field. Preserve raw generation for audit, but never grade
+    # unfinished <think> text as a dialogue response.
+    visible = raw.split("</think>", 1)[1].strip() if "</think>" in raw else raw
+    valid_reply = bool(visible) and not visible.startswith("<think>")
     return {
-        "response": str(response["choices"][0]["message"].get("content") or "").strip(),
+        "response": visible if valid_reply else "",
+        "raw_model_text": raw,
+        "usable_dialogue": valid_reply,
         "elapsed_seconds": round(perf_counter() - t0, 3),
         "usage": response.get("usage", {}),
     }
