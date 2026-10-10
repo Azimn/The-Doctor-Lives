@@ -7,6 +7,7 @@ abstract action scores, visible affordances, and source-verified history.
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import json
 from pathlib import Path
 import shutil
@@ -205,6 +206,31 @@ def prepare(root: Path, fixture: Path) -> dict:
             "world_verified": world.verify()["verified"]}
 
 
+def _verified_subject_frame(brain: PretoriusBrain, port: ObservationPort) -> SubjectFrame:
+    """Only locally admitted lab memories can enter the protected subject frame.
+
+    Other memories are still governed by Doctor Lives' existing classifications.
+    This does not claim to secure its trusted direct BrainStore write API.
+    """
+    epoch = port.habitat.verify()["world_epoch"]
+    keys = {kind: _indexed(brain, kind, epoch)
+            for kind in ("action", "observation", "book")}
+    view = brain.cognitive_view()
+    def admitted(item) -> bool:
+        source = str(item.provenance.source)
+        if not source.startswith("lab:"):
+            return True
+        parts = source.split(":")
+        if len(parts) != 4 and len(parts) != 3:
+            return False
+        kind = parts[1]
+        proof_hash = parts[-1]
+        return kind in keys and (item.record_id, proof_hash) in keys[kind]
+    filtered = replace(view, experiences=tuple(x for x in view.experiences if admitted(x)))
+    # Reuse the accepted Subject Interface Firewall projector, not a second renderer.
+    return brain._subject_frame_from_view(filtered)
+
+
 def _offer_room(brain: PretoriusBrain, port: ObservationPort):
     receipt = port.expose("room", "room:sanctum")
     payload = _verify_observation(port, receipt)["offered_payload"]
@@ -215,7 +241,7 @@ def _offer_room(brain: PretoriusBrain, port: ObservationPort):
             (" and its fragments are gathered." if obj["collected"] else
              " and its fragments are scattered."))
     projected = _project(brain, text)
-    existing = brain.render_request().subject_frame
+    existing = _verified_subject_frame(brain, port)
     frame = SubjectFrame(items=existing.items + SubjectFrame.from_events([projected.event]).items)
     return receipt, obj, frame
 
