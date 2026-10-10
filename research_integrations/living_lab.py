@@ -206,7 +206,9 @@ def prepare(root: Path, fixture: Path) -> dict:
             "world_verified": world.verify()["verified"]}
 
 
-def _verified_subject_frame(brain: PretoriusBrain, port: ObservationPort, *,\n                            current_percept: str | None = None,\n                            withhold_lab_autobiography: bool = False) -> SubjectFrame:
+def _verified_subject_frame(brain: PretoriusBrain, port: ObservationPort, *,
+                            current_percept: str | None = None,
+                            withhold_lab_autobiography: bool = False) -> SubjectFrame:
     """Only locally admitted lab memories can enter the protected subject frame.
 
     Other memories are still governed by Doctor Lives' existing classifications.
