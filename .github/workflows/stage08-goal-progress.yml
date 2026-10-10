@@ -1,0 +1,95 @@
+name: Pretorius Stage08 typed goal progress versus placebo
+on:
+  push:
+    branches:
+      - research/stage08-goal-delta-placebo-20261010
+    paths:
+      - research_prototypes/character_state/workshop_world_stage08.py
+      - research_prototypes/character_state/run_stage08_goal_delta.py
+      - tests/test_stage08_goal_delta.py
+      - .github/workflows/stage08-goal-progress.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-world-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native subject
+        run: python -m pip install -e .
+      - name: Preflight separate world, signed transitions and scoring
+        run: python -m unittest discover -s tests -p 'test_stage08_goal_delta.py' -v
+  two-model-two-seed-inference:
+    needs: source-world-preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - model: qwen3-1.7b
+            file: Qwen3-1.7B-Q4_K_M.gguf
+            url: https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf
+            sha: d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5
+          - model: smollm2-1.7b
+            file: smollm2-1.7b-instruct-q4_k_m.gguf
+            url: https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF/resolve/main/smollm2-1.7b-instruct-q4_k_m.gguf
+            sha: decd2598bc2c8ed08c19adc3c8fdd461ee19ed5708679d1c54ef54a5a30d4f33
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native state and offline CPU inference
+        run: |
+          python -m pip install -e .
+          python -m pip install llama-cpp-python==0.3.16
+      - name: Pin GGUF to previously verified SHA
+        env:
+          MODEL_URL: ${{ matrix.url }}
+          MODEL_FILE: ${{ matrix.file }}
+          MODEL_SHA: ${{ matrix.sha }}
+        run: |
+          curl --fail --location --retry 3 --show-error --silent "$MODEL_URL" -o "/tmp/$MODEL_FILE"
+          echo "$MODEL_SHA  /tmp/$MODEL_FILE" | sha256sum -c -
+      - name: Execute 12 scenarios x 4 arms x 2 seeds
+        env:
+          FAMILY: ${{ matrix.model }}
+          MODEL_FILE: ${{ matrix.file }}
+        run: |
+          mkdir -p results/character_state/stage08
+          for SEED in 41 73; do
+            python -m research_prototypes.character_state.run_stage08_goal_delta \
+              --model "$FAMILY" --seed "$SEED" --gguf "/tmp/$MODEL_FILE" \
+              --output "results/character_state/stage08/${FAMILY}-seed${SEED}.json"
+          done
+          python - <<'PY'
+          import glob,json
+          files=glob.glob('results/character_state/stage08/*.json')
+          assert len(files)==2, files
+          for path in files:
+              data=json.load(open(path))
+              assert data['scenario_count']==12 and data['n_trials']==48
+              assert data['seed'] in (41,73)
+              assert not data['independent_task_author']
+              assert data['native_lived_memory_imports']==0
+              assert data['reference']['oracle_ceiling']==12
+              for arm in ('eligible','neutral','goal_delta','shuffled_delta'):
+                  assert data['by_arm'][arm]['n']==12
+              for trial in data['trials']:
+                  assert all(not x['host_executed'] or x['host_signature_verified']
+                             for x in trial['rows'])
+              print('STAGE08_METRICS',data['model_name'],data['seed'],
+                    json.dumps(data['by_arm'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage08-${{ matrix.model }}-two-seeds-four-arms
+          path: results/character_state/stage08/
+          retention-days: 90
