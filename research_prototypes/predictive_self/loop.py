@@ -270,6 +270,7 @@ class PredictiveSelfLoop:
         self._open: dict[str, Forecast] = {}
         self._history: list[tuple[Forecast, ObservedEpisode, PredictionError]] = []
         self._sequence = 0
+        self._last_observed_tick = snapshot.cutoff_tick
 
     @property
     def history(self) -> tuple[tuple[Forecast, ObservedEpisode, PredictionError], ...]:
@@ -376,7 +377,7 @@ class PredictiveSelfLoop:
         fid = f"psl-{self._sequence:06d}"
         data = {
             "id": fid, "source": self.snapshot.digest, "situation": asdict(situation),
-            "cutoff": self.snapshot.cutoff_tick, "actions": self.snapshot.actions,
+            "cutoff": self._last_observed_tick, "actions": self.snapshot.actions,
             "probabilities": probabilities, "beliefs": beliefs,
             "cooperation": cooperation,
             "success_probabilities": self._world_success(situation),
@@ -385,7 +386,7 @@ class PredictiveSelfLoop:
         result = Forecast(
             forecast_id=fid, sequence=self._sequence,
             source_snapshot=self.snapshot.digest,
-            cutoff_tick=self.snapshot.cutoff_tick,
+            cutoff_tick=self._last_observed_tick,
             situation=situation,
             action_probabilities=probabilities,
             semantic_probability=beliefs,
@@ -402,8 +403,6 @@ class PredictiveSelfLoop:
         prior = self._open.get(episode.forecast_id)
         if prior is None:
             raise ValueError("unknown, consumed or unsealed forecast")
-        if episode.tick <= prior.cutoff_tick:
-            raise ValueError("observation must be after the forecast source cutoff")
         if prior.situation != episode.situation:
             raise ValueError("situation changed between forecast and observation")
         if episode.action not in self.snapshot.actions:
@@ -412,6 +411,8 @@ class PredictiveSelfLoop:
             raise ValueError("duplicated witnessed event")
         if episode.witness_ref in {e.witness_ref for _, e, _ in self._history}:
             raise ValueError("duplicated witness reference")
+        if episode.tick <= max(prior.cutoff_tick, self._last_observed_tick):
+            raise ValueError("observation is not later than the sealed forecast and previous event")
         i = self.snapshot.actions.index(episode.action)
         probs = prior.action_probabilities
         brier = sum((p - (1.0 if j == i else 0.0)) ** 2
@@ -439,6 +440,7 @@ class PredictiveSelfLoop:
         record = replace(self._history[-1][2], semantic_shift=shifts)
         self._history[-1] = (prior, episode, record)
         del self._open[episode.forecast_id]
+        self._last_observed_tick = episode.tick
         return record
 
     def export_checkpoint(self) -> str:
