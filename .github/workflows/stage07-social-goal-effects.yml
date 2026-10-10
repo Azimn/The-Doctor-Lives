@@ -1,0 +1,86 @@
+name: Pretorius Stage07 social goals and expected effects
+on:
+  push:
+    branches:
+      - research/goal-effects-social-world-stage07-20261010
+    paths:
+      - research_prototypes/character_state/social_world_stage07.py
+      - research_prototypes/character_state/run_stage07_social_actions.py
+      - tests/test_stage07_social_world.py
+      - .github/workflows/stage07-social-goal-effects.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host-state-and-goal-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - run: python -m unittest discover -s tests -p 'test_stage07_social_world.py' -v
+  local-model-pairs:
+    needs: host-state-and-goal-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - family: qwen3-1.7b
+            gguf: Qwen3-1.7B-Q4_K_M.gguf
+            url: https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf
+            sha: d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5
+          - family: smollm2-1.7b
+            gguf: smollm2-1.7b-instruct-q4_k_m.gguf
+            url: https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF/resolve/main/smollm2-1.7b-instruct-q4_k_m.gguf
+            sha: decd2598bc2c8ed08c19adc3c8fdd461ee19ed5708679d1c54ef54a5a30d4f33
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Native Pretorius and CPU GGUF runtime
+        run: |
+          python -m pip install -e .
+          python -m pip install llama-cpp-python==0.3.16
+      - name: Download exact source model and verify GGUF SHA256
+        env:
+          MODEL_URL: ${{ matrix.url }}
+          MODEL_NAME: ${{ matrix.gguf }}
+          MODEL_SHA: ${{ matrix.sha }}
+        run: |
+          curl --fail --location --retry 3 --silent --show-error "$MODEL_URL" --output "/tmp/$MODEL_NAME"
+          echo "$MODEL_SHA  /tmp/$MODEL_NAME" | sha256sum -c -
+      - name: Execute all new social world actions for three information arms
+        env:
+          MODEL_NAME: ${{ matrix.gguf }}
+          FAMILY: ${{ matrix.family }}
+        run: |
+          mkdir -p results/character_state/stage07
+          python -m research_prototypes.character_state.run_stage07_social_actions \
+            --model "$FAMILY" \
+            --gguf "/tmp/$MODEL_NAME" \
+            --output "results/character_state/stage07/$FAMILY.json"
+          python - <<'PY'
+          import glob,json
+          files=glob.glob('results/character_state/stage07/*.json')
+          assert len(files)==1
+          d=json.load(open(files[0]))
+          assert d['n_cases']==12 and d['n_trials']==36
+          assert d['initial_source_matched_within_each_case']
+          assert not d['independent_task_author']
+          assert d['new_native_lived_memories']==0
+          for arm in ('raw','eligible','effects'):
+              assert d['by_arm'][arm]['n']==12
+          print('STAGE07_OBJECTIVE_METRICS',json.dumps(d['by_arm'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage07-${{ matrix.family }}-social-world-actions
+          path: results/character_state/stage07/
+          retention-days: 90
