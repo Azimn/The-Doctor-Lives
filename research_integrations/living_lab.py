@@ -236,7 +236,8 @@ def _verified_subject_frame(brain: PretoriusBrain, port: ObservationPort, *,
     return brain._subject_frame_from_view(filtered)
 
 
-def _offer_room(brain: PretoriusBrain, port: ObservationPort):
+def _offer_room(brain: PretoriusBrain, port: ObservationPort, *,
+                withhold_lab_autobiography: bool = False):
     receipt = port.expose("room", "room:sanctum")
     payload = _verify_observation(port, receipt)["offered_payload"]
     obj = payload["objects"]["beaker:001"]
@@ -246,7 +247,10 @@ def _offer_room(brain: PretoriusBrain, port: ObservationPort):
             (" and its fragments are gathered." if obj["collected"] else
              " and its fragments are scattered."))
     projected = _project(brain, text)
-    existing = _verified_subject_frame(brain, port, current_percept=text)
+    existing = _verified_subject_frame(
+        brain, port, current_percept=text,
+        withhold_lab_autobiography=withhold_lab_autobiography,
+    )
     frame = SubjectFrame(items=existing.items + SubjectFrame.from_events([projected.event]).items)
     return receipt, obj, frame
 
