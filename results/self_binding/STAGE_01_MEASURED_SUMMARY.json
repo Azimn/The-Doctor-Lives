@@ -1,0 +1,79 @@
+{
+  "schema": "self-binding-stage01-reviewed-summary-v1",
+  "status": "exploratory_not_confirmatory",
+  "date": "2026-10-09",
+  "source_execution_sha": "fafec951f4fb07470cb3d04f4830d61ea139a988",
+  "workflow_run_id": 38009422045,
+  "artifact_id": 11652032731,
+  "source_state_sha256": "2f4e4fd2d2592c0857c7c105ed06050edd4da47207a20064e41438558634b426",
+  "neural_checkpoint_sha256": "023ca9b97342de335300ce400cd1047e2fc7221620d5db8b54617210bff97f3e",
+  "manifest_sha256": "c26652e8712dce315e10ef4eabc29b806fdc69026db5b6defea8bc78176188e8",
+  "probe_count": 4,
+  "conditions_per_probe": 5,
+  "arms": 20,
+  "noncontrol_comparisons": 16,
+  "noncontrol_action_change_count": 0,
+  "noncontrol_memory_id_sequence_change_count": 2,
+  "noncontrol_thought_text_change_count": 1,
+  "noncontrol_with_positive_bonus_count": 12,
+  "verified_conflict_truth": "simulated_in_harness_not_verified_external_world",
+  "probes": [
+    {
+      "index": 0,
+      "off_action": "approach",
+      "high_action": "approach",
+      "off_runnerup": "create",
+      "off_action_margin": 0.002606588083,
+      "high_action_margin": 0.002981458244,
+      "high_off_action_score_l1": 0.001439301013,
+      "memory_order_changed_in": [
+        "shuffled"
+      ],
+      "memory_membership_changed_in": [],
+      "thought_changed_in": [
+        "shuffled"
+      ]
+    },
+    {
+      "index": 1,
+      "off_action": "explore",
+      "high_action": "explore",
+      "off_runnerup": "approach",
+      "off_action_margin": 0.003614869283,
+      "high_action_margin": 0.003584814942,
+      "high_off_action_score_l1": 0.000676732552,
+      "memory_order_changed_in": [
+        "shuffled"
+      ],
+      "memory_membership_changed_in": [
+        "shuffled"
+      ],
+      "thought_changed_in": []
+    },
+    {
+      "index": 2,
+      "off_action": "explore",
+      "high_action": "explore",
+      "off_runnerup": "approach",
+      "off_action_margin": 0.001727134567,
+      "high_action_margin": 0.001684218672,
+      "high_off_action_score_l1": 0.000473320274,
+      "memory_order_changed_in": [],
+      "memory_membership_changed_in": [],
+      "thought_changed_in": []
+    },
+    {
+      "index": 3,
+      "off_action": "explore",
+      "high_action": "explore",
+      "off_runnerup": "create",
+      "off_action_margin": 0.001090155892,
+      "high_action_margin": 0.001090155892,
+      "high_off_action_score_l1": 0,
+      "memory_order_changed_in": [],
+      "memory_membership_changed_in": [],
+      "thought_changed_in": []
+    }
+  ],
+  "conclusion": "No action or selected memory change from unshuffled self-binding gains in exploratory probes. SHUFFLED altered memory order or membership in two cases and thought text once. Nonzero bridge score deltas do not establish identity continuity."
+}
