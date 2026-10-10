@@ -29,7 +29,7 @@ _AFFIRMATIVE = re.compile(
     r"reviewed|examined|inspected|witnessed|observed)|"
     r"I (?:was there|went there|spoke with|talked with|spoke to|talked to)|"
     r"We (?:met|spoke|talked|visited|witnessed|observed|"
-    r"inspected|completed|finished)|"
+    r"inspected|completed|finished)"
     r")\b",
     re.IGNORECASE,
 )
