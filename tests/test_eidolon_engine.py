@@ -82,6 +82,17 @@ class EidolonEngineTests(unittest.TestCase):
         u = unpaired.observe(event(self.cue.text, actor="Another Person"), self.base)
         self.assertGreater(p.action_scores["create"], u.action_scores["create"])
 
+    def test_unicode_glyph_changes_binding_without_changing_prose(self):
+        cue = event("I inscribe 🜁 upon the brass plate.", actor="Henry")
+        changed = event("I inscribe 🜂 upon the brass plate.", actor="Henry")
+        model = EidolonEngine()
+        model.observe(cue, self.base, teaching_action="create", learn=True)
+        checkpoint = model.snapshot()
+        same = EidolonEngine.from_snapshot(checkpoint).observe(cue, self.base)
+        different = EidolonEngine.from_snapshot(checkpoint).observe(changed, self.base)
+        self.assertGreater(same.action_scores["create"],
+                           different.action_scores["create"])
+
     def test_checkpoint_rehydration_exact_and_schema_safe(self):
         model = EidolonEngine()
         model.observe(self.cue, self.base, teaching_action="create", learn=True)
