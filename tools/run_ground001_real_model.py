@@ -168,6 +168,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     )
     trace = []
     stagnation_stop = False
+    wait_feedback_attempts = 0
     memory_contrast = {"not_run": "No successful first source-backed physical act"}
     goal_contrast = {"not_run": "No successful first source-backed physical act"}
     for i in range(steps):
@@ -190,6 +191,13 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         if len(trace) >= 2 and repeated_no_progress(trace[-2], record):
             stagnation_stop = True
             break
+        if record["status"] == "model_selected_wait_with_verified_feedback":
+            wait_feedback_attempts += 1
+            # One bounded self-selected reconsideration is offered after WAIT.
+            # We do not choose or insert the next operation.
+            if wait_feedback_attempts >= 2:
+                break
+            continue
         if (goal_finished(world) or record["status"] in {
             "model_selected_wait", "invalid_proposal_no_execution",
             "host_denied_no_admission", "observation_denied_no_admission",
@@ -210,7 +218,22 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "model_invalid_proposals": sum(
             row["status"] == "invalid_proposal_no_execution" for row in trace),
         "model_explicit_abstentions": sum(
-            row["status"] == "model_selected_wait" for row in trace),
+            row["proposed_action"] is not None
+            and row["proposed_action"]["verb"] == "wait" for row in trace),
+        "verified_wait_feedback_admissions": sum(
+            row["status"] == "model_selected_wait_with_verified_feedback"
+            for row in trace
+        ),
+        "post_wait_reconsideration_executed": any(
+            prior["status"] == "model_selected_wait_with_verified_feedback"
+            for prior in trace[:-1]
+        ),
+        "post_wait_new_non_wait_action": any(
+            earlier["status"] == "model_selected_wait_with_verified_feedback"
+            and later["proposed_action"] is not None
+            and later["proposed_action"]["verb"] != "wait"
+            for earlier, later in zip(trace, trace[1:])
+        ),
         "host_denials": sum(row["host_denied"] for row in trace),
         "proposed_legal_action_operand": sum(
             row["proposed_action"] is not None and row["validation"] == "accepted_proposal"
