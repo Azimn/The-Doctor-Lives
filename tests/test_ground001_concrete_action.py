@@ -16,7 +16,7 @@ try:
     from tools.run_ground001_real_model import repeated_no_progress
     from research_integrations.concrete_action import (
         concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
-        currently_admitted_fixture_observations,
+        currently_admitted_fixture_observations, action_grammar,
     )
     DEPENDENCY_AVAILABLE = True
 except ModuleNotFoundError:
@@ -173,6 +173,20 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertEqual(bare["proposed_action"], explained["proposed_action"])
         self.assertNotEqual(bare["prompt_sha256"], explained["prompt_sha256"])
 
+
+    def test_grammar_only_allows_complete_offered_semantic_tokens(self):
+        options = [_choice("wait"), _choice("observe", "floor:sanctum"),
+                   _choice("collect", "beaker:001")]
+        grammar = action_grammar(options)
+        self.assertEqual(
+            grammar,
+            'root ::= "WAIT" | "OBSERVE|floor:sanctum" | "COLLECT|beaker:001"' + chr(10),
+        )
+        self.assertNotIn("PLACE|", grammar)
+        with self.assertRaises(ValueError):
+            action_grammar([_choice("wait"), _choice("wait")])
+        with self.assertRaises(ValueError):
+            action_grammar([])
 
     def test_model_returns_operand_itself_and_no_silent_wait_fallback(self):
         candidate = _choice("collect","beaker:001")
