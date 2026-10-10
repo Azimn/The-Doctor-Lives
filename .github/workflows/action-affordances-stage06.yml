@@ -1,0 +1,71 @@
+name: Pretorius Stage06 cognitive affordances and real world choices
+on:
+  push:
+    branches:
+      - research/goal-affordance-stage06-20261010
+    paths:
+      - research_prototypes/character_state/action_affordances.py
+      - research_prototypes/character_state/run_stage06_action_trials.py
+      - tests/test_action_affordances_stage06.py
+      - .github/workflows/action-affordances-stage06.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  state-space-and-host-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Exhaustive 128-state controls, world oracle, veto and stale state
+        run: python -m unittest discover -s tests -p 'test_action_affordances_stage06.py' -v
+  qwen-world-decision-comparison:
+    needs: [state-space-and-host-contract]
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Native brain and local model inference runtime
+        run: |
+          python -m pip install -e .
+          python -m pip install llama-cpp-python==0.3.16
+      - name: Verify exact pinned CPU Qwen GGUF
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf' \
+            --output /tmp/Qwen3-1.7B-Q4_K_M.gguf
+          echo 'd2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5  /tmp/Qwen3-1.7B-Q4_K_M.gguf' | sha256sum -c -
+      - name: Run twelve NEW tasks with four matched model arms
+        run: |
+          mkdir -p results/character_state/stage06
+          python -m research_prototypes.character_state.run_stage06_action_trials \
+            --gguf /tmp/Qwen3-1.7B-Q4_K_M.gguf \
+            --output results/character_state/stage06/QWEN17B_WORLD_ACTION_AFFORDANCES.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('results/character_state/stage06/QWEN17B_WORLD_ACTION_AFFORDANCES.json').read_text())
+          assert d['scenario_count']==12
+          assert d['model_trials']==48
+          assert d['initial_sources_verified_identical']
+          assert len(d['trials'])==48
+          assert d['reference']['n']==12
+          assert d['reference']['world_successes']==12
+          assert not d['independently_authored_task_bank']
+          for arm in d['arms']:
+              assert d['by_arm'][arm]['n']==12
+          print('ACTION_AFFORDANCE_OBSERVED_METRICS',json.dumps(d['by_arm'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage06-qwen17b-affordance-12x4-action-traces
+          path: results/character_state/stage06/
+          retention-days: 90
