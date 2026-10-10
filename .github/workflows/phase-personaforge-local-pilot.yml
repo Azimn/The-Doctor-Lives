@@ -1,0 +1,50 @@
+name: PHASE PersonaForge local model pilot
+on:
+  push:
+    branches: [research/phase-personaforge-ablation-20261009]
+    paths:
+      - research_prototypes/character_state/run_local_generation.py
+      - .github/workflows/phase-personaforge-local-pilot.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-gguf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pretorius and local CPU model runtime (no APIs)
+        run: |
+          python -m pip install -e .
+          python -m pip install llama-cpp-python==0.3.16
+      - name: Download public non-proprietary 360M instruct model
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://huggingface.co/tensorblock/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf' \
+            --output /tmp/SmolLM2-360M-Instruct-Q4_K_M.gguf
+          test $(wc -c </tmp/SmolLM2-360M-Instruct-Q4_K_M.gguf) -gt 200000000
+          sha256sum /tmp/SmolLM2-360M-Instruct-Q4_K_M.gguf
+      - name: Produce complete raw generated responses and blind review packet
+        run: |
+          python -m research_prototypes.character_state.run_local_generation \
+            --gguf /tmp/SmolLM2-360M-Instruct-Q4_K_M.gguf \
+            --output results/character_state/LOCAL_GGUF_PILOT.json --max-tokens 96
+          python - <<'PY'
+          import json
+          p=json.load(open('results/character_state/LOCAL_GGUF_PILOT.json'))
+          assert p['provenance']['upstream_paper_reproduction'] is False
+          assert p['provenance']['world_outcomes_measured'] is False
+          assert len(p['responses']) == 11
+          assert len(p['blind_reviewer_pack']) == 11
+          print('PASS: 11 actual local model outputs, no efficacy claim')
+          PY
+      - name: Archive unscored blind outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-personaforge-360m-blinded-responses
+          path: results/character_state/LOCAL_GGUF_PILOT.json
+          retention-days: 90
