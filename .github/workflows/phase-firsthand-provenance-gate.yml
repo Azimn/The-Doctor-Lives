@@ -1,0 +1,33 @@
+name: Pretorius firsthand provenance gate research
+on:
+  push:
+    branches:
+      - research/phase-firsthand-provenance-gate-20261009
+    paths:
+      - research_prototypes/character_state/firsthand_gate.py
+      - tests/test_phase_firsthand_gate.py
+      - .github/workflows/phase-firsthand-provenance-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Challenge reconstructed and spoofed firsthand evidence against native BrainStore
+        run: python -m unittest discover -s tests -p 'test_phase_firsthand_gate.py' -v
+      - name: Confirm explicit subject response never exposes machine identifiers
+        run: |
+          python - <<'PY'
+          from research_prototypes.character_state.firsthand_gate import SAFE_REPLY
+          assert 'record_id' not in SAFE_REPLY
+          assert 'source' not in SAFE_REPLY
+          assert 'metadata' not in SAFE_REPLY
+          print('PASS: abstention is first-person and source-ID-free')
+          PY
