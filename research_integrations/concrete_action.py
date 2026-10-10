@@ -119,10 +119,35 @@ def parse_model_choice(raw: str, options: list[dict]) -> tuple[dict | None, str]
     return mapping[value], "accepted_proposal"
 
 
+def host_effect_description(option: dict) -> str:
+    """Public action semantics only, not predicted outcome or oracle ranking.
+
+    Grounded in the existing laboratory action grammar. The host must still
+    recheck world state, legality, and exact results independently.
+    """
+    verb = option["verb"]
+    if verb == "wait":
+        return "Take no physical action; obtain no new observation."
+    if verb == "observe":
+        return "Inspect the named fixture; learn its presently visible contents without moving objects."
+    if verb == "collect":
+        return "Gather scattered fragments of the specified broken object at its current location."
+    if verb == "place":
+        return "Request relocation of the collected object to the named location, subject to host validation."
+    raise ValueError("Unsupported host affordance")
+
+
 def model_choice(model, subject: tuple[str, ...], goal: str,
-                 options: list[dict], *, seed: int = 41) -> dict:
+                 options: list[dict], *, seed: int = 41,
+                 information_arm: str = "names") -> dict:
     """Uses the same llama.cpp chat-completion interface as Stages 06/07."""
-    menu = "\n".join(action_token(choice) for choice in options)
+    if information_arm not in {"names", "effects"}:
+        raise ValueError("Unknown action information comparison arm")
+    menu = "\n".join(
+        action_token(choice) if information_arm == "names" else
+        action_token(choice) + ": " + host_effect_description(choice)
+        for choice in options
+    )
     user = (
         "Current first-person subject frame, selected from the protected "
         "Doctor Lives projector:\n"
@@ -145,6 +170,7 @@ def model_choice(model, subject: tuple[str, ...], goal: str,
         "proposed_action": proposed,
         "validation": reason,
         "prompt_sha256": sha256(user.encode()).hexdigest(),
+        "information_arm": information_arm,
         "offered_options": options,
         "offered_action_tokens": [action_token(choice) for choice in options],
         "usage": output.get("usage", {}),
@@ -175,7 +201,8 @@ def _shelf_text(port: ObservationPort, result: dict) -> str:
 def execute_one(root: Path, model, *, brain_name: str = "brain",
                 world_name: str = "world.sqlite3",
                 goal: str = GOAL, seed: int = 41,
-                withhold_lab_autobiography: bool = False) -> dict:
+                withhold_lab_autobiography: bool = False,
+                information_arm: str = "names") -> dict:
     """One live, non-scripted model proposal; open DB afresh on every invocation."""
     world = SpatialHabitat(root / world_name)
     port = ObservationPort(world)
@@ -190,7 +217,8 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
     options = concrete_options(beaker, floor_seen=_has_floor_percept(brain, port))
     policy = brain.think("concrete_laboratory_action",
                          decision_text=goal + "\n" + subject[-1])
-    response = model_choice(model, subject, goal, options, seed=seed)
+    response = model_choice(model, subject, goal, options, seed=seed,
+                            information_arm=information_arm)
     proposal = response["proposed_action"]
     record: dict[str, Any] = {
         "schema": SCHEMA,
@@ -265,6 +293,7 @@ def main() -> None:
     p.add_argument("--goal", default=GOAL)
     p.add_argument("--seed", type=int, default=41)
     p.add_argument("--memory-arm", choices=("full", "mask_lab_autobiography"), default="full")
+    p.add_argument("--information-arm", choices=("names", "effects"), default="names")
     a = p.parse_args()
     digest = sha256()
     with a.gguf.open("rb") as stream:
@@ -277,7 +306,8 @@ def main() -> None:
                   n_gpu_layers=0, verbose=False)
     result = execute_one(a.root, model, brain_name=a.brain,
                          world_name=a.world, goal=a.goal, seed=a.seed,
-                         withhold_lab_autobiography=a.memory_arm == "mask_lab_autobiography")
+                         withhold_lab_autobiography=a.memory_arm == "mask_lab_autobiography",
+                         information_arm=a.information_arm)
     result["model_id"] = a.model
     result["model_sha256"] = digest.hexdigest()
     print(json.dumps(result, sort_keys=True))
