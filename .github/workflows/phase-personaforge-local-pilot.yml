@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m research_prototypes.character_state.run_local_generation \
             --gguf /tmp/Qwen3-0.6B-Q4_0.gguf \
-            --output results/character_state/LOCAL_GGUF_PILOT.json --max-tokens 96
+            --output results/character_state/LOCAL_GGUF_PILOT.json --max-tokens 160
           python - <<'PY'
           import json
           p=json.load(open('results/character_state/LOCAL_GGUF_PILOT.json'))
@@ -40,9 +40,13 @@ jobs:
           assert p['provenance']['world_outcomes_measured'] is False
           assert len(p['responses']) == 11
           assert len(p['blind_reviewer_pack']) == 11
-          print('PASS: 11 actual local model outputs, no efficacy claim')
+          usable=sum(r.get('usable_dialogue', False) for r in p['responses'])
+          print(f'USABLE_DIALOGUE={usable}/11')
+          assert usable == 11, 'Qwen thinking or truncation prevented a valid dialogue comparison'
+          print('PASS: 11 usable local-model responses, no efficacy claim')
           PY
-      - name: Archive unscored blind outputs
+      - name: Archive outputs, including failures for scientific provenance
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phase-personaforge-qwen06b-blinded-responses
