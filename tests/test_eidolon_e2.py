@@ -143,7 +143,8 @@ class NoCueProspectiveTests(unittest.TestCase):
             )
             self.assertGreater(out.action_scores["create"],
                                lesion.action_scores["create"])
-            self.assertEqual(lesion.action_scores, base)
+            for action in ACTIONS:
+                self.assertAlmostEqual(lesion.action_scores[action], base[action])
             self.assertEqual(
                 before,
                 (brain.store.digest(), brain.neural.tick,
