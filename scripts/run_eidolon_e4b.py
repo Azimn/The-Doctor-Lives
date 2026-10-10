@@ -20,9 +20,17 @@ import numpy as np
 
 from doctor_lives.eidolon_noetic import NoeticCrucible, SyntheticOutcomeGrant
 from doctor_lives.neural import ACTIONS, PretoriusRecurrentSubstrate
-from scripts.run_eidolon_e4 import (
-    GOALS, cases, config, fixture_hash, lesion_recurrent,
-)
+# Both supported invocation paths must work:
+#   python scripts/run_eidolon_e4b.py
+#   python -m unittest tests.test_eidolon_e4b
+if __package__:
+    from scripts.run_eidolon_e4 import (
+        GOALS, cases, config, fixture_hash, lesion_recurrent,
+    )
+else:
+    from run_eidolon_e4 import (
+        GOALS, cases, config, fixture_hash, lesion_recurrent,
+    )
 
 SEEDS = (151, 167, 179, 191, 211, 223)
 REPEATS = 5
