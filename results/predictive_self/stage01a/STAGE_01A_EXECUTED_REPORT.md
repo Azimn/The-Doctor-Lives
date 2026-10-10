@@ -59,3 +59,14 @@ The source adapter witnesses real local policy choices, not an independent physi
 **HOLD PSL policy promotion.** The meaningful result is not that the Game of Self has been empirically proved, but that context-sensitive shadow forecasts are feasible and can outperform a frozen uninformed prior in a limited setting; simple global empirical frequency remains a strong competitor, especially under context change.
 
 Next proposal: a **hierarchically smoothed context model** that backs off to a calibrated global action prior when a context is unseen or weakly supported, while retaining partner-specific context only when supported by sufficient observations. Freeze a **new** evaluator including genuinely distinct scenarios before testing this post hoc idea. Compare contextual frequency plus global fallback against PSL, and independently add verified world outcomes, promise followthrough, disagreement and source-grounded relationship priors. None of this authorizes a second decision controller or automatic subjective access.
+
+## Independent rerun audit and qualified repeatability
+
+The exact source execution commit `edf35dcaa6449bc2ed73a359c349e8be31e50f0b` was rerun as a separate GitHub Actions job attempt within workflow run `38016542721`, and it passed again. Full extracted raw JSON SHA-256 hashes were:
+
+- Attempt 1, artifact `11655798019`: `fa98969ab939cb055bfede464f7c5653ee9f53052a3745fa6bf097de46d17ef2`.
+- Attempt 2, artifact `11656373275`: `c059006361a02a6794d340d8cdbe61ea14c5da1eb53e3167792c4b4a286f166e`.
+
+**The raw files are NOT byte-for-byte identical.** Structural comparison found differences exclusively in the `native_pre_ingest_diagnostic` probabilities and its floating-point score calculations, at roughly 1e-9 magnitude. All 28 actual action choices and **every controlled forecast vector and scoring result** were exactly equal. If the explicitly ancillary dynamic-neural diagnostic is removed from per-case forecasts/scores and phase summaries, both payloads canonicalize to the **same** SHA-256: `43b4c2dc6cc3298b633a91126b6d3a540829d5bb91be8eb27d68258539c7a7b6`.
+
+A fail-closed comparator `research_prototypes/predictive_self/compare_native_replays.py` and tests formalize that narrow exclusion. Details are preserved in [REPLAY_VERIFICATION.json](REPLAY_VERIFICATION.json). Therefore, the **primary policy-prediction results reproduced exactly**, but whole-file byte identity was not achieved. Do not hide this qualified repeatability when reporting or synthesizing findings.
