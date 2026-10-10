@@ -508,7 +508,7 @@ class PredictiveSelfLoop:
             details["situation"] = Situation(**details["situation"])
             details["evidence_kind"] = EvidenceKind(details["evidence_kind"])
             error = rebuilt.observe(ObservedEpisode(**details))
-            if asdict(error) != item["error"]:
+            if _hash(asdict(error)) != _hash(item["error"]):
                 raise ValueError("replayed scoring or posterior diverged")
         if rebuilt.audit()["audit_sha256"] != payload["audit_sha256"]:
             raise ValueError("replayed ledger digest diverged")
