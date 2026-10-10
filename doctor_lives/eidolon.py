@@ -192,6 +192,52 @@ class EidolonEngine:
             tick=self.tick,
         )
 
+    def advance_without_cue(self, ticks: int = 1) -> None:
+        """Advance the Noetic Trace without encoding any current perception.
+
+        Separate from observe() because observations may reactivate learned
+        lexical features even after a recurrence lesion. This transition
+        isolates state carried from the earlier event.
+        """
+        if isinstance(ticks, bool) or not isinstance(ticks, int) or ticks < 0:
+            raise ValueError("ticks must be a nonnegative integer")
+        if ticks > 1000000:
+            raise ValueError("too many input-free ticks")
+        self.intention_trace *= self.config.trace_decay ** ticks
+        self.tick += ticks
+
+    def probe_intention(
+        self,
+        base_scores: Mapping[str, float],
+        *,
+        lesion_recurrence: bool = False,
+    ) -> BindingObservation:
+        """Engineer-only readout using NO features, cue, or model updates.
+
+        The recurrence lesion masks the current trace without modifying it.
+        Neither the trained cue weights nor raw text is available at this
+        decision boundary. This is a construction control, not a behavior.
+        """
+        base = self._probabilities(base_scores)
+        trace = (
+            np.zeros_like(self.intention_trace)
+            if lesion_recurrence else self.intention_trace
+        )
+        if not np.isfinite(trace).all():
+            raise ValueError("nonfinite Noetic Trace")
+        logits = np.log(np.maximum(base, 1e-12)) + self.config.output_gain * trace
+        logits -= logits.max()
+        posterior = np.exp(logits)
+        posterior /= posterior.sum()
+        return BindingObservation(
+            action_scores=dict(zip(ACTIONS, map(float, posterior))),
+            base_scores=dict(zip(ACTIONS, map(float, base))),
+            binding_strength=0.0,
+            recurrent_strength=float(np.linalg.norm(trace)),
+            learned=False,
+            tick=self.tick,
+        )
+
     def observe_pretorius(
         self,
         brain: object,
