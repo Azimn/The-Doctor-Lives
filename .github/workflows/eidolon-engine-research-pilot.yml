@@ -8,6 +8,7 @@ on:
       - 'doctor_lives/eidolon_noetic.py'
       - 'doctor_lives/eidolon_balanced_decoder.py'
       - 'doctor_lives/eidolon_outcome_lab.py'
+      - 'doctor_lives/eidolon_lab_action_bridge.py'
       - 'research/eidolon_e5_dev_cases.json'
       - 'tests/test_eidolon_engine.py'
       - 'tests/test_eidolon_e2.py'
@@ -20,6 +21,7 @@ on:
       - 'tests/test_eidolon_e4b_order.py'
       - 'tests/test_eidolon_e4c.py'
       - 'tests/test_eidolon_e5.py'
+      - 'tests/test_eidolon_e5_p0a.py'
       - 'scripts/run_eidolon_pilot.py'
       - 'scripts/run_eidolon_e2.py'
       - 'scripts/run_eidolon_d2.py'
@@ -31,6 +33,7 @@ on:
       - 'scripts/run_eidolon_e4b_order.py'
       - 'scripts/run_eidolon_e4c.py'
       - 'scripts/run_eidolon_e5.py'
+      - 'scripts/run_eidolon_e5_p0a.py'
       - '.github/workflows/eidolon-engine-research-pilot.yml'
   pull_request:
     paths:
@@ -40,6 +43,7 @@ on:
       - 'doctor_lives/eidolon_noetic.py'
       - 'doctor_lives/eidolon_balanced_decoder.py'
       - 'doctor_lives/eidolon_outcome_lab.py'
+      - 'doctor_lives/eidolon_lab_action_bridge.py'
       - 'research/eidolon_e5_dev_cases.json'
       - 'tests/test_eidolon_engine.py'
       - 'tests/test_eidolon_e2.py'
@@ -52,6 +56,7 @@ on:
       - 'tests/test_eidolon_e4b_order.py'
       - 'tests/test_eidolon_e4c.py'
       - 'tests/test_eidolon_e5.py'
+      - 'tests/test_eidolon_e5_p0a.py'
       - 'scripts/run_eidolon_pilot.py'
       - 'scripts/run_eidolon_e2.py'
       - 'scripts/run_eidolon_d2.py'
@@ -63,6 +68,7 @@ on:
       - 'scripts/run_eidolon_e4b_order.py'
       - 'scripts/run_eidolon_e4c.py'
       - 'scripts/run_eidolon_e5.py'
+      - 'scripts/run_eidolon_e5_p0a.py'
       - '.github/workflows/eidolon-engine-research-pilot.yml'
   workflow_dispatch:
 permissions:
@@ -76,7 +82,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e .
-      - run: python -m unittest -v tests.test_eidolon_engine tests.test_eidolon_e2 tests.test_eidolon_temporal tests.test_eidolon_choice tests.test_eidolon_stress tests.test_eidolon_native_comparator tests.test_eidolon_e4 tests.test_eidolon_e4b tests.test_eidolon_e4b_order tests.test_eidolon_e4c tests.test_eidolon_e5
+      - run: python -m unittest -v tests.test_eidolon_engine tests.test_eidolon_e2 tests.test_eidolon_temporal tests.test_eidolon_choice tests.test_eidolon_stress tests.test_eidolon_native_comparator tests.test_eidolon_e4 tests.test_eidolon_e4b tests.test_eidolon_e4b_order tests.test_eidolon_e4c tests.test_eidolon_e5 tests.test_eidolon_e5_p0a
       - run: python scripts/run_eidolon_pilot.py --output results/eidolon/construction_assay.json
       - run: python scripts/run_eidolon_e2.py --output results/eidolon/e2_no_cue_assay.json
       - run: python scripts/run_eidolon_d2.py --output results/eidolon/d2_source_clock_assay.json
@@ -88,6 +94,7 @@ jobs:
       - run: python scripts/run_eidolon_e4b_order.py --output results/eidolon/e4b_order_crossover.json
       - run: python scripts/run_eidolon_e4c.py --output results/eidolon/e4c_balanced_decoder_assay.json
       - run: python scripts/run_eidolon_e5.py --output results/eidolon/e5_development_outcome_assay.json
+      - run: python scripts/run_eidolon_e5_p0a.py --output results/eidolon/e5_p0a_real_policy_assay.json
       - uses: actions/upload-artifact@v4
         with:
           name: eidolon-construction-assay
@@ -103,4 +110,5 @@ jobs:
             results/eidolon/e4b_order_crossover.json
             results/eidolon/e4c_balanced_decoder_assay.json
             results/eidolon/e5_development_outcome_assay.json
+            results/eidolon/e5_p0a_real_policy_assay.json
           if-no-files-found: error
