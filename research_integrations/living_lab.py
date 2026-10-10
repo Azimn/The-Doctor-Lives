@@ -217,11 +217,14 @@ def _verified_subject_frame(brain: PretoriusBrain, port: ObservationPort, *,
     epoch = port.habitat.verify()["world_epoch"]
     keys = {kind: _indexed(brain, kind, epoch)
             for kind in ("action", "observation", "book")}
-    view = brain.cognitive_view()
+    # Cue retrieval only with the current offered percept. No host secrets.
+    view = brain.cognitive_view(query=current_percept)
     def admitted(item) -> bool:
         source = str(item.provenance.source)
         if not source.startswith("lab:"):
             return True
+        if withhold_lab_autobiography:
+            return False
         parts = source.split(":")
         if len(parts) != 4 and len(parts) != 3:
             return False
@@ -243,7 +246,7 @@ def _offer_room(brain: PretoriusBrain, port: ObservationPort):
             (" and its fragments are gathered." if obj["collected"] else
              " and its fragments are scattered."))
     projected = _project(brain, text)
-    existing = _verified_subject_frame(brain, port)
+    existing = _verified_subject_frame(brain, port, current_percept=text)
     frame = SubjectFrame(items=existing.items + SubjectFrame.from_events([projected.event]).items)
     return receipt, obj, frame
 
