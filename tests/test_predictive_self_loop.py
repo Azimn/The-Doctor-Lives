@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import json
 import tempfile
 from pathlib import Path
 import unittest
@@ -74,12 +75,14 @@ class PredictiveSelfLoopTests(unittest.TestCase):
         for number in range(2):
             f = self.loop.forecast(Situation("c" + str(number), "scientist"))
             self.loop.observe(episode(f, event="event-" + str(number),
-                                      action="cooperate", tick=13 + number))
+                                      action="cooperate", tick=13 + number,
+                                      kind=EvidenceKind.WORLD_VERIFIED))
         self.assertAlmostEqual(self.loop.forecast(
             Situation("new", "scientist")).semantic_probability[0][1], .8)
         f = self.loop.forecast(Situation("third_context", "colleague"))
         change = self.loop.observe(
-            episode(f, event="event-third", tick=16, action="cooperate")
+            episode(f, event="event-third", tick=16, action="cooperate",
+                    kind=EvidenceKind.WORLD_VERIFIED)
         )
         first = change.semantic_shift[0]
         self.assertEqual(first[0], "independent_inquiry")
@@ -92,8 +95,70 @@ class PredictiveSelfLoopTests(unittest.TestCase):
             f = self.loop.forecast(Situation("c" + str(number), "visitor"))
             self.loop.observe(episode(f, event="event-" + str(number),
                                       tick=13 + number, action="cooperate",
-                                      precision=.2))
+                                      precision=.2,
+                                      kind=EvidenceKind.WORLD_VERIFIED))
         self.assertEqual(self.loop.audit()["semantic_posterior"]["independent_inquiry"], .8)
+
+    def test_internal_action_log_never_rewrites_slow_semantic_belief(self):
+        for number in range(5):
+            f = self.loop.forecast(Situation("runtime-" + str(number), "scientist"))
+            self.loop.observe(episode(
+                f, event="internal-" + str(number), tick=13 + number,
+                action="cooperate", kind=EvidenceKind.RUNTIME_POLICY,
+            ))
+        self.assertEqual(
+            self.loop.audit()["semantic_posterior"]["independent_inquiry"], .8
+        )
+
+    def test_portable_checkpoint_replays_exactly_on_same_source(self):
+        for number in range(4):
+            f = self.loop.forecast(Situation("context-" + str(number), "scientist"))
+            self.loop.observe(episode(
+                f, event="world-" + str(number), tick=13 + number,
+                action="cooperate", kind=EvidenceKind.WORLD_VERIFIED,
+            ))
+        checkpoint = self.loop.export_checkpoint()
+        restored = PredictiveSelfLoop.restore_checkpoint(
+            self.state, claims=(self.claim,), checkpoint_json=checkpoint
+        )
+        self.assertEqual(restored.audit(), self.loop.audit())
+        probe = Situation("fresh-future-context", "scientist")
+        self.assertEqual(
+            restored.forecast(probe).action_probabilities,
+            self.loop.forecast(probe).action_probabilities,
+        )
+        tampered = json.loads(checkpoint)
+        tampered["payload"]["episodes"][0]["observation"]["action"] = "challenge"
+        with self.assertRaisesRegex(ValueError, "integrity mismatch"):
+            PredictiveSelfLoop.restore_checkpoint(
+                self.state, claims=(self.claim,),
+                checkpoint_json=json.dumps(tampered),
+            )
+        bad_snapshot = SelfSnapshot(
+            self.state.subject_id, "c" * 64, 2, "b" * 64, 12,
+            self.state.actions, self.state.base_probabilities,
+            self.state.admitted_refs,
+        )
+        with self.assertRaisesRegex(ValueError, "source state"):
+            PredictiveSelfLoop.restore_checkpoint(
+                bad_snapshot, claims=(self.claim,), checkpoint_json=checkpoint
+            )
+
+    def test_no_checkpoint_with_pending_forecast(self):
+        self.loop.forecast(Situation("still-open", "scientist"))
+        with self.assertRaisesRegex(ValueError, "outstanding forecasts"):
+            self.loop.export_checkpoint()
+
+    def test_reused_witness_ref_cannot_fake_independent_contexts(self):
+        first = self.loop.forecast(Situation("lab-1", "scientist"))
+        self.loop.observe(episode(first, event="first", tick=13))
+        second = self.loop.forecast(Situation("lab-2", "scientist"))
+        forged = ObservedEpisode(
+            "second", second.forecast_id, 14, second.situation,
+            "cooperate", EvidenceKind.RUNTIME_POLICY, "test-witness:first",
+        )
+        with self.assertRaisesRegex(ValueError, "duplicated witness reference"):
+            self.loop.observe(forged)
 
     def test_world_feedback_learns_observable_partner_behavior_and_success(self):
         c = Situation("joint_lab", "collaborator", "henry")
