@@ -1,0 +1,54 @@
+name: PHASE PersonaForge local model pilot
+on:
+  push:
+    branches: [research/phase-personaforge-ablation-20261009]
+    paths:
+      - research_prototypes/character_state/run_local_generation.py
+      - .github/workflows/phase-personaforge-local-pilot.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-gguf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pretorius and local CPU model runtime (no APIs)
+        run: |
+          python -m pip install -e .
+          python -m pip install llama-cpp-python==0.3.16
+      - name: Download official Qwen3-0.6B open model, verify upstream SHA256
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://huggingface.co/ggml-org/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_0.gguf' \
+            --output /tmp/Qwen3-0.6B-Q4_0.gguf
+          test $(wc -c </tmp/Qwen3-0.6B-Q4_0.gguf) -gt 400000000
+          echo 'da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4  /tmp/Qwen3-0.6B-Q4_0.gguf' | sha256sum -c -
+      - name: Produce complete raw generated responses and blind review packet
+        run: |
+          python -m research_prototypes.character_state.run_local_generation \
+            --gguf /tmp/Qwen3-0.6B-Q4_0.gguf \
+            --output results/character_state/LOCAL_GGUF_PILOT.json --max-tokens 160
+          python - <<'PY'
+          import json
+          p=json.load(open('results/character_state/LOCAL_GGUF_PILOT.json'))
+          assert p['provenance']['upstream_paper_reproduction'] is False
+          assert p['provenance']['world_outcomes_measured'] is False
+          assert len(p['responses']) == 11
+          assert len(p['blind_reviewer_pack']) == 11
+          usable=sum(r.get('usable_dialogue', False) for r in p['responses'])
+          print(f'USABLE_DIALOGUE={usable}/11')
+          assert usable == 11, 'Qwen thinking or truncation prevented a valid dialogue comparison'
+          print('PASS: 11 usable local-model responses, no efficacy claim')
+          PY
+      - name: Archive outputs, including failures for scientific provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-personaforge-qwen06b-blinded-responses
+          path: results/character_state/LOCAL_GGUF_PILOT.json
+          retention-days: 90
