@@ -106,6 +106,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         brain_name="names_control_brain", information_arm="names",
     )
     trace = []
+    stagnation_stop = False
     memory_contrast = {"not_run": "No successful first source-backed physical act"}
     for i in range(steps):
         record = fresh_model_turn(root, gguf, goal, seed,
@@ -117,6 +118,15 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
             memory_contrast = matched_memory_presentation(
                 root, gguf, goal, seed, information_arm="effects",
             )
+        # This never chooses a replacement action. It only stops a run after
+        # two identical non-mutating inspections with unchanged physical state.
+        # Preserve both proposals as a negative result.
+        if (len(trace) >= 2 and record["proposed_action"] == trace[-2]["proposed_action"]
+                and record["status"] == "model_selected_additional_observation"
+                and trace[-2]["status"] == "model_selected_additional_observation"
+                and record["world_after"]["state_digest"] == trace[-2]["world_after"]["state_digest"]):
+            stagnation_stop = True
+            break
         if (goal_finished(world) or record["status"] in {
             "model_selected_wait", "invalid_proposal_no_execution",
             "host_denied_no_admission", "observation_denied_no_admission",
@@ -129,6 +139,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         baseline_steps.append(simple_baseline(baseline_world.path))
     metrics = {
         "goal_complete": goal_finished(world),
+        "stagnation_stop_after_two_same_observations": stagnation_stop,
         "firsthand_action_admissions": sum(
             row["status"] == "model_action_verified_and_admitted" for row in trace),
         "additional_observation_admissions": sum(
