@@ -29,7 +29,7 @@ The real PretoriusBrain recurrent and state-policy controller is called on the s
 
 Physical execution is exclusively via the laboratory commit authority, with optimistic revision guards. Action outcomes are independently replay-verified against persisted host events. A verified consequence is projected into a Pretorius lived-memory entry, with the event ID, hash and world epoch stored as source evidence. A research-only admission index in the disposable brain SQLite database binds that proof to this subject's specific admitted memory. Raw foreign autobiography, unsupported memory strings, reused receipt IDs, or unverified host results cannot unlock object affordances. The index is an evidentiary control, not a replacement autobiography database.
 
-An independently persistent lab world and a brain checkpoint are reopened in fresh processes. A later choice to inspect the floor is only available once Pretorius has an indexed recollection of gathering fragments. Inspecting the corner then produces its own receipt and admission; only then is that location eligible for the next action. A host-authorized placement is scored against verified physical state, not generated dialogue.
+An independently persistent lab world and a brain checkpoint are reopened in fresh processes. A later choice to inspect the floor is only available once Pretorius has an indexed recollection of gathering fragments. That memory states the observed consequence only; it does not manufacture a new intention. Inspecting the corner then produces its own receipt and admission; only then is that location eligible for the next action. A host-authorized placement is scored against verified physical state, not generated dialogue.
 
 ## Controls and limits
 
@@ -46,3 +46,7 @@ Prior lessons retained: Stage 04 signed host results, Stage 06 and Stage 07 elig
 ## Review gate
 
 This remains draft PR #54 linked to Issue #53, on one reversible research branch. Required follow-up includes blind holdouts, source adjudication, well-matched shuffled-memory intervention, calibrated abstention and failure runs, additional crash/rollback testing, model substitution, and a promotion-security review. Preserve failed trials and null results. Canonical production main is not to be updated without the existing release, migration and rollback review gates. Portfolio authority: https://github.com/Azimn/Artificial-Life-Research-Journal/issues/23.
+
+## Executed autonomy-limit finding
+
+In the real-policy CI trial at workflow run 38085799277 (commit 1037b4764f5dc570ef3a5f586d12bfed88d14d1f), the controller's top abstract action was approach on the collect, inspect-floor and place turns. The adapter instead selected persist, explore and persist action mappings because hand-weighted grounding scores dominated. The strong simple nonneural controller achieved the same physical goal. This is a concrete limiting/negative result, not merely a missing result: that trial established the engineering loop, but did not demonstrate the recurrent policy controlling its concrete actions or adding value over simpler planning. Subsequent runner versions explicitly record the ground-only versus policy-weighted action choices and the no-history/foreign-epoch controls. Independent autonomy and cognitive-efficacy gates remain open.
