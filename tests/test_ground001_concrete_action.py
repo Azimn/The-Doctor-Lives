@@ -18,7 +18,7 @@ try:
     )
     from research_integrations.concrete_action import (
         concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
-        currently_admitted_fixture_observations, action_grammar,
+        currently_admitted_fixture_observations, action_grammar, MODEL_SHA,
     )
     DEPENDENCY_AVAILABLE = True
 except ModuleNotFoundError:
@@ -189,6 +189,14 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertEqual(bare["proposed_action"], explained["proposed_action"])
         self.assertNotEqual(bare["prompt_sha256"], explained["prompt_sha256"])
 
+
+    def test_challenger_model_requires_distinct_registered_weight_sha(self):
+        self.assertEqual(
+            MODEL_SHA["qwen3-4b-q4_k_m"],
+            "ab27b9bfa375a178d6cba48f3ad892b94b7739659dcc7aae8058ce0ffed6b328",
+        )
+        self.assertNotEqual(MODEL_SHA["qwen3-4b-q4_k_m"],
+                            MODEL_SHA["qwen3-1.7b-q4_k_m"])
 
     def test_grammar_only_allows_complete_offered_semantic_tokens(self):
         options = [_choice("wait"), _choice("observe", "floor:sanctum"),
