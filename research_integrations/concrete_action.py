@@ -22,7 +22,7 @@ from pretorius_lab.book_library import BookLibrary
 from pretorius_lab.observation_receipts import ObservationPort
 from pretorius_lab.physics import Conflict, LabError
 from .living_lab import (
-    _admit_action, _admit_observation, _has_floor_percept,
+    _admit_action, _admit_observation, _indexed,
     _offer_room, _verify_observation, _project, GOAL,
 )
 
@@ -51,13 +51,54 @@ def _choice(verb: str, operand: str = "none", destination: str = "none") -> dict
     return {"verb": verb, "operand": operand, "destination": destination}
 
 
-def concrete_options(beaker: dict, *, floor_seen: bool) -> list[dict]:
+def currently_admitted_fixture_observations(
+    brain: PretoriusBrain, port: ObservationPort,
+) -> dict[str, dict]:
+    """Only source-admitted shelf perceptions from this exact world cursor.
+
+    A receipt being offered, an engineer scanning a shelf, or a forged source
+    string is insufficient. Any physical world change makes the information
+    stale and reinspection eligible. No hidden object location enters the
+    subject context; this is only an epistemic affordance gate.
+    """
+    proof = port.verify()
+    world = port.habitat.verify()
+    indexed = _indexed(brain, "observation", proof["world_epoch"])
+    recorded = {
+        (str(item["id"]), str(item["source"]).removeprefix("lab:observation:"))
+        for item in brain.store.memories()
+        if str(item["source"]).startswith("lab:observation:")
+        and item["kind"] == "laboratory_observation"
+        and not item["external"]
+    }
+    attested = indexed & recorded
+    if not attested:
+        return {}
+    known_hashes = {digest for _, digest in attested}
+    results = {}
+    with port.habitat._open() as db:
+        for encoded, event_hash in db.execute(
+            "SELECT payload,event_hash FROM observation_events ORDER BY sequence"
+        ):
+            if event_hash not in known_hashes:
+                continue
+            entry = json.loads(encoded)
+            if (entry["kind"] != "shelf"
+                    or entry["world_epoch"] != proof["world_epoch"]
+                    or entry["world_revision"] != world["revision"]
+                    or entry["world_cursor"] != world["head_hash"]):
+                continue
+            results[entry["target"]] = entry["offered_payload"]
+    return results
+
+
+def concrete_options(beaker: dict, *, floor_seen: bool,
+                     fresh_observed: frozenset[str] = frozenset()) -> list[dict]:
     """Offer typed affordances, never a ranked goal-directed plan."""
-    options = [
-        _choice("wait"),
-        _choice("observe", "floor:sanctum"),
-        _choice("observe", "shelf:3"),
-    ]
+    options = [_choice("wait")]
+    for fixture in ("floor:sanctum", "shelf:3"):
+        if fixture not in fresh_observed:
+            options.append(_choice("observe", fixture))
     if beaker["condition"] == "broken" and not beaker["collected"]:
         options.append(_choice("collect", "beaker:001"))
     if (beaker["condition"] == "broken" and beaker["collected"]
@@ -226,7 +267,16 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
         brain, port, withhold_lab_autobiography=withhold_lab_autobiography,
     )
     subject = frame.renderer_context()
-    options = concrete_options(beaker, floor_seen=_has_floor_percept(brain, port))
+    current_observations = currently_admitted_fixture_observations(brain, port)
+    floor_payload = current_observations.get("floor:sanctum", {})
+    floor_seen = any(
+        pos["anchor_id"] == "floor:corner:nw" and pos["occupant"] is None
+        for pos in floor_payload.get("positions", ())
+    )
+    options = concrete_options(
+        beaker, floor_seen=floor_seen,
+        fresh_observed=frozenset(current_observations),
+    )
     policy = brain.think("concrete_laboratory_action",
                          decision_text=goal + "\n" + subject[-1])
     response = model_choice(model, subject, goal, options, seed=seed,
@@ -238,6 +288,8 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
         "abstract_policy_top": policy["selected_action"],
         "abstract_policy_scores": policy["action_scores"],
         "goal": goal,
+        "epistemic_affordance_rule": "suppress_already_admitted_same_world_revision_fixture_inspection",
+        "suppressed_fresh_observation_targets": sorted(current_observations),
         "withhold_lab_autobiography": withhold_lab_autobiography,
         "room_receipt": offered["receipt_hash"],
         "subject_frame": list(subject),
