@@ -59,8 +59,8 @@ def _chat(model, *, system: str, user: str, seed: int, max_tokens: int) -> dict:
     t0 = perf_counter()
     response = model.create_chat_completion(
         messages=[
-            {"role": "system", "content": system + "\\nRespond directly, without analysis. /no_think"},
-            {"role": "user", "content": user + "\\n/no_think"},
+            {"role": "system", "content": system + "\nRespond directly, without analysis. /no_think"},
+            {"role": "user", "content": user + "\n/no_think"},
         ],
         temperature=0.0,
         seed=seed,
