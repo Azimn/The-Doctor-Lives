@@ -283,6 +283,7 @@ def turn(root: Path, *, world_name: str = "world.sqlite3",
           name, action, abstract) for name, action, abstract, ground in options),
         key=lambda item: (-item[0], item[1]),
     )
+    ground_only = sorted(options, key=lambda item: (-item[3], item[0]))[0][0]
     score, chosen, action, abstract = ranked[0]
     audit: dict[str, Any] = {
         "schema": SCHEMA, "world_before": world.verify(), "observed_delivery": offered["receipt_hash"],
@@ -290,6 +291,9 @@ def turn(root: Path, *, world_name: str = "world.sqlite3",
         "controller_top_abstract_action": policy["selected_action"],
         "policy_scores": policy["action_scores"],
         "candidate_scores": [{"option": x[1], "score": x[0]} for x in ranked],
+        "ground_only_choice": ground_only,
+        "policy_changed_ground_only_choice": chosen != ground_only,
+        "controller_top_action_is_executed_mapping": abstract == policy["selected_action"],
         "action": action, "goal": GOAL,
         "memory_evidence": {"collected": collected_memory, "floor_observed": floor_memory},
     }
