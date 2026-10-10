@@ -19,9 +19,13 @@ from research_integrations.nonneural_baseline import run as simple_baseline
 SCHEMA = "pretorius.living-lab.ground001-real-model-comparison/1"
 
 
-def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int) -> dict:
+def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
+                     world_name: str = "world.sqlite3", brain_name: str = "brain",
+                     memory_arm: str = "full") -> dict:
     argv = [sys.executable, "-m", "research_integrations.concrete_action",
             "--root", str(root), "--gguf", str(gguf),
+            "--world", world_name, "--brain", brain_name,
+            "--memory-arm", memory_arm,
             "--goal", goal, "--seed", str(seed)]
     proc = subprocess.run(argv, capture_output=True, text=True, check=False,
                           timeout=360)
@@ -29,6 +33,47 @@ def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int) -> dict:
         raise RuntimeError("Real-model subprocess failed (no simulated result): "
                            + proc.stderr[-3500:])
     return json.loads(proc.stdout)
+
+
+def matched_memory_presentation(root: Path, gguf: Path,
+                                goal: str, seed: int) -> dict:
+    """Equal post-action brain and world snapshots, different UPPB display.
+
+    Does not delete source records or change the neural policy. Only the
+    source-safe laboratory autobiography supplied to the action model is masked
+    in one arm. No contrast means no valid causal outcome for memory exposure.
+    """
+    world = SpatialHabitat(root / "world.sqlite3")
+    world.verify()
+    world.backup_to(root / "cf_full_world.sqlite3")
+    world.backup_to(root / "cf_mask_world.sqlite3")
+    shutil.copytree(root / "brain", root / "cf_full_brain")
+    shutil.copytree(root / "brain", root / "cf_mask_brain")
+    full = fresh_model_turn(root, gguf, goal, seed,
+                            world_name="cf_full_world.sqlite3",
+                            brain_name="cf_full_brain")
+    masked = fresh_model_turn(root, gguf, goal, seed,
+                              world_name="cf_mask_world.sqlite3",
+                              brain_name="cf_mask_brain",
+                              memory_arm="mask_lab_autobiography")
+    world_match = all(
+        full["world_before"][key] == masked["world_before"][key]
+        for key in ("world_epoch", "revision", "state_digest")
+    )
+    options_match = (full["offered_action_tokens"] == masked["offered_action_tokens"])
+    full_lines, mask_lines = set(full["subject_frame"]), set(masked["subject_frame"])
+    memories_removed = sorted(full_lines - mask_lines)
+    memory_contrast = bool(memories_removed) and bool(world_match and options_match)
+    return {
+        "experiment": "source_lab_autobiography_visible_vs_masked_same_brain_and_world",
+        "matched_world_identity_and_state": world_match,
+        "matched_concrete_options": options_match,
+        "full": full, "masked": masked,
+        "changed_subject_lines": memories_removed,
+        "valid_subject_memory_exposure_contrast": memory_contrast,
+        "same_concrete_proposal": full["proposed_action"] == masked["proposed_action"],
+        "interpretation_scope": "causal exposure of admitted lab autobiography in language model prompt; same underlying cognitive state, not a recurrent-memory lesion",
+    }
 
 
 def goal_finished(world: SpatialHabitat) -> bool:
@@ -48,11 +93,14 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     before = world.verify()
     world.backup_to(root / "nonneural_control.sqlite3")
     trace = []
+    memory_contrast = {"not_run": "No successful first source-backed physical act"}
     for i in range(steps):
         record = fresh_model_turn(root, gguf, goal, seed)
         record["session_index"] = i
         record["independent_process_restart"] = True
         trace.append(record)
+        if i == 0 and record["status"] == "model_action_verified_and_admitted":
+            memory_contrast = matched_memory_presentation(root, gguf, goal, seed)
         if (goal_finished(world) or record["status"] in {
             "model_selected_wait", "invalid_proposal_no_execution",
             "host_denied_no_admission", "observation_denied_no_admission",
@@ -96,7 +144,9 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "initial_world": before, "trace": trace,
         "final_world": world.verify(),
         "nonneural_same_initial_world_control": baseline_steps,
-        "metrics": metrics, "production_status": "research_hold",
+        "metrics": metrics,
+        "matched_memory_exposure_control": memory_contrast,
+        "production_status": "research_hold",
     }
     return result
 
