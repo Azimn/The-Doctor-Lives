@@ -174,7 +174,8 @@ def _shelf_text(port: ObservationPort, result: dict) -> str:
 
 def execute_one(root: Path, model, *, brain_name: str = "brain",
                 world_name: str = "world.sqlite3",
-                goal: str = GOAL, seed: int = 41) -> dict:
+                goal: str = GOAL, seed: int = 41,
+                withhold_lab_autobiography: bool = False) -> dict:
     """One live, non-scripted model proposal; open DB afresh on every invocation."""
     world = SpatialHabitat(root / world_name)
     port = ObservationPort(world)
@@ -182,7 +183,9 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
     port.verify()
     library.verify()
     brain = PretoriusBrain(root / brain_name)
-    offered, beaker, frame = _offer_room(brain, port)
+    offered, beaker, frame = _offer_room(
+        brain, port, withhold_lab_autobiography=withhold_lab_autobiography,
+    )
     subject = frame.renderer_context()
     options = concrete_options(beaker, floor_seen=_has_floor_percept(brain, port))
     policy = brain.think("concrete_laboratory_action",
@@ -195,6 +198,7 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
         "abstract_policy_top": policy["selected_action"],
         "abstract_policy_scores": policy["action_scores"],
         "goal": goal,
+        "withhold_lab_autobiography": withhold_lab_autobiography,
         "room_receipt": offered["receipt_hash"],
         "subject_frame": list(subject),
         "world_before": world.verify(),
@@ -260,6 +264,7 @@ def main() -> None:
     p.add_argument("--brain", default="brain")
     p.add_argument("--goal", default=GOAL)
     p.add_argument("--seed", type=int, default=41)
+    p.add_argument("--memory-arm", choices=("full", "mask_lab_autobiography"), default="full")
     a = p.parse_args()
     digest = sha256()
     with a.gguf.open("rb") as stream:
@@ -271,7 +276,8 @@ def main() -> None:
     model = Llama(model_path=str(a.gguf), n_ctx=4096, n_threads=4,
                   n_gpu_layers=0, verbose=False)
     result = execute_one(a.root, model, brain_name=a.brain,
-                         world_name=a.world, goal=a.goal, seed=a.seed)
+                         world_name=a.world, goal=a.goal, seed=a.seed,
+                         withhold_lab_autobiography=a.memory_arm == "mask_lab_autobiography")
     result["model_id"] = a.model
     result["model_sha256"] = digest.hexdigest()
     print(json.dumps(result, sort_keys=True))
