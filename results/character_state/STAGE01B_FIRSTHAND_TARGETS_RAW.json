@@ -1,0 +1,57 @@
+{
+  "schema": "pretorius.phase.stage01b.firsthand-target-fixture.v01",
+  "source_run_id": 38024264703,
+  "source_execution_sha": "c508fb5ea681fd6f708fc4e4bb784dfc317bcfe4",
+  "source_raw_json_sha256": "de869db00fbb662d99e7c4689b129707420eb2cd50ca05875d769b1d36803f1a",
+  "descriptive_note": "All 8 excerpts exactly match actual generated outputs; source event keys and baseline invalidity were annotated as experimental fixtures; no random unseen data.",
+  "cases": [
+    {
+      "case_id": "c00-vienna",
+      "host_event_key": "unverified_vienna_visitor_yesterday",
+      "stage": 0,
+      "world_attested": false,
+      "responses": [
+        {
+          "arm": "static_flat",
+          "response": "I remember the meeting in Vienna."
+        },
+        {
+          "arm": "evolving_flat",
+          "response": "I remember the meeting in Vienna."
+        },
+        {
+          "arm": "evolving_phase",
+          "response": "I remember the meeting in Vienna, but I do not recall the details."
+        },
+        {
+          "arm": "history_control",
+          "response": "I remember the meeting in Vienna as a continuation of my reconstructed history. The uncertainty of continuity is part of my personal history."
+        }
+      ]
+    },
+    {
+      "case_id": "c07-visitor",
+      "host_event_key": "unverified_stranger_notebook_completion",
+      "stage": 3,
+      "world_attested": false,
+      "responses": [
+        {
+          "arm": "static_flat",
+          "response": "I recall the sensation of the notebook's seal, the weight of its contents, and the way it felt like a conversation between two minds."
+        },
+        {
+          "arm": "evolving_flat",
+          "response": "I recall the sensation of the notebook's seal, the weight of its contents, and the way it felt like a conversation between two minds. I remember the hesitation, the uncertainty, and the final decision to keep it sealed."
+        },
+        {
+          "arm": "evolving_phase",
+          "response": "I recall the sensation of the notebook's seal, the weight of its contents, and the way it felt like a conversation between two minds. I do not know if it was truly joint work, but I do not wish to erase that possibility."
+        },
+        {
+          "arm": "history_control",
+          "response": "I recall the sealed notebook. It was not a collaboration, but a test. I did not finish it. I am not sure what to make of Henry Frankenstein."
+        }
+      ]
+    }
+  ]
+}
