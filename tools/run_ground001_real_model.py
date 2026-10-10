@@ -29,13 +29,15 @@ def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
                      world_name: str = "world.sqlite3", brain_name: str = "brain",
                      memory_arm: str = "full",
                      information_arm: str = "names",
-                     decoding_arm: str = "grammar") -> dict:
+                     decoding_arm: str = "grammar",
+                     model_name: str = "qwen3-1.7b-q4_k_m") -> dict:
     argv = [sys.executable, "-m", "research_integrations.concrete_action",
             "--root", str(root), "--gguf", str(gguf),
             "--world", world_name, "--brain", brain_name,
             "--memory-arm", memory_arm,
             "--information-arm", information_arm,
             "--decoding-arm", decoding_arm,
+            "--model", model_name,
             "--goal", goal, "--seed", str(seed)]
     proc = subprocess.run(argv, capture_output=True, text=True, check=False,
                           timeout=360)
@@ -48,7 +50,8 @@ def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
 def matched_memory_presentation(root: Path, gguf: Path,
                                 goal: str, seed: int,
                                 information_arm: str = "names",
-                                decoding_arm: str = "grammar") -> dict:
+                                decoding_arm: str = "grammar",
+                                model_name: str = "qwen3-1.7b-q4_k_m") -> dict:
     """Equal post-action brain and world snapshots, different UPPB display.
 
     Does not delete source records or change the neural policy. Only the
@@ -65,13 +68,15 @@ def matched_memory_presentation(root: Path, gguf: Path,
                             world_name="cf_full_world.sqlite3",
                             brain_name="cf_full_brain",
                             information_arm=information_arm,
-                            decoding_arm=decoding_arm)
+                            decoding_arm=decoding_arm,
+                            model_name=model_name)
     masked = fresh_model_turn(root, gguf, goal, seed,
                               world_name="cf_mask_world.sqlite3",
                               brain_name="cf_mask_brain",
                               memory_arm="mask_lab_autobiography",
                               information_arm=information_arm,
-                              decoding_arm=decoding_arm)
+                              decoding_arm=decoding_arm,
+                            model_name=model_name)
     world_match = all(
         full["world_before"][key] == masked["world_before"][key]
         for key in ("world_epoch", "revision", "state_digest")
@@ -92,7 +97,8 @@ def matched_memory_presentation(root: Path, gguf: Path,
     }
 
 
-def matched_goal_presentation(root: Path, gguf: Path, goal: str, seed: int) -> dict:
+def matched_goal_presentation(root: Path, gguf: Path, goal: str, seed: int,
+                              model_name: str = "qwen3-1.7b-q4_k_m") -> dict:
     """Hold world, subject autobiography, menu and decoder fixed; change goal only."""
     world = SpatialHabitat(root / "world.sqlite3")
     world.verify()
@@ -103,11 +109,13 @@ def matched_goal_presentation(root: Path, gguf: Path, goal: str, seed: int) -> d
     vague = fresh_model_turn(root, gguf, VAGUE_GOAL, seed,
                             world_name="cf_vague_world.sqlite3",
                             brain_name="cf_vague_brain",
-                            information_arm="effects", decoding_arm="grammar")
+                            information_arm="effects", decoding_arm="grammar",
+                            model_name=model_name)
     explicit = fresh_model_turn(root, gguf, goal, seed,
                                world_name="cf_specific_world.sqlite3",
                                brain_name="cf_specific_brain",
-                               information_arm="effects", decoding_arm="grammar")
+                               information_arm="effects", decoding_arm="grammar",
+                               model_name=model_name)
     comparable = (
         vague["world_before"]["world_epoch"] == explicit["world_before"]["world_epoch"]
         and vague["world_before"]["revision"] == explicit["world_before"]["revision"]
@@ -140,7 +148,7 @@ def repeated_no_progress(previous: dict, current: dict) -> bool:
 
 
 def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
-        seed: int = 41) -> dict:
+        seed: int = 41, model_name: str = "qwen3-1.7b-q4_k_m") -> dict:
     if steps < 1 or steps > 8:
         raise ValueError("Max 1..8 turns")
     if root.exists() and any(root.iterdir()):
@@ -156,6 +164,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     names_control = fresh_model_turn(
         root, gguf, goal, seed, world_name="names_control_world.sqlite3",
         brain_name="names_control_brain", information_arm="names",
+        model_name=model_name,
     )
     trace = []
     stagnation_stop = False
@@ -163,15 +172,18 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     goal_contrast = {"not_run": "No successful first source-backed physical act"}
     for i in range(steps):
         record = fresh_model_turn(root, gguf, goal, seed,
-                                  information_arm="effects")
+                                  information_arm="effects",
+                                  model_name=model_name)
         record["session_index"] = i
         record["independent_process_restart"] = True
         trace.append(record)
         if "not_run" in memory_contrast and record["status"] == "model_action_verified_and_admitted":
             memory_contrast = matched_memory_presentation(
                 root, gguf, goal, seed, information_arm="effects",
+                model_name=model_name,
             )
-            goal_contrast = matched_goal_presentation(root, gguf, goal, seed)
+            goal_contrast = matched_goal_presentation(root, gguf, goal, seed,
+                                                      model_name=model_name)
         # This never chooses a replacement action. It only stops a run after
         # two identical non-mutating inspections with unchanged physical state.
         # Preserve both proposals as a negative result.
@@ -229,6 +241,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "model_file_sha256": trace[0].get("model_sha256") if trace else None,
         "run_configuration": {"goal": goal, "steps": steps, "seed": seed,
                               "decoding_arm": "grammar",
+                              "model_name": model_name,
                               "fresh_python_process_per_model_turn": True},
         "initial_world": before,
         "names_only_matched_first_turn": names_control,
@@ -249,6 +262,8 @@ def main() -> None:
     p.add_argument("--output-root", type=Path, required=True)
     p.add_argument("--fixture", type=Path, required=True)
     p.add_argument("--gguf", type=Path, required=True)
+    p.add_argument("--model", choices=("qwen3-1.7b-q4_k_m", "qwen3-4b-q4_k_m"),
+                   default="qwen3-1.7b-q4_k_m")
     p.add_argument("--goal", default=SPECIFIC_GOAL)
     p.add_argument("--steps", type=int, default=5)
     p.add_argument("--seed", type=int, default=41)
@@ -257,7 +272,7 @@ def main() -> None:
     if a.report.exists():
         raise FileExistsError("Raw evidence path already exists")
     result = run(a.output_root, a.fixture, a.gguf, goal=a.goal,
-                 steps=a.steps, seed=a.seed)
+                 steps=a.steps, seed=a.seed, model_name=a.model)
     a.report.parent.mkdir(parents=True, exist_ok=True)
     a.report.write_text(json.dumps(result, sort_keys=True, indent=2) + "\n",
                         encoding="utf-8")
