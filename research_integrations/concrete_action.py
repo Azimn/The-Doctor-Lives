@@ -30,6 +30,8 @@ SCHEMA = "pretorius.living-lab.concrete-model-action.v2"
 MODEL_SHA = {
     "qwen3-1.7b-q4_k_m":
         "d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5",
+    "qwen3-4b-q4_k_m":
+        "ab27b9bfa375a178d6cba48f3ad892b94b7739659dcc7aae8058ce0ffed6b328",
 }
 SYSTEM = (
     "You are the concrete-action decoder for Doctor Septimus Pretorius. "
