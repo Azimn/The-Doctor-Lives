@@ -1,0 +1,45 @@
+name: PSL native chronological policy benchmark
+on:
+  push:
+    branches:
+      - research/psl-stage01a-shadow-benchmark-20261009
+    paths:
+      - research_prototypes/predictive_self/**
+      - tests/test_psl_native_benchmark.py
+      - docs/PREDICTIVE_SELF_STAGE_01A_PROTOCOL.md
+      - .github/workflows/psl-native-policy-benchmark.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Run benchmark integrity tests
+        run: python -m unittest discover -s tests -p 'test_psl_native_benchmark.py' -v
+      - name: Run fixed 28-case chronological evaluation
+        run: |
+          mkdir -p results/predictive_self/stage01a
+          python -m research_prototypes.predictive_self.run_native_policy_benchmark > results/predictive_self/stage01a/native_policy_benchmark.json
+          python -m json.tool results/predictive_self/stage01a/native_policy_benchmark.json > /dev/null
+          python - <<'PY'
+          import json
+          p = json.load(open("results/predictive_self/stage01a/native_policy_benchmark.json", encoding="utf-8"))
+          assert p["n_total"] == 28
+          assert p["n_independent_world_outcomes"] == 0
+          assert p["summary"]["in_family_holdout"]["n"] == 8
+          assert p["summary"]["new_context_diagnostic"]["n"] == 4
+          print("PSL_STAGE01A_SUMMARY=" + json.dumps(p["summary"], sort_keys=True, separators=(",",":")))
+          PY
+      - name: Archive full per-case evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: psl-stage01a-native-policy-benchmark
+          path: results/predictive_self/stage01a/
+          retention-days: 90
