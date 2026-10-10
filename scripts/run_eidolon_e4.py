@@ -168,8 +168,9 @@ def fit(
             teaching = (permutation[item["action"]]
                         if label_shuffle else item["action"])
             model.reinforce_action(teaching)
-            # Identical unsupervised clock transition in both arms.
-            model.step("", scalars=None, reward=0.0, learn=False)
+            # Consecutive cue steps ensure ticks 4,8,... are learn=True.
+            # Earlier E4-A inserted a learn=False blank at every even tick,
+            # accidentally suppressing ALL recurrent weight updates.
     return model
 
 
@@ -227,6 +228,8 @@ def candidate_models(seed: int, train: list[dict]) -> tuple[dict, dict]:
         raise AssertionError("nonfinite learning magnitude")
     if decoder_change != 0.0:
         raise AssertionError("decoder-only recurrent weights changed")
+    if recurrent_change <= 1e-9:
+        raise AssertionError("E4 invalid: trained recurrent weights did not change")
     return arms, {
         "recurrent_frobenius_change_hybrid": recurrent_change,
         "recurrent_frobenius_change_decoder_only": decoder_change,
@@ -317,8 +320,9 @@ def run(seeds: tuple[int, ...] = SEEDS) -> dict:
         for seed in seeds
     }
     return {
-        "schema": "eidolon-e4-native-recurrent-decoder-v0.1",
+        "schema": "eidolon-e4-native-recurrent-decoder-v0.1-r1",
         "protocol": "docs/EIDOLON_E4_RECURRENT_DECODER_PROTOCOL_V01.md",
+        "amendment": "docs/EIDOLON_E4_AMENDMENT_01_PLASTICITY_TICKS.md",
         "epistemic_status": "development-authored lexical transfer pilot, not a sealed task-outcome evaluation",
         "github_sha": os.environ.get("GITHUB_SHA"),
         "fixture_sha256": fixture_hash(),
