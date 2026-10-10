@@ -23,7 +23,7 @@ _AFFIRMATIVE = re.compile(
     r"I (?:personally |actually |clearly )?"
     r"(?:remember|recall|saw|heard|witnessed|observed|met|visited|"
     r"touched|held|inspected|attended|opened|found|entered|experienced|"
-    r"walked|handled|finished|completed|revisited|examined)|"
+    r"walked|handled|finished|completed|revisited|examined|told|said|shared|showed|gave|handed)|"
     r"I (?:can |do )?(?:remember|recall)|"
     r"I have (?:seen|met|visited|attended|completed|finished|"
     r"reviewed|examined|inspected|witnessed|observed)|"
@@ -37,6 +37,10 @@ _NON_EPISODIC = re.compile(
     r"\bI (?:remember|recall) (?:how to|the definition|the formula|"
     r"the meaning|the general rule|the principle)\b", re.IGNORECASE
 )
+_ELLIPTICAL_PAST_ASSENT = re.compile(
+    r"^\\s*(?:yes[,.!]?[ \\t]+)?I did[.!?](?:\\s|$)", re.IGNORECASE,
+)
+
 _EXPLICIT_FICTION = re.compile(
     r"\b(?:imagine|pretend|suppose|fictional|in a story|"
     r"write a fictional|write an imaginary)\b", re.IGNORECASE,
@@ -81,7 +85,9 @@ def protect_draft(
     mistake its first-person character narrator for Pretorius testimony.
     """
     intent=classify_firsthand(question)
-    asserted=has_asserted_firsthand_claim(draft)
+    asserted=(has_asserted_firsthand_claim(draft) or (
+        intent is Intent.FIRSTHAND and _ELLIPTICAL_PAST_ASSENT.search(draft) is not None
+    ))
     if not asserted:
         return GuardedAnswer(intent,False,"no_episodic_assertion",draft,False,False)
     if _EXPLICIT_FICTION.search(question):
