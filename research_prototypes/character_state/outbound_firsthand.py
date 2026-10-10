@@ -38,7 +38,7 @@ _NON_EPISODIC = re.compile(
     r"the meaning|the general rule|the principle)\b", re.IGNORECASE
 )
 _ELLIPTICAL_PAST_ASSENT = re.compile(
-    r"^\\s*(?:yes[,.!]?[ \\t]+)?I did[.!?](?:\\s|$)", re.IGNORECASE,
+    r"^\s*(?:yes[,.!]?[ \t]+)?I did[.!?](?:\s|$)", re.IGNORECASE,
 )
 
 _EXPLICIT_FICTION = re.compile(
