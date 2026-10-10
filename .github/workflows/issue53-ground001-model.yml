@@ -33,6 +33,8 @@ jobs:
           test "$(git -C _lab rev-parse HEAD)" = "93d19671f7666b2996e6fcad211c5e6509336466"
           python -m pip install -e . -e ./_lab
       - run: python -m unittest discover -s tests -p 'test_ground001_concrete_action.py' -v
+      - name: Verify experiment CLI imports before any model download
+        run: python -m tools.run_ground001_real_model --help
   real-local-cpu-model:
     needs: model-free-contract
     runs-on: ubuntu-latest
@@ -57,7 +59,7 @@ jobs:
           echo 'd2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5  /tmp/Qwen3-1.7B-Q4_K_M.gguf' | sha256sum -c -
       - name: Execute actual local model with persistent world, receipts, independent process restarts, nonneural comparison
         run: |
-          python tools/run_ground001_real_model.py \
+          python -m tools.run_ground001_real_model \
             --output-root /tmp/issue53-ground001-unique \
             --fixture _lab/fixtures/DEMO_BOOK_007.json \
             --gguf /tmp/Qwen3-1.7B-Q4_K_M.gguf \
