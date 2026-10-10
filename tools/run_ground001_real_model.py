@@ -22,12 +22,14 @@ SCHEMA = "pretorius.living-lab.ground001-real-model-comparison/1"
 def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
                      world_name: str = "world.sqlite3", brain_name: str = "brain",
                      memory_arm: str = "full",
-                     information_arm: str = "names") -> dict:
+                     information_arm: str = "names",
+                     decoding_arm: str = "grammar") -> dict:
     argv = [sys.executable, "-m", "research_integrations.concrete_action",
             "--root", str(root), "--gguf", str(gguf),
             "--world", world_name, "--brain", brain_name,
             "--memory-arm", memory_arm,
             "--information-arm", information_arm,
+            "--decoding-arm", decoding_arm,
             "--goal", goal, "--seed", str(seed)]
     proc = subprocess.run(argv, capture_output=True, text=True, check=False,
                           timeout=360)
@@ -39,7 +41,8 @@ def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
 
 def matched_memory_presentation(root: Path, gguf: Path,
                                 goal: str, seed: int,
-                                information_arm: str = "names") -> dict:
+                                information_arm: str = "names",
+                                decoding_arm: str = "grammar") -> dict:
     """Equal post-action brain and world snapshots, different UPPB display.
 
     Does not delete source records or change the neural policy. Only the
@@ -55,12 +58,14 @@ def matched_memory_presentation(root: Path, gguf: Path,
     full = fresh_model_turn(root, gguf, goal, seed,
                             world_name="cf_full_world.sqlite3",
                             brain_name="cf_full_brain",
-                            information_arm=information_arm)
+                            information_arm=information_arm,
+                            decoding_arm=decoding_arm)
     masked = fresh_model_turn(root, gguf, goal, seed,
                               world_name="cf_mask_world.sqlite3",
                               brain_name="cf_mask_brain",
                               memory_arm="mask_lab_autobiography",
-                              information_arm=information_arm)
+                              information_arm=information_arm,
+                              decoding_arm=decoding_arm)
     world_match = all(
         full["world_before"][key] == masked["world_before"][key]
         for key in ("world_epoch", "revision", "state_digest")
@@ -123,7 +128,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         record["session_index"] = i
         record["independent_process_restart"] = True
         trace.append(record)
-        if i == 0 and record["status"] == "model_action_verified_and_admitted":
+        if "not_run" in memory_contrast and record["status"] == "model_action_verified_and_admitted":
             memory_contrast = matched_memory_presentation(
                 root, gguf, goal, seed, information_arm="effects",
             )
@@ -183,6 +188,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "schema": SCHEMA, "source_pins": setup["source_pins"],
         "model_file_sha256": trace[0].get("model_sha256") if trace else None,
         "run_configuration": {"goal": goal, "steps": steps, "seed": seed,
+                              "decoding_arm": "grammar",
                               "fresh_python_process_per_model_turn": True},
         "initial_world": before,
         "names_only_matched_first_turn": names_control,
