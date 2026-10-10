@@ -88,7 +88,7 @@ class SynthemaLattice:
 
     def features_for(self, exp: Experience) -> np.ndarray:
         normalized = unicodedata.normalize("NFC", exp.text.casefold())
-        words = sorted(set(re.findall(r"\\w+", normalized, flags=re.UNICODE)))
+        words = sorted(set(re.findall(r"\w+", normalized, flags=re.UNICODE)))
         glyphs = sorted({ch for ch in normalized
                          if unicodedata.category(ch).startswith("S")})
         if not words and not glyphs:
