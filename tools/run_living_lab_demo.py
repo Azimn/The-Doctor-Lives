@@ -34,9 +34,16 @@ def execute(root: Path, fixture: Path) -> dict:
     # Same post-intervention world information for both next-session conditions.
     world = SpatialHabitat(root / "world.sqlite3")
     checkpoint = world.backup_to(root / "world_control.sqlite3")
+    world.backup_to(root / "world_simple.sqlite3")
     full = process(root, "turn")
     without_episode = process(root, "turn", "--world", "world_control.sqlite3",
                               "--brain", "control_brain")
+    baseline_cmd = [sys.executable, "-m", "research_integrations.nonneural_baseline",
+                    "--world", str(root / "world_simple.sqlite3")]
+    baseline_run = subprocess.run(baseline_cmd, text=True, capture_output=True)
+    if baseline_run.returncode:
+        raise RuntimeError("Simple baseline failed: " + baseline_run.stderr)
+    baseline = json.loads(baseline_run.stdout)
     subsequent = process(root, "turn")
     book = process(root, "book-contract")
     reopened = process(root, "verify")
@@ -50,6 +57,7 @@ def execute(root: Path, fixture: Path) -> dict:
              and reopened["books"]["verified"]
              and reopened["observations"]["verified"]
              and book["reopened_page_matches"]
+             and baseline["task_completed"]
              and world.locate("beaker:001")["location"]["anchor_id"] == "floor:corner:nw")
     return {
         "schema": "pretorius-living-lab-evidence/1",
@@ -63,6 +71,7 @@ def execute(root: Path, fixture: Path) -> dict:
         "matched_world_backup": checkpoint,
         "post_restart": full,
         "no_episode_control": without_episode,
+        "strong_simple_non_neural": baseline,
         "subsequent": subsequent,
         "scripted_book_host_contract": book,
         "reopened_verification": reopened,
