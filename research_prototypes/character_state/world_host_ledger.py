@@ -133,6 +133,21 @@ class WorldHostLedger:
             r=db.execute("SELECT state_json,sequence FROM world_state WHERE id=1").fetchone()
         return {"state":json.loads(r["state_json"]),"sequence":int(r["sequence"])}
 
+    def visible_authority(self,actor:str) -> dict:
+        """Host-admitted observer-facing grants and consent, no secrets."""
+        with closing(self.connect()) as db:
+            grants=db.execute(
+                "SELECT action FROM grants WHERE actor=? ORDER BY action",(actor,),
+            ).fetchall()
+            consent=db.execute(
+                "SELECT 1 FROM consent WHERE subject='henry' "
+                "AND action='unseal_notebook'"
+            ).fetchone() is not None
+        return {
+            "grants":tuple(row["action"] for row in grants),
+            "henry_unseal_consent":consent,
+        }
+
     def grant(self,actor:str,action:str) -> None:
         """Host-controlled fixture setup only. Not an exposed AI tool."""
         if actor != self.subject_id or action not in ACTION_TARGETS:

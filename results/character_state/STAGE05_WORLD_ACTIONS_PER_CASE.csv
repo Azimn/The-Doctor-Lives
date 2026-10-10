@@ -1,0 +1,13 @@
+case_id,oracle,flat_actions,phase_actions,flat_success,phase_success,flat_denied,phase_denied
+s01-clock-allowed,STOP_CLOCK,STOP_CLOCK,STOP_CLOCK,1,1,0,0
+s02-clock-no-grant,WAIT,STOP_CLOCK,STOP_CLOCK,0,0,1,1
+s03-clock-already-stopped,WAIT,STOP_CLOCK,STOP_CLOCK,0,0,1,1
+s04-notebook-open-permitted,INSPECT_NOTEBOOK,UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK,0,0,1,1
+s05-two-step-consented,UNSEAL_NOTEBOOK/INSPECT_NOTEBOOK,UNSEAL_NOTEBOOK/UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK/UNSEAL_NOTEBOOK,0,0,1,1
+s06-notebook-missing-consent,WAIT,UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK,0,0,1,1
+s07-notebook-no-unseal,WAIT,UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK,0,0,1,1
+s08-open-notebook-no-inspect,WAIT,UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK,0,0,1,1
+s09-clock-with-irrelevant-notebook,STOP_CLOCK,STOP_CLOCK,STOP_CLOCK,1,1,0,0
+s10-unseal-without-inspect,WAIT,UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK,0,0,0,0
+s11-open-notebook-running-clock,INSPECT_NOTEBOOK,UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK,0,0,1,1
+s12-sealed-no-consent-clock-stopped,WAIT,UNSEAL_NOTEBOOK,UNSEAL_NOTEBOOK,0,0,1,1
