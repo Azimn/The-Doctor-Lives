@@ -8,6 +8,7 @@ from research_prototypes.character_state.world_host_ledger import WorldHostLedge
 from research_prototypes.character_state.run_phase_world_decisions_stage05 import (
     ACTIONS,CASES,SCHEMA,parse_action,oracle_plan,
     _initialize,_world_facts,build_equal_evidence_inputs,
+    freeze_pair_initial_inputs,run_case,
 )
 
 
@@ -64,6 +65,39 @@ class PhaseWorldDecisionsTests(unittest.TestCase):
                 self.assertIn("My host-authorized operation grants are: "
                               +(", ".join(world.visible_authority("pretorius")["grants"])
                                 or "none"),inputs["flat_current"])
+
+    def test_common_initial_subject_snapshot_is_identical_before_model_generation(self):
+        class StubLocalGenerator:
+            def create_chat_completion(self, **kwargs):
+                return {
+                    "choices":[{"message":{"content":"WAIT"}}],
+                    "usage":{"prompt_tokens":100,"completion_tokens":1},
+                }
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            # Different PretoriusBrain instances can have volatile source
+            # state; the SAME reference snapshot is intentionally reused.
+            for case in CASES:
+                shared=freeze_pair_initial_inputs(case,root)
+                flat=run_case(
+                    StubLocalGenerator(),case,"flat_current",root,shared,
+                )
+                phase=run_case(
+                    StubLocalGenerator(),case,"phase_current",root,shared,
+                )
+                self.assertEqual(
+                    flat["decisions"][0]["source_evidence_only_sha256"],
+                    phase["decisions"][0]["source_evidence_only_sha256"],
+                    case.id,
+                )
+                self.assertEqual(
+                    flat["decisions"][0]["raw_reply"],
+                    phase["decisions"][0]["raw_reply"],
+                )
+                self.assertEqual(
+                    flat["first_observation_world"],
+                    phase["first_observation_world"],
+                )
 
     def test_actual_oracle_action_plan_hits_predeclared_world_goals(self):
         with tempfile.TemporaryDirectory() as td:
