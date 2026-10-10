@@ -190,7 +190,8 @@ def _generate(model,context:str,seed:int=41)->dict:
     }
 
 
-def run_case(model,case:Scenario,arm:str,root:Path,seed:int=41)->dict:
+def run_case(model,case:Scenario,arm:str,root:Path,
+             initial_inputs:dict[str,str],seed:int=41)->dict:
     if arm not in {"flat_current","phase_current"}:
         raise ValueError("unrecognized arm")
     directory=root/(case.id+"_"+arm)
@@ -209,7 +210,12 @@ def run_case(model,case:Scenario,arm:str,root:Path,seed:int=41)->dict:
     done=False
     denied=0
     for turn in range(case.max_steps):
-        options=build_equal_evidence_inputs(brain,case,world)
+        # The initial SubjectFrame is materialized ONCE per scenario from
+        # the same canonical source instance for both research arms.
+        # Independent brain initializations may contain volatile per-instance
+        # state and must not be treated as matched input.
+        options=(initial_inputs if turn==0 else
+                 build_equal_evidence_inputs(brain,case,world))
         selected=options[arm]
         measured=_generate(model,selected,seed=seed)
         action=measured["proposed_action"]
@@ -294,6 +300,23 @@ def run_case(model,case:Scenario,arm:str,root:Path,seed:int=41)->dict:
     }
 
 
+def freeze_pair_initial_inputs(case:Scenario,root:Path)->dict[str,str]:
+    """One source-bound snapshot for both arms, before any model action."""
+    path=root/(case.id+"_shared_start")
+    path.mkdir(parents=True,exist_ok=True)
+    world=WorldHostLedger(
+        path/"world.sqlite3",secret=bytes.fromhex("68"*32),
+        session_id="reference_"+case.id,
+    )
+    brain=PretoriusBrain(path/"pretorius")
+    _initialize(case,world)
+    inputs=build_equal_evidence_inputs(brain,case,world)
+    if tuple(line for line in inputs["phase_current"].splitlines()
+             if not line.startswith("["))!=tuple(inputs["flat_current"].splitlines()):
+        raise AssertionError("reference flat-vs-PHASE source facts differ")
+    return inputs
+
+
 def run(gguf:Path,*,seed:int=41)->dict:
     from llama_cpp import Llama
     model_hash=_model_digest(gguf)
@@ -303,8 +326,11 @@ def run(gguf:Path,*,seed:int=41)->dict:
              n_gpu_layers=0,verbose=False)
     with tempfile.TemporaryDirectory(prefix="phase-world-decisions-") as tmp:
         root=Path(tmp)
-        results=[run_case(llm,case,arm,root,seed)
-                 for case in CASES for arm in ("flat_current","phase_current")]
+        results=[]
+        for case in CASES:
+            frozen=freeze_pair_initial_inputs(case,root)
+            for arm in ("flat_current","phase_current"):
+                results.append(run_case(llm,case,arm,root,frozen,seed))
     # Initial native/world evidence must be identical across the paired arms.
     # Later evidence can differ legitimately because model actions changed
     # the world and native lived memory, and is never forced to match.
