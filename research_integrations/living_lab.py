@@ -312,8 +312,7 @@ def turn(root: Path, *, world_name: str = "world.sqlite3",
                 raise AdmissionError("Expected gathered fragments not verified")
             if chosen == "place" and condition["location"]["anchor_id"] != "floor:corner:nw":
                 raise AdmissionError("Expected destination not verified")
-            sentence = ("I gathered the broken beaker fragments from the bench. I should inspect "
-                        "a safe place before moving them." if chosen == "collect" else
+            sentence = ("I gathered the broken beaker fragments from the bench." if chosen == "collect" else
                         "I placed the gathered beaker fragments in the northwest floor corner.")
             admission = _admit_action(brain, world, outcome, action, sentence, before)
             audit["memory_id"] = admission["memory_id"]
