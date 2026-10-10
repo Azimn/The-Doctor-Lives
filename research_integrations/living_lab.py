@@ -76,12 +76,43 @@ def _project(brain: PretoriusBrain, text: str):
     )
 
 
+def _index_admission(brain: PretoriusBrain, memory_id: str,
+                     kind: str, proof: str, epoch: str) -> None:
+    """Separate, indexed *evidence of adapter admission*, not a memory authority."""
+    with brain.store.transaction() as conn:
+        conn.execute("""CREATE TABLE IF NOT EXISTS lab_research_admissions (
+            memory_id TEXT PRIMARY KEY, subject_id TEXT NOT NULL,
+            evidence_kind TEXT NOT NULL, proof_hash TEXT NOT NULL,
+            world_epoch TEXT NOT NULL, UNIQUE(evidence_kind,proof_hash)
+        )""")
+        conn.execute("INSERT INTO lab_research_admissions VALUES (?,?,?,?,?)",
+                     (memory_id, "pretorius", kind, proof, epoch))
+
+
+def _indexed(brain: PretoriusBrain, kind: str, epoch: str) -> set[tuple[str, str]]:
+    with brain.store.connect() as conn:
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='lab_research_admissions'"
+        ).fetchone()
+        if not exists:
+            return set()
+        rows = conn.execute("""SELECT memory_id,proof_hash
+                               FROM lab_research_admissions
+                               WHERE subject_id='pretorius'
+                                 AND evidence_kind=? AND world_epoch=?""",
+                            (kind, epoch)).fetchall()
+    return {(str(row[0]), str(row[1])) for row in rows}
+
+
 def _has_attested_memory(brain: PretoriusBrain, world: SpatialHabitat, op: str) -> bool:
     """No arbitrary autobiographical text or foreign-source memory can unlock an action."""
     proof = world.verify()
+    indexed = _indexed(brain, "action", proof["world_epoch"])
     for record in brain.store.memories():
         source = str(record["source"])
-        if not source.startswith("lab:action:"):
+        if (not source.startswith("lab:action:") or record["external"]
+                or record["kind"] != "action_outcome"
+                or (str(record["id"]), source.rsplit(":", 1)[-1]) not in indexed):
             continue
         parts = source.split(":")
         if len(parts) != 4:
@@ -98,6 +129,7 @@ def _has_attested_memory(brain: PretoriusBrain, world: SpatialHabitat, op: str) 
 
 def _has_floor_percept(brain: PretoriusBrain, port: ObservationPort) -> bool:
     proof = port.verify()
+    indexed = _indexed(brain, "observation", proof["world_epoch"])
     known = set()
     with port.habitat._open() as db:
         for encoded, h in db.execute("SELECT payload,event_hash FROM observation_events"):
@@ -108,6 +140,8 @@ def _has_floor_percept(brain: PretoriusBrain, port: ObservationPort) -> bool:
                             for x in entry["offered_payload"]["positions"])):
                 known.add(h)
     return any(str(m["source"]) == "lab:observation:" + h
+               and not m["external"] and m["kind"] == "laboratory_observation"
+               and (str(m["id"]), h) in indexed
                for m in brain.store.memories() for h in known)
 
 
@@ -119,8 +153,11 @@ def _admit_observation(brain: PretoriusBrain, port: ObservationPort,
         raise AdmissionError("Duplicate firsthand observation admission")
     # Not a subjective-consciousness claim: the active controller processed the
     # percept; the source certifies delivery, not humanlike experience.
-    return brain.ingest(Experience(text=text, source=source,
+    saved = brain.ingest(Experience(text=text, source=source,
                                    kind="laboratory_observation", tags=("lab", "offered_fact")))
+    _index_admission(brain, saved["memory_id"], "observation", receipt["receipt_hash"],
+                     port.habitat.verify()["world_epoch"])
+    return saved
 
 
 def _admit_action(brain: PretoriusBrain, world: SpatialHabitat, receipt: dict,
@@ -138,8 +175,11 @@ def _admit_action(brain: PretoriusBrain, world: SpatialHabitat, receipt: dict,
     source = "lab:action:" + event["event_id"] + ":" + event["event_hash"]
     if any(m["source"] == source for m in brain.store.memories()):
         raise AdmissionError("Replayed action cannot create duplicate autobiography")
-    return brain.ingest(Experience(text=text, source=source, kind="action_outcome",
+    saved = brain.ingest(Experience(text=text, source=source, kind="action_outcome",
                                    novelty=0.3, tags=("lab", "physical_consequence")))
+    _index_admission(brain, saved["memory_id"], "action", event["event_hash"],
+                     event["world_epoch"])
+    return saved
 
 
 def prepare(root: Path, fixture: Path) -> dict:
