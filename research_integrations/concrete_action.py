@@ -329,7 +329,29 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
     if proposal is None:
         record["status"] = "invalid_proposal_no_execution"
     elif proposal["verb"] == "wait":
+        # Waiting is a legitimate choice, not a phantom physical success.
+        # When the visible unfinished task remains on the bench, return a
+        # verified current-room observation through the same subject ingress
+        # instead of discarding the failed decision between restarts.
         record["status"] = "model_selected_wait"
+        if (beaker["condition"] == "broken"
+                and beaker["anchor_id"] == "bench:main/position:left"):
+            scene = _verify_observation(port, offered)["offered_payload"]
+            witnessed = scene["objects"]["beaker:001"]
+            if witnessed != beaker:
+                raise ValueError("Offered room no longer matches decision scene")
+            gathered = ("gathered" if witnessed["collected"] else "scattered")
+            sentence = (
+                "I chose to wait. I still see the broken laboratory beaker "
+                "on the main bench, with its fragments " + gathered + "."
+            )
+            remembered = _admit_observation(brain, port, offered, sentence)
+            record.update(
+                status="model_selected_wait_with_verified_feedback",
+                verified_nonprogress_receipt=offered["receipt_hash"],
+                admitted_memory_id=remembered["memory_id"],
+                changed_physical_state=False,
+            )
     elif proposal["verb"] == "observe":
         try:
             receipt = port.expose("shelf", proposal["operand"])
