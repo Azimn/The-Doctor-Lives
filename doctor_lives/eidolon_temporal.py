@@ -119,7 +119,7 @@ class MnemosyneLoom:
             if row["memory_id"] in suppressed:
                 continue
             confidence = min(float(row["memory_confidence"]), float(row["event_confidence"]))
-            if not math.isfinite(confidence) or confidence < self.MIN_CONFIDENCE or confidence > 1:
+            if not math.isfinite(confidence) or confidence < MnemosyneLoom.MIN_CONFIDENCE or confidence > 1:
                 continue
             if str(row["memory_source"]) != str(row["event_source"]):
                 continue
