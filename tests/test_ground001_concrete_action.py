@@ -13,6 +13,7 @@ try:
     from pretorius_lab.observation_receipts import ObservationPort
     from doctor_lives.cognition import PretoriusBrain
     from research_integrations.living_lab import prepare, _verified_subject_frame
+    from tools.run_ground001_real_model import repeated_no_progress
     from research_integrations.concrete_action import (
         concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
     )
@@ -100,6 +101,20 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertIn(_choice("observe","shelf:3"), candidates)
         self.assertIn(_choice("collect","beaker:001"), candidates)
         self.assertNotIn(_choice("place","beaker:001","floor:corner:nw"), candidates)
+
+    def test_stagnation_watchdog_stops_only_identical_nonmutating_inspections(self):
+        prior = {
+            "status": "model_selected_additional_observation",
+            "proposed_action": _choice("observe", "floor:sanctum"),
+            "world_after": {"state_digest": "same-state"},
+        }
+        again = dict(prior)
+        self.assertTrue(repeated_no_progress(prior, again))
+        self.assertFalse(repeated_no_progress(prior, dict(
+            again, proposed_action=_choice("collect", "beaker:001"))))
+        self.assertFalse(repeated_no_progress(prior, dict(
+            again, world_after={"state_digest": "changed-state"})))
+
 
     def test_host_effects_are_presentation_only_not_action_authority(self):
         options = [_choice("wait"), _choice("collect", "beaker:001"),
