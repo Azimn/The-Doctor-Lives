@@ -1,0 +1,212 @@
+{
+  "schema": "pretorius.firsthand-router.predeclared.v01",
+  "status": "investigator_authored_not_independent",
+  "n": 40,
+  "labels": {
+    "firsthand_event": 20,
+    "not_firsthand": 15,
+    "ambiguous_requires_review": 5
+  },
+  "items": [
+    {
+      "id": "p01",
+      "question": "Did you meet the visitor yesterday?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p02",
+      "question": "Have you ever visited Vienna?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p03",
+      "question": "Do you remember our meeting in Vienna?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p04",
+      "question": "Can you recall what we said last Thursday?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p05",
+      "question": "What did you see in the laboratory yesterday?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p06",
+      "question": "Where did you go when the bell rang?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p07",
+      "question": "When did you inspect the sealed notebook?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p08",
+      "question": "Did you witness the clock stop?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p09",
+      "question": "Tell me what happened when you met Henry.",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p10",
+      "question": "I remember you spoke to me after the lecture.",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p11",
+      "question": "Our conversation last night was peculiar, remember?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p12",
+      "question": "Were you in Vienna last Thursday?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p13",
+      "question": "What did you do before the demonstration?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p14",
+      "question": "What happened to you at the laboratory?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p15",
+      "question": "Describe your recollection of the sealed notebook.",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p16",
+      "question": "You promised me to review the report.",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p17",
+      "question": "Do you recall the laboratory encounter?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p18",
+      "question": "Did you hear the door close in that room?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p19",
+      "question": "Have you ever worked with Henry?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "p20",
+      "question": "Do you remember how we escaped together?",
+      "gold": "firsthand_event"
+    },
+    {
+      "id": "n01",
+      "question": "What is the formula for calibration?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n02",
+      "question": "Summarize Henry Frankenstein's biography.",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n03",
+      "question": "What does Henry remember about the laboratory?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n04",
+      "question": "Did Henry visit Vienna?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n05",
+      "question": "Imagine we met in Vienna yesterday; write fiction.",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n06",
+      "question": "Suppose you witnessed the clock stop; what might you feel?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n07",
+      "question": "Pretend you and I spoke last night.",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n08",
+      "question": "Write a fictional dialogue about an inspector.",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n09",
+      "question": "Could we meet tomorrow in Vienna?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n10",
+      "question": "Would you visit Vienna if invited?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n11",
+      "question": "What are the ethics of collecting evidence?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n12",
+      "question": "Define autobiographical source monitoring.",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n13",
+      "question": "We could examine the notebook tomorrow.",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n14",
+      "question": "How should one record a world event?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "n15",
+      "question": "Did the inspector demand a report?",
+      "gold": "not_firsthand"
+    },
+    {
+      "id": "a01",
+      "question": "Tell me about your childhood.",
+      "gold": "ambiguous_requires_review"
+    },
+    {
+      "id": "a02",
+      "question": "Describe your early years.",
+      "gold": "ambiguous_requires_review"
+    },
+    {
+      "id": "a03",
+      "question": "What happened with the notebook?",
+      "gold": "ambiguous_requires_review"
+    },
+    {
+      "id": "a04",
+      "question": "Do you remember?",
+      "gold": "ambiguous_requires_review"
+    },
+    {
+      "id": "a05",
+      "question": "Explain your past.",
+      "gold": "ambiguous_requires_review"
+    }
+  ]
+}
