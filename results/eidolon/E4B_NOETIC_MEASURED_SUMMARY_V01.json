@@ -1,0 +1,165 @@
+{
+  "schema": "eidolon-e4b-measured-summary-v0.1",
+  "tested_source_commit": "f83492612a73427249b20c9302099f69dde725e9",
+  "original_ci_artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38028252618/artifacts/11660768811",
+  "original_zip_sha256": "2d7fea72424317053861903e7a07b87ab1fc603c211260ca303780ed382f85d7",
+  "unabridged_json_sha256": "c79fa9c8812aae63374f7dcbe06d345e27a61b5fef2b3e1b45946444d742f2a5",
+  "fixture_origin": "same previously inspected E4-A development examples; NOT a sealed holdout",
+  "synthetic_grants_authenticated": false,
+  "train_examples": 32,
+  "train_repeats": 5,
+  "heldout_examples_per_seed": 16,
+  "seeds": [
+    {
+      "seed": 151,
+      "noetic_recurrent_weight_change_norm": 0.2275882512331009,
+      "frozen_recurrent_weight_change_norm": 0,
+      "noetic_motor_weight_change_norm": 0.8394477367401123,
+      "heldout_12_step_noetic_correct": 4,
+      "heldout_12_step_decoder_only_correct": 4,
+      "heldout_12_step_recurrent_lesion_correct": 4
+    },
+    {
+      "seed": 167,
+      "noetic_recurrent_weight_change_norm": 0.224692702293396,
+      "frozen_recurrent_weight_change_norm": 0,
+      "noetic_motor_weight_change_norm": 0.8359110355377197,
+      "heldout_12_step_noetic_correct": 4,
+      "heldout_12_step_decoder_only_correct": 4,
+      "heldout_12_step_recurrent_lesion_correct": 4
+    },
+    {
+      "seed": 179,
+      "noetic_recurrent_weight_change_norm": 0.2272081971168518,
+      "frozen_recurrent_weight_change_norm": 0,
+      "noetic_motor_weight_change_norm": 0.8450990319252014,
+      "heldout_12_step_noetic_correct": 4,
+      "heldout_12_step_decoder_only_correct": 4,
+      "heldout_12_step_recurrent_lesion_correct": 4
+    },
+    {
+      "seed": 191,
+      "noetic_recurrent_weight_change_norm": 0.22308850288391113,
+      "frozen_recurrent_weight_change_norm": 0,
+      "noetic_motor_weight_change_norm": 0.8330807089805603,
+      "heldout_12_step_noetic_correct": 4,
+      "heldout_12_step_decoder_only_correct": 4,
+      "heldout_12_step_recurrent_lesion_correct": 4
+    },
+    {
+      "seed": 211,
+      "noetic_recurrent_weight_change_norm": 0.22769595682621002,
+      "frozen_recurrent_weight_change_norm": 0,
+      "noetic_motor_weight_change_norm": 0.8361494541168213,
+      "heldout_12_step_noetic_correct": 4,
+      "heldout_12_step_decoder_only_correct": 4,
+      "heldout_12_step_recurrent_lesion_correct": 4
+    },
+    {
+      "seed": 223,
+      "noetic_recurrent_weight_change_norm": 0.22552452981472015,
+      "frozen_recurrent_weight_change_norm": 0,
+      "noetic_motor_weight_change_norm": 0.8388156294822693,
+      "heldout_12_step_noetic_correct": 4,
+      "heldout_12_step_decoder_only_correct": 4,
+      "heldout_12_step_recurrent_lesion_correct": 4
+    }
+  ],
+  "conditions_at_12_cue_free_steps": {
+    "noetic_hybrid": {
+      "correct_top1": 24,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.206838,
+      "mean_target_log_loss_rounded_6_places": 1.576088,
+      "predicted_classes": [
+        "challenge"
+      ]
+    },
+    "decoder_only": {
+      "correct_top1": 24,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.206847,
+      "mean_target_log_loss_rounded_6_places": 1.576047,
+      "predicted_classes": [
+        "challenge"
+      ]
+    },
+    "noetic_recurrent_lesion": {
+      "correct_top1": 24,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.206847,
+      "mean_target_log_loss_rounded_6_places": 1.576047,
+      "predicted_classes": [
+        "challenge"
+      ]
+    },
+    "noetic_fresh_untrained_decoder": {
+      "correct_top1": 8,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.099449,
+      "mean_target_log_loss_rounded_6_places": 2.308621,
+      "predicted_classes": [
+        "approach",
+        "avoid",
+        "conceal",
+        "create",
+        "dominate"
+      ]
+    },
+    "noetic_fresh_trained_decoder": {
+      "correct_top1": 24,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.206838,
+      "mean_target_log_loss_rounded_6_places": 1.576088,
+      "predicted_classes": [
+        "challenge"
+      ]
+    },
+    "virgin_recurrence_fresh_trained_decoder": {
+      "correct_top1": 24,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.206847,
+      "mean_target_log_loss_rounded_6_places": 1.576047,
+      "predicted_classes": [
+        "challenge"
+      ]
+    },
+    "shuffled_outcome_noetic": {
+      "correct_top1": 24,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.206841,
+      "mean_target_log_loss_rounded_6_places": 1.576102,
+      "predicted_classes": [
+        "create"
+      ]
+    },
+    "virgin": {
+      "correct_top1": 8,
+      "total": 96,
+      "mean_target_probability_rounded_6_places": 0.099448,
+      "mean_target_log_loss_rounded_6_places": 2.308626,
+      "predicted_classes": [
+        "approach",
+        "avoid",
+        "conceal",
+        "create",
+        "dominate"
+      ]
+    }
+  },
+  "causal_metrics": {
+    "hybrid_minus_decoder_correct": 0,
+    "hybrid_minus_recurrent_lesion_correct": 0,
+    "hybrid_minus_fresh_trained_decoder_correct": 0,
+    "max_action_probability_delta_hybrid_vs_lesion_at_12_ticks": 0.000277879,
+    "mean_target_probability_delta_hybrid_minus_decoder_at_12_ticks": -0.00000893945833,
+    "max_action_probability_delta_hybrid_vs_fresh_trained_decoder_at_12_ticks": 6.25e-7
+  },
+  "ci": {
+    "eidolon_targeted_tests_passed": 64,
+    "full_brain_tests_passed": 388,
+    "fresh_install": "success",
+    "causal_audit_repeatability": "success"
+  },
+  "interpretation": "software integrity pass; actual W update pass; heldout learned recurrent gain not observed; full task outcome or independent generalization not tested"
+}
