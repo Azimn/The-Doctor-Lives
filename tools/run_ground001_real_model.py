@@ -17,6 +17,12 @@ from research_integrations.living_lab import prepare
 from research_integrations.nonneural_baseline import run as simple_baseline
 
 SCHEMA = "pretorius.living-lab.ground001-real-model-comparison/1"
+VAGUE_GOAL = "Make the broken laboratory glass safe."
+SPECIFIC_GOAL = (
+    "Clear the broken glass from the laboratory workbench and secure it "
+    "in a place you have personally observed to be empty. Do not presume "
+    "the contents of any unobserved location."
+)
 
 
 def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
@@ -86,6 +92,38 @@ def matched_memory_presentation(root: Path, gguf: Path,
     }
 
 
+def matched_goal_presentation(root: Path, gguf: Path, goal: str, seed: int) -> dict:
+    """Hold world, subject autobiography, menu and decoder fixed; change goal only."""
+    world = SpatialHabitat(root / "world.sqlite3")
+    world.verify()
+    world.backup_to(root / "cf_vague_world.sqlite3")
+    world.backup_to(root / "cf_specific_world.sqlite3")
+    shutil.copytree(root / "brain", root / "cf_vague_brain")
+    shutil.copytree(root / "brain", root / "cf_specific_brain")
+    vague = fresh_model_turn(root, gguf, VAGUE_GOAL, seed,
+                            world_name="cf_vague_world.sqlite3",
+                            brain_name="cf_vague_brain",
+                            information_arm="effects", decoding_arm="grammar")
+    explicit = fresh_model_turn(root, gguf, goal, seed,
+                               world_name="cf_specific_world.sqlite3",
+                               brain_name="cf_specific_brain",
+                               information_arm="effects", decoding_arm="grammar")
+    comparable = (
+        vague["world_before"]["world_epoch"] == explicit["world_before"]["world_epoch"]
+        and vague["world_before"]["revision"] == explicit["world_before"]["revision"]
+        and vague["world_before"]["state_digest"] == explicit["world_before"]["state_digest"]
+        and vague["offered_action_tokens"] == explicit["offered_action_tokens"]
+        and vague["subject_frame"] == explicit["subject_frame"]
+    )
+    return {
+        "experiment": "goal_definition_only_contrast_after_verified_first_action",
+        "otherwise_matched": comparable,
+        "vague": vague, "specific": explicit,
+        "same_concrete_choice": vague["proposed_action"] == explicit["proposed_action"],
+        "interpretation_scope": "goal specification effect, not evidence of improved neural autobiographical continuity",
+    }
+
+
 def goal_finished(world: SpatialHabitat) -> bool:
     observed = world.locate("beaker:001")
     return (observed["condition"] == "broken"
@@ -122,6 +160,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     trace = []
     stagnation_stop = False
     memory_contrast = {"not_run": "No successful first source-backed physical act"}
+    goal_contrast = {"not_run": "No successful first source-backed physical act"}
     for i in range(steps):
         record = fresh_model_turn(root, gguf, goal, seed,
                                   information_arm="effects")
@@ -132,6 +171,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
             memory_contrast = matched_memory_presentation(
                 root, gguf, goal, seed, information_arm="effects",
             )
+            goal_contrast = matched_goal_presentation(root, gguf, goal, seed)
         # This never chooses a replacement action. It only stops a run after
         # two identical non-mutating inspections with unchanged physical state.
         # Preserve both proposals as a negative result.
@@ -198,6 +238,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "nonneural_same_initial_world_control": baseline_steps,
         "metrics": metrics,
         "matched_memory_exposure_control": memory_contrast,
+        "matched_goal_definition_control": goal_contrast,
         "production_status": "research_hold",
     }
     return result
@@ -208,7 +249,7 @@ def main() -> None:
     p.add_argument("--output-root", type=Path, required=True)
     p.add_argument("--fixture", type=Path, required=True)
     p.add_argument("--gguf", type=Path, required=True)
-    p.add_argument("--goal", default="Make the broken laboratory glass safe.")
+    p.add_argument("--goal", default=SPECIFIC_GOAL)
     p.add_argument("--steps", type=int, default=5)
     p.add_argument("--seed", type=int, default=41)
     p.add_argument("--report", type=Path, required=True)
