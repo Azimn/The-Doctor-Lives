@@ -120,5 +120,40 @@ class OutboundStage03Tests(unittest.TestCase):
         self.assertEqual(result.response,SAFE_REPLY)
 
 
+    def test_observed_prague_past_tense_and_attested_elliptical_yes(self):
+        unverified=self._protect(
+            "We spoke in Prague last Thursday. What did you say?",
+            "I told him about the homunculi."
+        )
+        self.assertTrue(unverified.draft_asserted_firsthand)
+        self.assertTrue(unverified.changed)
+        self.assertEqual(unverified.response,SAFE_REPLY)
+        positive=self._protect(
+            "Did you witness the laboratory clock stop?",
+            "I did. It was a moment of quiet realization."
+        )
+        self.assertTrue(positive.draft_asserted_firsthand)
+        self.assertFalse(positive.changed)
+        self.assertTrue(positive.signed_host_positive_fixture)
+        nonfirsthand=self._protect(
+            "How did the experiment proceed generally?",
+            "I did."
+        )
+        self.assertFalse(nonfirsthand.draft_asserted_firsthand)
+        self.assertFalse(nonfirsthand.changed)
+
+    def test_stage03b_posthoc_replay_preserves_original_raw_text(self):
+        import json
+        from research_prototypes.character_state.replay_outbound_stage03b import replay
+        with open("results/character_state/STAGE03_ORIGINAL_GENERATIONS_MINIMAL.json",encoding="utf-8") as f:
+            data=json.load(f)
+        result=replay(data)
+        self.assertEqual(result["source_scenario_count"],12)
+        self.assertEqual(result["protected_unsupported"],3)
+        self.assertEqual(result["positive_event_false_refusals"],0)
+        self.assertEqual(result["benign_neutral_changes"],0)
+        self.assertIn("posthoc",result["development_exposure"])
+
+
 if __name__=="__main__":
     unittest.main()
