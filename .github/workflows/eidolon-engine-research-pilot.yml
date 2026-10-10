@@ -9,10 +9,12 @@ on:
       - 'tests/test_eidolon_e2.py'
       - 'tests/test_eidolon_temporal.py'
       - 'tests/test_eidolon_choice.py'
+      - 'tests/test_eidolon_stress.py'
       - 'scripts/run_eidolon_pilot.py'
       - 'scripts/run_eidolon_e2.py'
       - 'scripts/run_eidolon_d2.py'
       - 'scripts/run_eidolon_d3.py'
+      - 'scripts/run_eidolon_d3_stress.py'
       - '.github/workflows/eidolon-engine-research-pilot.yml'
   pull_request:
     paths:
@@ -23,10 +25,12 @@ on:
       - 'tests/test_eidolon_e2.py'
       - 'tests/test_eidolon_temporal.py'
       - 'tests/test_eidolon_choice.py'
+      - 'tests/test_eidolon_stress.py'
       - 'scripts/run_eidolon_pilot.py'
       - 'scripts/run_eidolon_e2.py'
       - 'scripts/run_eidolon_d2.py'
       - 'scripts/run_eidolon_d3.py'
+      - 'scripts/run_eidolon_d3_stress.py'
       - '.github/workflows/eidolon-engine-research-pilot.yml'
   workflow_dispatch:
 permissions:
@@ -40,11 +44,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e .
-      - run: python -m unittest -v tests.test_eidolon_engine tests.test_eidolon_e2 tests.test_eidolon_temporal tests.test_eidolon_choice
+      - run: python -m unittest -v tests.test_eidolon_engine tests.test_eidolon_e2 tests.test_eidolon_temporal tests.test_eidolon_choice tests.test_eidolon_stress
       - run: python scripts/run_eidolon_pilot.py --output results/eidolon/construction_assay.json
       - run: python scripts/run_eidolon_e2.py --output results/eidolon/e2_no_cue_assay.json
       - run: python scripts/run_eidolon_d2.py --output results/eidolon/d2_source_clock_assay.json
       - run: python scripts/run_eidolon_d3.py --output results/eidolon/d3_matched_clone_assay.json
+      - run: python scripts/run_eidolon_d3_stress.py --output results/eidolon/d3_stress_multiseed.json
       - uses: actions/upload-artifact@v4
         with:
           name: eidolon-construction-assay
@@ -53,4 +58,5 @@ jobs:
             results/eidolon/e2_no_cue_assay.json
             results/eidolon/d2_source_clock_assay.json
             results/eidolon/d3_matched_clone_assay.json
+            results/eidolon/d3_stress_multiseed.json
           if-no-files-found: error
