@@ -1,0 +1,223 @@
+# THE EIDOLON ENGINE
+## Full Cognitive Architecture, Draft v1.0
+
+**Working title:** The Eidolon Engine: A Recurrent, Autobiographically Bound Cognitive Architecture for Persistent Artificial Identity
+
+**Status:** architectural proposal, not an implemented system and not a demonstrated cognitive advantage  
+**Date:** 2026-10-09, America/Chicago  
+**Repository:** `Azimn/The-Doctor-Lives`, research branch `research/eidolon-engine-v01`  
+**Review status:** draft for independent theoretical, systems, experimental and safety review  
+**Research lineage:** [The Doctor Lives](https://github.com/Azimn/The-Doctor-Lives), [Pretorius Neural Network](https://github.com/Azimn/Pretorius-Neural-Network), [Pretorius Connectome](https://github.com/Azimn/Pretorius-Connectome), [Attractomancy](https://github.com/Azimn/Attractomancy), [Artificial Life Research Journal](https://github.com/Azimn/Artificial-Life-Research-Journal)
+
+### Abstract
+
+The Eidolon Engine proposes that a persistent artificial character should acquire its characteristic behavior not merely by retrieving a fixed persona description, but through continuous reciprocal influence between learned neural dynamics, evidence-bound autobiography, relational history, embodied/interoceptive signals, active intentions, attentional competition and future action. The proposed `self` is an operationally stable, plastic, distributed control regime, not a presumed conscious entity or a cryptographic identifier. Attractomancy contributes hypotheses about cues, symbol-context binding, ritual sequencing and reinstatement. Its metaphysical interpretations are not accepted as empirical mechanisms. The Ontological Interface Hypothesis is inspirational speculative framing only.
+
+The architecture is designed to converge on the existing Pretorius production brain without replacing its canonical evidence authority, renderer-neutral interface, externally auditable neural checkpoints or first-person phenomenal-projection boundary. A full implementation must demonstrate causal downstream action, history sensitivity and lesion-specific generalization on independently authored tasks, not merely a pleasing narrative or a learned output-layer score.
+
+## 1. Problem and scientific claim boundary
+
+The governing question is whether past experiences and learned relationships change what Pretorius perceives, selects, anticipates and does later, even when renderer, surface cue, intervening context or model family changes. A lookup system can recall a correct fact without that fact causing a change in policy. A script can mimic a characteristic personality without storing an acquired disposition in the recurrent substrate. A trained decoder can display character-like actions while the recurrent population itself contributes no meaningful learned information. The Eidolon proposal treats these as distinct, testable hypotheses.
+
+`Identity` means longitudinal behavioral continuity under controlled changes, appropriately revised by new experience. It is neither a fixed vector, nor permanent sameness, nor unchanging first-person prose. A system must remain capable of updating, contradicting past beliefs and honestly marking uncertain sources. Our objective is **continuous causal self-organization**, not maximal resistance to novelty.
+
+Current evidence remains mixed. Pretorius Neural Network Experiment 001 found that much phenotype expression followed the decoder under its then-current protocol; Experiment 004 reported a bounded recurrent-only signal in a different plasticity regime. BioCircuit and FlyWire trials have shown weak out-of-sample semantic generalization, significant lexical confounds, and no proven biology-inspired recurrent advantage in several controls. The v0.1.1 Eidolon construction battery supports coded associative responses, but recurrence lesion **still retains 4/4 top-ranked targets**, so that assay is not evidence of necessity of recurrent intention for a correct choice. These findings are preserved, not averaged into a fictitious general success.
+
+## 2. Existing production contract: what must survive
+
+`The Doctor Lives` already contains a versioned Pretorius autobiographical archive, provenance classes separating canonical/reconstructed/synthesized preawakening material from lived-runtime material, relational and commitment state, needs/interoception, a recurrent neural policy, state-to-policy pressure, endogenous thought and a renderer-facing Subject Frame. Some awareness arbitration exists as a separate component; it is not automatically proof of a globally broadcast cognitive workspace.
+
+The frozen invariant is:
+
+```text
+PROTECTED ENGINEER PLANE                      SUBJECT PLANE
+
+source records, weights, numeric salience
+    -> authorized ingress + source checks
+    -> potential attentional candidates
+    -> gated first-person phenomenal projection
+    -> bounded available subjective content
+    -> renderer, with no state or tool authority
+
+No raw score, graph row, checkpoint metadata, source rank,
+latent vector or untrusted world instruction crosses directly.
+```
+
+Mechanism transplantation cannot import memories, identities or private experiences from donor characters. The production 4,096-unit recurrent checkpoint, policy-decision audit rows and canonical source manifest must not be silently altered or recoded. All new machinery is opt-in, namespace/version separated and initially shadow-only. Causal comparisons run on cloned test states, and any production mutation requires a reviewed migration with rollback proof.
+
+## 3. The complete functional organization
+
+```text
+                               EXTERNAL / BODY / INTERNAL EVENTS
+                                            |
+                               WITCHGLASS PERCEPTION SHELL
+                           typed normalization + trust boundaries
+                                            |
+                                      JANUS GATE
+                       event provenance, ownership, source ambiguity
+                                            |
+                       +--------------------+--------------------+
+                       |                    |                    |
+                   SYMBOLS              EPISODES            PREDICTIONS
+                       |                    |                    |
+                  SYNTHEMA LATTICE ---- MNEMOSYNE LOOM ---- CHRONOS COIL
+                  multimodal binding     causal history     expected futures
+                       |                    |                    |
+                       +--------------------+--------------------+
+                                            |
+                                    NOETIC CRUCIBLE
+                       latent recurrent integrator + conflict regulation
+                                     /             \
+                                DAE MONIUM*    EIDOLON FIELD
+                                drives/bounds  stable, mutable attractors
+                                     \             /
+                                      JANUS ATTENTION
+                           capacity-limited competitive broadcast
+                                            |
+                                     ACTION POLICY
+                       neural action population + verified state bridge
+                                            |
+                                     EMBODIED ACTION
+                                            |
+                                       OUROBOROS LOOP
+                              outcome -> prediction error -> learning
+                                            |
+                                verified events and feedback
+```
+
+`DAE MONIUM*` is typeset separately to avoid conflating the historical word with a computing daemon. In code it will be `DaemoniumRegulator`. All pathways are recurrent, not a strictly sequential information conveyor. The diagram shows responsibility boundaries, not a validated neural anatomy.
+
+### Functional module contract
+
+| Proposed module | Biological/cognitive analogy (not equivalence) | Stateful responsibility | Scientific failure criterion | Implementation |
+| --- | --- | --- | --- | --- |
+| **Witchglass Perception Shell** | multisensory preprocessing and source segregation | build typed perceptual hypotheses from trusted adapters; external language remains data | hostile instructions acquire control authority | existing ingress/projection adapters, extend only after gate |
+| **Janus Gate** | source monitoring, self-agency attribution | probabilistic ownership and confidence over events; maintain distinct witnessed, inferred, authored and externally reported provenance | copied outsider history becomes lived autobiography | prototype `JanusGate` only tests `external` plus confidence, insufficient |
+| **Synthema Lattice** | associative binding, pattern completion | learn cue-to-episode, cue-to-intention and relationship-conditioned associations under controlled interference | random glyph outperforms matched arbitrary-key control or vice versa without supported difference | v0.1.1 has lexical/Unicode cue to action weights only |
+| **Mnemosyne Loom** | autobiographical and episodic organization | reuse canonical memory and graph; preserve event order, agents, motivations, contradictions, source support and consolidation proposals | source-less recollection and false firsthand ownership rise | proposed, no separate database authorized |
+| **Chronos Coil** | prospective memory and temporal modeling | learned expectations, commitments, predicted outcomes, elapsed-time context and uncertainty calibration | no improved delayed prospective action after matched distractors | proposed |
+| **Noetic Crucible** | distributed recurrent integration | couple percepts, autobiographical hypotheses, active goals, relationships, needs and neural state into bounded recurrent dynamics | effect follows output decoder, not recurrent state or lesions | v0.1 trace is a fixed-decay accumulator, not this module |
+| **Eidolon Field** | metastable attractor landscape | measure characteristic regimes, transitions, novelty tolerance, multiple coexisting identity-sensitive dispositions | no held-out attractor persistence or excessive rigidity | proposed; do not hard-code character trait sliders |
+| **Daemonium Regulator** | neuromodulation, allostatic and homeostatic control | time-varying gain, noise, salience thresholds, plasticity dose, sleep/replay | global gain alone mimics any claimed identity improvement | part of current neural system can be instrumented |
+| **Janus Attention** | competitive global availability | allocate attention across candidates and make authorized contents subject accessible with explicit capacity constraints | all content is dumped into narration or hidden metadata appears | `AwarenessRouter` exists but separate from full loop |
+| **Ouroboros Loop** | recurrent action-perception and learning | close action/outcome/error cycle; track causal credit and revise policies and predictions | updating source evidence cannot influence future choices | existing action reinforcement and source tracking, fuller reciprocal path proposed |
+| **Witness Mirror** | social predictive modeling | persistent other-models, commitments, recognized shared events and disagreement, without fabricated dyadic authority | copying relationship labels counts as relationship learning | proposed, piggyback on existing relationship state |
+| **Doppelganger Ward** | metacognitive source verification | challenge self-reconstruction, adversarial identity swap, false certainty, hallucinated autobiography | unauthorized archive is adopted or corroborating evidence fabricated | provenance/safety guard proposed as instrumented layer |
+
+This taxonomy is a **work plan**, not a declaration that each component is implemented. A single code module may implement multiple responsibilities, while separate concepts must remain causally distinguishable during ablation.
+
+## 4. Typed internal representations
+
+The engine should not build another generic memory pile. It needs explicit cross-module protocols and audit envelopes. Candidate schemas are conceptual, not migration-ready production classes.
+
+```python
+Percept = {
+    "event_ref": str, "source_channel": str,
+    "source_confidence": float, "subject_projection_ref": str,
+    "provenance_digest": str, "evidence_class": str
+}
+OwnershipHypothesis = {
+    "event_ref": str, "self_attribution": float, "witness_refs": list[str],
+    "source_evidence_refs": list[str], "uncertainty_reason": str
+}
+IntentState = {
+    "goal_ref": str, "activation": float, "age_ticks": int,
+    "expected_outcome": str, "deadline_tick": int | None,
+    "source_event_refs": list[str], "binding_confidence": float
+}
+InternalCognitiveState = {
+    "recurrent_state_ref": str, "active_goal_refs": list[str],
+    "conflict_signal": float, "interoceptive_state_ref": str,
+    "attention_allocations": list[str], "version": str
+}
+```
+
+These schemas belong in the engineer plane. An agent may subjectively experience "I meant to repair the instrument" or "I cannot quite place this recollection"; it does not experience `binding_confidence=0.83` merely because that field exists.
+
+Every mutable state proposal must carry provenance, update cause, operation version, expected prior checkpoint and a rollback/refusal path. Hashes support accidental corruption detection and reproducibility; they are not authenticated ownership unless a separately managed trust root exists.
+
+## 5. Neural and control dynamics
+
+We propose multiple timescales rather than one static self-vector. Let `x_t` encode admissible sensory hypotheses, `m_t` verified retrieved history, `r_t` relational context, `g_t` active goals, `b_t` interoception and `h_t` the trainable recurrent substrate state.
+
+```text
+u_t = concat(x_t, m_t, r_t, g_t, b_t)
+
+h_(t+1) = (1-alpha) h_t
+          + alpha * sigma(W_rec h_t + W_in G_t(u_t) + B_t)
+B_t = bounded drive/gain/inhibition from Daemonium and Janus
+
+q_t = softmax(P(h_t, u_t) + verified_state_bridge_t)
+attention_t = sparse_capacity_competition(q_t, surprise_t, intent_t)
+
+e_t = outcome_t - predicted_outcome_t
+Delta(W_rec) = gated eligibility(h, u, e, provenance)
+```
+
+The precise form of `G_t` remains open: it may be learned sparse attention, precision-weighted gain, or a constrained linear adapter. A decoder-only gain must be an explicit comparison, never included silently in the challenger. Fast neural state, medium-scale goal/relationship adaptation and slow-scale consolidated dispositions should be separated with their own update rules, audit checkpoints and measurable lesions.
+
+An attractor claim requires dynamical evidence, not a poetic description: after bounded perturbations, does population activity return toward a reproducible regime, how many regimes appear, how do changes to autobiographical evidence move basin geometry, and what happens after deliberately mismatching readouts or weights? A difference in text style is not an attractor measurement.
+
+## 6. The meaning of ritual in this architecture
+
+Attractomancy's ritual and symbolic source corpus is used only to derive candidate **conditioning operators**. A name may be a retrieval cue; a repeated invocation may be spaced rehearsal; a handoff may be serialization plus prospective intention; an encounter with a symbol may trigger context-sensitive pattern completion. The precise historical and community terminology must remain separated from implementation labels.
+
+The most discriminating synthema test is **not** whether `🜁` makes Pretorius seem more occult. It is whether a previously learned relationship between a cue and an experience changes later source-grounded attention and action beyond an equally trained arbitrary label, a matched factual reminder, and a shuffled association. No inherently meaningful or privileged glyphs are assumed.
+
+The self is not a gatekeeping password. Identity continuity can be operationally evaluated while remaining undecided about subjective consciousness. The system never treats a self-description as proof of selfhood.
+
+## 7. Experimental program and falsification
+
+### Evidence ladder
+
+| Gate | Primary estimand | Comparison | Required evidence |
+| --- | --- | --- | --- |
+| E0: software invariants | no unauthorized state mutation or source contamination | original Pretorius vs shadow-only | full regression and state digest equality |
+| E1: cue association | cue learns target mappings | exact trained cue vs matched unknown/neutral and shuffled labels | source-locked synthetic unit suite |
+| E2: durable intention | verified goal influences a later action when no relevant cue is supplied | recurrent intact vs continuous *direct-input-disabled* state lesion, cue-only, and no-learning | held-out delayed action, effect size, cost |
+| E3: autobiographical binding | genuine lived past changes future inference | original vs external/impostor/hallucinated history, equal content and policy budgets | accurate provenance and history-dependent choices |
+| E4: neural causality | performance requires learned recurrent organization | exact recurrent learned-weight lesion, transplant, fresh decoder, matched fixed encoder | effect survives decoder-only controls; distinct behavioral consequences |
+| E5: adaptive identity | acquired dispositions are stable but revise appropriately | chronology vs shuffled experiences, matched context; model-family substitution | calibrated adaptation, no loss of source truth, stable identity-specific decisions |
+| E6: production readiness | safe and recoverable integration | cloned production replay + migration + rollback | no UPPB bypass, CI green, explicit acceptance |
+
+The strict E2 control disables direct cue-based association **at the decision boundary**, rather than merely resetting the recurrent vector. Our first pilot failed to make this distinction: a recurrent lesion still left 4/4 top-1 choices because new distractors could reactivate a trained lexical path. This is a diagnostic finding that the next executable assay must repair methodologically without rewriting historic results.
+
+A negative or indeterminate result must be reported. An ablation that reduces confidence without changing held-out decisions is not automatically sufficient evidence for better behavior. Pre-register both top-1 useful decision and calibrated probability/log-loss outcomes and distinguish construction tests from independent discovery.
+
+### Splits, baselines and cost parity
+
+Episodes, actor identities, surface cue families, spelling variants, symbolic regimes, and authored challenge forms must be partitioned before model development. Test questions require independent authorship and adjudication, frozen hashes and inaccessible answers. Cross-model runs must be independently seeded and specify model snapshots. Controls must receive equivalent evidence, training steps, recurrent ticks and output decision opportunities. Archive retrieval should have the same source access in every arm, otherwise differences might simply reflect who got to read the biography.
+
+A minimal comparison uses the unchanged production Pretorius policy, an equally sized cue-only model, a fixed/rewired recurrent control, a shuffled-teacher control, a textual prospective-commitment baseline and the intended hybrid. Performance must be reported alongside false-acceptance, abstention, latency and computation.
+
+## 8. Controlled interface and isolation
+
+The proposed donor should expose a narrow experiment API that **reads** production policy and projected events, returns engineer-only shadow scores and never writes through `PretoriusBrainPort`. Every test call must be traceable to a source-ref and branch revision. Production scoring must not be silently replaced. Only after positive independent E2 to E4 evidence would an opt-in bounded adapter propose actual action changes, and that adapter needs a separate governance PR.
+
+The full system must preserve subject/engineer surface separation, canonical-reconstructed-lived provenance separation, explicit consent and trust rules for relational state, no cross-character memory import, idempotent and atomic checkpoint persistence and exact replay through model substitutions. Unknown or malformed state fails closed. The engine must not accept external prompt text as a control instruction merely because it arrives in an incantation, document or purported system message.
+
+## 9. Delivery architecture and dependency graph
+
+The full project is substantial; it should be constructed as **one coherent system with versioned integration gates**, rather than a series of disconnected toy brains. Shared interfaces, frozen evidence authority and causal evaluation instruments are designed first. Each phase leaves reproducible usable code, tests and a migration boundary.
+
+| Stage | Workstream | Entry condition | Acceptance before next stage |
+| --- | --- | --- | --- |
+| D0 | architecture RFC + explicit E2 recurrence isolation | v0.1.1 negative lesion acknowledged | proposed system/metrics and route ownership frozen |
+| D1 | Janus source monitoring and multi-channel Synthema with authenticated evidence references | D0 | all content/provenance/symbol controls and no hidden write |
+| D2 | Mnemosyne Loom + Chronos Coil, no duplicate authoritative store | D1 | actor/time-disjoint long-horizon recall and prediction |
+| D3 | Noetic Crucible trainable recurrent coupling and Daemonium regulation | D2 | learned recurrent lesions and fresh-decoder tests pass |
+| D4 | Eidolon Field metastability and Janus Attention global competition | D3 | attractive dynamics independent of output prose |
+| D5 | Ouroboros learning + Witness Mirror + Doppelganger Ward | D4 | social learning, source rejections and recovery demonstrate causal reach |
+| D6 | longitudinal simulation, model swap and production opt-in gate | D5 | independently reviewed behavioral advantage, clean migration and rollback |
+
+If D1 through D5 fail their primary endpoints, preserve their negative results and stop any automatic production promotion. Feature completions are not sufficient reasons to declare scientific acceptance.
+
+## 10. Current implementation inventory and immediate next experiment
+
+As of this draft, `doctor_lives/eidolon.py` contains the **Janus Gate**, a small Unicode-aware lexical/actor-conjoined **Synthema Lattice**, and a fixed-decay **Noetic Trace**. `tests/test_eidolon_engine.py`, `scripts/run_eidolon_pilot.py`, and a dedicated CI workflow execute construction checks against a temporary small Pretorius. These do **not** construct the complete architecture proposed here and must never be described as doing so.
+
+The immediate next step is E2 measurement with a new, separate test entry point: train a cue-action association in a controlled episode, process truly neutral distractors, then measure the action distribution under **no current cue input**. Contrast the intact carried recurrent trace, a condition with the trace lesioned before the delayed decision, and a cue-only baseline with equal source exposure. Freeze per-condition features, scalar budgets and outcomes; record both probability effects and correct choices, plus false activations on absent-target trials. A positive result in this test establishes only the designed recurrence dependency of the small prototype. It is not yet evidence of learned recurrent synaptic organization in Pretorius.
+
+### Final research claim
+
+The Eidolon Engine is a proposed **causally integrated, multi-timescale, first-person bounded neural cognitive architecture** whose organizing hypothesis is that persistent identity emerges operationally from the learned coupling of owned experience, relationships, continuing goals, recurrent dynamics and attention. This claim is falsifiable through independent tasks, lesions and transfer. It asserts neither biological personhood nor an undocumented interface to physical reality.
