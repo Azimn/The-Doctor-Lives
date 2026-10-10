@@ -50,7 +50,12 @@ class EidolonE4Tests(unittest.TestCase):
     def test_decoder_only_preserves_recurrent_weights_and_trial_count(self):
         _, audit = candidate_models(199, self.train)
         self.assertEqual(audit["recurrent_frobenius_change_decoder_only"], 0.0)
+        self.assertGreater(
+            audit["recurrent_frobenius_change_hybrid"], 1e-9,
+            "recurrent learning must have actually occurred",
+        )
         self.assertEqual(audit["target_tick_hybrid"], audit["target_tick_decoder_only"])
+        self.assertEqual(audit["target_tick_hybrid"], len(self.train) * TRAIN_REPEATS)
         self.assertGreater(audit["motor_weight_change_decoder_only"], 0.0)
 
     def test_hybrid_lesion_equivalent_to_explicit_virgin_recurrent_transplant(self):
