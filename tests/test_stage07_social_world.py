@@ -114,7 +114,7 @@ class Stage07Tests(unittest.TestCase):
             from research_prototypes.character_state.run_stage07_social_actions import observations
             views=observations(case,host,subject)
             self.assertIn("If VERIFY_RECORD succeeds",views["effects"])
-            self.assertIn("If FILE_REPORT succeeds",views["effects"])
+            self.assertNotIn("If FILE_REPORT succeeds",views["effects"])
             self.assertNotIn("VERIFY_RECORD → FILE_REPORT",views["effects"])
             self.assertEqual(views["raw"],views["eligible"].split("\nEligible actions NOW:")[0])
             self.assertEqual(views["raw"],views["effects"].split("\nEligible actions NOW:")[0])
