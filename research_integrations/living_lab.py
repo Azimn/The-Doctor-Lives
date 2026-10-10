@@ -312,6 +312,42 @@ def turn(root: Path, *, world_name: str = "world.sqlite3",
     return audit
 
 
+def _admit_book_page(brain: PretoriusBrain, book: BookLibrary, delivered: dict) -> dict:
+    """Admit only a source-backed page actively processed through the subject port."""
+    proof = book.verify()
+    with book.habitat._open() as db:
+        row = db.execute("SELECT payload,event_hash FROM books_events WHERE event_id=?",
+                         (delivered["delivery_event_id"],)).fetchone()
+    if not row:
+        raise AdmissionError("Page delivery not found in laboratory book ledger")
+    event = json.loads(row[0])
+    if (digest(event) != row[1] or event["world_epoch"] != proof["world_epoch"]
+            or event["action"] != {"op": "read", "book_id": delivered["book_id"]}
+            or event["page_receipt"] != {
+                "page_number": delivered["page"],
+                "page_digest": digest(delivered["page_text"]),
+                "edition_digest": delivered["content_digest"],
+            }):
+        raise AdmissionError("Invalid page/edition delivery claim")
+    if (delivered["page"] < 1 or delivered["page"] > delivered["page_count"]):
+        raise AdmissionError("Page outside the verified edition")
+    source = "lab:book:" + event["event_id"] + ":" + row[1]
+    if any(m["source"] == source for m in brain.store.memories()):
+        raise AdmissionError("Replayed page delivery")
+    text = ("I read page " + str(delivered["page"]) + " of " +
+            delivered["title"] + ": " + delivered["page_text"])
+    projected = _project(brain, text)
+    # A real cognitive pass over this *particular* page is required.
+    policy = brain.think("book_read", decision_text=projected.event.subject_text)
+    recorded = brain.ingest(Experience(
+        text=projected.experience.text, source=source,
+        kind="read_page", tags=("lab", "source_backed_page")))
+    _index_admission(brain, recorded["memory_id"], "book", row[1], proof["world_epoch"])
+    brain.save()
+    return {"memory_id": recorded["memory_id"], "source_proof": row[1],
+            "processed_with_policy": policy["policy_version"]}
+
+
 def book_contract(root: Path) -> dict:
     """Explicit HOST contract check, not an autonomous-controller result."""
     world = SpatialHabitat(root / "world.sqlite3")
@@ -322,6 +358,8 @@ def book_contract(root: Path) -> dict:
         raise AdmissionError("Book precondition: closed")
     book.operate("book:007", "open", actor="pretorius_research")
     first = book.operate("book:007", "read", actor="pretorius_research")
+    brain = PretoriusBrain(root / "brain")
+    admitted = _admit_book_page(brain, book, first)
     if not first["page_text"].startswith("Page 1."):
         raise AdmissionError("Wrong page edition")
     book.operate("book:007", "mark", bookmark_id="ribbon", actor="pretorius_research")
@@ -336,12 +374,30 @@ def book_contract(root: Path) -> dict:
     reopened.operate("book:007", "open_mark", bookmark_id="ribbon",
                      actor="pretorius_research")
     after = reopened.operate("book:007", "read", actor="pretorius_research")
-    return {"host_contract_only": True, "book_verify": reopened.verify(),
+    with world._open() as db:
+        delivered_page_numbers = [
+            json.loads(e[0])["page_receipt"]["page_number"]
+            for e in db.execute("SELECT payload FROM books_events")
+            if json.loads(e[0])["action"]["op"] == "read"
+        ]
+    restored = PretoriusBrain(root / "brain")
+    recognized = [
+        m for m in restored.store.memories()
+        if str(m["source"]).startswith("lab:book:")
+        and (str(m["id"]), str(m["source"]).rsplit(":", 1)[-1])
+        in _indexed(restored, "book", world.verify()["world_epoch"])
+    ]
+    if len(recognized) != 1:
+        raise AdmissionError("Book autobiographical admission count mismatch")
+    return {"host_contract_only": True, "page_1_processed_with_real_policy": True,
+            "page_1_admitted_memory_id": admitted["memory_id"],
+            "page_2_offered_but_not_admitted": 2 in delivered_page_numbers,
+            "page_3_neither_delivered_nor_remembered": 3 not in delivered_page_numbers, "book_verify": reopened.verify(),
             "bookmark_page": saved["bookmarks"]["ribbon"],
             "read_first_page_digest": digest(first["page_text"]),
             "read_second_page_digest": digest(second["page_text"]),
             "reopened_page_matches": after["page_text"] == first["page_text"],
-            "unread_third_page_was_not_delivered": True}
+            "unread_third_page_was_not_delivered": 3 not in delivered_page_numbers}
 
 
 def main() -> None:
