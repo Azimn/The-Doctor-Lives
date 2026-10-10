@@ -1,0 +1,75 @@
+{
+  "conditions": {
+    "clock_lesion": {
+      "base_challenge": 0.12,
+      "base_persist": 0.11,
+      "chosen_challenge": 0.12,
+      "chosen_persist": 0.11,
+      "identical_parent_state_at_clone_start": true,
+      "intervention_applied": false,
+      "persisted_thought_count": 1,
+      "selected_action": "challenge",
+      "selected_memory_count": 4,
+      "source_commitment_in_gate": false,
+      "source_episode_witness_in_gate": false
+    },
+    "history_lesion": {
+      "base_challenge": 0.12,
+      "base_persist": 0.11,
+      "chosen_challenge": 0.12,
+      "chosen_persist": 0.11,
+      "identical_parent_state_at_clone_start": true,
+      "intervention_applied": false,
+      "persisted_thought_count": 1,
+      "selected_action": "challenge",
+      "selected_memory_count": 4,
+      "source_commitment_in_gate": false,
+      "source_episode_witness_in_gate": false
+    },
+    "intact": {
+      "base_challenge": 0.12,
+      "base_persist": 0.11,
+      "chosen_challenge": 0.115384615,
+      "chosen_persist": 0.144230769,
+      "identical_parent_state_at_clone_start": true,
+      "intervention_applied": true,
+      "persisted_thought_count": 1,
+      "selected_action": "persist",
+      "selected_memory_count": 4,
+      "source_commitment_in_gate": true,
+      "source_episode_witness_in_gate": true
+    },
+    "sham": {
+      "base_challenge": 0.12,
+      "base_persist": 0.11,
+      "chosen_challenge": 0.12,
+      "chosen_persist": 0.11,
+      "identical_parent_state_at_clone_start": true,
+      "intervention_applied": false,
+      "persisted_thought_count": 1,
+      "selected_action": "challenge",
+      "selected_memory_count": 4,
+      "source_commitment_in_gate": false,
+      "source_episode_witness_in_gate": false
+    }
+  },
+  "controlled_recurrent_action_distribution": {
+    "explore": 0.09625,
+    "challenge": 0.12,
+    "approach": 0.09625,
+    "avoid": 0.09625,
+    "cooperate": 0.09625,
+    "dominate": 0.09625,
+    "create": 0.09625,
+    "persist": 0.11,
+    "conceal": 0.09625,
+    "comply": 0.09625
+  },
+  "epistemic_status": "synthetic controlled margin and hand-chosen goal; plumbing verification only",
+  "github_sha": "cf0e498abefb23d1bf792ad692ca757f907f8c9c",
+  "parent_checkpoint_unchanged": true,
+  "parent_database_unchanged": true,
+  "parent_recurrent_tick_unchanged": true,
+  "precommitted_protocol": "docs/EIDOLON_D3_CLONED_POLICY_PROTOCOL.md",
+  "schema": "eidolon-d3-disposable-clone-policy-construction-v0.1"
+}
