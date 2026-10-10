@@ -131,6 +131,18 @@ class GatedTreeTests(unittest.TestCase):
 
 
 class NativePretoriusTests(unittest.TestCase):
+    def test_actual_native_session_transition_and_no_stale_phantom(self):
+        from research_prototypes.character_state.run_native_session_tracking import run
+        metrics = run()
+        self.assertFalse(metrics["initial_has_commitment"])
+        self.assertTrue(metrics["after_add_has_commitment"])
+        self.assertFalse(metrics["after_resolve_has_open_commitment"])
+        self.assertTrue(metrics["static_initial_snapshot_stale_after_add"])
+        self.assertTrue(metrics["persona_unchanged"])
+        self.assertTrue(metrics["immutable_root_all_three"])
+        self.assertTrue(metrics["no_new_autobiography"])
+        self.assertFalse(metrics["world_outcome_independently_verified"])
+
     def test_native_adaptor_and_renderer_context_are_source_safe(self):
         with tempfile.TemporaryDirectory() as td:
             brain = PretoriusBrain(Path(td))
