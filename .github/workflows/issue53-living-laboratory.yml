@@ -1,0 +1,40 @@
+name: issue53-living-laboratory-research
+on:
+  push:
+    branches:
+      - research/living-laboratory-integration-issue53
+  pull_request:
+    paths:
+      - 'research_integrations/**'
+      - 'tools/run_living_lab_demo.py'
+      - 'tests/test_living_laboratory_integration.py'
+      - '.github/workflows/issue53-living-laboratory.yml'
+permissions:
+  contents: read
+jobs:
+  continuity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin real external laboratory, not a reimplemented fixture
+        run: |
+          git clone -q https://github.com/Azimn/Pretorius-Laboratory.git _lab
+          git -C _lab checkout -q 93d19671f7666b2996e6fcad211c5e6509336466
+          test "$(git -C _lab rev-parse HEAD)" = "93d19671f7666b2996e6fcad211c5e6509336466"
+          python -m pip install -e . -e ./_lab
+      - name: Security and provenance contract tests
+        run: python -m unittest discover -s tests -p 'test_living_laboratory_integration.py' -v
+      - name: Real recurrent-policy fresh-process end-to-end experiment
+        run: |
+          python tools/run_living_lab_demo.py --output-root /tmp/pretorius-issue53-disposable --fixture _lab/fixtures/DEMO_BOOK_007.json --report results/issue53-running-evidence.json
+      - name: Attach raw evidence even when experiment fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue53-raw-evidence
+          path: results/issue53-running-evidence.json
+          if-no-files-found: warn
