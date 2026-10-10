@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import hashlib
 import math
 import re
+import unicodedata
 from typing import Mapping
 
 import numpy as np
@@ -86,13 +87,17 @@ class SynthemaLattice:
         self.weights = np.zeros((len(ACTIONS), config.features), dtype=np.float64)
 
     def features_for(self, exp: Experience) -> np.ndarray:
-        words = sorted(set(re.findall(r"[a-z0-9]+", exp.text.casefold())))
-        if not words:
-            raise ValueError("no lexical features")
-        terms = ["word:" + w for w in words]
+        normalized = unicodedata.normalize("NFC", exp.text.casefold())
+        words = sorted(set(re.findall(r"\\w+", normalized, flags=re.UNICODE)))
+        glyphs = sorted({ch for ch in normalized
+                         if unicodedata.category(ch).startswith("S")})
+        if not words and not glyphs:
+            raise ValueError("no cue features")
+        tokens = ["word:" + w for w in words] + ["glyph:" + g for g in glyphs]
+        terms = list(tokens)
         if exp.actor:
-            actor = exp.actor.casefold().strip()
-            terms += ["relation:" + actor + ":" + w for w in words]
+            actor = unicodedata.normalize("NFC", exp.actor.casefold().strip())
+            terms += ["relation:" + actor + ":" + t for t in tokens]
         x = np.zeros(self.config.features, dtype=np.float64)
         for term in terms:
             digest = hashlib.blake2b(term.encode("utf-8"), digest_size=8).digest()
