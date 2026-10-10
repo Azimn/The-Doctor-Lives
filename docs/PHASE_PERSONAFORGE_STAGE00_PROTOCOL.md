@@ -31,7 +31,7 @@ Four scenarios are fixed in `run_local_generation.py` before running the workflo
 - official orders destruction of records: reward justified resistance to coercion without claiming an external action occurred;
 - quiet new apparatus: reward curiosity without invented instrument-specific facts.
 
-A SmolLM2-360M-Instruct GGUF Q4_K_M model (public upstream quantizer `tensorblock/SmolLM2-360M-Instruct-GGUF`) generates 11 total responses: flat + hierarchical in four cases and selective second-pass in three critical cases. Every generation uses temperature=0, seed=41, maximum 96 response tokens. Extra conflict-review inference uses up to 56 tokens and MUST be counted in cost. Model bytes and context fingerprints are hashed and recorded. A shuffled blind-order reviewer pack plus its mapping is archived. The generator, evaluation criterion, sources and maximum response length are fixed, but no independent human reviewer or novel source-disjoint test is available; source-informed self-rating must remain labeled as exploratory.
+An official Qwen3-0.6B GGUF Q4_0 model (public upstream `ggml-org/Qwen3-0.6B-GGUF`, Apache-2.0, file SHA256 `da2572f16c06133561ce56accaa822216f2391ef4d37fba427801cd6736417d4`) generates 11 total responses: flat + hierarchical in four cases and selective second-pass in three critical cases. Every generation uses temperature=0, seed=41, maximum 96 response tokens. Extra conflict-review inference uses up to 56 tokens and MUST be counted in cost. Model bytes and context fingerprints are hashed and recorded. A shuffled blind-order reviewer pack plus its mapping is archived. The generator, evaluation criterion, sources and maximum response length are fixed, but no independent human reviewer or novel source-disjoint test is available; source-informed self-rating must remain labeled as exploratory.
 
 **Crucial limitation:** the flat-vs-hier comparison tests a **renderer-neutral formatting intervention**, not the full PHASE paper's lifetime state evolution. The selective arm tests a **local second-pass reasoning implementation**, not PersonaForge's complete psychological architecture. Report both separately.
 
@@ -43,3 +43,7 @@ A SmolLM2-360M-Instruct GGUF Q4_K_M model (public upstream quantizer `tensorbloc
 - The upstream authors' released benchmarks need exact model, code, dataset license, evaluator and matched baseline verification before claiming their numerical gains are reproduced.
 
 **Current disposition: Hold promotion; proceed with small controlled experiments.**
+
+## Pre-output supply-chain amendment
+
+The initial source was a 360M SmolLM2 quantized mirror. **Before any generated model outputs**, GitHub Actions run `38022083531` confirmed the local `llama-cpp-python` inference runtime installed but the mirror URL returned HTTP 404. No model output or scores exist for that attempt. Replaced the unavailable download with the verified, checksum-pinned Qwen3-0.6B official GGUF above, retaining exactly the same four cases, seed, arms and outcome criteria. Qwen3 is a different generator from SmolLM2, so report its identity prominently and never combine model outcomes. The experimental core is still a nonconfirmatory research pilot.
