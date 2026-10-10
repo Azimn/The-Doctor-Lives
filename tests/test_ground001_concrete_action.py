@@ -10,7 +10,9 @@ import unittest
 
 try:
     from pretorius_lab.habitat_v2 import SpatialHabitat
-    from research_integrations.living_lab import prepare
+    from pretorius_lab.observation_receipts import ObservationPort
+    from doctor_lives.cognition import PretoriusBrain
+    from research_integrations.living_lab import prepare, _verified_subject_frame
     from research_integrations.concrete_action import (
         concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
     )
@@ -68,6 +70,15 @@ class ConcreteActionContractTests(unittest.TestCase):
                             for line in inspect["subject_frame"]),
                         "Source-admitted collection memory must be retrieved after restart")
         self.assertIsNotNone(inspect["admitted_memory_id"])
+        brain = PretoriusBrain(self.root / "brain")
+        frame_masked = _verified_subject_frame(
+            brain, ObservationPort(self.world),
+            current_percept="I see gathered fragments of the broken laboratory beaker.",
+            withhold_lab_autobiography=True,
+        )
+        self.assertFalse(any("I collected the broken beaker" in line
+                             for line in frame_masked.renderer_context()),
+                         "Counterfactual masked subject frame must exclude lab autobiography")
         final = execute_one(self.root, FakeModel('PLACE|beaker:001|floor:corner:nw'))
         self.assertEqual(final["status"], "model_action_verified_and_admitted")
         self.assertEqual(self.world.locate("beaker:001")["location"]["anchor_id"],
