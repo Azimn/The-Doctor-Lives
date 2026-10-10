@@ -22,7 +22,7 @@ With the pinned laboratory installed as _lab and the verified GGUF at /tmp/Qwen3
 
     python -m unittest discover -s tests -p 'test_ground001_concrete_action.py' -v
 
-    python tools/run_ground001_real_model.py \
+    python -m tools.run_ground001_real_model \
       --output-root /tmp/ground001-unique \
       --fixture _lab/fixtures/DEMO_BOOK_007.json \
       --gguf /tmp/Qwen3-1.7B-Q4_K_M.gguf \
