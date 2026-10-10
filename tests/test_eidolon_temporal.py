@@ -139,6 +139,25 @@ class MnemosyneChronosTests(unittest.TestCase):
             no_temporal_current.priority, no_temporal_future.priority
         )
 
+    def test_historical_counterfactual_cannot_see_later_relationship_trust(self):
+        _, cid = self.prepare_henry()
+        original_tick = self.brain.store.tick
+        before = self.goal(
+            ChronosCoil.forecast(self.brain, at_tick=original_tick), cid
+        )
+        self.brain.ingest(Experience(
+            "Henry showed me an unrelated collection of drawings.",
+            actor="Henry", kind="interaction", valence=.9,
+            social=.8, confidence=1.0
+        ))
+        historic = self.goal(
+            ChronosCoil.forecast(self.brain, at_tick=original_tick), cid
+        )
+        self.assertEqual(historic.evidence_event_ids, before.evidence_event_ids)
+        self.assertAlmostEqual(historic.evidence_support, before.evidence_support)
+        self.assertAlmostEqual(historic.priority, before.priority)
+        self.assertTrue(historic.projected_clock)
+
     def test_resolved_commitment_ceases_to_be_eligible(self):
         _, cid = self.prepare_henry()
         self.assertEqual(len(ChronosCoil.forecast(self.brain).goals), 1)
