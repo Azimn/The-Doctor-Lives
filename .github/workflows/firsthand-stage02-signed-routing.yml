@@ -1,0 +1,47 @@
+name: Pretorius Stage02 signed witness and firsthand routing
+on:
+  push:
+    branches:
+      - research/firsthand-attested-routing-stage02-20261009
+    paths:
+      - research_prototypes/character_state/firsthand_router.py
+      - research_prototypes/character_state/signed_world_receipts.py
+      - research_prototypes/character_state/run_stage02_router_eval.py
+      - research_prototypes/character_state/fixtures/STAGE02_ROUTER_40_PREDECLARED.json
+      - tests/test_firsthand_stage02.py
+      - .github/workflows/firsthand-stage02-signed-routing.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-source-and-router:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Run native positive/negative witness and route adversarial tests
+        run: python -m unittest discover -s tests -p 'test_firsthand_stage02.py' -v
+      - name: Evaluate all forty frozen prompt classifications
+        run: |
+          mkdir -p results/character_state/stage02
+          python -m research_prototypes.character_state.run_stage02_router_eval \
+            --fixture research_prototypes/character_state/fixtures/STAGE02_ROUTER_40_PREDECLARED.json \
+            --output results/character_state/stage02/FROZEN_ROUTER_40_EXECUTED.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          x=json.loads(Path('results/character_state/stage02/FROZEN_ROUTER_40_EXECUTED.json').read_text())
+          assert x['total']==40 and x['positive']==20 and x['negative']==15 and x['ambiguous']==5
+          assert len(x['items'])==40
+          print('STAGE02_ROUTER_METRICS='+json.dumps({k:x[k] for k in ('strict_accuracy','precision','recall','ambiguous_review_recall','false_positive','false_negative')},sort_keys=True))
+          PY
+      - name: Preserve every routed case and mistakes
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage02-router-40-signed-host-receipts
+          path: results/character_state/stage02/
+          retention-days: 90
