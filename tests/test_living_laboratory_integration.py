@@ -7,21 +7,26 @@ import json
 import tempfile
 import unittest
 
-from pretorius_lab.habitat_v2 import SpatialHabitat
-from pretorius_lab.observation_receipts import ObservationPort
-from pretorius_lab.physics import LabError
-
-from research_integrations.living_lab import (
-    AdmissionError, _verify_observation, _admit_action, _options,
-    prepare, _has_attested_memory,
-)
-from doctor_lives.cognition import PretoriusBrain
+try:
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+    from pretorius_lab.observation_receipts import ObservationPort
+    from pretorius_lab.physics import LabError
+    from research_integrations.living_lab import (
+        AdmissionError, _verify_observation, _admit_action, _options,
+        prepare, _has_attested_memory,
+    )
+    from doctor_lives.cognition import PretoriusBrain
+    LAB_PRESENT = True
+except ModuleNotFoundError:
+    # Existing production brain-tests do not install optional research lab.
+    # Dedicated issue53 workflow pins and installs it, then runs these tests.
+    LAB_PRESENT = False
 
 
 FIXTURE = Path(__file__).resolve().parents[1] / "_lab" / "fixtures" / "DEMO_BOOK_007.json"
 
 
-@unittest.skipUnless(FIXTURE.exists(), "Install pinned Pretorius-Laboratory under _lab")
+@unittest.skipUnless(LAB_PRESENT and FIXTURE.exists(), "Install pinned Pretorius-Laboratory under _lab")
 class LaboratoryBridgeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
