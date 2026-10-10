@@ -1,5 +1,7 @@
 # The Eidolon Engine v0.1
 
+> **Superseding scope note:** This document describes the original bounded v0.1 implementation. The proposed complete cognitive system is specified separately in [EIDOLON_ENGINE_FULL_ARCHITECTURE_DRAFT_V1.md](EIDOLON_ENGINE_FULL_ARCHITECTURE_DRAFT_V1.md). The follow-up [E2 no-cue protocol](EIDOLON_E2_NO_CUE_PROTOCOL_V02.md) and [executed E2 report](../results/eidolon/E2_NO_CUE_RESULTS_V02.md) isolate retained trace effects from direct cue reactivation. Neither workstream demonstrates learned recurrent synaptic identity or authorizes production adoption.
+
 **Status:** experimental research prototype, opt-in shadow evaluation. **Owner:** The Doctor Lives, Character Continuity Program. **Date:** 2026-10-09.
 
 ## Thesis
