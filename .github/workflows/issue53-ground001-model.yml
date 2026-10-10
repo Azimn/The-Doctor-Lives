@@ -15,6 +15,9 @@ on:
       - tests/test_ground001_concrete_action.py
       - .github/workflows/issue53-ground001-model.yml
   workflow_dispatch:
+concurrency:
+  group: issue53-ground001-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
