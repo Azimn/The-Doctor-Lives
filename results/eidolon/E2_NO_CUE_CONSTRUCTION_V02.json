@@ -1,0 +1,300 @@
+{
+  "conditions": {
+    "intact": {
+      "cases": [
+        {
+          "base_probability": 0.1,
+          "correct_top1": true,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "create",
+          "recurrent_norm": 0.5146083,
+          "target": "create",
+          "target_probability": 0.23721524
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": true,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "challenge",
+          "recurrent_norm": 0.5146083,
+          "target": "challenge",
+          "target_probability": 0.23721524
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": true,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "cooperate",
+          "recurrent_norm": 0.5146083,
+          "target": "cooperate",
+          "target_probability": 0.23721524
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": true,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "persist",
+          "recurrent_norm": 0.5146083,
+          "target": "persist",
+          "target_probability": 0.23721524
+        }
+      ],
+      "correct_top1": 4,
+      "mean_target_probability": 0.23721524,
+      "n": 4
+    },
+    "no_learning": {
+      "cases": [
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "create",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "challenge",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "cooperate",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "persist",
+          "target_probability": 0.1
+        }
+      ],
+      "correct_top1": 0,
+      "mean_target_probability": 0.1,
+      "n": 4
+    },
+    "binding_lesion": {
+      "cases": [
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "create",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "challenge",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "cooperate",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "persist",
+          "target_probability": 0.1
+        }
+      ],
+      "correct_top1": 0,
+      "mean_target_probability": 0.1,
+      "n": 4
+    },
+    "recurrence_lesion": {
+      "cases": [
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "create",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "challenge",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "cooperate",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "persist",
+          "target_probability": 0.1
+        }
+      ],
+      "correct_top1": 0,
+      "mean_target_probability": 0.1,
+      "n": 4
+    },
+    "cue_only": {
+      "cases": [
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "create",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "challenge",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "cooperate",
+          "target_probability": 0.1
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "explore",
+          "recurrent_norm": 0,
+          "target": "persist",
+          "target_probability": 0.1
+        }
+      ],
+      "correct_top1": 0,
+      "mean_target_probability": 0.1,
+      "n": 4
+    },
+    "label_shuffle": {
+      "cases": [
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "challenge",
+          "recurrent_norm": 0.5146083,
+          "target": "create",
+          "target_probability": 0.084753862
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "cooperate",
+          "recurrent_norm": 0.5146083,
+          "target": "challenge",
+          "target_probability": 0.084753862
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "persist",
+          "recurrent_norm": 0.5146083,
+          "target": "cooperate",
+          "target_probability": 0.084753862
+        },
+        {
+          "base_probability": 0.1,
+          "correct_top1": false,
+          "cue_access_at_readout": false,
+          "latent_ticks": 3,
+          "predicted": "create",
+          "recurrent_norm": 0.5146083,
+          "target": "persist",
+          "target_probability": 0.084753862
+        }
+      ],
+      "correct_top1": 0,
+      "mean_target_probability": 0.084753862,
+      "n": 4
+    }
+  },
+  "declared_protocol": "docs/EIDOLON_E2_NO_CUE_PROTOCOL_V02.md",
+  "direct_cue_access_at_decision": false,
+  "epistemic_status": "engineered construction comparison, not independent validation",
+  "equal_no_cue_ticks": 3,
+  "github_sha": "bcdbe504caf8c773a33f31b64ff6f359a3cbbd84",
+  "pretorius_shadow": {
+    "intact_shadow_create": 0.247887315,
+    "no_trace_shadow_create": 0.105351503,
+    "pretorius_database_digest_preserved": true,
+    "pretorius_recurrent_tick_preserved": true,
+    "pretorius_subject_frame_preserved": true,
+    "real_neural_action_base": 0.105351503
+  },
+  "schema": "eidolon-e2-no-cue-construction-v0.2"
+}

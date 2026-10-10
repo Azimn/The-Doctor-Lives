@@ -1,0 +1,91 @@
+{
+  "schema": "eidolon-e4c-batch-balanced-executed-summary-v0.1",
+  "tested_source_commit": "83c2f6d3ee3823deab578b052995bce996bb9b93",
+  "protocol": "docs/EIDOLON_E4C_BALANCED_DECODER_PROTOCOL_V01.md",
+  "source_artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38058009283/artifacts/11671959635",
+  "source_zip_sha256": "66eda6f22fd11aa3f8ef0e1d5741893e5f7331de9254ed45d5486141c4e33e44",
+  "inner_json_sha256": "0acb6a585b3e6926b3d8af36c4681a34363caf36bb6a18ee6d60ed60f13ac9aa",
+  "existing_inspected_fixture_sha256": "8c5690e4f067072933d1ab44b39177818ab0d146adba574a9281856519948b35",
+  "epistemic_status": "closed-form class balancing corrects last-label order sensitivity but no robust neural recurrent benefit; developer-authored previously inspected task bank",
+  "seeds": [
+    151,
+    167,
+    179,
+    191,
+    211,
+    223
+  ],
+  "test_cases_per_seed": 16,
+  "actions_total": 10,
+  "train_feature_rows_per_seed": 96,
+  "test_delays": [
+    0,
+    3,
+    12
+  ],
+  "total_case_rows": 1440,
+  "order_invariance": {
+    "class_permutation_orders": 4,
+    "largest_weight_difference": 2.7755575615628914e-17,
+    "largest_center_difference": 8.326672684688674e-17
+  },
+  "in_sample_correct": {
+    "virgin_W_balanced": 140,
+    "Noetic_W_balanced": 131,
+    "total": 192
+  },
+  "conditions": {
+    "virgin_W_balanced": {
+      "correct_at_0": 35,
+      "correct_at_3": 29,
+      "correct_at_12": 23,
+      "mean_target_probability_at_12": 0.161140701
+    },
+    "noetic_W_balanced": {
+      "correct_at_0": 31,
+      "correct_at_3": 31,
+      "correct_at_12": 25,
+      "mean_target_probability_at_12": 0.161140667
+    },
+    "noetic_decoder_virgin_W_lesion": {
+      "correct_at_0": 31,
+      "correct_at_3": 33,
+      "correct_at_12": 29,
+      "mean_target_probability_at_12": 0.161140692
+    },
+    "noetic_W_native_sequential_decoder": {
+      "correct_at_0": 24,
+      "correct_at_3": 24,
+      "correct_at_12": 24,
+      "mean_target_probability_at_12": 0.206838197
+    },
+    "virgin_W_fresh_balanced_decoder": {
+      "correct_at_0": 35,
+      "correct_at_3": 29,
+      "correct_at_12": 23,
+      "mean_target_probability_at_12": 0.161140701
+    }
+  },
+  "recurrent_causal_controls": {
+    "fixed_readout_action_flips_when_W_replaced_by_virgin": {
+      "delay0": 0,
+      "delay3": 23,
+      "delay12": 33
+    },
+    "maximum_absolute_action_probability_change": {
+      "delay0": 0.000007936,
+      "delay3": 0.000159341,
+      "delay12": 0.000530421
+    },
+    "Noetic_12tick_median_top2_margin": 0.000244941,
+    "Noetic_12tick_predictions_with_top2_margin_below_0_0005": 77,
+    "total_12tick_predictions": 96
+  },
+  "ci": {
+    "targeted_passed": 77,
+    "full_brain_passed": 401,
+    "fresh_install": "success",
+    "causal_audit_repeatability": "success"
+  },
+  "production_altered": false
+}
