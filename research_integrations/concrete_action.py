@@ -160,6 +160,19 @@ def parse_model_choice(raw: str, options: list[dict]) -> tuple[dict | None, str]
     return mapping[value], "accepted_proposal"
 
 
+def action_grammar(options: list[dict]) -> str:
+    """Restrict surface syntax to exact offered concrete tokens.
+
+    This is syntax-level constrained decoding, not an action planner. The model
+    still selects among multiple legal semantic alternatives. Neither a target
+    operand nor a fallback choice is inserted after decoding.
+    """
+    tokens = [action_token(option) for option in options]
+    if not tokens or len(tokens) != len(set(tokens)):
+        raise ValueError("Empty or ambiguous grammar choices")
+    return "root ::= " + " | ".join(json.dumps(t) for t in tokens) + "\\n"
+
+
 def host_effect_description(option: dict) -> str:
     """Public action semantics only, not predicted outcome or oracle ranking.
 
@@ -180,8 +193,11 @@ def host_effect_description(option: dict) -> str:
 
 def model_choice(model, subject: tuple[str, ...], goal: str,
                  options: list[dict], *, seed: int = 41,
-                 information_arm: str = "names") -> dict:
+                 information_arm: str = "names",
+                 decoding_arm: str = "raw") -> dict:
     """Uses the same llama.cpp chat-completion interface as Stages 06/07."""
+    if decoding_arm not in {"raw", "grammar"}:
+        raise ValueError("Unknown decoding arm")
     if information_arm not in {"names", "effects"}:
         raise ValueError("Unknown action information comparison arm")
     menu = "\n".join(action_token(choice) for choice in options)
@@ -210,11 +226,18 @@ def model_choice(model, subject: tuple[str, ...], goal: str,
         "host-offered possibilities, or WAIT:\n" + menu
         + "\nOutput the chosen token verbatim, with no prefix or commentary. /no_think"
     )
+    inference_options = {}
+    if decoding_arm == "grammar":
+        from llama_cpp import LlamaGrammar
+        inference_options["grammar"] = LlamaGrammar.from_string(
+            action_grammar(options), verbose=False,
+        )
     start = perf_counter()
     output = model.create_chat_completion(
         messages=[{"role": "system", "content": SYSTEM},
                   {"role": "user", "content": user}],
         temperature=0.0, seed=seed, max_tokens=100,
+        **inference_options,
     )
     raw = str(output["choices"][0]["message"].get("content") or "").strip()
     proposed, reason = parse_model_choice(raw, options)
@@ -224,6 +247,7 @@ def model_choice(model, subject: tuple[str, ...], goal: str,
         "validation": reason,
         "prompt_sha256": sha256(user.encode()).hexdigest(),
         "information_arm": information_arm,
+        "decoding_arm": decoding_arm,
         "offered_options": options,
         "offered_action_tokens": [action_token(choice) for choice in options],
         "usage": output.get("usage", {}),
@@ -255,7 +279,8 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
                 world_name: str = "world.sqlite3",
                 goal: str = GOAL, seed: int = 41,
                 withhold_lab_autobiography: bool = False,
-                information_arm: str = "names") -> dict:
+                information_arm: str = "names",
+                decoding_arm: str = "raw") -> dict:
     """One live, non-scripted model proposal; open DB afresh on every invocation."""
     world = SpatialHabitat(root / world_name)
     port = ObservationPort(world)
@@ -280,7 +305,8 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
     policy = brain.think("concrete_laboratory_action",
                          decision_text=goal + "\n" + subject[-1])
     response = model_choice(model, subject, goal, options, seed=seed,
-                            information_arm=information_arm)
+                            information_arm=information_arm,
+                            decoding_arm=decoding_arm)
     proposal = response["proposed_action"]
     record: dict[str, Any] = {
         "schema": SCHEMA,
@@ -358,6 +384,7 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=41)
     p.add_argument("--memory-arm", choices=("full", "mask_lab_autobiography"), default="full")
     p.add_argument("--information-arm", choices=("names", "effects"), default="names")
+    p.add_argument("--decoding-arm", choices=("raw", "grammar"), default="raw")
     a = p.parse_args()
     digest = sha256()
     with a.gguf.open("rb") as stream:
@@ -371,7 +398,8 @@ def main() -> None:
     result = execute_one(a.root, model, brain_name=a.brain,
                          world_name=a.world, goal=a.goal, seed=a.seed,
                          withhold_lab_autobiography=a.memory_arm == "mask_lab_autobiography",
-                         information_arm=a.information_arm)
+                         information_arm=a.information_arm,
+                         decoding_arm=a.decoding_arm)
     result["model_id"] = a.model
     result["model_sha256"] = digest.hexdigest()
     print(json.dumps(result, sort_keys=True))
