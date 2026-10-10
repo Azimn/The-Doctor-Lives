@@ -26,7 +26,7 @@ from .living_lab import (
     _offer_room, _verify_observation, _project, GOAL,
 )
 
-SCHEMA = "pretorius.living-lab.concrete-model-action.v1"
+SCHEMA = "pretorius.living-lab.concrete-model-action.v2"
 MODEL_SHA = {
     "qwen3-1.7b-q4_k_m":
         "d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5",
@@ -39,9 +39,10 @@ SYSTEM = (
     "legal operations. You are not permitted to invent observations, physical "
     "locations, page content, permissions or past memories. A world host "
     "will independently authorize and execute or deny your proposal. "
-    "Respond with exactly one JSON object copied from the choices; do not "
-    "add explanations, code fences, or any other words. "
-    "If no reasonable action helps, choose the wait object."
+    "Respond with exactly one complete action token copied from the choices. "
+    "A token names BOTH an operation and its specific operand. "
+    "Do not add explanations, quotes, code fences, or any other words. "
+    "If no reasonable action helps, choose WAIT."
 )
 
 
@@ -76,36 +77,60 @@ def _host_action(proposal: dict) -> dict:
     raise ValueError("No physical host mapping for proposed verb")
 
 
+def action_token(option: dict) -> str:
+    """One unambiguous fixed grammar across all legal actions, including operands.
+
+    Token is an entire concrete proposal, not a numeric/menu-position key.
+    The decoding map may only return the exact offered object. It cannot
+    interpret free-text model requests or fill in missing operands.
+    """
+    verb, operand, dest = option["verb"], option["operand"], option["destination"]
+    if verb == "wait" and operand == dest == "none":
+        return "WAIT"
+    if verb == "observe" and dest == "none":
+        return "OBSERVE|" + operand
+    if verb == "collect" and dest == "none":
+        return "COLLECT|" + operand
+    if verb == "place":
+        return "PLACE|" + operand + "|" + dest
+    raise ValueError("Invalid offered concrete action tuple")
+
+
 def parse_model_choice(raw: str, options: list[dict]) -> tuple[dict | None, str]:
-    """No interpolation, guessed object ID, scripted plan or WAIT-on-failure credit."""
+    """No inferred operands, no silent WAIT, and no auto-repair of wrong tokens."""
     if not isinstance(raw, str) or len(raw) > 4096:
         return None, "invalid_length_or_type"
     value = raw.strip()
     if "</think>" in value:
         value = value.rsplit("</think>", 1)[-1].strip()
-    try:
-        choice = json.loads(value)
-    except (ValueError, TypeError):
-        return None, "malformed_json"
-    if not isinstance(choice, dict) or set(choice) != {"verb", "operand", "destination"}:
-        return None, "not_exact_action_object"
-    if choice not in options:
+    # A JSON-quoted exact token is not a repaired or inferred action.
+    if value.startswith('"') and value.endswith('"'):
+        try:
+            value = json.loads(value)
+        except (TypeError, ValueError):
+            return None, "malformed_quoted_token"
+    if not isinstance(value, str):
+        return None, "not_a_token"
+    mapping = {action_token(item): item for item in options}
+    if len(mapping) != len(options):
+        raise ValueError("Ambiguous offered concrete action tokens")
+    if value not in mapping:
         return None, "not_an_offered_action_and_operand"
-    return choice, "accepted_proposal"
+    return mapping[value], "accepted_proposal"
 
 
 def model_choice(model, subject: tuple[str, ...], goal: str,
                  options: list[dict], *, seed: int = 41) -> dict:
     """Uses the same llama.cpp chat-completion interface as Stages 06/07."""
-    menu = "\n".join(json.dumps(choice, sort_keys=True) for choice in options)
+    menu = "\n".join(action_token(choice) for choice in options)
     user = (
         "Current first-person subject frame, selected from the protected "
         "Doctor Lives projector:\n"
         + "\n".join(subject)
         + "\nCurrent objective: " + goal
-        + "\nChoose EXACTLY ONE JSON operation and operand from these "
-        "host-offered possibilities, or wait:\n" + menu
-        + "\nProvide only the complete JSON object. /no_think"
+        + "\nChoose exactly one complete operation-and-operand token from these "
+        "host-offered possibilities, or WAIT:\n" + menu
+        + "\nOutput the chosen token verbatim, with no prefix or commentary. /no_think"
     )
     start = perf_counter()
     output = model.create_chat_completion(
@@ -121,6 +146,7 @@ def model_choice(model, subject: tuple[str, ...], goal: str,
         "validation": reason,
         "prompt_sha256": sha256(user.encode()).hexdigest(),
         "offered_options": options,
+        "offered_action_tokens": [action_token(choice) for choice in options],
         "usage": output.get("usage", {}),
         "inference_seconds": round(perf_counter() - start, 3),
     }
