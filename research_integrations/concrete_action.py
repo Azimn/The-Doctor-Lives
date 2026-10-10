@@ -170,7 +170,7 @@ def action_grammar(options: list[dict]) -> str:
     tokens = [action_token(option) for option in options]
     if not tokens or len(tokens) != len(set(tokens)):
         raise ValueError("Empty or ambiguous grammar choices")
-    return "root ::= " + " | ".join(json.dumps(t) for t in tokens) + "\\n"
+    return "root ::= " + " | ".join(json.dumps(t) for t in tokens) + chr(10)
 
 
 def host_effect_description(option: dict) -> str:
