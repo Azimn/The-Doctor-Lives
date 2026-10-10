@@ -108,6 +108,14 @@ def execute(root: Path, fixture: Path) -> dict:
             "another laboratory" in item.lower() for item in shuffled["subject_frame"]
         ),
         "nonneural_goal_completed": baseline["task_completed"],
+        "ground_only_choice_matches_policy_weighted_choice": [
+            not case["policy_changed_ground_only_choice"]
+            for case in (first, full, subsequent)
+        ],
+        "neural_score_changed_any_choice": any(
+            case["policy_changed_ground_only_choice"]
+            for case in (first, full, subsequent)
+        ),
         "controller_top_action_matches_grounded_mapping": [
             case["controller_top_abstract_action"] == case["selected_abstract_mapping"]
             for case in (first, full, subsequent)
@@ -121,6 +129,7 @@ def execute(root: Path, fixture: Path) -> dict:
         "schema": "pretorius-living-lab-evidence/1",
         "claims": {"engineering_continuity": bool(is_ok),
                    "neural_policy_unique_advantage": "not_established",
+                   "concrete_action_independent_autonomy": "not_established",
                    "general_character_continuity": "not_established",
                    "book_actions_autonomous": False},
         "pins": initial["source_pins"],
