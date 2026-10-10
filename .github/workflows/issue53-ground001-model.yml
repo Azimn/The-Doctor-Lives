@@ -60,7 +60,7 @@ jobs:
             'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf' \
             --output /tmp/Qwen3-1.7B-Q4_K_M.gguf
           echo 'd2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5  /tmp/Qwen3-1.7B-Q4_K_M.gguf' | sha256sum -c -
-      - name: Execute actual local model with persistent world, receipts, independent process restarts, nonneural comparison
+      - name: Execute grammar-constrained real local model with world receipts and independent restarts
         run: |
           python -m tools.run_ground001_real_model \
             --output-root /tmp/issue53-ground001-unique \
