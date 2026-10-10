@@ -143,16 +143,28 @@ def model_choice(model, subject: tuple[str, ...], goal: str,
     """Uses the same llama.cpp chat-completion interface as Stages 06/07."""
     if information_arm not in {"names", "effects"}:
         raise ValueError("Unknown action information comparison arm")
-    menu = "\n".join(
-        action_token(choice) if information_arm == "names" else
-        action_token(choice) + ": " + host_effect_description(choice)
-        for choice in options
-    )
+    menu = "\n".join(action_token(choice) for choice in options)
+    # Stage07-style semantics are deliberately separated from the selectable
+    # tokens. Putting prose on the same lines led the real 1.7B decoder to
+    # copy the prose and emit an invalid mixed token.
+    effects = ""
+    if information_arm == "effects":
+        seen = set()
+        definitions = []
+        for option in options:
+            if option["verb"] not in seen:
+                seen.add(option["verb"])
+                definitions.append(option["verb"].upper() + ": " +
+                                   host_effect_description(option))
+        effects = "Operation meanings (these are NOT selectable replies):\n" + (
+            "\n".join(definitions) + "\n"
+        )
     user = (
         "Current first-person subject frame, selected from the protected "
         "Doctor Lives projector:\n"
         + "\n".join(subject)
         + "\nCurrent objective: " + goal
+        + "\n" + effects
         + "\nChoose exactly one complete operation-and-operand token from these "
         "host-offered possibilities, or WAIT:\n" + menu
         + "\nOutput the chosen token verbatim, with no prefix or commentary. /no_think"
