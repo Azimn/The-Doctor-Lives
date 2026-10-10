@@ -1,0 +1,26 @@
+{
+  "schema": "psl-stage01a-replay-audit.v1",
+  "source_execution_sha": "edf35dcaa6449bc2ed73a359c349e8be31e50f0b",
+  "source_run": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38016542721",
+  "attempts": [
+    {
+      "attempt": 1,
+      "artifact_id": 11655798019,
+      "full_json_sha256": "fa98969ab939cb055bfede464f7c5653ee9f53052a3745fa6bf097de46d17ef2"
+    },
+    {
+      "attempt": 2,
+      "artifact_id": 11656373275,
+      "full_json_sha256": "c059006361a02a6794d340d8cdbe61ea14c5da1eb53e3167792c4b4a286f166e"
+    }
+  ],
+  "full_json_byte_equal": false,
+  "identified_variation": "native_pre_ingest_diagnostic only; small floating-point numerical differences in pre-ingest recurrent action-score probabilities and their reported diagnostic metrics",
+  "action_sequences_equal": true,
+  "main_comparator_forecasts_equal": true,
+  "main_comparator_scores_equal": true,
+  "familiar_and_new_context_main_metrics_equal": true,
+  "core_exclusion": "native_pre_ingest_diagnostic fields in per-case forecasts and scores and in phase summaries, no other fields",
+  "core_sha256_both": "43b4c2dc6cc3298b633a91126b6d3a540829d5bb91be8eb27d68258539c7a7b6",
+  "verdict": "Core selected-action forecasting findings exactly repeat on rerun. Full raw byte-reproducibility fails for ancillary dynamic-neural diagnostic; do not claim byte-identical full report."
+}
