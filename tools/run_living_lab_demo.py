@@ -10,6 +10,9 @@ from pathlib import Path
 import subprocess
 import sys
 from pretorius_lab.habitat_v2 import SpatialHabitat
+from doctor_lives.cognition import PretoriusBrain
+from doctor_lives.models import Experience
+import shutil
 
 
 def process(root: Path, command: str, *args: str) -> dict:
@@ -35,9 +38,30 @@ def execute(root: Path, fixture: Path) -> dict:
     world = SpatialHabitat(root / "world.sqlite3")
     checkpoint = world.backup_to(root / "world_control.sqlite3")
     world.backup_to(root / "world_simple.sqlite3")
+    world.backup_to(root / "world_shuffled.sqlite3")
     full = process(root, "turn")
     without_episode = process(root, "turn", "--world", "world_control.sqlite3",
                               "--brain", "control_brain")
+    # Adversarial archive substitution, explicitly on disposable state.
+    # Valid action proof from another world epoch must not become *this*
+    # subject's locally admitted memory. Direct BrainStore write is an
+    # attacker/engineering fixture, never the subject's legitimate ingress.
+    foreign_world = SpatialHabitat(root / "_unmodified_seed.sqlite3")
+    foreign_world.fork_to(root / "foreign_epoch.sqlite3")
+    other = SpatialHabitat(root / "foreign_epoch.sqlite3")
+    other.commit({"op": "break", "object_id": "beaker:001"})
+    foreign_receipt = other.commit({"op": "collect", "object_id": "beaker:001"},
+                                   actor="pretorius_research")
+    shutil.copytree(root / "control_brain", root / "shuffled_brain")
+    contaminated = PretoriusBrain(root / "shuffled_brain")
+    contaminated.ingest(Experience(
+        text="I collected the broken beaker fragments in another laboratory.",
+        source="lab:action:" + foreign_receipt["event_id"] + ":" +
+               foreign_receipt["event_hash"],
+        kind="action_outcome"))
+    contaminated.save()
+    shuffled = process(root, "turn", "--world", "world_shuffled.sqlite3",
+                       "--brain", "shuffled_brain")
     baseline_cmd = [sys.executable, "-m", "research_integrations.nonneural_baseline",
                     "--world", str(root / "world_simple.sqlite3")]
     baseline_run = subprocess.run(baseline_cmd, text=True, capture_output=True)
@@ -51,6 +75,8 @@ def execute(root: Path, fixture: Path) -> dict:
              and full["status"] == "verified_additional_observation"
              and without_episode["selected"] == "wait"
              and without_episode["status"] == "abstained"
+             and shuffled["selected"] == "wait"
+             and shuffled["status"] == "abstained"
              and subsequent["selected"] == "place"
              and subsequent["status"] == "verified_action_and_admission"
              and reopened["physical"]["verified"]
@@ -71,6 +97,8 @@ def execute(root: Path, fixture: Path) -> dict:
         "matched_world_backup": checkpoint,
         "post_restart": full,
         "no_episode_control": without_episode,
+        "foreign_epoch_memory_control": shuffled,
+        "foreign_epoch_control_scope": "attacker-injected direct BrainStore record in disposable clone; not a selective clean memory-only lesion",
         "strong_simple_non_neural": baseline,
         "subsequent": subsequent,
         "scripted_book_host_contract": book,
