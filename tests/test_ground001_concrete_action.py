@@ -64,7 +64,9 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertEqual(self.world.verify()["revision"], initial + 1)
         inspect = execute_one(self.root, FakeModel('OBSERVE|floor:sanctum'))
         self.assertEqual(inspect["status"], "model_selected_additional_observation")
-        self.assertTrue(any("I collected the broken beaker" in line\n                            for line in inspect["subject_frame"]),\n                        "Source-admitted collection memory must be retrieved after restart")
+        self.assertTrue(any("I collected the broken beaker" in line
+                            for line in inspect["subject_frame"]),
+                        "Source-admitted collection memory must be retrieved after restart")
         self.assertIsNotNone(inspect["admitted_memory_id"])
         final = execute_one(self.root, FakeModel('PLACE|beaker:001|floor:corner:nw'))
         self.assertEqual(final["status"], "model_action_verified_and_admitted")
