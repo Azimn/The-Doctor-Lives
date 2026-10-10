@@ -173,8 +173,28 @@ class ChronosCoil:
             raise ValueError("at_tick must be a nonnegative integer")
         # The future clock is *counterfactual*. No future evidence is invented.
         witnesses = MnemosyneLoom.collect(brain, as_of_tick=at_tick)
-        relations = {str(r["display_name"]).casefold().strip(): r
-                     for r in brain.store.relationships()}
+        # Derive bounded relational context from *witness-verified* lived
+        # relationship-event deltas available by this clock tick. Do not use
+        # the current relationship row for a past counterfactual: that would
+        # leak later social experience backward in time.
+        witnessed_by_event = {e.event_id: e for e in witnesses}
+        trust_by_actor: dict[str, float] = {}
+        with closing(brain.store.connect()) as conn:
+            relation_events = conn.execute(
+                """SELECT source_event_id,trust_delta FROM relationship_events
+                   WHERE tick<=? ORDER BY tick,id""", (at_tick,)
+            ).fetchall()
+        for event in relation_events:
+            source = witnessed_by_event.get(str(event["source_event_id"]))
+            if source is None or source.actor is None:
+                continue
+            delta = float(event["trust_delta"])
+            if not math.isfinite(delta) or abs(delta) > 1:
+                continue
+            actor_key = source.actor.casefold().strip()
+            trust_by_actor[actor_key] = max(
+                0.0, min(1.0, trust_by_actor.get(actor_key, 0.5) + delta)
+            )
         goals: list[ProspectivePriority] = []
         for row in brain.store.open_commitments():
             if int(row["created_tick"]) > at_tick:
@@ -215,13 +235,14 @@ class ChronosCoil:
                         continue
                     relation_multiplier = 1.0
                     if actor_text is not None:
-                        relation = relations.get(actor_text)
-                        if relation is not None and e.event_id in relation["evidence"]:
-                            trust = _finite_unit(relation["trust"], "trust")
-                            relation_multiplier = 0.75 + 0.25 * trust
+                        if actor_text in trust_by_actor:
+                            # An engineer-side reconstruction from actually
+                            # witnessed relationship deltas, not the current
+                            # production relationship row or subjective trust.
+                            relation_multiplier = (
+                                0.75 + 0.25 * trust_by_actor[actor_text]
+                            )
                         else:
-                            # Without a recorded source relationship, actor
-                            # recognition alone cannot supply relational trust.
                             relation_multiplier = 0.75
                     support = overlap * e.confidence * relation_multiplier
                     if support > best + 1e-12:
