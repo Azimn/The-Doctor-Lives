@@ -40,6 +40,7 @@ def execute(root: Path, fixture: Path) -> dict:
     world.backup_to(root / "world_simple.sqlite3")
     world.backup_to(root / "world_shuffled.sqlite3")
     full = process(root, "turn")
+    shutil.copytree(root / "control_brain", root / "shuffled_brain")
     without_episode = process(root, "turn", "--world", "world_control.sqlite3",
                               "--brain", "control_brain")
     # Adversarial archive substitution, explicitly on disposable state.
@@ -52,7 +53,6 @@ def execute(root: Path, fixture: Path) -> dict:
     other.commit({"op": "break", "object_id": "beaker:001"})
     foreign_receipt = other.commit({"op": "collect", "object_id": "beaker:001"},
                                    actor="pretorius_research")
-    shutil.copytree(root / "control_brain", root / "shuffled_brain")
     contaminated = PretoriusBrain(root / "shuffled_brain")
     contaminated.ingest(Experience(
         text="I collected the broken beaker fragments in another laboratory.",
@@ -85,6 +85,38 @@ def execute(root: Path, fixture: Path) -> dict:
              and book["reopened_page_matches"]
              and baseline["task_completed"]
              and world.locate("beaker:001")["location"]["anchor_id"] == "floor:corner:nw")
+    metrics = {
+        "physical_goal_completed": world.locate("beaker:001")["location"]["anchor_id"] == "floor:corner:nw",
+        "successful_action_admissions": sum(
+            case["status"] == "verified_action_and_admission"
+            for case in (first, full, subsequent)
+        ),
+        "successful_observation_admissions": sum(
+            case["status"] == "verified_additional_observation"
+            for case in (first, full, subsequent)
+        ),
+        "denied_or_unauthorized_selected_proposals": sum(
+            case["status"] == "denied_no_admission"
+            for case in (first, full, subsequent)
+        ),
+        "firsthand_source_memory_ids": [
+            case["memory_id"] for case in (first, full, subsequent) if "memory_id" in case
+        ],
+        "no_episode_abstained": without_episode["status"] == "abstained",
+        "foreign_epoch_abstained": shuffled["status"] == "abstained",
+        "foreign_epoch_subject_frame_leak": any(
+            "another laboratory" in item.lower() for item in shuffled["subject_frame"]
+        ),
+        "nonneural_goal_completed": baseline["task_completed"],
+        "controller_top_action_matches_grounded_mapping": [
+            case["controller_top_abstract_action"] == case["selected_abstract_mapping"]
+            for case in (first, full, subsequent)
+        ],
+        "book_page_1_admitted": bool(book["page_1_admitted_memory_id"]),
+        "book_page_2_not_admitted": book["page_2_offered_but_not_admitted"],
+        "book_page_3_unread": book["page_3_neither_delivered_nor_remembered"],
+        "scoring_limit": "author-defined episode and action relevance; not independent adjudication",
+    }
     return {
         "schema": "pretorius-living-lab-evidence/1",
         "claims": {"engineering_continuity": bool(is_ok),
@@ -92,6 +124,7 @@ def execute(root: Path, fixture: Path) -> dict:
                    "general_character_continuity": "not_established",
                    "book_actions_autonomous": False},
         "pins": initial["source_pins"],
+        "metrics": metrics,
         "process_boundary": "every stage launched as separate python interpreter",
         "initial": initial, "first": first,
         "matched_world_backup": checkpoint,
