@@ -1,0 +1,58 @@
+name: Pretorius firsthand provenance gate research
+on:
+  push:
+    branches:
+      - research/phase-firsthand-provenance-gate-20261009
+    paths:
+      - research_prototypes/character_state/firsthand_gate.py
+      - tests/test_phase_firsthand_gate.py
+      - research_prototypes/character_state/run_firsthand_counterfactual.py
+      - results/character_state/STAGE01B_FIRSTHAND_TARGETS_RAW.json
+      - .github/workflows/phase-firsthand-provenance-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Challenge reconstructed and spoofed firsthand evidence against native BrainStore
+        run: python -m unittest discover -s tests -p 'test_phase_firsthand_gate.py' -v
+      - name: Confirm explicit subject response never exposes machine identifiers
+        run: |
+          python - <<'PY'
+          from research_prototypes.character_state.firsthand_gate import SAFE_REPLY
+          assert 'record_id' not in SAFE_REPLY
+          assert 'source' not in SAFE_REPLY
+          assert 'metadata' not in SAFE_REPLY
+          print('PASS: abstention is first-person and source-ID-free')
+          PY
+      - name: Execute authentic-response retrospective integrity counterfactual
+        run: |
+          mkdir -p results/character_state/firsthand
+          python -m research_prototypes.character_state.run_firsthand_counterfactual \
+            --fixture results/character_state/STAGE01B_FIRSTHAND_TARGETS_RAW.json \
+            --output results/character_state/firsthand/STAGE01C_PROVENANCE_COUNTERFACTUAL.json
+          python - <<'PY'
+          import json
+          p=json.load(open('results/character_state/firsthand/STAGE01C_PROVENANCE_COUNTERFACTUAL.json'))
+          assert p['total_target_outputs']==8
+          assert p['baseline_false_firsthand_labels']==8
+          assert p['protected_abstentions']==8
+          assert p['post_guard_firsthand_claims']==0
+          assert not p['event_type_detection_automated']
+          assert all(x['native_state_unchanged_by_gate'] for x in p['results'])
+          print('PASS: 8/8 known false firsthand claims stopped, no unclaimed generalization')
+          PY
+      - name: Archive counterfactual and read-only source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-firsthand-counterfactual-known-events
+          path: results/character_state/firsthand/
+          retention-days: 90
