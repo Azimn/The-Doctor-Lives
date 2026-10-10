@@ -90,6 +90,7 @@ def classify_firsthand(question: str) -> Intent:
     if _PAST_QUESTION.search(q):
         if re.search(r"\b(?:did you|have you ever|had you|when did you|"
                      r"what did you|where did you|how did you|why did you)\s+"
+                     r"(?:(?:personally|actually|really|directly|ever)\s+)?"
                      +_PAST_VERB+r"\b",q):
             return Intent.FIRSTHAND
         if re.search(r"\b(?:do you remember|can you recall|do you recall)\b",q):
