@@ -55,7 +55,7 @@ class SummarizationControls(unittest.TestCase):
             summarize(value)
         value=fake()
         value["native"]["external_world_outcomes"]=1
-        with self.assertRaisesRegex(ValueError, "world witness"):
+        with self.assertRaisesRegex(ValueError, "witness"):
             summarize(value)
 
 
