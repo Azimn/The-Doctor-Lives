@@ -1,0 +1,196 @@
+{
+  "schema": "eidolon-unicode-construction-archive-v0.1.1",
+  "provenance": {
+    "artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38022599281/artifacts/11658579169",
+    "run": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38022599281",
+    "zip_sha256": "3743d716cac3633404601f44e289bb042b292a8ce8835ab4089fd3f8c58d277f",
+    "head_sha": "23430db1822bc80c2c185ac7156d1b22aa4db014",
+    "ci_merge_ref": "78adedd57ba13323bc7c240283bf06cfe46d58dc",
+    "epistemic_status": "algorithm-tailored exploratory construction test"
+  },
+  "conditions": {
+    "intact": {
+      "n": 4,
+      "correct_top1": 4,
+      "mean_target_probability": 0.323679438,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "create",
+          "correct": true,
+          "target_probability": 0.326331244,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "challenge",
+          "correct": true,
+          "target_probability": 0.315724018,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "cooperate",
+          "correct": true,
+          "target_probability": 0.326331244,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "persist",
+          "correct": true,
+          "target_probability": 0.326331244,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "no_learning": {
+      "n": 4,
+      "correct_top1": 0,
+      "mean_target_probability": 0.1,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "binding_lesion": {
+      "n": 4,
+      "correct_top1": 0,
+      "mean_target_probability": 0.1,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "recurrence_lesion": {
+      "n": 4,
+      "correct_top1": 4,
+      "mean_target_probability": 0.121655562,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "create",
+          "correct": true,
+          "target_probability": 0.122943601,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "challenge",
+          "correct": true,
+          "target_probability": 0.117791444,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "cooperate",
+          "correct": true,
+          "target_probability": 0.122943601,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "persist",
+          "correct": true,
+          "target_probability": 0.122943601,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "label_shuffle": {
+      "n": 4,
+      "correct_top1": 0,
+      "mean_target_probability": 0.075146729,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "challenge",
+          "correct": false,
+          "target_probability": 0.074852084,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "cooperate",
+          "correct": false,
+          "target_probability": 0.076030665,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "persist",
+          "correct": false,
+          "target_probability": 0.074852084,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "create",
+          "correct": false,
+          "target_probability": 0.074852084,
+          "base_target_probability": 0.1
+        }
+      ]
+    }
+  },
+  "real_pretorius_shadow": {
+    "create_probability_from_brain": 0.10536566,
+    "create_probability_in_shadow": 0.416057682,
+    "delayed_shadow_create_probability": 0.462066035,
+    "production_digest_unchanged_by_shadow": true,
+    "production_recurrent_tick_unchanged_by_shadow": true,
+    "pretorius_memory_was_ingested": true
+  }
+}
