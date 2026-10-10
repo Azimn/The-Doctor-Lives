@@ -1,0 +1,84 @@
+name: issue53 GROUND-001 real concrete-action selector
+on:
+  push:
+    branches:
+      - research/living-laboratory-integration-issue53
+    paths:
+      - research_integrations/concrete_action.py
+      - tools/run_ground001_real_model.py
+      - tests/test_ground001_concrete_action.py
+      - .github/workflows/issue53-ground001-model.yml
+  pull_request:
+    paths:
+      - research_integrations/concrete_action.py
+      - tools/run_ground001_real_model.py
+      - tests/test_ground001_concrete_action.py
+      - .github/workflows/issue53-ground001-model.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  model-free-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Clone the actual laboratory at the pinned dependency revision
+        run: |
+          git clone -q https://github.com/Azimn/Pretorius-Laboratory.git _lab
+          git -C _lab checkout -q 93d19671f7666b2996e6fcad211c5e6509336466
+          test "$(git -C _lab rev-parse HEAD)" = "93d19671f7666b2996e6fcad211c5e6509336466"
+          python -m pip install -e . -e ./_lab
+      - run: python -m unittest discover -s tests -p 'test_ground001_concrete_action.py' -v
+  real-local-cpu-model:
+    needs: model-free-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install real canonical cognition, real lab, and local GGUF runtime
+        run: |
+          git clone -q https://github.com/Azimn/Pretorius-Laboratory.git _lab
+          git -C _lab checkout -q 93d19671f7666b2996e6fcad211c5e6509336466
+          test "$(git -C _lab rev-parse HEAD)" = "93d19671f7666b2996e6fcad211c5e6509336466"
+          python -m pip install -e . -e ./_lab
+          python -m pip install llama-cpp-python==0.3.16
+      - name: Download same SHA-verified Qwen GGUF used in Stage 06/07
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf' \
+            --output /tmp/Qwen3-1.7B-Q4_K_M.gguf
+          echo 'd2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5  /tmp/Qwen3-1.7B-Q4_K_M.gguf' | sha256sum -c -
+      - name: Execute actual local model with persistent world, receipts, independent process restarts, nonneural comparison
+        run: |
+          python tools/run_ground001_real_model.py \
+            --output-root /tmp/issue53-ground001-unique \
+            --fixture _lab/fixtures/DEMO_BOOK_007.json \
+            --gguf /tmp/Qwen3-1.7B-Q4_K_M.gguf \
+            --steps 5 \
+            --report results/issue53/ground001_real_model_trial.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("results/issue53/ground001_real_model_trial.json").read_text())
+          assert report["schema"]=="pretorius.living-lab.ground001-real-model-comparison/1"
+          assert report["model_file_sha256"]=="d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5"
+          assert report["metrics"]["baseline_goal_complete"]
+          assert len(report["trace"])>=1
+          assert all(row["model_sha256"]==report["model_file_sha256"] for row in report["trace"])
+          print("ACTUAL_MODEL_PROPOSALS",json.dumps(report["metrics"],sort_keys=True))
+          # DO NOT assert that the model succeeded. Failures and nulls are evidence.
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: issue53-ground001-real-qwen-source-backed-evidence
+          path: results/issue53/ground001_real_model_trial.json
+          if-no-files-found: warn
+          retention-days: 90
