@@ -282,6 +282,7 @@ class PredictiveSelfLoop:
         quality = [
             event for _, event, _ in self._history
             if event.evidence_precision >= .75
+            and event.evidence_kind is EvidenceKind.WORLD_VERIFIED
         ]
         distinct_contexts = {event.situation.key for event in quality}
         result = []
@@ -409,6 +410,8 @@ class PredictiveSelfLoop:
             raise ValueError("observed action outside the declared action space")
         if episode.event_id in {e.event_id for _, e, _ in self._history}:
             raise ValueError("duplicated witnessed event")
+        if episode.witness_ref in {e.witness_ref for _, e, _ in self._history}:
+            raise ValueError("duplicated witness reference")
         i = self.snapshot.actions.index(episode.action)
         probs = prior.action_probabilities
         brier = sum((p - (1.0 if j == i else 0.0)) ** 2
@@ -437,6 +440,79 @@ class PredictiveSelfLoop:
         self._history[-1] = (prior, episode, record)
         del self._open[episode.forecast_id]
         return record
+
+    def export_checkpoint(self) -> str:
+        """Portable audit checkpoint after completed serial forecast/outcome pairs.
+
+        The checkpoint is content-addressed for replay/integrity, not signed or
+        authenticated. The caller must protect the actual source and witness
+        records. Concurrent forecasts require a future versioned protocol.
+        """
+        if self._open:
+            raise ValueError("all outstanding forecasts must be resolved before checkpoint")
+        if any(f.sequence != index + 1
+               for index, (f, _, _) in enumerate(self._history)):
+            raise ValueError("v0.1 checkpoints require sequential forecast/observation")
+        payload = {
+            "protocol": PROTOCOL,
+            "snapshot_digest": self.snapshot.digest,
+            "claims_sha256": _hash([asdict(c) for c in self.claims]),
+            "context_strength": self.context_strength,
+            "partner_strength": self.partner_strength,
+            "episodes": [
+                {
+                    "situation": asdict(f.situation),
+                    "forecast_digest": f.digest,
+                    "observation": asdict(e),
+                    "error": asdict(error),
+                }
+                for f, e, error in self._history
+            ],
+            "audit_sha256": self.audit()["audit_sha256"],
+        }
+        return json.dumps({
+            "payload": payload, "sha256": _hash(payload),
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+    @classmethod
+    def restore_checkpoint(
+        cls,
+        snapshot: SelfSnapshot,
+        *,
+        claims: tuple[SemanticClaim, ...],
+        checkpoint_json: str,
+    ) -> "PredictiveSelfLoop":
+        """Replay-and-verify portable records against an unchanged source state."""
+        if not isinstance(checkpoint_json, str):
+            raise TypeError("checkpoint_json must be a string")
+        record = json.loads(checkpoint_json)
+        if not isinstance(record, dict) or not isinstance(record.get("payload"), dict):
+            raise ValueError("invalid checkpoint envelope")
+        payload = record["payload"]
+        if record.get("sha256") != _hash(payload):
+            raise ValueError("checkpoint integrity mismatch")
+        if payload.get("protocol") != PROTOCOL or payload.get("snapshot_digest") != snapshot.digest:
+            raise ValueError("source state or protocol mismatch")
+        if payload.get("claims_sha256") != _hash([asdict(c) for c in claims]):
+            raise ValueError("semantic hypotheses do not match checkpoint")
+        rebuilt = cls(
+            snapshot, claims=claims,
+            context_strength=payload["context_strength"],
+            partner_strength=payload["partner_strength"],
+        )
+        for item in payload["episodes"]:
+            forecast = rebuilt.forecast(Situation(**item["situation"]))
+            if forecast.digest != item["forecast_digest"]:
+                raise ValueError("replayed forecast diverged")
+            details = dict(item["observation"])
+            details["situation"] = Situation(**details["situation"])
+            details["evidence_kind"] = EvidenceKind(details["evidence_kind"])
+            error = rebuilt.observe(ObservedEpisode(**details))
+            if asdict(error) != item["error"]:
+                raise ValueError("replayed scoring or posterior diverged")
+        if rebuilt.audit()["audit_sha256"] != payload["audit_sha256"]:
+            raise ValueError("replayed ledger digest diverged")
+        return rebuilt
 
     def audit(self) -> dict[str, object]:
         """Structured engineer-only audit. Not safe to project as subject text."""
