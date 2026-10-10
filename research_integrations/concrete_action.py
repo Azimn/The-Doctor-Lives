@@ -34,7 +34,7 @@ MODEL_SHA = {
 SYSTEM = (
     "You are the concrete-action decoder for Doctor Septimus Pretorius. "
     "His persistent cognition and firsthand subject frame are authoritative. "
-    "Choose one genuinely useful immediate operation based ONLY on the "
+    "Choose one operation that directly advances the stated goal, not merely a legal but irrelevant operation. Base the choice ONLY on the "
     "presented first-person facts, the current objective and the offered "
     "legal operations. You are not permitted to invent observations, physical "
     "locations, page content, permissions or past memories. A world host "
@@ -45,25 +45,35 @@ SYSTEM = (
 )
 
 
-def concrete_options(beaker: dict, *, floor_seen: bool) -> list[dict]:
-    """The adapter offers affordances, NOT goals, ranks or a preferred option.
+def _choice(verb: str, operand: str = "none", destination: str = "none") -> dict:
+    """Uniform renderer grammar for all candidate operations and operands."""
+    return {"verb": verb, "operand": operand, "destination": destination}
 
-    A floor slot is not offered as a placement operand until source-backed
-    qualitative floor inspection is in the subject's own admitted history.
-    This is an epistemic constraint, not physical host authorization.
-    """
+
+def concrete_options(beaker: dict, *, floor_seen: bool) -> list[dict]:
+    """Offer typed affordances, never a ranked goal-directed plan."""
     options = [
-        {"op": "wait"},
-        {"op": "observe", "kind": "shelf", "target": "floor:sanctum"},
-        {"op": "observe", "kind": "shelf", "target": "shelf:3"},
+        _choice("wait"),
+        _choice("observe", "floor:sanctum"),
+        _choice("observe", "shelf:3"),
     ]
     if beaker["condition"] == "broken" and not beaker["collected"]:
-        options.append({"op": "collect", "object_id": "beaker:001"})
+        options.append(_choice("collect", "beaker:001"))
     if (beaker["condition"] == "broken" and beaker["collected"]
             and floor_seen and beaker["anchor_id"] == "bench:main/position:left"):
-        options.append({"op": "place", "object_id": "beaker:001",
-                        "anchor_id": "floor:corner:nw"})
+        options.append(_choice("place", "beaker:001", "floor:corner:nw"))
     return options
+
+
+def _host_action(proposal: dict) -> dict:
+    """Mechanical schema conversion only, NOT an autonomous planner."""
+    verb = proposal["verb"]
+    if verb == "collect":
+        return {"op": "collect", "object_id": proposal["operand"]}
+    if verb == "place":
+        return {"op": "place", "object_id": proposal["operand"],
+                "anchor_id": proposal["destination"]}
+    raise ValueError("No physical host mapping for proposed verb")
 
 
 def parse_model_choice(raw: str, options: list[dict]) -> tuple[dict | None, str]:
@@ -77,7 +87,7 @@ def parse_model_choice(raw: str, options: list[dict]) -> tuple[dict | None, str]
         choice = json.loads(value)
     except (ValueError, TypeError):
         return None, "malformed_json"
-    if not isinstance(choice, dict) or any(type(k) is not str for k in choice):
+    if not isinstance(choice, dict) or set(choice) != {"verb", "operand", "destination"}:
         return None, "not_exact_action_object"
     if choice not in options:
         return None, "not_an_offered_action_and_operand"
@@ -168,11 +178,11 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
     }
     if proposal is None:
         record["status"] = "invalid_proposal_no_execution"
-    elif proposal["op"] == "wait":
+    elif proposal["verb"] == "wait":
         record["status"] = "model_selected_wait"
-    elif proposal["op"] == "observe":
+    elif proposal["verb"] == "observe":
         try:
-            receipt = port.expose(proposal["kind"], proposal["target"])
+            receipt = port.expose("shelf", proposal["operand"])
             sentence = _shelf_text(port, receipt)
             result = _admit_observation(brain, port, receipt, sentence)
             record.update(status="model_selected_additional_observation",
@@ -181,24 +191,25 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
         except (LabError, Conflict, ValueError) as exc:
             record.update(status="observation_denied_no_admission",
                           host_denied=True, reason=str(exc))
-    elif proposal["op"] in {"collect", "place"}:
+    elif proposal["verb"] in {"collect", "place"}:
         before = world.verify()["revision"]
+        host_action = _host_action(proposal)
         try:
-            outcome = world.commit(proposal, actor="pretorius_research",
+            outcome = world.commit(host_action, actor="pretorius_research",
                                    expected_revision=before)
             verified = world.verify()
             receipt = port.expose("object", "beaker:001")
             observed = _verify_observation(port, receipt)["offered_payload"]
-            if proposal["op"] == "collect" and not world.status()["state"]["objects"]["beaker:001"]["collected"]:
+            if proposal["verb"] == "collect" and not world.status()["state"]["objects"]["beaker:001"]["collected"]:
                 raise ValueError("Collection did not materialize")
-            if proposal["op"] == "place" and observed["location"]["anchor_id"] != proposal["anchor_id"]:
+            if proposal["verb"] == "place" and observed["location"]["anchor_id"] != proposal["destination"]:
                 raise ValueError("Placement did not materialize")
             if not verified["verified"]:
                 raise ValueError("Physical event replay verification failed")
             text = ("I collected the broken beaker fragments."
-                    if proposal["op"] == "collect" else
+                    if proposal["verb"] == "collect" else
                     "I placed the gathered beaker fragments in the northwest floor corner.")
-            admission = _admit_action(brain, world, outcome, proposal, text, before)
+            admission = _admit_action(brain, world, outcome, host_action, text, before)
             record.update(status="model_action_verified_and_admitted",
                           executed=True, event_hash=outcome["event_hash"],
                           consequence_receipt=receipt["receipt_hash"],
