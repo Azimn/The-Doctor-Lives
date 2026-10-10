@@ -97,7 +97,7 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertEqual(scored["proposed_action"], candidate)
         self.assertEqual(scored["validation"], "accepted_proposal")
         bad = model_choice(FakeModel("I cannot decide"), ("I am uncertain.",),
-                           "Make the broken glass safe.", [candidate, {"op":"wait"}])
+                           "Make the broken glass safe.", [candidate, _choice("wait")])
         self.assertIsNone(bad["proposed_action"])
         self.assertEqual(bad["validation"], "malformed_json")
 
