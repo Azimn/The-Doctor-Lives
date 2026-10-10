@@ -101,6 +101,21 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertIn(_choice("collect","beaker:001"), candidates)
         self.assertNotIn(_choice("place","beaker:001","floor:corner:nw"), candidates)
 
+    def test_host_effects_are_presentation_only_not_action_authority(self):
+        options = [_choice("wait"), _choice("collect", "beaker:001"),
+                   _choice("observe", "floor:sanctum")]
+        model = FakeModel("COLLECT|beaker:001")
+        bare = model_choice(model, ("I see broken glass.",),
+                            "Make the broken glass safe.", options,
+                            information_arm="names")
+        explained = model_choice(model, ("I see broken glass.",),
+                                 "Make the broken glass safe.", options,
+                                 information_arm="effects")
+        self.assertEqual(bare["offered_action_tokens"], explained["offered_action_tokens"])
+        self.assertEqual(bare["proposed_action"], explained["proposed_action"])
+        self.assertNotEqual(bare["prompt_sha256"], explained["prompt_sha256"])
+
+
     def test_model_returns_operand_itself_and_no_silent_wait_fallback(self):
         candidate = _choice("collect","beaker:001")
         model = FakeModel(action_token(candidate))
