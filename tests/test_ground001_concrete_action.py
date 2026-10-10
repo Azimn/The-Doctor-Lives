@@ -147,6 +147,29 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertIn(_choice("collect","beaker:001"), candidates)
         self.assertNotIn(_choice("place","beaker:001","floor:corner:nw"), candidates)
 
+    def test_wait_feedback_is_attested_but_does_not_change_the_world(self):
+        initial = self.world.verify()
+        waited = execute_one(self.root, FakeModel("WAIT"))
+        self.assertEqual(waited["status"],
+                         "model_selected_wait_with_verified_feedback")
+        self.assertFalse(waited["executed"])
+        self.assertFalse(waited["changed_physical_state"])
+        self.assertEqual(waited["world_after"]["revision"], initial["revision"])
+        self.assertEqual(waited["world_after"]["state_digest"],
+                         initial["state_digest"])
+        self.assertIsNotNone(waited["admitted_memory_id"])
+        brain = PretoriusBrain(self.root / "brain")
+        memory = brain.store.get_memory(waited["admitted_memory_id"])
+        self.assertTrue(str(memory["source"]).startswith("lab:observation:"))
+        self.assertIn("I chose to wait", memory["text"])
+        self.assertIn("fragments scattered", memory["text"])
+        reconsidered = execute_one(self.root, FakeModel("COLLECT|beaker:001"))
+        self.assertEqual(reconsidered["status"],
+                         "model_action_verified_and_admitted")
+        self.assertTrue(any("I chose to wait" in line
+                            for line in reconsidered["subject_frame"]))
+        self.assertFalse(goal_finished(self.world))
+
     def test_goal_scoring_requires_removal_not_collection_alone(self):
         self.assertFalse(goal_finished(self.world))
         self.assertNotIn("floor:corner:nw", SPECIFIC_GOAL)
