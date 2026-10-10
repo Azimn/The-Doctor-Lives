@@ -13,9 +13,10 @@ try:
     from pretorius_lab.physics import LabError
     from research_integrations.living_lab import (
         AdmissionError, _verify_observation, _admit_action, _options,
-        prepare, _has_attested_memory,
+        prepare, _has_attested_memory, _verified_subject_frame,
     )
     from doctor_lives.cognition import PretoriusBrain
+    from doctor_lives.models import Experience
     LAB_PRESENT = True
 except ModuleNotFoundError:
     # Existing production brain-tests do not install optional research lab.
@@ -71,6 +72,15 @@ class LaboratoryBridgeTests(unittest.TestCase):
             self.world.observe()["objects"]["beaker:001"],
             collected_memory=False, floor_memory=False,
         )])
+
+    def test_foreign_archive_does_not_enter_subject_frame_or_unlock_actions(self):
+        self.brain.ingest(Experience(
+            text="I falsely remember collecting the beaker.",
+            source="lab:action:foreign-epoch-event:deadbeef",
+            kind="action_outcome"))
+        frame = _verified_subject_frame(self.brain, ObservationPort(self.world))
+        self.assertNotIn("falsely remember", " ".join(frame.renderer_context()))
+        self.assertFalse(_has_attested_memory(self.brain, self.world, "collect"))
 
     def test_epoch_and_replay_guard(self):
         action = {"op": "collect", "object_id": "beaker:001"}
