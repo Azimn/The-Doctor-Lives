@@ -16,6 +16,7 @@ try:
     from tools.run_ground001_real_model import repeated_no_progress
     from research_integrations.concrete_action import (
         concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
+        currently_admitted_fixture_observations,
     )
     DEPENDENCY_AVAILABLE = True
 except ModuleNotFoundError:
@@ -93,6 +94,48 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertEqual(self.world.locate("beaker:001")["condition"], "broken")
         self.assertNotEqual(self.world.locate("beaker:001")["location"]["anchor_id"],
                             "floor:corner:nw")
+
+    def test_same_world_subject_inspection_is_not_reoffered(self):
+        port = ObservationPort(self.world)
+        self.assertEqual(currently_admitted_fixture_observations(
+            PretoriusBrain(self.root / "brain"), port), {})
+        first = execute_one(self.root, FakeModel("OBSERVE|floor:sanctum"))
+        self.assertEqual(first["status"], "model_selected_additional_observation")
+        brain = PretoriusBrain(self.root / "brain")
+        admitted = currently_admitted_fixture_observations(brain, port)
+        self.assertIn("floor:sanctum", admitted)
+        options = concrete_options(self.world.observe()["objects"]["beaker:001"],
+                                   floor_seen=True,
+                                   fresh_observed=frozenset(admitted))
+        self.assertNotIn(_choice("observe", "floor:sanctum"), options)
+        self.assertIn(_choice("collect", "beaker:001"), options)
+        again = execute_one(self.root, FakeModel("OBSERVE|floor:sanctum"))
+        self.assertEqual(again["status"], "invalid_proposal_no_execution")
+        self.assertFalse(again["executed"])
+
+    def test_external_world_mutation_makes_previous_inspection_stale(self):
+        execute_one(self.root, FakeModel("OBSERVE|floor:sanctum"))
+        before = PretoriusBrain(self.root / "brain")
+        self.assertIn("floor:sanctum",
+                      currently_admitted_fixture_observations(
+                          before, ObservationPort(self.world)))
+        self.world.commit({"op": "collect", "object_id": "beaker:001"},
+                          actor="local_operator")
+        current = PretoriusBrain(self.root / "brain")
+        self.assertNotIn("floor:sanctum",
+                         currently_admitted_fixture_observations(
+                             current, ObservationPort(self.world)))
+        options = concrete_options(self.world.observe()["objects"]["beaker:001"],
+                                   floor_seen=False,
+                                   fresh_observed=frozenset())
+        self.assertIn(_choice("observe", "floor:sanctum"), options)
+        self.assertNotIn(_choice("place", "beaker:001", "floor:corner:nw"),
+                         options)
+
+    def test_engineer_only_scan_cannot_mark_subject_as_observed(self):
+        self.world.scan("floor:sanctum")
+        self.assertEqual(currently_admitted_fixture_observations(
+            PretoriusBrain(self.root / "brain"), ObservationPort(self.world)), {})
 
     def test_options_are_not_an_oracle_plan(self):
         current = self.world.observe()["objects"]["beaker:001"]
