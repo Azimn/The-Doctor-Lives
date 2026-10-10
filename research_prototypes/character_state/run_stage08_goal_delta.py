@@ -15,8 +15,6 @@ from time import perf_counter
 from doctor_lives.cognition import PretoriusBrain
 from .adapter import build_render_arms
 from .core import ConflictSignals
-from .run_stage07_social_actions import parse_action as UNUSED_STAGE07_PARSER
-from .run_stage07_social_actions import MODEL_SHA
 from .workshop_world_stage08 import (
     ACTIONS,GOALS,Task,WorkshopHost,completed,digest,eligible,
     goal_distance,shortest,step,
@@ -192,6 +190,7 @@ def case_run(model,model_name:str,case:Task,seed:int,arm:str,
     for index in range(case.max_steps):
         before=host.view()
         prompt=prompt_for(case,host,subject,arm,order)
+        base_digest_before=digest(facts(case,host,order))
         out=generate(model,model_name,prompt,seed)
         action=out["action"];valid=out["valid"]
         allowed=eligible(before["state"],before["grants"],before["flags"])
@@ -228,7 +227,7 @@ def case_run(model,model_name:str,case:Task,seed:int,arm:str,
         last_finished=now_done and (not originally_done or action=="WAIT")
         rows.append({
             "step":index,"prompt_sha256":sha256(prompt.encode()).hexdigest(),
-            "base_facts_digest":digest(facts(case,host,order)) if index==0 else None,
+            "base_facts_digest":base_digest_before,
             "prompt":prompt,
             "raw_response":out["raw"],"proposed_action":action,
             "valid_format":valid,"allowed_at_proposal":action in allowed,
