@@ -1,6 +1,6 @@
 # RFC: The Game of Self as a bidirectional predictive self-model for Pretorius
 
-Status: **research synthesis and design hypothesis; unimplemented, unvalidated, not production-authorized**  
+Status: **research synthesis with an implemented, independently tested shadow prototype; behavioral benefit unvalidated, not production-authorized**  
 Date: 2026-10-09  
 Target: The Doctor Lives, definitive Pretorius mind  
 Related: [SelfBindingModulator Stage 01 results](https://github.com/Azimn/The-Doctor-Lives/blob/5629f1cba0000047321fffbbfc6367df23a173c2/results/self_binding/STAGE_01_EXECUTED_MEASUREMENTS.md) (HOLD), [Stage 02 issue](https://github.com/Azimn/The-Doctor-Lives/issues/29)
@@ -142,4 +142,9 @@ The human subjective "I"/semantic "Me" distinction is an analogy for architectur
 
 **Recommended investigation: YES, priority HIGH. Implementation/promotion: HOLD.** This is a more direct architecture hypothesis than salience amplification. Start with a small offline forecast-only model using source-linked contextual action records and independently verified outcomes, not a new neural network or full-fledged free-energy optimizer. Proceed to policy effects **only if** the predictor outperforms simple equally-informed baselines and passes no-bypass requirements.
 
-This RFC records a source-grounded rationale and falsifiable milestones; it contains no executable experiment, no measured benefits, no self-changing canon and no authorization to modify production.
+This RFC records a source-grounded rationale and falsifiable milestones. Its subsequent [shadow implementation](PREDICTIVE_SELF_SHADOW_V01.md) is executable and has passed mechanics tests; its recorded [Stage 00 demonstration](../results/predictive_self/STAGE_00_SHADOW_EXECUTED.json) uses mock world witnesses and an actual read-only Pretorius policy decision. It provides no measured persona benefit, no self-changing canon and no authorization to modify production.
+
+
+## Implementation annex, 2026-10-09
+
+Five research mechanisms were implemented under `research_prototypes/predictive_self/`: source-bound semantic priors, fast contextual episode updating, slow cross-context world-witness-gated self-belief updating, observable relationship response inference, and typed non-executing epistemic proposals. A native read-only adapter witnesses existing policy decisions, and checkpoint export/restore validates source identity and deterministic replay. No source canon or active Pretorius policy was changed. [Successful test-and-demo workflow](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38015971437) ran 16 targeted tests and recorded one native action observation and three explicitly synthetic outcomes. Stage 00 is implementation verification, **not a test of continuity improvement**.
