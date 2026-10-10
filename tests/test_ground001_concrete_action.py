@@ -13,7 +13,9 @@ try:
     from pretorius_lab.observation_receipts import ObservationPort
     from doctor_lives.cognition import PretoriusBrain
     from research_integrations.living_lab import prepare, _verified_subject_frame
-    from tools.run_ground001_real_model import repeated_no_progress
+    from tools.run_ground001_real_model import (
+        repeated_no_progress, goal_finished, SPECIFIC_GOAL, VAGUE_GOAL,
+    )
     from research_integrations.concrete_action import (
         concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
         currently_admitted_fixture_observations, action_grammar,
@@ -144,6 +146,20 @@ class ConcreteActionContractTests(unittest.TestCase):
         self.assertIn(_choice("observe","shelf:3"), candidates)
         self.assertIn(_choice("collect","beaker:001"), candidates)
         self.assertNotIn(_choice("place","beaker:001","floor:corner:nw"), candidates)
+
+    def test_goal_scoring_requires_removal_not_collection_alone(self):
+        self.assertFalse(goal_finished(self.world))
+        self.assertNotIn("floor:corner:nw", SPECIFIC_GOAL)
+        self.assertNotIn("COLLECT|beaker:001", SPECIFIC_GOAL)
+        self.assertNotEqual(SPECIFIC_GOAL, VAGUE_GOAL)
+        gathered = execute_one(self.root, FakeModel("COLLECT|beaker:001"))
+        self.assertTrue(gathered["executed"])
+        self.assertFalse(goal_finished(self.world),
+                         "Gathered fragments still on the bench cannot satisfy clearance")
+        execute_one(self.root, FakeModel("OBSERVE|floor:sanctum"))
+        moved = execute_one(self.root, FakeModel("PLACE|beaker:001|floor:corner:nw"))
+        self.assertTrue(moved["executed"])
+        self.assertTrue(goal_finished(self.world))
 
     def test_stagnation_watchdog_stops_only_identical_nonmutating_inspections(self):
         prior = {
