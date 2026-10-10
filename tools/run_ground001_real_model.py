@@ -87,6 +87,15 @@ def goal_finished(world: SpatialHabitat) -> bool:
             and observed["location"]["anchor_id"] == "floor:corner:nw")
 
 
+def repeated_no_progress(previous: dict, current: dict) -> bool:
+    """Evidence-bound watchdog: may stop the runner, never select an action."""
+    return bool(
+        previous["status"] == current["status"] == "model_selected_additional_observation"
+        and previous["proposed_action"] == current["proposed_action"]
+        and previous["world_after"]["state_digest"] == current["world_after"]["state_digest"]
+    )
+
+
 def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         seed: int = 41) -> dict:
     if steps < 1 or steps > 8:
@@ -121,10 +130,7 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         # This never chooses a replacement action. It only stops a run after
         # two identical non-mutating inspections with unchanged physical state.
         # Preserve both proposals as a negative result.
-        if (len(trace) >= 2 and record["proposed_action"] == trace[-2]["proposed_action"]
-                and record["status"] == "model_selected_additional_observation"
-                and trace[-2]["status"] == "model_selected_additional_observation"
-                and record["world_after"]["state_digest"] == trace[-2]["world_after"]["state_digest"]):
+        if len(trace) >= 2 and repeated_no_progress(trace[-2], record):
             stagnation_stop = True
             break
         if (goal_finished(world) or record["status"] in {
