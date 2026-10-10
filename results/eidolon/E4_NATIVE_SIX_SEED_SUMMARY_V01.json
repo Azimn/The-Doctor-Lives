@@ -1,0 +1,136 @@
+{
+  "schema": "eidolon-e4-native-recurrent-decoder-summary-v0.1-r1",
+  "source_artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38025788297/artifacts/11660305032",
+  "tested_source_sha": "3fc841d9888dedfdfc2f9b7854b89a9ee54f2de9",
+  "artifact_sha256_zip": "124c8f81805c2de6a7b435675dc065c8e702afd69196c44695f1b7fba6a5e569",
+  "fixture_sha256": "8c5690e4f067072933d1ab44b39177818ab0d146adba574a9281856519948b35",
+  "interpretation": "recurrent weights updated; no held-out delayed top1 benefit over decoder-only; all trained decoder outputs constant-class; synthetic hand-authored labels",
+  "invalid_predecessor": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38025624705",
+  "corrected_amendment": "docs/EIDOLON_E4_AMENDMENT_01_PLASTICITY_TICKS.md",
+  "test_cases_per_seed": 16,
+  "delayed_steps": 3,
+  "seeds": [
+    {
+      "seed": 11,
+      "hybrid_recurrent_weight_change_norm": 1.431697607,
+      "decoder_only_recurrent_weight_change_norm": 0,
+      "hybrid_motor_change_norm": 0.831960201,
+      "decoder_only_motor_change_norm": 0.831960022,
+      "hybrid_delayed_correct": 4,
+      "decoder_only_delayed_correct": 4,
+      "trained_recurrent_lesion_delayed_correct": 4,
+      "hybrid_delayed_prediction": "challenge",
+      "decoder_only_delayed_prediction": "challenge",
+      "hybrid_recurrent_lesion_delayed_prediction": "challenge",
+      "shuffled_label_delayed_prediction": "create"
+    },
+    {
+      "seed": 29,
+      "hybrid_recurrent_weight_change_norm": 1.430443287,
+      "decoder_only_recurrent_weight_change_norm": 0,
+      "hybrid_motor_change_norm": 0.840783954,
+      "decoder_only_motor_change_norm": 0.840784014,
+      "hybrid_delayed_correct": 4,
+      "decoder_only_delayed_correct": 4,
+      "trained_recurrent_lesion_delayed_correct": 4,
+      "hybrid_delayed_prediction": "challenge",
+      "decoder_only_delayed_prediction": "challenge",
+      "hybrid_recurrent_lesion_delayed_prediction": "challenge",
+      "shuffled_label_delayed_prediction": "create"
+    },
+    {
+      "seed": 47,
+      "hybrid_recurrent_weight_change_norm": 1.424528599,
+      "decoder_only_recurrent_weight_change_norm": 0,
+      "hybrid_motor_change_norm": 0.831813157,
+      "decoder_only_motor_change_norm": 0.831813037,
+      "hybrid_delayed_correct": 4,
+      "decoder_only_delayed_correct": 4,
+      "trained_recurrent_lesion_delayed_correct": 4,
+      "hybrid_delayed_prediction": "challenge",
+      "decoder_only_delayed_prediction": "challenge",
+      "hybrid_recurrent_lesion_delayed_prediction": "challenge",
+      "shuffled_label_delayed_prediction": "create"
+    },
+    {
+      "seed": 83,
+      "hybrid_recurrent_weight_change_norm": 1.428266525,
+      "decoder_only_recurrent_weight_change_norm": 0,
+      "hybrid_motor_change_norm": 0.841136992,
+      "decoder_only_motor_change_norm": 0.841136813,
+      "hybrid_delayed_correct": 4,
+      "decoder_only_delayed_correct": 4,
+      "trained_recurrent_lesion_delayed_correct": 4,
+      "hybrid_delayed_prediction": "challenge",
+      "decoder_only_delayed_prediction": "challenge",
+      "hybrid_recurrent_lesion_delayed_prediction": "challenge",
+      "shuffled_label_delayed_prediction": "create"
+    },
+    {
+      "seed": 113,
+      "hybrid_recurrent_weight_change_norm": 1.439001918,
+      "decoder_only_recurrent_weight_change_norm": 0,
+      "hybrid_motor_change_norm": 0.842609465,
+      "decoder_only_motor_change_norm": 0.842609227,
+      "hybrid_delayed_correct": 4,
+      "decoder_only_delayed_correct": 4,
+      "trained_recurrent_lesion_delayed_correct": 4,
+      "hybrid_delayed_prediction": "challenge",
+      "decoder_only_delayed_prediction": "challenge",
+      "hybrid_recurrent_lesion_delayed_prediction": "challenge",
+      "shuffled_label_delayed_prediction": "create"
+    },
+    {
+      "seed": 127,
+      "hybrid_recurrent_weight_change_norm": 1.418709517,
+      "decoder_only_recurrent_weight_change_norm": 0,
+      "hybrid_motor_change_norm": 0.836651683,
+      "decoder_only_motor_change_norm": 0.836651444,
+      "hybrid_delayed_correct": 4,
+      "decoder_only_delayed_correct": 4,
+      "trained_recurrent_lesion_delayed_correct": 4,
+      "hybrid_delayed_prediction": "challenge",
+      "decoder_only_delayed_prediction": "challenge",
+      "hybrid_recurrent_lesion_delayed_prediction": "challenge",
+      "shuffled_label_delayed_prediction": "create"
+    }
+  ],
+  "conditions": {
+    "hybrid": {
+      "correct": 24,
+      "n": 96,
+      "mean_target_probability": 0.207137277
+    },
+    "decoder_only": {
+      "correct": 24,
+      "n": 96,
+      "mean_target_probability": 0.207138242
+    },
+    "hybrid_recurrent_lesion": {
+      "correct": 24,
+      "n": 96,
+      "mean_target_probability": 0.207138256
+    },
+    "hybrid_fresh_decoder": {
+      "correct": 16,
+      "n": 96,
+      "mean_target_probability": 0.099743653
+    },
+    "shuffled_label_decoder": {
+      "correct": 24,
+      "n": 96,
+      "mean_target_probability": 0.20713018
+    },
+    "untrained": {
+      "correct": 16,
+      "n": 96,
+      "mean_target_probability": 0.099744666
+    }
+  },
+  "max_delayed_probability_difference_hybrid_vs_recurrent_lesion": 0.000019976,
+  "corrected_ci": {
+    "targeted_tests": 55,
+    "full_brain_tests": 379,
+    "all_four_workflows": "success"
+  }
+}
