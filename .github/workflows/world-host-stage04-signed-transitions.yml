@@ -1,0 +1,53 @@
+name: Stage04 persisted world host and native source proofs
+on:
+  push:
+    branches:
+      - research/host-ledger-world-stage04-20261010
+    paths:
+      - research_prototypes/character_state/world_host_ledger.py
+      - research_prototypes/character_state/world_native_bridge.py
+      - research_prototypes/character_state/run_world_host_stage04.py
+      - tests/test_world_host_stage04.py
+      - .github/workflows/world-host-stage04-signed-transitions.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  world-host-trust-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fresh install native brain, no external language-model runtime
+        run: python -m pip install -e .
+      - name: Test persistent authorized world transition and adversarial source checks
+        run: python -m unittest discover -s tests -p 'test_world_host_stage04.py' -v
+      - name: Execute full separate-world host-to-memory drill and freeze outputs
+        run: |
+          mkdir -p results/character_state/stage04
+          python -m research_prototypes.character_state.run_world_host_stage04 \
+            --output results/character_state/stage04/MEASURED_WORLD_HOST_DRILL.json
+          python - <<'PY'
+          import json
+          with open('results/character_state/stage04/MEASURED_WORLD_HOST_DRILL.json') as f: d=json.load(f)
+          assert d['world_final']['state']=={'clock':'stopped','notebook':'open'}
+          assert d['world_final']['sequence']==3
+          assert d['host_signed_successful_events']==3
+          assert d['native_lived_memories_admitted']==2
+          assert d['native_idempotent_reimport']
+          assert d['clock_lived_memory_denied_after_revocation']
+          assert d['cross_restart_nonce_replay_rejected']
+          assert d['unwitnessed_sealed_inspection_abstained']
+          assert not d['agent_autonomously_selected_actions']
+          assert not d['externally_validated_persona_continuity']
+          print('PASS: test-world transitions and no unsupported lived-memory admission')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage04-persisted-world-witness-drill
+          path: results/character_state/stage04/
+          retention-days: 90
