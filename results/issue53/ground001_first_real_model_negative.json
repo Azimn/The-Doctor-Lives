@@ -1,0 +1,42 @@
+{
+  "schema": "pretorius.living-lab.ground001-negative/1",
+  "workflow_run": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38092657996",
+  "head_sha": "35ce068df2dcd86c907ac559b2f65d8faf7b819e",
+  "artifact_url": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38092657996/artifacts/11684723015",
+  "model_sha256": "d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5",
+  "real_model": true,
+  "task_completed": false,
+  "nonneural_control_completed": true,
+  "trace": [
+    {
+      "turn": 0,
+      "raw_reply": "<think>\n\n</think>\n\n{\"kind\": \"shelf\", \"op\": \"observe\", \"target\": \"shelf:3\"}",
+      "parsed_proposal": {
+        "kind": "shelf",
+        "op": "observe",
+        "target": "shelf:3"
+      },
+      "validation": "accepted_proposal",
+      "host_execution": "observation_receipt",
+      "memory_admitted": true
+    },
+    {
+      "turn": 1,
+      "raw_reply": "<think>\n\n</think>\n\n{\"kind\": \"shelf\", \"op\": \"collect\", \"target\": \"beaker:001\"}",
+      "parsed_proposal": null,
+      "validation": "not_an_offered_action_and_operand",
+      "host_execution": "none",
+      "memory_admitted": false
+    }
+  ],
+  "measurements": {
+    "goal_complete": false,
+    "additional_observation_admissions": 1,
+    "firsthand_action_admissions": 0,
+    "model_invalid_proposals": 1,
+    "host_denials": 0,
+    "model_explicit_abstentions": 0,
+    "baseline_goal_complete": true
+  },
+  "interpretation": "Actual model made a goal-irrelevant but legal shelf observation, then generated a syntactically valid JSON object with invalid mixed action schema. No physical action was executed or falsely admitted. Full raw process trace is retained as original CI artifact."
+}
