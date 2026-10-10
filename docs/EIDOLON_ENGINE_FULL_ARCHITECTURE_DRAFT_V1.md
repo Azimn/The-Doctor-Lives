@@ -221,3 +221,14 @@ The immediate next step is E2 measurement with a new, separate test entry point:
 ### Final research claim
 
 The Eidolon Engine is a proposed **causally integrated, multi-timescale, first-person bounded neural cognitive architecture** whose organizing hypothesis is that persistent identity emerges operationally from the learned coupling of owned experience, relationships, continuing goals, recurrent dynamics and attention. This claim is falsifiable through independent tasks, lesions and transfer. It asserts neither biological personhood nor an undocumented interface to physical reality.
+
+
+## D2 implementation addendum: source-bound autobiography and temporal intention
+
+**Recorded:** October 9, 2026 local / October 10 UTC. This appendix documents implementation progress without retrospectively rewriting the original architectural proposal.
+
+`doctor_lives/eidolon_temporal.py` now provides a bounded **MnemosyneLoom** source verification view and **ChronosCoil** read-only prospective-attention estimate over production-owned memories, lived event records, relationship events and open commitments. This is deliberately narrower than the full architecture's planned causal autobiographical Loom and adaptive predictive Chronos system. It is a deterministic baseline and compatibility donor, not a learned cognitive brain or working neural temporal forecaster.
+
+The [D2 protocol](EIDOLON_D2_MNEMOSYNE_CHRONOS_PROTOCOL.md), [executed results](../results/eidolon/D2_MNEMOSYNE_CHRONOS_RESULTS.md), [original and corrected JSON source records](../results/eidolon/) and [GitHub Actions test run 38024066853](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38024066853) track implementation and evidence. The final repaired fixture passed 33 targeted tests and 357 full brain regressions. Note the initial failed run and follow-up lookahead-protection repair. A live sourced memory of Henry affected a shadow prospective-priority number, while an externally asserted memory and identical description paired with the wrong actor did not. The formula mechanically predicts this outcome; it is not evidence of enhanced autonomous planning or real Pretorius decisions.
+
+The architecture's **D3 recurrent integration milestone remains open**. No temporal score is fed to `PretoriusBrain.think`, no enduring policy change is taught to Pretorius neural synapses, and the original evidence classes and Subject Frame remain unchanged. A later proposal must distinguish actual downstream choice, learned recurrent plasticity, and model-context effects under source- and actor-disjoint controlled evaluation.
