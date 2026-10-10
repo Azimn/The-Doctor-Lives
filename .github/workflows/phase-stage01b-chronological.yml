@@ -1,0 +1,85 @@
+name: PHASE Stage01B chronological local ablation
+on:
+  push:
+    branches:
+      - research/phase-chronological-1b-20261009
+    paths:
+      - research_prototypes/character_state/run_chronological_1b.py
+      - tests/test_phase_chronological_1b.py
+      - .github/workflows/phase-stage01b-chronological.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-chronology:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Verify native state transitions, source firewall and information parity
+        run: python -m unittest discover -s tests -p 'test_phase_chronological_1b.py' -v
+      - name: Preserve all source-grounded experiment inputs
+        run: |
+          mkdir -p results/character_state/stage01b
+          python - <<'PY'
+          import json
+          from research_prototypes.character_state.run_chronological_1b import prepare_native_sequence
+          v=prepare_native_sequence()
+          open('results/character_state/stage01b/source_fixtures.json','w',encoding='utf-8').write(json.dumps(v,indent=2,ensure_ascii=False)+'\n')
+          assert len(v["cases"])==8
+          assert all(c["equal_evidence_flat_phase"] for c in v["cases"])
+          print('PASS: 8 native chronology inputs, original SubjectFrame parity')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-stage01b-native-fixtures
+          path: results/character_state/stage01b/
+          retention-days: 90
+  gguf-generation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    needs: [native-chronology]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native brain and local inference runtime
+        run: |
+          python -m pip install -e .
+          python -m pip install llama-cpp-python==0.3.16
+      - name: Download upstream-pinned Apache Qwen3-1.7B model
+        run: |
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf' \
+            --output /tmp/Qwen3-1.7B-Q4_K_M.gguf
+          test $(wc -c </tmp/Qwen3-1.7B-Q4_K_M.gguf) -gt 1200000000
+          echo 'd2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5  /tmp/Qwen3-1.7B-Q4_K_M.gguf' | sha256sum -c -
+      - name: Run matched-generation comparisons without external APIs
+        run: |
+          mkdir -p results/character_state/stage01b
+          python -m research_prototypes.character_state.run_chronological_1b \
+            --gguf /tmp/Qwen3-1.7B-Q4_K_M.gguf \
+            --output results/character_state/stage01b/chronological_responses.json \
+            --max-tokens 96
+          python - <<'PY'
+          import json
+          p=json.load(open('results/character_state/stage01b/chronological_responses.json',encoding='utf-8'))
+          assert len(p['responses'])==32
+          assert p['native']['external_world_outcomes']==0
+          assert len(p['blind_reviewer_pack'])==32
+          print('Usable:',sum(x['usable_dialogue'] for x in p['responses']),'of',len(p['responses']))
+          assert all(x['usable_dialogue'] for x in p['responses']), 'Preserve raw failures; mark this generation test as incomplete'
+          PY
+      - name: Preserve responses and masked reviewer packet
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-stage01b-qwen17b-longitudinal
+          path: results/character_state/stage01b/
+          retention-days: 90
