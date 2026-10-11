@@ -75,6 +75,10 @@ jobs:
           report=json.loads(Path("results/issue53/ground001_real_model_trial.json").read_text())
           assert report["schema"]=="pretorius.living-lab.ground001-real-model-comparison/1"
           assert report["model_file_sha256"]=="ab27b9bfa375a178d6cba48f3ad892b94b7739659dcc7aae8058ce0ffed6b328"
+          assert report["metrics"]["position_only_same_initial_action_set"]
+          assert report["metrics"]["position_only_same_world_state"]
+          assert report["metrics"]["position_only_same_subject_frame"]
+          assert report["metrics"]["position_only_menu_order_changed"]
           assert report["metrics"]["baseline_goal_complete"]
           assert len(report["trace"])>=1
           assert all(row["model_sha256"]==report["model_file_sha256"] for row in report["trace"])
