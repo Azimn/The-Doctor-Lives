@@ -162,14 +162,29 @@ def parse_model_choice(raw: str, options: list[dict]) -> tuple[dict | None, str]
     return mapping[value], "accepted_proposal"
 
 
-def action_grammar(options: list[dict]) -> str:
+def presentation_order(options: list[dict], arm: str) -> list[dict]:
+    """Reorder the exact same permitted actions to test choice-position bias.
+
+    Sorting is not a task heuristic. It does not add, remove, or reprioritize
+    candidates using world or goal knowledge.
+    """
+    if arm not in {"wait_first", "wait_last"}:
+        raise ValueError("Unknown action presentation arm")
+    if arm == "wait_first":
+        return list(options)
+    return [x for x in options if x["verb"] != "wait"] + [
+        x for x in options if x["verb"] == "wait"
+    ]
+
+
+def action_grammar(options: list[dict], *, presentation_arm: str = "wait_first") -> str:
     """Restrict surface syntax to exact offered concrete tokens.
 
     This is syntax-level constrained decoding, not an action planner. The model
     still selects among multiple legal semantic alternatives. Neither a target
     operand nor a fallback choice is inserted after decoding.
     """
-    tokens = [action_token(option) for option in options]
+    tokens = [action_token(option) for option in presentation_order(options, presentation_arm)]
     if not tokens or len(tokens) != len(set(tokens)):
         raise ValueError("Empty or ambiguous grammar choices")
     return "root ::= " + " | ".join(json.dumps(t) for t in tokens) + chr(10)
@@ -196,13 +211,15 @@ def host_effect_description(option: dict) -> str:
 def model_choice(model, subject: tuple[str, ...], goal: str,
                  options: list[dict], *, seed: int = 41,
                  information_arm: str = "names",
-                 decoding_arm: str = "raw") -> dict:
+                 decoding_arm: str = "raw",
+                 presentation_arm: str = "wait_first") -> dict:
     """Uses the same llama.cpp chat-completion interface as Stages 06/07."""
     if decoding_arm not in {"raw", "grammar"}:
         raise ValueError("Unknown decoding arm")
     if information_arm not in {"names", "effects"}:
         raise ValueError("Unknown action information comparison arm")
-    menu = "\n".join(action_token(choice) for choice in options)
+    ordered = presentation_order(options, presentation_arm)
+    menu = "\n".join(action_token(choice) for choice in ordered)
     # Stage07-style semantics are deliberately separated from the selectable
     # tokens. Putting prose on the same lines led the real 1.7B decoder to
     # copy the prose and emit an invalid mixed token.
@@ -232,7 +249,7 @@ def model_choice(model, subject: tuple[str, ...], goal: str,
     if decoding_arm == "grammar":
         from llama_cpp import LlamaGrammar
         inference_options["grammar"] = LlamaGrammar.from_string(
-            action_grammar(options), verbose=False,
+            action_grammar(options, presentation_arm=presentation_arm), verbose=False,
         )
     start = perf_counter()
     output = model.create_chat_completion(
@@ -250,8 +267,10 @@ def model_choice(model, subject: tuple[str, ...], goal: str,
         "prompt_sha256": sha256(user.encode()).hexdigest(),
         "information_arm": information_arm,
         "decoding_arm": decoding_arm,
+        "presentation_arm": presentation_arm,
         "offered_options": options,
         "offered_action_tokens": [action_token(choice) for choice in options],
+        "presented_action_tokens": [action_token(choice) for choice in ordered],
         "usage": output.get("usage", {}),
         "inference_seconds": round(perf_counter() - start, 3),
     }
@@ -282,7 +301,8 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
                 goal: str = GOAL, seed: int = 41,
                 withhold_lab_autobiography: bool = False,
                 information_arm: str = "names",
-                decoding_arm: str = "raw") -> dict:
+                decoding_arm: str = "raw",
+                presentation_arm: str = "wait_first") -> dict:
     """One live, non-scripted model proposal; open DB afresh on every invocation."""
     world = SpatialHabitat(root / world_name)
     port = ObservationPort(world)
@@ -308,7 +328,8 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
                          decision_text=goal + "\n" + subject[-1])
     response = model_choice(model, subject, goal, options, seed=seed,
                             information_arm=information_arm,
-                            decoding_arm=decoding_arm)
+                            decoding_arm=decoding_arm,
+                            presentation_arm=presentation_arm)
     proposal = response["proposed_action"]
     record: dict[str, Any] = {
         "schema": SCHEMA,
@@ -409,6 +430,8 @@ def main() -> None:
     p.add_argument("--memory-arm", choices=("full", "mask_lab_autobiography"), default="full")
     p.add_argument("--information-arm", choices=("names", "effects"), default="names")
     p.add_argument("--decoding-arm", choices=("raw", "grammar"), default="raw")
+    p.add_argument("--presentation-arm", choices=("wait_first", "wait_last"),
+                   default="wait_first")
     a = p.parse_args()
     digest = sha256()
     with a.gguf.open("rb") as stream:
@@ -423,7 +446,8 @@ def main() -> None:
                          world_name=a.world, goal=a.goal, seed=a.seed,
                          withhold_lab_autobiography=a.memory_arm == "mask_lab_autobiography",
                          information_arm=a.information_arm,
-                         decoding_arm=a.decoding_arm)
+                         decoding_arm=a.decoding_arm,
+                         presentation_arm=a.presentation_arm)
     result["model_id"] = a.model
     result["model_sha256"] = digest.hexdigest()
     print(json.dumps(result, sort_keys=True))
