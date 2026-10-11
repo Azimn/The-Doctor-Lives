@@ -30,7 +30,8 @@ def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
                      memory_arm: str = "full",
                      information_arm: str = "names",
                      decoding_arm: str = "grammar",
-                     model_name: str = "qwen3-1.7b-q4_k_m") -> dict:
+                     model_name: str = "qwen3-1.7b-q4_k_m",
+                     presentation_arm: str = "wait_first") -> dict:
     argv = [sys.executable, "-m", "research_integrations.concrete_action",
             "--root", str(root), "--gguf", str(gguf),
             "--world", world_name, "--brain", brain_name,
@@ -38,6 +39,7 @@ def fresh_model_turn(root: Path, gguf: Path, goal: str, seed: int, *,
             "--information-arm", information_arm,
             "--decoding-arm", decoding_arm,
             "--model", model_name,
+            "--presentation-arm", presentation_arm,
             "--goal", goal, "--seed", str(seed)]
     proc = subprocess.run(argv, capture_output=True, text=True, check=False,
                           timeout=360)
@@ -51,7 +53,8 @@ def matched_memory_presentation(root: Path, gguf: Path,
                                 goal: str, seed: int,
                                 information_arm: str = "names",
                                 decoding_arm: str = "grammar",
-                                model_name: str = "qwen3-1.7b-q4_k_m") -> dict:
+                                model_name: str = "qwen3-1.7b-q4_k_m",
+                                presentation_arm: str = "wait_last") -> dict:
     """Equal post-action brain and world snapshots, different UPPB display.
 
     Does not delete source records or change the neural policy. Only the
@@ -69,14 +72,16 @@ def matched_memory_presentation(root: Path, gguf: Path,
                             brain_name="cf_full_brain",
                             information_arm=information_arm,
                             decoding_arm=decoding_arm,
-                            model_name=model_name)
+                            model_name=model_name,
+                            presentation_arm=presentation_arm)
     masked = fresh_model_turn(root, gguf, goal, seed,
                               world_name="cf_mask_world.sqlite3",
                               brain_name="cf_mask_brain",
                               memory_arm="mask_lab_autobiography",
                               information_arm=information_arm,
                               decoding_arm=decoding_arm,
-                            model_name=model_name)
+                            model_name=model_name,
+                            presentation_arm=presentation_arm)
     world_match = all(
         full["world_before"][key] == masked["world_before"][key]
         for key in ("world_epoch", "revision", "state_digest")
@@ -98,7 +103,8 @@ def matched_memory_presentation(root: Path, gguf: Path,
 
 
 def matched_goal_presentation(root: Path, gguf: Path, goal: str, seed: int,
-                              model_name: str = "qwen3-1.7b-q4_k_m") -> dict:
+                              model_name: str = "qwen3-1.7b-q4_k_m",
+                              presentation_arm: str = "wait_last") -> dict:
     """Hold world, subject autobiography, menu and decoder fixed; change goal only."""
     world = SpatialHabitat(root / "world.sqlite3")
     world.verify()
@@ -110,12 +116,14 @@ def matched_goal_presentation(root: Path, gguf: Path, goal: str, seed: int,
                             world_name="cf_vague_world.sqlite3",
                             brain_name="cf_vague_brain",
                             information_arm="effects", decoding_arm="grammar",
-                            model_name=model_name)
+                            model_name=model_name,
+                            presentation_arm=presentation_arm)
     explicit = fresh_model_turn(root, gguf, goal, seed,
                                world_name="cf_specific_world.sqlite3",
                                brain_name="cf_specific_brain",
                                information_arm="effects", decoding_arm="grammar",
-                               model_name=model_name)
+                               model_name=model_name,
+                               presentation_arm=presentation_arm)
     comparable = (
         vague["world_before"]["world_epoch"] == explicit["world_before"]["world_epoch"]
         and vague["world_before"]["revision"] == explicit["world_before"]["revision"]
@@ -158,13 +166,22 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     before = world.verify()
     world.backup_to(root / "nonneural_control.sqlite3")
     world.backup_to(root / "names_control_world.sqlite3")
+    world.backup_to(root / "wait_first_control_world.sqlite3")
     shutil.copytree(root / "brain", root / "names_control_brain")
+    shutil.copytree(root / "brain", root / "wait_first_control_brain")
     # A single matched initial-turn comparison of bare names vs known host
     # action effects. Both arms get identical subject and world source records.
     names_control = fresh_model_turn(
         root, gguf, goal, seed, world_name="names_control_world.sqlite3",
         brain_name="names_control_brain", information_arm="names",
-        model_name=model_name,
+        model_name=model_name, presentation_arm="wait_last",
+    )
+    position_control = fresh_model_turn(
+        root, gguf, goal, seed,
+        world_name="wait_first_control_world.sqlite3",
+        brain_name="wait_first_control_brain",
+        information_arm="effects", model_name=model_name,
+        presentation_arm="wait_first",
     )
     trace = []
     stagnation_stop = False
@@ -174,7 +191,8 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
     for i in range(steps):
         record = fresh_model_turn(root, gguf, goal, seed,
                                   information_arm="effects",
-                                  model_name=model_name)
+                                  model_name=model_name,
+                                  presentation_arm="wait_last")
         record["session_index"] = i
         record["independent_process_restart"] = True
         trace.append(record)
@@ -182,9 +200,11 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
             memory_contrast = matched_memory_presentation(
                 root, gguf, goal, seed, information_arm="effects",
                 model_name=model_name,
+                presentation_arm="wait_last",
             )
             goal_contrast = matched_goal_presentation(root, gguf, goal, seed,
-                                                      model_name=model_name)
+                                                      model_name=model_name,
+                                                      presentation_arm="wait_last")
         # This never chooses a replacement action. It only stops a run after
         # two identical non-mutating inspections with unchanged physical state.
         # Preserve both proposals as a negative result.
@@ -248,6 +268,21 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
             names_control["world_before"][key] == trace[0]["world_before"][key]
             for key in ("world_epoch", "revision", "state_digest")
         ),
+        "position_control_first_proposal": position_control["proposed_action"],
+        "wait_last_first_proposal": trace[0]["proposed_action"],
+        "position_only_same_initial_action_set": (
+            position_control["offered_action_tokens"] == trace[0]["offered_action_tokens"]
+        ),
+        "position_only_same_world_state": all(
+            position_control["world_before"][k] == trace[0]["world_before"][k]
+            for k in ("world_epoch", "revision", "state_digest")
+        ),
+        "position_only_same_subject_frame": (
+            position_control["subject_frame"] == trace[0]["subject_frame"]
+        ),
+        "position_only_menu_order_changed": (
+            position_control["presented_action_tokens"] != trace[0]["presented_action_tokens"]
+        ),
         "names_first_proposal": names_control["proposed_action"],
         "effects_first_proposal": trace[0]["proposed_action"],
         "effects_first_action_executed": trace[0]["executed"],
@@ -264,10 +299,13 @@ def run(root: Path, fixture: Path, gguf: Path, *, goal: str, steps: int,
         "model_file_sha256": trace[0].get("model_sha256") if trace else None,
         "run_configuration": {"goal": goal, "steps": steps, "seed": seed,
                               "decoding_arm": "grammar",
+                              "main_presentation_arm": "wait_last",
+                              "matched_position_arm": "wait_first",
                               "model_name": model_name,
                               "fresh_python_process_per_model_turn": True},
         "initial_world": before,
         "names_only_matched_first_turn": names_control,
+        "wait_first_position_matched_first_turn": position_control,
         "effects_provided_multi_turn_trace": trace,
         "trace": trace,
         "final_world": world.verify(),
