@@ -19,6 +19,7 @@ try:
     from research_integrations.concrete_action import (
         concrete_options, parse_model_choice, model_choice, execute_one, _choice, action_token,
         currently_admitted_fixture_observations, action_grammar, MODEL_SHA,
+        presentation_order,
     )
     DEPENDENCY_AVAILABLE = True
 except ModuleNotFoundError:
@@ -220,6 +221,43 @@ class ConcreteActionContractTests(unittest.TestCase):
         )
         self.assertNotEqual(MODEL_SHA["qwen3-4b-q4_k_m"],
                             MODEL_SHA["qwen3-1.7b-q4_k_m"])
+
+    def test_position_intervention_only_reorders_wait(self):
+        options = [
+            _choice("wait"), _choice("observe", "floor:sanctum"),
+            _choice("observe", "shelf:3"), _choice("collect", "beaker:001"),
+        ]
+        legacy = presentation_order(options, "wait_first")
+        revised = presentation_order(options, "wait_last")
+        self.assertEqual(legacy, options)
+        self.assertEqual(revised, options[1:] + options[:1])
+        self.assertEqual(
+            {action_token(c) for c in legacy},
+            {action_token(c) for c in revised},
+        )
+        self.assertIn('"WAIT" | "OBSERVE|floor:sanctum"',
+                      action_grammar(options, presentation_arm="wait_first"))
+        self.assertTrue(action_grammar(
+            options, presentation_arm="wait_last"
+        ).rstrip().endswith('"WAIT"'))
+        with self.assertRaises(ValueError):
+            presentation_order(options, "goal_oracle")
+
+    def test_matched_model_calls_preserve_actions_but_change_display_order(self):
+        options = [_choice("wait"), _choice("observe", "floor:sanctum"),
+                   _choice("collect", "beaker:001")]
+        first = model_choice(FakeModel("WAIT"), ("I see broken glass.",),
+                             "Clear the workbench.", options,
+                             presentation_arm="wait_first")
+        last = model_choice(FakeModel("WAIT"), ("I see broken glass.",),
+                            "Clear the workbench.", options,
+                            presentation_arm="wait_last")
+        self.assertEqual(first["offered_options"], last["offered_options"])
+        self.assertEqual(first["offered_action_tokens"], last["offered_action_tokens"])
+        self.assertEqual(first["proposed_action"], last["proposed_action"])
+        self.assertNotEqual(first["presented_action_tokens"],
+                            last["presented_action_tokens"])
+        self.assertNotEqual(first["prompt_sha256"], last["prompt_sha256"])
 
     def test_grammar_only_allows_complete_offered_semantic_tokens(self):
         options = [_choice("wait"), _choice("observe", "floor:sanctum"),
