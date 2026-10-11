@@ -23,3 +23,13 @@ An additional matched intervention now places `WAIT` last in the permitted actio
 If the selected action differs, the observation establishes **position/syntax sensitivity**, not evidence that the neural policy improved character continuity. If an intervention achieves physical completion, the effect is attributed to the model plus action-presentation condition. If the simple baseline still succeeds with fewer actions, the baseline remains the stronger task performer. The 4B 2026-10-10 negative run is preserved unchanged.
 
 This research branch remains unmerged under PR #54 and Issue #53. It must not be promoted into production without additional independently authored tasks, randomized order, source adversarial tests and reviewed state migration/recovery gates.
+
+## Executed matched position experiment: negative
+
+Real Qwen3-4B GGUF trial: https://github.com/Azimn/The-Doctor-Lives/actions/runs/38100217973
+
+The independently compared WAIT-first and WAIT-last action presentations had exactly equal current world state, admitted subject frame and complete legal action/operand set. The displayed order and grammar alternative order were different, as intended. Both model calls selected WAIT. The full wait-last continuation likewise chose WAIT twice; zero physical actions were performed and zero firsthand physical-action memories were admitted. The laboratory accurately retained its original broken-beaker state. Two source-backed nonprogress observations were admitted without claiming a change to the world. The simple, nonneural controller completed the task.
+
+This is negative evidence for menu position being sufficient to explain the 4B trial's abstention. It is not a comprehensive randomized positional-bias study and does not disprove bias under other models or tasks. It reinforces the case for postponing additional presentation tuning on this known task and prioritizing the verifiable world/subject recovery contract.
+
+Full raw evidence is retained in the workflow's issue53-ground001-real-qwen3-4b-source-backed-evidence artifact. No new cognitive architecture was created.

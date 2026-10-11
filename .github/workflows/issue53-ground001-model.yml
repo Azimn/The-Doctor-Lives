@@ -54,11 +54,18 @@ jobs:
           test "$(git -C _lab rev-parse HEAD)" = "93d19671f7666b2996e6fcad211c5e6509336466"
           python -m pip install -e . -e ./_lab
           python -m pip install llama-cpp-python==0.3.16
+      - name: Reuse SHA-pinned Qwen 4B GGUF between CI runs
+        uses: actions/cache@v4
+        with:
+          path: /tmp/Qwen3-4B-Q4_K_M.gguf
+          key: issue53-qwen3-4b-q4km-ab27b9bfa375a178d6cba48f3ad892b94b7739659dcc7aae8058ce0ffed6b328
       - name: Download separately pinned 4B open-weight action-decoder challenger
         run: |
-          curl --fail --location --retry 3 --silent --show-error \
-            'https://huggingface.co/ggml-org/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf' \
-            --output /tmp/Qwen3-4B-Q4_K_M.gguf
+          if [ ! -s /tmp/Qwen3-4B-Q4_K_M.gguf ]; then
+            curl --fail --location --retry 3 --silent --show-error \
+              'https://huggingface.co/ggml-org/Qwen3-4B-GGUF/resolve/main/Qwen3-4B-Q4_K_M.gguf' \
+              --output /tmp/Qwen3-4B-Q4_K_M.gguf
+          fi
           echo 'ab27b9bfa375a178d6cba48f3ad892b94b7739659dcc7aae8058ce0ffed6b328  /tmp/Qwen3-4B-Q4_K_M.gguf' | sha256sum -c -
       - name: Execute grammar-constrained 4B challenger with authoritative world and fresh subject restarts
         run: |

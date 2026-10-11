@@ -23,7 +23,8 @@ from pretorius_lab.observation_receipts import ObservationPort
 from pretorius_lab.physics import Conflict, LabError
 from .living_lab import (
     _admit_action, _admit_observation, _indexed,
-    _offer_room, _verify_observation, _project, GOAL,
+    _offer_room, _verify_observation, _project, _read_event,
+    reconcile_unadmitted_host_actions, AdmissionError, GOAL,
 )
 
 SCHEMA = "pretorius.living-lab.concrete-model-action.v2"
@@ -310,6 +311,7 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
     port.verify()
     library.verify()
     brain = PretoriusBrain(root / brain_name)
+    recovery = reconcile_unadmitted_host_actions(brain, world)
     offered, beaker, frame = _offer_room(
         brain, port, withhold_lab_autobiography=withhold_lab_autobiography,
     )
@@ -340,6 +342,7 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
         "epistemic_affordance_rule": "suppress_already_admitted_same_world_revision_fixture_inspection",
         "suppressed_fresh_observation_targets": sorted(current_observations),
         "withhold_lab_autobiography": withhold_lab_autobiography,
+        "recovered_host_events": recovery,
         "room_receipt": offered["receipt_hash"],
         "subject_frame": list(subject),
         "world_before": world.verify(),
@@ -408,8 +411,31 @@ def execute_one(root: Path, model, *, brain_name: str = "brain",
                           consequence_receipt=receipt["receipt_hash"],
                           admitted_memory_id=admission["memory_id"])
         except (LabError, Conflict, ValueError) as exc:
-            record.update(status="host_denied_no_admission",
-                          host_denied=True, reason=str(exc))
+            # A committed world transition CANNOT be called a host denial,
+            # even if witness verification or memory admission failed later.
+            # Other actors can change the world between our attempted write
+            # and error handling. A higher revision alone is NOT evidence
+            # that the selected operation committed.
+            committed = False
+            if "outcome" in locals() and isinstance(outcome, dict):
+                try:
+                    attested = _read_event(world, outcome["event_id"])
+                    committed = (
+                        attested == outcome
+                        and attested["actor"] == "pretorius_research"
+                        and attested["action"] == host_action
+                        and attested["base_revision"] == before
+                    )
+                except (LabError, AdmissionError, KeyError):
+                    committed = False
+            record.update(
+                status=("world_committed_pending_reconciliation"
+                        if committed else "host_denied_no_admission"),
+                executed=committed,
+                host_denied=not committed,
+                recovery_required=committed,
+                reason=str(exc),
+            )
     else:
         raise AssertionError("Only offered options may reach an executor")
     brain.save()

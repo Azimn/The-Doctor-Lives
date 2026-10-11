@@ -105,6 +105,108 @@ def _indexed(brain: PretoriusBrain, kind: str, epoch: str) -> set[tuple[str, str
     return {(str(row[0]), str(row[1])) for row in rows}
 
 
+def reconcile_unadmitted_host_actions(
+    brain: PretoriusBrain, world: SpatialHabitat,
+) -> list[dict]:
+    """Recover a lost lab-to-memory handoff without fabricating lived memory.
+
+    An authoritative committed host operation, by itself, is NOT evidence
+    that Pretorius perceived the consequence. Admit it as EXTERNAL history
+    only, even when the actor field identifies the research subject. An
+    action-outcome record already bound to local admission evidence wins.
+    """
+    proof = world.verify()
+    epoch = proof["world_epoch"]
+    firsthand = _indexed(brain, "action", epoch)
+    recovered = _indexed(brain, "recovery", epoch)
+    stored = brain.store.memories()
+    with world._open() as db:
+        event_ids = [row[0] for row in db.execute(
+            "SELECT event_id FROM events ORDER BY revision"
+        )]
+    records = []
+    for event_id in event_ids:
+        event = _read_event(world, event_id)
+        action = event["action"]
+        if (event["actor"] != "pretorius_research"
+                or event["world_epoch"] != epoch
+                or action.get("op") not in {"collect", "place"}
+                or action.get("object_id") != "beaker:001"):
+            continue
+        proof_hash = event["event_hash"]
+        if any(
+            memory["source"] == "lab:action:" + event_id + ":" + proof_hash
+            and not memory["external"]
+            and memory["kind"] == "action_outcome"
+            and (str(memory["id"]), proof_hash) in firsthand
+            for memory in stored
+        ):
+            continue
+        if any(
+            memory["source"] == "lab:recovery:" + event_id + ":" + proof_hash
+            and memory["external"]
+            and memory["kind"] == "lab_event_report"
+            and (str(memory["id"]), proof_hash) in recovered
+            for memory in stored
+        ):
+            continue
+        source = "lab:recovery:" + event_id + ":" + proof_hash
+        verb = action["op"]
+        if verb == "collect":
+            claim = "gathered the broken laboratory beaker fragments"
+        else:
+            claim = "relocated the gathered beaker fragments"
+        text = (
+            "A verified laboratory event record attributes a request that "
+            + claim + " to my research actor label. I cannot retrieve a "
+            "firsthand record of witnessing that outcome."
+        )
+        # If the process stopped after writing EXTERNAL text but before
+        # indexing its proof, repair only an exact external statement whose
+        # words are independently regenerated from the verified world event.
+        # An alien string, mismatched classification or duplicate is refused.
+        existing = [m for m in stored if m["source"] == source]
+        if existing:
+            if (len(existing) != 1 or not existing[0]["external"]
+                    or existing[0]["kind"] != "lab_event_report"
+                    or existing[0]["evidence_class"] != "external_statement"
+                    or existing[0]["text"] != text):
+                raise AdmissionError("Unverified recovery memory collision")
+            memory_id = str(existing[0]["id"])
+            _index_admission(brain, memory_id, "recovery", proof_hash, epoch)
+            recovered = _indexed(brain, "recovery", epoch)
+            records.append({
+                "event_id": event_id,
+                "event_hash": proof_hash,
+                "memory_id": memory_id,
+                "classification": "external_record_not_firsthand",
+                "index_repaired": True,
+            })
+            continue
+        # A record recovered after interruption is NEVER lived_runtime_memory.
+        saved = brain.ingest(Experience(
+            text=text,
+            source=source,
+            kind="lab_event_report",
+            external=True,
+            confidence=1.0,
+            tags=("lab", "external_event_recovery", "not_firsthand"),
+        ))
+        _index_admission(brain, saved["memory_id"], "recovery", proof_hash, epoch)
+        stored = brain.store.memories()
+        recovered = _indexed(brain, "recovery", epoch)
+        records.append({
+            "event_id": event_id,
+            "event_hash": proof_hash,
+            "memory_id": saved["memory_id"],
+            "classification": "external_record_not_firsthand",
+            "index_repaired": False,
+        })
+    if records:
+        brain.save()
+    return records
+
+
 def _has_attested_memory(brain: PretoriusBrain, world: SpatialHabitat, op: str) -> bool:
     """No arbitrary autobiographical text or foreign-source memory can unlock an action."""
     proof = world.verify()
@@ -216,7 +318,7 @@ def _verified_subject_frame(brain: PretoriusBrain, port: ObservationPort, *,
     """
     epoch = port.habitat.verify()["world_epoch"]
     keys = {kind: _indexed(brain, kind, epoch)
-            for kind in ("action", "observation", "book")}
+            for kind in ("action", "observation", "book", "recovery")}
     # Cue retrieval only with the current offered percept. No host secrets.
     view = brain.cognitive_view(query=current_percept)
     def admitted(item) -> bool:
@@ -230,6 +332,11 @@ def _verified_subject_frame(brain: PretoriusBrain, port: ObservationPort, *,
             return False
         kind = parts[1]
         proof_hash = parts[-1]
+        if kind == "recovery" and (
+            not item.provenance.external
+            or item.provenance.evidence_class != "external_statement"
+        ):
+            return False
         return kind in keys and (item.record_id, proof_hash) in keys[kind]
     filtered = replace(view, experiences=tuple(x for x in view.experiences if admitted(x)))
     # Reuse the accepted Subject Interface Firewall projector, not a second renderer.
