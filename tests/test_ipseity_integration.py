@@ -85,7 +85,10 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
             delivery = session.deliver_next(now_ms=3000)
             self.assertIsNotNone(delivery)
             self.assertEqual(len(self.sent), 1)
-            self.assertIn("beaker", self.sent[0].lower())
+            # A general unprompted frame may rank inherited identity over
+            # recent experience. A targeted retrieval is tested separately.
+            self.assertTrue(self.sent[0].startswith("I "))
+            self.assertNotIn("source_record_ids", self.sent[0])
 
     def test_raw_data_not_accepted_as_subject_frame(self):
         with self.session() as session:
