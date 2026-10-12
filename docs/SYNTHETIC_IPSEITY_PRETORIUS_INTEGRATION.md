@@ -362,3 +362,72 @@ transaction ordering and action/feedback admission, not proof of a
 character-appropriate model policy. Preserve the already observed
 negative comparisons in the lab: donor compatibility tests cannot
 establish autonomous choice or neural superiority.
+
+## Standalone RC1: host-confirmed text emission and self-speech, 2026-10-12
+
+`doctor-lives-local` is now a **text-output host**, not an unverified
+renderer that merely prints after its conversation has been marked delivered.
+With `--say` (or `--resume` when safe), the CLI holds its existing
+single-writer local-turn lock and performs this sequence:
+
+1. Doctor ingests a real human message through his existing first-person
+   ingress projection and commits the actual recurrent step.
+2. Synthetic Ipseity admits Doctor's own `SubjectFrame` to its outbox.
+3. Before acknowledging the organ's delivery lease, the trusted renderer
+   records the model response and SHA-256 digest in the **engineer-only**
+   `speech_emission.sqlite3`. An interrupted lease can reuse that exact
+   response rather than rerunning the model.
+4. The CLI hands text to an explicitly trusted output sink. The default
+   terminal sink reports ACK **only after a successful stdout write + flush**.
+   The journal records `prepared -> emitting -> acknowledged`. It never
+   treats the model's own report of having spoken as proof.
+5. Only after this ACK does Doctor commit a first-person record of his own
+   *actual written utterance*: `I see my words appear in the conversation:
+   “…”.` This is first-person attribution of a **written** text effect,
+   not an assertion of acoustic hearing, remote receipt, intent, factual
+   accuracy or anything physically uttered. Malformed or hostile model
+   wording is not copied verbatim into autobiographical memory; the host
+   uses a safe generic description of the confirmed emission instead.
+6. The local-turn journal closes the turn. After an interrupted post-ACK
+   memory write, `--resume` checks the canonical Doctor source and neural
+   tick and never emits or records the speech twice.
+
+This changes the **CLI path only**. Existing `local_turn(..., emit=None)`
+remains a deliberately non-emitting research API and does not certify
+speech or create self-speech memory. Other renderers never gain implicit
+authority to turn generated text into observed events.
+
+**Crash semantics and nonclaims.** If an output sink raises an error or dies
+after the journal records `emitting`, the terminal output MAY have appeared.
+Because stdout has no idempotent remote receipt or rollback operation,
+automatic replay is forbidden and manual reconciliation is required. A
+completed ACK is a successful **local stream flush**, not evidence that a
+human saw the output, and not a network-delivery guarantee. Database
+journals still are not one atomic transaction; explicit source checks
+prevent duplicate canonical memories after most ordinary local restarts,
+while irreconcilable neural checkpoint faults halt the session. This
+provides safe at-most-once *automatic emission attempt* per local turn
+and a source-grounded memory of confirmed writes, **not** exactly-once
+end-to-end delivery. Tests inject failures before organ ACK, after output
+attempt, after output ACK, and after canonical self-speech memory commit.
+
+The permanent physical laboratory remains out of scope for Standalone
+RC1. The independent donor's tiny drawer/lamp reference world is not
+an authoritative Pretorius laboratory and is not used by this launcher.
+
+### Standalone-release acceptance gates still open
+
+- Independent review and safe merge order for Doctor PRs #55, #56
+  and donor PR #31, with exact source pins after merge.
+- Fresh Windows local-install and startup on a disposable state
+  directory, offline/failed Ollama restart, and documented repair for
+  deliberately unresolved emission attempts.
+- Restore test verifying **all** Doctor neural/SQLite, Ipseity,
+  turn-intent and speech-receipt databases survive as one consistent
+  bundle; no unsupported cross-DB exactly-once claim.
+- A suitable local model, stable character prompt policy without
+  unearned background data, and an acceptance corpus testing
+  dialogue continuity and self-attribution across sessions.
+
+These are deployability gates, not a mandate to introduce a new
+cognitive architecture, move the laboratory, or train a new neural model.
