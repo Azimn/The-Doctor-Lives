@@ -278,7 +278,7 @@ def local_turn(
 def _stdout_sink(text: str, delivery_key: str) -> SpeechSinkAck:
     # ACK establishes successful local stream write + flush, not receipt by a
     # remote viewer and not audible speech. Keep the signal engineer-owned.
-    sys.stdout.write(text + "\\n")
+    sys.stdout.write(text + "\n")
     sys.stdout.flush()
     return SpeechSinkAck(delivery_key, "local-stdout", digest(text))
 
