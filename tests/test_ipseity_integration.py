@@ -104,7 +104,7 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
         with self.cls(self.root, renderer=renderer,
                       neural_config=small_config()) as session:
             self.add_observation(session)
-            expected = "\\n".join(
+            expected = "\n".join(
                 session._doctor.brain.subject_recollection(query).renderer_context()
             )
             previous_state = session._doctor.brain.store.digest()
