@@ -59,6 +59,8 @@ class LocalIpseityRuntimeTests(unittest.TestCase):
         self.assertIn("brass balance", prompt)
         self.assertNotIn("source_record_ids", prompt)
         self.assertNotIn("state_pressure", prompt)
+        self.assertNotIn("local-conversation:", prompt)
+        self.assertNotIn("local_turn_journal", prompt)
         self.assertEqual(self.payloads[0]["model"], "qwen3:1.5b")
         self.assertEqual(set(self.payloads[0]), {"model", "prompt", "stream", "options"})
 
@@ -77,6 +79,12 @@ class LocalIpseityRuntimeTests(unittest.TestCase):
         ))
         self.assertTrue(any(
             "Please reconsider the balance" in x["text"] for x in store.memories()
+        ))
+        # A generated model response is not a firsthand event just because
+        # the renderer produced it. Self-perception requires a future
+        # separately attested speech/emission receipt.
+        self.assertFalse(any(
+            "I see why you have asked" in x["text"] for x in store.memories()
         ))
 
     def test_failed_delivery_is_retried_without_duplicate_human_input(self):
