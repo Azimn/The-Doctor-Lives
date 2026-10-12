@@ -13,7 +13,7 @@ Doctor subject-recollection interface proposal: PR #55, commit
 Synthetic Ipseity core baseline:
 `Azimn/synthetic-ipseity@d55e2a7fecda1760df1d21590ce3bdcfc7f0a729`.
 Cross-repository additive trusted-projector donor:
-`Azimn/synthetic-ipseity@79514a709d09c4151a0428ad7bbaa9fe17efbe48`
+`Azimn/synthetic-ipseity@e2d1dc3978c952e59d270a29e84704c8a1fe264a`
 (PR #31, v0.9.11 candidate). Exact donor commit is checked out in the
 specialized GitHub Actions workflow. It is not an unrestricted branch pin.
 
@@ -140,7 +140,7 @@ Use a **new disposable directory** until the release gate is reviewed. On
 Windows with Python 3.11+, a Git client, and Ollama installed:
 
 ```powershell
-py -m pip install "git+https://github.com/Azimn/synthetic-ipseity.git@79514a709d09c4151a0428ad7bbaa9fe17efbe48"
+py -m pip install "git+https://github.com/Azimn/synthetic-ipseity.git@e2d1dc3978c952e59d270a29e84704c8a1fe264a"
 py -m pip install "git+https://github.com/Azimn/The-Doctor-Lives.git@integration/synthetic-ipseity-subject-path"
 ollama pull qwen3:1.5b
 doctor-lives-local --state .\pretorius-test-state --model qwen3:1.5b --say "Good evening, Doctor."
@@ -260,7 +260,7 @@ responses were used.
 **Observed passing run:**
 https://github.com/Azimn/The-Doctor-Lives/actions/runs/38210400785
 at Doctor commit `977d50795fb6559ccda290c7d122edcd5a81d806`
-and donor commit `79514a709d09c4151a0428ad7bbaa9fe17efbe48`.
+and donor commit `e2d1dc3978c952e59d270a29e84704c8a1fe264a`.
 
 - Two of two actual HTTP generation calls returned nonempty model text.
 - Turn 1: 3,200 subject-input characters, 307 model-output characters.
@@ -313,3 +313,52 @@ brain internals, research scripts intentionally using standalone providers,
 and future Village hosts remain outside its authorization guarantee.
 Promotion requires a separate independent reviewer of host authority,
 model transport and action/receipt boundaries.
+
+## Upstream v0.9.11 action-cycle adoption, 2026-10-12
+
+The canonical independent Synthetic Ipseity `main` changed to
+`b02d50c5b63f5402bc8306481decae6f43e641b2`, with
+`src/synthetic_ipseity/laboratory_action.py` and its
+`AUTHORIZED_LABORATORY_ACTION_V0_9_11.md` reference action gateway.
+Upstream release does NOT yet contain the trusted Doctor preprojected
+subject-event adapter, drained-outbox publication or the bounded
+`num_predict` real Ollama fix. Both branches initially declared version
+0.9.11, so choosing package by version number alone would lose mandatory
+Doctor behavior.
+
+The dedicated donor PR #31 now merges the upstream main as a second
+parent, with no conflicting changed paths and without modifying canonical
+main. Combined donor revision:
+`e2d1dc3978c952e59d270a29e84704c8a1fe264a`. It contains
+upstream action-gateway source and tests, all upstream documentation,
+the annotation-audit fix, and all previously tested Doctor-required
+first-person and inference/transaction controls. GitHub Actions
+https://github.com/Azimn/synthetic-ipseity/actions/runs/38211446442
+passed all three tested Python versions on that exact combined revision.
+Both Doctor CI workflows now install that commit, not an unreviewed floating
+version or previous donor candidate.
+
+**Causal boundary:** Upstream reference action gateway recognizes exactly
+`inspect_lamp`, `open_drawer`, and `inspect_drawer` in its own tiny
+SQLite demonstration world. It cannot be assumed to own or manipulate the
+actual Pretorius-Laboratory. In a controlled interoperability test,
+`tests/test_ipseity_action_reference.py` admits a genuine Doctor
+`SubjectFrame` to that reference gateway, proposes an allowlisted drawer
+open, verifies a real donor SQLite effect and new host-attested first-person
+feedback, and separately denies an invalid multi-field model proposal.
+The test **also verifies** that neither effect nor model output silently
+writes autobiographical memory to Pretorius's real brain.
+
+This is an interface compatibility gate only. The real Pretorius Laboratory
+still owns its action catalog, environmental receipts, world mutation and
+authoritative feedback. A later integration must map the Doctor-authorized
+concrete action and object to *that* existing world interface, persist the
+actual world effect with a replay-safe action key, then admit only the
+world's genuine receipt as a new protected perception. Do not point the
+model at toy reference tables and claim the permanent lab is alive.
+
+The upstream `AuthorizedLaboratoryTurn` is a reusable proof of
+transaction ordering and action/feedback admission, not proof of a
+character-appropriate model policy. Preserve the already observed
+negative comparisons in the lab: donor compatibility tests cannot
+establish autonomous choice or neural superiority.
