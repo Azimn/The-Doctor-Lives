@@ -26,7 +26,7 @@ scientifically validated to ship a guarded local alpha.
 | Gate | Evidence required | Status on draft PR #56 |
 |---|---|---|
 | R1. First-person model input | Strict source/epoch, typed SubjectFrame, no raw telemetry, bounded Ollama output; 2 real-model calls | Passing integration + previous live Ollama smoke |
-| R2. Emission truth | Exact reply stored pre-render-ACK; sink identity/hash ACK before autobiographical self-speech; no duplicate output on interrupted ACK; unsafe prose not quoted uncritically | Implemented and under regression + live acceptance |
+| R2. Emission truth | Exact reply stored pre-render-ACK; sink identity/hash ACK before autobiographical self-speech; no duplicate output on interrupted ACK; unsafe prose not quoted uncritically | Passed automated failures and real Ollama loopback acceptance; independent review pending |
 | R3. One protected launcher | A single supported CLI, no raw engineer diagnostics to model, research paths explicitly unapproved for deployment | Static package inventory passing; independent audit pending |
 | R4. Installer / configuration | Pinned Doctor commit plus pinned Synthetic Ipseity commit; Windows Python/Ollama prerequisites; model pulled; one-command health preflight; no paid API | Partly documented, manual scratch-state install; packaging and fresh Windows test pending |
 | R5. Coherent recovery | Forced stop during ingress, neural save, organ outbox, model call, stream emit and self-speech admission; no silent invented experience; operator instruction for uncertain stdout | Automated restart tests present; operator reconciliation, bundle backup/restore drill pending |
@@ -73,3 +73,28 @@ honest host-side acknowledgment semantics.
 
 This is the finite definition of *deployable*. Adding more neurons,
 new cognitive organs, or expanding the laboratory is not a prerequisite.
+
+## First actual emitted-speech acceptance result
+
+**2026-10-12: the unmocked host-speech test passed.** GitHub Actions
+[38213575823](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38213575823)
+at Doctor commit `8481195f1cd9d8a8dec97dd2a6c32499696452c4`
+started an actual fixed-loopback Ollama v0.40.3 instance, downloaded
+`smollm2:135m`, and ran the real source-projected subject through
+the combined Synthetic Ipseity donor and the host's acknowledgment port.
+The result reported exactly **two** actual inference HTTP calls,
+**two** host-acknowledged emitted texts with matching SHA-256 hashes,
+**two** distinct canonical human input events and **two** subject-owned
+emission memories, all across persistent SQLite plus recurrent state.
+
+The model output became autobiographical material **only because the
+trusted output sink attested that it wrote that exact text**. No model
+claim by itself authorized self-speech or a world observation. The
+full Doctor integration, forced-crash receipt suite, ordinary regression
+suite and fresh install workflow also passed at `8481195f1`.
+The tiny SmolLM2 checkpoint is a transport fixture, NOT a quality-approved
+Pretorius personality model.
+
+The next milestone is now **R4 + R5: fixed-version launch and verified
+state-bundle backup/restore**, followed by a 20-turn suitability trial
+and independent release review. The permanent laboratory stays parked.
