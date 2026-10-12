@@ -32,7 +32,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
-          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach 79514a709d09c4151a0428ad7bbaa9fe17efbe48
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
           python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
           python -m pip install -e .
           python -c "from synthetic_ipseity import Kind; assert Kind.PROJECTED_SUBJECT_EVENT.value == 'projected_subject_event'"
@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           printf 'doctor_sha=%s\n' "$GITHUB_SHA"
-          printf 'ipseity_donor_sha=%s\n' '79514a709d09c4151a0428ad7bbaa9fe17efbe48'
+          printf 'ipseity_donor_sha=%s\n' 'e2d1dc3978c952e59d270a29e84704c8a1fe264a'
           printf 'ollama_release=%s\n' 'v0.40.3'
           if command -v ollama >/dev/null 2>&1; then
             ollama --version || true
