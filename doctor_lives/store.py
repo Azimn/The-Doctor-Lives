@@ -11,8 +11,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from .engineer_time import engineer_time
 
-SCHEMA_VERSION = 6
+
+SCHEMA_VERSION = 7
 MIN_SUPPORTED_SCHEMA_VERSION = 2
 
 
@@ -60,6 +62,22 @@ CREATE TABLE IF NOT EXISTS memories (
  base_salience REAL NOT NULL, rehearsal_count INTEGER NOT NULL DEFAULT 0,
  last_rehearsed_tick INTEGER, tags_json TEXT NOT NULL,
  active INTEGER NOT NULL DEFAULT 1, source_event_id TEXT
+);
+-- Engineer-only clock ledger: these columns MUST NOT be exposed by memories(),
+-- get_memory(), CognitiveView, SubjectFrame, or subject-facing renderers.
+-- recorded_* means WHEN THE HOST STORED THE MEMORY, not when the event occurred.
+CREATE TABLE IF NOT EXISTS memory_timecodes (
+ memory_id TEXT PRIMARY KEY,
+ recorded_tick INTEGER NOT NULL,
+ recorded_utc TEXT,
+ recorded_bmt_date TEXT,
+ recorded_beat TEXT,
+ recording_status TEXT NOT NULL CHECK(
+   recording_status IN ('runtime_recorded','legacy_unobserved')),
+ event_utc TEXT,
+ event_time_basis TEXT NOT NULL DEFAULT 'unknown' CHECK(
+   event_time_basis IN ('unknown','externally_attested','source_documented')),
+ FOREIGN KEY(memory_id) REFERENCES memories(id)
 );
 CREATE TABLE IF NOT EXISTS relationships (
  peer_id TEXT PRIMARY KEY, display_name TEXT NOT NULL, updated_tick INTEGER NOT NULL,
@@ -288,6 +306,13 @@ class BrainStore:
         return {str(row["name"]) for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
 
     def _migrate_schema(self, conn: sqlite3.Connection) -> None:
+        # Existing records predate the temporal ledger. Never assign them
+        # today's date or infer a nineteenth-century event from import time.
+        conn.execute(
+            "INSERT OR IGNORE INTO memory_timecodes("
+            "memory_id,recorded_tick,recording_status,event_time_basis) "
+            "SELECT id,created_tick,'legacy_unobserved','unknown' FROM memories"
+        )
         classification_columns = self._table_columns(conn, "memory_classifications")
         if "wording" not in classification_columns:
             conn.execute(
@@ -692,6 +717,17 @@ class BrainStore:
             (rid,tick,tick,kind,text.strip(),source,evidence_class,int(bool(external)),clamp(confidence),
              int(bool(authored)),clamp(base_salience),json.dumps(sorted(set(tags))),source_event_id),
         )
+        # Same transaction as the canonical memory: the audit stamp either
+        # commits with the actual memory or neither exists. This date records
+        # insertion now, NOT the original date of any remembered scene.
+        stamp = engineer_time()
+        conn.execute(
+            "INSERT INTO memory_timecodes("
+            "memory_id,recorded_tick,recorded_utc,recorded_bmt_date,"
+            "recorded_beat,recording_status,event_time_basis) "
+            "VALUES (?,?,?,?,?,'runtime_recorded','unknown')",
+            (rid, tick, stamp.utc_iso, stamp.bmt_date, stamp.beat),
+        )
         if classification is not None:
             self.set_classification(conn, rid, classification)
         if synthesis_admission_id is not None:
@@ -842,6 +878,21 @@ class BrainStore:
         with closing(self.connect()) as conn:
             row = conn.execute("SELECT * FROM memories WHERE id=?", (record_id,)).fetchone()
         return None if row is None else self._decode_memory(row)
+
+    def engineer_memory_timecode(self, record_id: str) -> dict[str, Any] | None:
+        """Audit-only chronology, never merged into any subject memory view.
+
+        recorded_utc/BMT are host recording times. event_utc remains unknown
+        unless a separately attested source supplies it in a future protocol.
+        No legacy time is silently inferred from migration or wall time.
+        """
+        with closing(self.connect()) as conn:
+            row = conn.execute(
+                "SELECT memory_id,recorded_tick,recorded_utc,recorded_bmt_date,"
+                "recorded_beat,recording_status,event_utc,event_time_basis "
+                "FROM memory_timecodes WHERE memory_id=?", (record_id,),
+            ).fetchone()
+        return None if row is None else dict(row)
 
     def rehearse(self, conn: sqlite3.Connection, record_id: str, tick: int) -> None:
         conn.execute(

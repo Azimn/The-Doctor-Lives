@@ -1,0 +1,62 @@
+name: synthetic-ipseity-pretorius-integration
+
+on:
+  push:
+    branches:
+      - integration/synthetic-ipseity-subject-path
+  pull_request:
+    paths:
+      - doctor_lives/ipseity_integration.py
+      - doctor_lives/ipseity_local.py
+      - doctor_lives/speech_emission.py
+      - doctor_lives/store.py
+      - doctor_lives/engineer_time.py
+      - tests/test_memory_timecodes.py
+      - tests/test_engineer_time.py
+      - tests/test_speech_emission.py
+      - doctor_lives/local_turn_journal.py
+      - tests/test_local_turn_crash_recovery.py
+      - tools/ipseity_entrypoint_gate.py
+      - pyproject.toml
+      - tests/test_ipseity_local.py
+      - tests/test_ipseity_integration.py
+      - tests/test_ipseity_action_reference.py
+      - .github/workflows/synthetic-ipseity-pretorius-integration.yml
+      - docs/SYNTHETIC_IPSEITY_PRETORIUS_INTEGRATION.md
+
+permissions:
+  contents: read
+
+jobs:
+  subject-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact Synthetic Ipseity donor
+        run: |
+          git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+          python -m pip install -e .
+          python -c "from synthetic_ipseity import Kind; assert Kind.PROJECTED_SUBJECT_EVENT.value == 'projected_subject_event'"
+      - name: Audit local production renderer entrypoint inventory
+        run: python tools/ipseity_entrypoint_gate.py
+      - name: Run actual cognitive integration tests
+        run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
+      - name: Check updated donor action gateway with real Pretorius source frames
+        run: python -m unittest discover -s tests -p test_ipseity_action_reference.py -v
+      - name: Run fail-closed local session suite
+        run: python -m unittest discover -s tests -p test_ipseity_local.py -v
+      - name: Validate private memory chronology and Swatch engineer clocks
+        run: |
+          python -m unittest discover -s tests -p test_memory_timecodes.py -v
+          python -m unittest discover -s tests -p test_engineer_time.py -v
+      - name: Run verified speech emission and self-perception contract
+        run: python -m unittest discover -s tests -p test_speech_emission.py -v
+      - name: Run real brain crash-window idempotency suite
+        run: python -m unittest discover -s tests -p test_local_turn_crash_recovery.py -v
+      - name: Run whole Doctor regression suite with donor installed
+        run: python -m unittest discover -s tests -v

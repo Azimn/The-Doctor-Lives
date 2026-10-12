@@ -25,12 +25,21 @@ class HostRecollectionController:
         self._port = port
         self._choose_question = choose_question
 
-    def recollect(self) -> dict[str, Any]:
-        # The external user/tool/renderer never supplies a question to this
-        # method. The registered host callback is the only query producer.
+    def recollect_frame(self):
+        """Return the Doctor-created typed SubjectFrame, with a one-use permit."""
+        # This trusted in-process capability supplies the typed frame directly
+        # to Synthetic Ipseity without rebuilding a subject frame from strings.
         question = validate_subject_inquiry(self._choose_question())
         permit = self._port._issue_subject_inquiry(self, question)
-        return self._port.subject_recollection(question, _authorization=permit)
+        return self._port._subject_recollection_frame(question, _authorization=permit)
+
+    def recollect(self) -> dict[str, Any]:
+        """Return subject-only text for renderer-neutral chassis consumers."""
+        frame = self.recollect_frame()
+        return {
+            "schema": "the-doctor-lives.subject-recollection.v1",
+            "subject_frame": list(frame.renderer_context()),
+        }
 
 
 class PretoriusBrainPort:
@@ -115,10 +124,10 @@ class PretoriusBrainPort:
         )
         return nonce
 
-    def subject_recollection(
+    def _subject_recollection_frame(
         self, question: str, *, _authorization: object = None
     ) -> dict[str, Any]:
-        """Fail closed for unsolicited user/tool/model internal queries.
+        """Return a typed frame only after consuming a one-use host grant.
 
         A valid authorization is private to a single bound host controller,
         question and brain state, and is consumed BEFORE retrieval. Internal
@@ -143,7 +152,15 @@ class PretoriusBrainPort:
             raise SubjectInquiryAuthorizationError(
                 "Subject recollection authorization refers to stale brain state"
             )
-        frame = self.brain.subject_recollection(question)
+        return self.brain.subject_recollection(question)
+
+    def subject_recollection(
+        self, question: str, *, _authorization: object = None
+    ) -> dict[str, Any]:
+        """Return only first-person strings after host authorization."""
+        frame = self._subject_recollection_frame(
+            question, _authorization=_authorization
+        )
         return {
             "schema": "the-doctor-lives.subject-recollection.v1",
             "subject_frame": list(frame.renderer_context()),

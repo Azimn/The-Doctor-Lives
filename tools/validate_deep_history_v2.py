@@ -75,6 +75,7 @@ def create_v1_fixture(repo_root: Path, state_dir: Path) -> None:
 
 def fresh_v2_validation(output: dict[str, Any]) -> None:
     from doctor_lives import Experience, PretoriusBrain
+    from doctor_lives.store import SCHEMA_VERSION
     from doctor_lives.neural import DEFAULT_CONFIG
 
     with tempfile.TemporaryDirectory(prefix="pretorius-v2-fresh-") as td:
@@ -85,7 +86,7 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
         assert status["connectome_nodes"] == 70
         assert status["connectome_edges"] == 243
         assert status["withheld_claims"] == 3
-        assert brain.store.meta("schema_version") == "6"
+        assert brain.store.meta("schema_version") == str(SCHEMA_VERSION)
         assert status["source_custody"][0]["custody_status"] == "custody_known"
         assert status["source_custody"][0]["original_author"] is None
 
@@ -185,7 +186,7 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
             "relationship_recovered": True,
             "withheld_insect_claim_not_memory": True,
             "dark_universe_empty": True,
-            "schema_version": 6,
+            "schema_version": SCHEMA_VERSION,
             "all_classifications_have_valid_wording": True,
             "reconstructed_or_synthesized_direct_recollection_leaks": 0,
         }
@@ -193,6 +194,7 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
 
 def migrate_v1_validation(v1_root: Path, output: dict[str, Any]) -> None:
     from doctor_lives import PretoriusBrain
+    from doctor_lives.store import SCHEMA_VERSION
 
     with tempfile.TemporaryDirectory(prefix="pretorius-v1-v2-migration-") as td:
         state = Path(td)
@@ -228,14 +230,14 @@ def migrate_v1_validation(v1_root: Path, output: dict[str, Any]) -> None:
         assert fixture["commitment_id"] in {
             x["id"] for x in migrated.store.open_commitments()
         }
-        assert migrated.store.meta("schema_version") == "6"
+        assert migrated.store.meta("schema_version") == str(SCHEMA_VERSION)
         assert migrated.store.meta("canonical_evidence_manifest_version") == "1"
         schema_lineage = json.loads(
             migrated.store.meta("state_schema_migrations_json", "[]") or "[]"
         )
         assert schema_lineage
         assert schema_lineage[-1]["from_version"] == 2
-        assert schema_lineage[-1]["to_version"] == 6
+        assert schema_lineage[-1]["to_version"] == SCHEMA_VERSION
         schema_snapshot = (
             state / "migration_snapshots"
             / schema_lineage[-1]["pre_migration_snapshot"]
