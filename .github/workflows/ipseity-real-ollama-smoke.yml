@@ -1,4 +1,6 @@
 name: ipseity-real-ollama-smoke
+# The live smoke also verifies actual host output receipts and first-person
+# memory of written replies, distinct from merely generating model text.
 
 # Bounded one-shot CPU smoke on a deliberately small free local model.
 # It runs when this exact workflow file is added/changed, not on every
@@ -67,7 +69,7 @@ jobs:
           curl --noproxy '*' -fsS http://127.0.0.1:11434/api/version
           timeout 400 ollama pull smollm2:135m
           ollama list
-      - name: Run real Pretorius Ollama dialogue smoke (no mocked inference)
+      - name: Run real Pretorius dialogue plus verified output-receipt smoke
         shell: bash
         run: |
           set -euo pipefail
