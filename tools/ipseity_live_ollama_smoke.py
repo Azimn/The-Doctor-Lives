@@ -17,6 +17,8 @@ from pathlib import Path
 from doctor_lives.ipseity_local import local_turn
 from doctor_lives.speech_emission import SpeechSinkAck, SpeechEmissionJournal, digest
 from doctor_lives.chassis import PretoriusBrainPort
+from doctor_lives.ipseity_integration import DoctorSyntheticIpseitySession
+from doctor_lives.subject_inquiry import SubjectInquiryAuthorizationError
 from doctor_lives.neural import DEFAULT_CONFIG
 from synthetic_ipseity import LocalOllamaRenderer
 from synthetic_ipseity.local_ollama import _local_post
@@ -100,6 +102,63 @@ def main() -> int:
                 "response_nonblank": True,
                 "private_fields_in_model_prompt": False,
             }, sort_keys=True))
+        # Independent third real inference: a host-authorized self-recollection.
+        # Negative probes must fail BEFORE crossing the model boundary.
+        calls_before_recall = len(outbound)
+        recall_question = "What do I remember of the laboratory balance for the beaker?"
+        with DoctorSyntheticIpseitySession(
+            root / "recollection", renderer=renderer, neural_config=small_config()
+        ) as session:
+            session.ingest({
+                "channel": "world",
+                "text": "The laboratory balance reads 325 grams for the beaker.",
+                "source": "verified-laboratory-observation",
+            })
+            before_state = session._doctor.brain.store.digest()
+            try:
+                session.publish_recollection()
+            except SubjectInquiryAuthorizationError:
+                pass
+            else:
+                raise AssertionError("Unbound recollection must be rejected")
+            try:
+                session.publish_recollection(recall_question)
+            except TypeError:
+                pass
+            else:
+                raise AssertionError("Caller-supplied recollection must be rejected")
+            try:
+                session._doctor.subject_recollection(recall_question)
+            except SubjectInquiryAuthorizationError:
+                pass
+            else:
+                raise AssertionError("Direct brain port recollection must be rejected")
+            assert len(outbound) == calls_before_recall
+            session.bind_recollection_controller(lambda: recall_question)
+            session.publish_recollection()
+            assert session._doctor.brain.store.digest() == before_state
+            recalled = session.deliver_next(now_ms=9000)
+            assert recalled is not None and recalled.response.strip()
+            assert session.pending_count() == 0
+            assert len(outbound) == calls_before_recall + 1
+            recall_prompt = outbound[-1]["prompt"]
+            assert "325" in recall_prompt and "beaker" in recall_prompt.lower()
+            assert recall_question not in recall_prompt
+            for hidden in (
+                "verified-laboratory-observation", "source_record_ids",
+                "state_pressure", "neural_checkpoint_sha256",
+            ):
+                assert hidden not in recall_prompt
+            print(json.dumps({
+                "real_recollection_http_calls": 1,
+                "unbound_external_questions_rejected": True,
+                "brain_digest_unchanged": True,
+                "subject_prompt_sha256": hashlib.sha256(
+                    recall_prompt.encode("utf-8")
+                ).hexdigest(),
+                "result": "PASS",
+            }, sort_keys=True))
+
         brain = PretoriusBrainPort(root, neural_config=small_config()).brain
         memories = brain.store.memories()
         accepted = [
@@ -133,6 +192,7 @@ def main() -> int:
         print(json.dumps({
             "result": "PASS",
             "real_ollama_http_calls": len(outbound),
+            "live_recollection_calls": 1,
             "host_acknowledged_exact_speech_emissions": len(emissions),
             "subject_first_person_emission_memories": len(attested_speech),
             "distinct_persisted_external_user_turns": len(accepted),
