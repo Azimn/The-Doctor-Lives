@@ -42,10 +42,11 @@ class VerifiedSpeechTests(unittest.TestCase):
         return self.SpeechSinkAck(key, "terminal-test", self.digest(text))
 
     def take(self, **kwargs):
+        emit = kwargs.pop("emit", self.stdout)
         return self.local_turn(
             self.root,
             renderer=self.model,
-            emit=self.stdout,
+            emit=emit,
             neural_config=small_config(),
             now_ms=60000, **kwargs,
         )
