@@ -14,6 +14,7 @@ on:
       - pyproject.toml
       - tests/test_ipseity_local.py
       - tests/test_ipseity_integration.py
+      - tests/test_ipseity_action_reference.py
       - .github/workflows/synthetic-ipseity-pretorius-integration.yml
       - docs/SYNTHETIC_IPSEITY_PRETORIUS_INTEGRATION.md
 
@@ -39,6 +40,8 @@ jobs:
         run: python tools/ipseity_entrypoint_gate.py
       - name: Run actual cognitive integration tests
         run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
+      - name: Check updated donor action gateway with real Pretorius source frames
+        run: python -m unittest discover -s tests -p test_ipseity_action_reference.py -v
       - name: Run fail-closed local session suite
         run: python -m unittest discover -s tests -p test_ipseity_local.py -v
       - name: Run real brain crash-window idempotency suite
