@@ -8,6 +8,8 @@ on:
     paths:
       - doctor_lives/ipseity_integration.py
       - doctor_lives/ipseity_local.py
+      - doctor_lives/local_turn_journal.py
+      - tests/test_local_turn_crash_recovery.py
       - pyproject.toml
       - tests/test_ipseity_local.py
       - tests/test_ipseity_integration.py
@@ -36,5 +38,7 @@ jobs:
         run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
       - name: Run fail-closed local session suite
         run: python -m unittest discover -s tests -p test_ipseity_local.py -v
+      - name: Run real brain crash-window idempotency suite
+        run: python -m unittest discover -s tests -p test_local_turn_crash_recovery.py -v
       - name: Run whole Doctor regression suite with donor installed
         run: python -m unittest discover -s tests -v
