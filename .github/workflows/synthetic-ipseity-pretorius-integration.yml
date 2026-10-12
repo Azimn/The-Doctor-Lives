@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - doctor_lives/ipseity_integration.py
+      - doctor_lives/ipseity_local.py
+      - pyproject.toml
+      - tests/test_ipseity_local.py
       - tests/test_ipseity_integration.py
       - .github/workflows/synthetic-ipseity-pretorius-integration.yml
       - docs/SYNTHETIC_IPSEITY_PRETORIUS_INTEGRATION.md
@@ -25,11 +28,13 @@ jobs:
       - name: Install exact Synthetic Ipseity donor
         run: |
           git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
-          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach 8b4853cb8cfe2244f5382710fa1434783444806b
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach ed3a92b0b8ddcbdce47b2229e4783517bec611c6
           python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
           python -m pip install -e .
           python -c "from synthetic_ipseity import Kind; assert Kind.PROJECTED_SUBJECT_EVENT.value == 'projected_subject_event'"
       - name: Run actual cognitive integration tests
         run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
+      - name: Run fail-closed local session suite
+        run: python -m unittest discover -s tests -p test_ipseity_local.py -v
       - name: Run whole Doctor regression suite with donor installed
         run: python -m unittest discover -s tests -v
