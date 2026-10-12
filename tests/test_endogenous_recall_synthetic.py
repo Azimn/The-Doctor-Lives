@@ -9,6 +9,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import closing
 
 from doctor_lives.cognition import PretoriusBrain
 from doctor_lives.neural import ACTIONS
@@ -89,7 +90,7 @@ class EndogenousRecallSyntheticReplicaTests(unittest.TestCase):
                  importance=0.1)
         result = self.brain.research_endogenous_recall(enabled=True)
         self.assertNotEqual(result["selected_action"], "recall")
-        self.assertEqual(result["audit"]["information_need_family"]["recall_pressure"], 0.01)
+        self.assertAlmostEqual(result["audit"]["information_need_family"]["recall_pressure"], 0.01)
         self.assertNotIn("retrieved_memory", result)
 
     def test_untrusted_and_malformed_gap_sources_not_promoted(self):
@@ -149,14 +150,16 @@ class EndogenousRecallSyntheticReplicaTests(unittest.TestCase):
         self.assertEqual(tuple(ACTIONS), before)
         self.assertNotIn("recall", ACTIONS)
         self.assertEqual(self.brain.store.memories(), [])
-        self.assertIsNone(
-            json.loads(
-                self.brain.store.connect().execute(
-                    "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
-                    (result["decision_id"],),
-                ).fetchone()[0]
-            )["question_sha256"] if result["selected_action"] != "recall" else None
-        )
+        with closing(self.brain.store.connect()) as conn:
+            row = conn.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (result["decision_id"],),
+            ).fetchone()
+        trace = json.loads(row["state_pressure_json"])
+        self.assertEqual(trace["selected_gap_ids"], ["synthetic-1"])
+        self.assertEqual(len(trace["question_sha256"]), 64)
+        self.assertFalse(trace["memory_retrieval_performed"])
+        self.assertFalse(trace["autonomous_model_authorship_proven"])
 
 
 if __name__ == "__main__":
