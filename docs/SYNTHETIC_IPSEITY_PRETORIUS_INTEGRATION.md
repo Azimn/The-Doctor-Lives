@@ -13,7 +13,7 @@ Doctor subject-recollection interface proposal: PR #55, commit
 Synthetic Ipseity core baseline:
 `Azimn/synthetic-ipseity@d55e2a7fecda1760df1d21590ce3bdcfc7f0a729`.
 Cross-repository additive trusted-projector donor:
-`Azimn/synthetic-ipseity@ed3a92b0b8ddcbdce47b2229e4783517bec611c6`
+`Azimn/synthetic-ipseity@79514a709d09c4151a0428ad7bbaa9fe17efbe48`
 (PR #31, v0.9.11 candidate). Exact donor commit is checked out in the
 specialized GitHub Actions workflow. It is not an unrestricted branch pin.
 
@@ -140,7 +140,7 @@ Use a **new disposable directory** until the release gate is reviewed. On
 Windows with Python 3.11+, a Git client, and Ollama installed:
 
 ```powershell
-py -m pip install "git+https://github.com/Azimn/synthetic-ipseity.git@ed3a92b0b8ddcbdce47b2229e4783517bec611c6"
+py -m pip install "git+https://github.com/Azimn/synthetic-ipseity.git@79514a709d09c4151a0428ad7bbaa9fe17efbe48"
 py -m pip install "git+https://github.com/Azimn/The-Doctor-Lives.git@integration/synthetic-ipseity-subject-path"
 ollama pull qwen3:1.5b
 doctor-lives-local --state .\pretorius-test-state --model qwen3:1.5b --say "Good evening, Doctor."
@@ -239,3 +239,77 @@ external request token. Separate SQLite files still cannot be committed
 as one cross-database distributed transaction. Recovery of a partially
 written canonical Doctor brain/neural checkpoint requires an explicit
 separate engineering repair, not this interface.
+
+## Real Ollama smoke: bounded-generation gate, 2026-10-12
+
+The first **actual** CPU Ollama invocation reached the local HTTP endpoint
+through the complete PretoriusBrain -> SubjectFrame -> SyntheticIpseityOrgan
+-> durable outbox -> SubjectOnlyRendererPort -> LocalOllamaRenderer chain. Its
+first response completed (1,777 characters), but the second inference
+timed out after 180 seconds. The control was NOT a subject-access failure;
+the old adapter omitted an output-token limit. The previous failing run is
+https://github.com/Azimn/The-Doctor-Lives/actions/runs/38210025588 .
+
+The reviewed v0.9.11 donor candidate now requires `num_predict` (64-token
+default, user-settable 1..512) without changing the subject-only input.
+This was retested with the genuine Ollama v0.40.3 binary (official-release
+SHA-256 checked), locally downloaded `smollm2:135m` (270MB), and a
+temporary standalone Pretorius brain plus actual SQLite stores. No mocked
+responses were used.
+
+**Observed passing run:**
+https://github.com/Azimn/The-Doctor-Lives/actions/runs/38210400785
+at Doctor commit `977d50795fb6559ccda290c7d122edcd5a81d806`
+and donor commit `79514a709d09c4151a0428ad7bbaa9fe17efbe48`.
+
+- Two of two actual HTTP generation calls returned nonempty model text.
+- Turn 1: 3,200 subject-input characters, 307 model-output characters.
+- Turn 2: 2,937 subject-input characters, 311 model-output characters.
+- Both recorded real HTTP requests used only `model`, `prompt`,
+  `stream` and `options`, with the prompt unchanged by hidden state.
+- The tests excluded specifically enumerated engineer-only fields, original
+  event identifiers, journal names, and neural checkpoint diagnostics.
+- Two incoming human statements were separately persisted as external
+  experiences. The recurrent substrate advanced. Generated model speech
+  was not unilaterally admitted into lived autobiographical memory.
+
+These are real execution facts, not human-quality dialogue evidence. The
+model was chosen solely to keep smoke inference affordable on an ordinary
+CPU GitHub Actions runner. No subjective awareness, protected autonomy,
+independent action or superior character fidelity is claimed.
+
+The test is deliberately a one-shot push workflow that runs again only if
+the dedicated workflow YAML is modified. It is also available for manual
+dispatch. Keeping inference separate from ordinary test CI avoids burning
+computing resources on each research commit.
+
+## Static entrypoint and model-ingress inventory
+
+`python tools/ipseity_entrypoint_gate.py` fails when an *unreviewed
+provider/process import* is introduced into the shipping Python package,
+and verifies the declared CLI / subject-only renderer contract. Its
+reviewed, explicitly exempt research-only paths are:
+
+- `doctor_lives/vector_fly_eval.py`: urllib-based external inference
+  benchmarking, including a direct `/api/generate` call. **Research only**.
+- `doctor_lives/neural_characterization.py`: subprocess instrumentation.
+  **Research only**.
+- `doctor_lives/neural_lesions.py`: subprocess instrumentation.
+  **Research only**.
+- `doctor_lives/neural_robustness.py`: subprocess instrumentation.
+  **Research only**.
+
+`doctor_lives/cli.py` can serialize an engineer-oriented render request
+through `brain.render_request(...).to_dict()` but does not itself invoke
+an inference provider. `doctor_lives/chassis.py` exposes the same
+renderer-neutral API for trusted third-party consumers. **Neither is
+authorized as a model-ingress route for the released character.**
+The protected `doctor-lives-local` entrypoint currently invokes an actual
+model only through Synthetic Ipseity's subject-text outbox.
+
+This scanner is a *change-control guard*, NOT a sandbox or proof of global
+non-bypass. Dynamic imports, a malicious package, direct Python access to
+brain internals, research scripts intentionally using standalone providers,
+and future Village hosts remain outside its authorization guarantee.
+Promotion requires a separate independent reviewer of host authority,
+model transport and action/receipt boundaries.
