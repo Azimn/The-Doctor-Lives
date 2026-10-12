@@ -30,7 +30,7 @@ jobs:
       - name: Install exact Synthetic Ipseity donor
         run: |
           git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
-          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach ed3a92b0b8ddcbdce47b2229e4783517bec611c6
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach 79514a709d09c4151a0428ad7bbaa9fe17efbe48
           python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
           python -m pip install -e .
           python -c "from synthetic_ipseity import Kind; assert Kind.PROJECTED_SUBJECT_EVENT.value == 'projected_subject_event'"
