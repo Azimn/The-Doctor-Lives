@@ -141,6 +141,15 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
             self.assertEqual(reopened._ipseity.checkpoint().last_tick,
                              checkpoint.last_tick + 1)
 
+    def test_unreviewed_donor_version_fails_before_opening_brain(self):
+        from unittest.mock import patch
+        with patch("doctor_lives.ipseity_integration.version",
+                   return_value="0.9.10"):
+            with self.assertRaisesRegex(RuntimeError, "Unreviewed Synthetic Ipseity"):
+                self.cls(self.root / "unreviewed", renderer=self.renderer,
+                         neural_config=small_config())
+        self.assertFalse((self.root / "unreviewed").exists())
+
     def test_raw_data_not_accepted_as_subject_frame(self):
         with self.session() as session:
             with self.assertRaises(TypeError):
