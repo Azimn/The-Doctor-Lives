@@ -74,8 +74,10 @@ def local_turn(
                         "Previous subject experience is undelivered or uncertain. "
                         "Use --resume before admitting another user message."
                     )
+                brain = session._doctor.brain
                 record = journal.prepare(
-                    user_text, session._doctor.brain.store.digest()
+                    user_text, brain.store.digest(),
+                    brain.store.tick, brain.neural.tick,
                 )
 
             if record is not None:
@@ -123,6 +125,20 @@ def local_turn(
                 if not matched:
                     raise LocalTurnConflict(
                         "Previously accepted Doctor input is missing; fail closed"
+                    )
+                # Doctor's SQL event commit occurs before recurrent stepping
+                # and saving. A crash between those writes could leave a
+                # memory without its neural consequence. Do not declare the
+                # turn recovered merely because a matching memory row exists.
+                brain = session._doctor.brain
+                if (
+                    int(matched[0]["created_tick"]) != record.before_tick + 1
+                    or brain.store.tick != record.before_tick + 1
+                    or brain.neural.tick <= record.before_neural_tick
+                ):
+                    raise LocalTurnConflict(
+                        "Doctor memory/neural checkpoint continuity uncertain; "
+                        "do not replay or claim a complete turn"
                     )
                 if stage == "admitted":
                     # If the host crashed after outbox commit but before this
