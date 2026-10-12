@@ -941,6 +941,33 @@ class PretoriusBrain:
             private_state_version=self.store.state_version,
         )
 
+    def subject_recollection(self, question: str) -> SubjectFrame:
+        """Read-only, internal-question retrieval through the approved SubjectFrame.
+
+        A trusted host must authenticate the source of the question. This method
+        does not create a thought, a User message, autobiographical memory, or
+        evidence that the recurrent policy initiated the question.
+        """
+        from .subject_inquiry import validate_subject_inquiry
+
+        query = validate_subject_inquiry(question)
+        before = (
+            self.store.tick,
+            self.store.state_version,
+            self.store.digest(),
+            self.neural.tick,
+        )
+        frame = self._subject_frame_from_view(self.cognitive_view(query=query))
+        after = (
+            self.store.tick,
+            self.store.state_version,
+            self.store.digest(),
+            self.neural.tick,
+        )
+        if before != after:
+            raise RuntimeError("Subject recollection unexpectedly changed durable state")
+        return frame
+
     def think(
         self,
         trigger: str = "voluntary",
