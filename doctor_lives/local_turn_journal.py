@@ -26,6 +26,8 @@ class TurnRecord:
     key: str
     message: str
     before_digest: str
+    before_tick: int
+    before_neural_tick: int
     state: str
 
 
@@ -39,7 +41,9 @@ class LocalTurnJournal:
         message_sha256 TEXT NOT NULL,
         before_digest TEXT NOT NULL,
         stage TEXT NOT NULL
-          CHECK(stage IN ('prepared','admitted','published','delivered'))
+          CHECK(stage IN ('prepared','admitted','published','delivered')),
+        before_tick INTEGER NOT NULL,
+        before_neural_tick INTEGER NOT NULL
     );
     CREATE UNIQUE INDEX IF NOT EXISTS one_active_local_turn
       ON turns ((1)) WHERE stage != 'delivered';
@@ -70,6 +74,15 @@ class LocalTurnJournal:
             for statement in self._SCHEMA.split(";"):
                 if statement.strip():
                     self._db.execute(statement)
+            # Review-branch recovery from an earlier candidate journal:
+            # legacy active turns cannot establish neural completion, and
+            # therefore MUST remain blocked rather than guessed through.
+            columns = {
+                row[1] for row in self._db.execute("PRAGMA table_info(turns)")
+            }
+            for name in ("before_tick", "before_neural_tick"):
+                if name not in columns:
+                    self._db.execute("ALTER TABLE turns ADD COLUMN " + name + " INTEGER")
         except BaseException:
             if self._db is not None:
                 self._db.close()
@@ -78,29 +91,44 @@ class LocalTurnJournal:
 
     def open_turn(self) -> TurnRecord | None:
         row = self._db.execute(
-            "SELECT turn_key,message,message_sha256,before_digest,stage "
+            "SELECT turn_key,message,message_sha256,before_digest,"
+            "stage,before_tick,before_neural_tick "
             "FROM turns WHERE stage!='delivered'"
         ).fetchone()
         if row is None:
             return None
-        key, message, checksum, digest, stage = row
+        key, message, checksum, digest, stage, before_tick, before_neural_tick = row
+        if type(before_tick) is not int or type(before_neural_tick) is not int:
+            raise LocalTurnConflict(
+                "Previous local journal lacks neural continuity evidence; "
+                "manual review required"
+            )
         if hashlib.sha256(message.encode("utf-8")).hexdigest() != checksum:
             raise LocalTurnConflict("Local input journal integrity mismatch")
-        return TurnRecord(key, message, digest, stage)
+        return TurnRecord(key, message, digest, before_tick, before_neural_tick, stage)
 
-    def prepare(self, message: str, before_digest: str) -> TurnRecord:
+    def prepare(
+        self, message: str, before_digest: str,
+        before_tick: int, before_neural_tick: int,
+    ) -> TurnRecord:
         if self.open_turn() is not None:
             raise LocalTurnConflict("Previous local turn requires reconciliation")
         key = uuid.uuid4().hex
         sha = hashlib.sha256(message.encode("utf-8")).hexdigest()
         try:
             self._db.execute(
-                "INSERT INTO turns VALUES (?,?,?,?,?)",
-                (key, message, sha, before_digest, "prepared"),
+                "INSERT INTO turns (turn_key,message,message_sha256,"
+                "before_digest,stage,before_tick,before_neural_tick) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (key, message, sha, before_digest, "prepared",
+                 before_tick, before_neural_tick),
             )
         except sqlite3.IntegrityError as exc:
             raise LocalTurnConflict("Another active local turn exists") from exc
-        return TurnRecord(key, message, before_digest, "prepared")
+        return TurnRecord(
+            key, message, before_digest, before_tick, before_neural_tick,
+            "prepared",
+        )
 
     def advance(self, key: str, prior: str, stage: str) -> None:
         allowed = {
