@@ -189,3 +189,53 @@ code sharing process authority, an alternate host, or a future MMO adapter.
 Before moving these PRs into production main, an independent review must
 verify the actual deployed launcher, package/dependency lock, host action
 capabilities, conflict recovery and all future model-context assembly.
+
+## Crash-window local input journal (engineer-only)
+
+The local CLI additionally maintains `local_turn_journal.sqlite3` and
+`local_turn_mutex.sqlite3` in the caller-selected disposable state directory.
+The journal records the exact human communication, a SHA-256 checksum,
+an independent unique turn key, prior Doctor state digest, prior Doctor
+waking and neural ticks, and the lifecycle of admission/publication/delivery.
+The full message is restricted engineer-side data; it is NOT passed as raw
+journal content to the renderer or treated as Pretorius's internal thought.
+The SHA-256 checksum is an accidental-integrity check, NOT a signature,
+provenance credential or privacy-preserving encryption.
+
+A separate SQLite `BEGIN IMMEDIATE` lease serializes the entire local
+turn across trusted host processes without holding locks over the actual
+Doctor memory database, organ state or renderer outbox. Each journal stage
+commits independently, so a process crash releases the mutex while leaving
+a durable recovery cue.
+
+The source of a newly ingested user message has a unique
+`local-conversation:<turn-key>` engineer identifier. On `--resume`, the
+runtime searches the **actual Doctor BrainStore** for that exact source:
+zero matching events may be retried only when the Doctor state digest has
+not changed; one matching event cannot be re-ingested; more than one
+fails closed. A recovered event must have the expected next waking tick and
+an advanced persisted recurrent tick. This extra check detects a crash
+after the Doctor SQLite event write but before its neural checkpoint is
+saved. In that situation the runtime refuses to claim a complete turn.
+Do not resolve it by blindly re-running the ingress.
+
+The session then either publishes through the reviewed Ipseity organ or
+reuses its existing durable outbox. If the outbox has already acknowledged
+the response but journal completion was interrupted, `--resume` clears the
+intent **without repeating model inference**, and reports that the old
+text cannot be replayed from this interface. If the model call failed,
+`--resume` can retry a leased frame only after its lease expires.
+Inference delivery remains at-least-once, not exactly-once.
+
+The tests deliberately interrupt before Doctor admission, between
+admission and publication, after outbox commit, after renderer
+acknowledgement, and after SQL admission but **before neural stepping**.
+They assert no new invented lived memory, no duplicate incoming message,
+and no silent success attribution from a half-saved brain.
+
+Limitations: caller authority remains trusted in-process Python. The
+unique turn key prevents accidental replay but is not an authenticated
+external request token. Separate SQLite files still cannot be committed
+as one cross-database distributed transaction. Recovery of a partially
+written canonical Doctor brain/neural checkpoint requires an explicit
+separate engineering repair, not this interface.
