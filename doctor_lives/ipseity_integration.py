@@ -117,7 +117,10 @@ class DoctorSyntheticIpseitySession:
         )
         # A transaction atomically advances Synthetic Ipseity's own checkpoint
         # and queues its first-person text. No raw Doctor data goes to renderer.
-        return self._ipseity.process(next_tick, events)
+        # Guard check and checkpoint mutation occur in the SAME SQLite transaction.
+        # Prevent publishing a second subject frame while the first is still
+        # pending or leased to a renderer, including after process restart.
+        return self._ipseity.process(next_tick, events, require_drained=True)
 
     def deliver_next(self, *, now_ms: int, lease_ms: int = 30_000):
         """Only the organ's subject text reaches the callback."""
