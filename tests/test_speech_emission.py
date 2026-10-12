@@ -137,6 +137,25 @@ class VerifiedSpeechTests(unittest.TestCase):
         self.assertEqual(len(self.generated), 1)
         self.assertEqual(len(self.memories("local-emission:")), 1)
 
+    def test_after_self_speech_memory_commit_recovers_without_repeating_words(self):
+        from doctor_lives.local_turn_journal import LocalTurnJournal
+        original = LocalTurnJournal.advance
+        def fail_at_journal_close(journal, key, prior, stage):
+            if (prior, stage) == ("published", "delivered"):
+                raise RuntimeError("crash after self speech memory commit")
+            return original(journal, key, prior, stage)
+        with patch.object(LocalTurnJournal, "advance", fail_at_journal_close):
+            with self.assertRaisesRegex(RuntimeError, "after self speech memory"):
+                self.take(user_text="Describe the experiment.")
+        before = self.memories("local-emission:")
+        self.assertEqual(len(before), 1)
+        self.assertEqual(len(self.visible), 1)
+        self.assertEqual(self.take(resume=True), "I have examined the specimen carefully.")
+        after = self.memories("local-emission:")
+        self.assertEqual([m["id"] for m in before], [m["id"] for m in after])
+        self.assertEqual(len(self.visible), 1)
+        self.assertEqual(len(self.generated), 1)
+
     def test_non_emitting_api_makes_no_self_speech_claim(self):
         text = self.local_turn(
             self.root, user_text="Do you see the balance?",
