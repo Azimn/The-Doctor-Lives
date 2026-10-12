@@ -10,6 +10,7 @@ on:
       - doctor_lives/ipseity_local.py
       - doctor_lives/local_turn_journal.py
       - tests/test_local_turn_crash_recovery.py
+      - tools/ipseity_entrypoint_gate.py
       - pyproject.toml
       - tests/test_ipseity_local.py
       - tests/test_ipseity_integration.py
@@ -34,6 +35,8 @@ jobs:
           python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
           python -m pip install -e .
           python -c "from synthetic_ipseity import Kind; assert Kind.PROJECTED_SUBJECT_EVENT.value == 'projected_subject_event'"
+      - name: Audit local production renderer entrypoint inventory
+        run: python tools/ipseity_entrypoint_gate.py
       - name: Run actual cognitive integration tests
         run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
       - name: Run fail-closed local session suite
