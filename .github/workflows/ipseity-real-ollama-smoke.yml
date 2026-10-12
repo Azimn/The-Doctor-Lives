@@ -3,14 +3,27 @@ name: ipseity-real-ollama-smoke
 # memory of written replies, distinct from merely generating model text.
 
 # Bounded one-shot CPU smoke on a deliberately small free local model.
-# It runs when this exact workflow file is added/changed, not on every
-# research/brain code push. Can also be manually dispatched from the branch.
+# Runs on relevant changes to the live integration gate, not unrelated research
+# branches. This tests the exact branch head, including controller recollection.
 on:
   push:
     branches:
       - integration/synthetic-ipseity-subject-path
     paths:
       - .github/workflows/ipseity-real-ollama-smoke.yml
+      - tools/ipseity_live_ollama_smoke.py
+      - doctor_lives/chassis.py
+      - doctor_lives/ipseity_integration.py
+      - doctor_lives/ipseity_local.py
+      - doctor_lives/subject_inquiry.py
+      - doctor_lives/speech_emission.py
+  pull_request:
+    paths:
+      - .github/workflows/ipseity-real-ollama-smoke.yml
+      - tools/ipseity_live_ollama_smoke.py
+      - doctor_lives/chassis.py
+      - doctor_lives/ipseity_integration.py
+      - doctor_lives/subject_inquiry.py
   workflow_dispatch:
 
 permissions:
