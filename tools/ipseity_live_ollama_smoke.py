@@ -15,6 +15,7 @@ import tempfile
 from pathlib import Path
 
 from doctor_lives.ipseity_local import local_turn
+from doctor_lives.speech_emission import SpeechSinkAck, SpeechEmissionJournal, digest
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.neural import DEFAULT_CONFIG
 from synthetic_ipseity import LocalOllamaRenderer
@@ -36,6 +37,13 @@ def small_config() -> dict:
 def main() -> int:
     model = "smollm2:135m"
     outbound: list[dict] = []
+    emissions: list[tuple[str, str]] = []
+
+    def verified_sink(text: str, delivery_key: str) -> SpeechSinkAck:
+        # A deterministic local in-process visible-output sink, distinct
+        # from model inference and able to attest exact displayed bytes.
+        emissions.append((delivery_key, text))
+        return SpeechSinkAck(delivery_key, "live-smoke-display", digest(text))
 
     def traced_real_post(body: bytes, timeout: float) -> bytes:
         request = json.loads(body)
@@ -57,10 +65,13 @@ def main() -> int:
                 root,
                 user_text=prompt,
                 renderer=renderer,
+                emit=verified_sink,
                 neural_config=small_config(),
             )
             assert isinstance(reply, str) and reply.strip()
             assert len(outbound) == idx
+            assert len(emissions) == idx
+            assert emissions[idx - 1][1] == reply
             payload = outbound[idx - 1]
             assert set(payload) == {"model", "prompt", "stream", "options"}
             assert payload["model"] == model
@@ -95,7 +106,24 @@ def main() -> int:
             m for m in memories
             if str(m["source"]).startswith("local-conversation:")
         ]
+        attested_speech = [
+            m for m in memories
+            if str(m["source"]).startswith("local-emission:")
+        ]
         assert len(accepted) == 2
+        assert len(attested_speech) == 2
+        assert len({m["source"] for m in attested_speech}) == 2
+        assert all(
+            "I see my words appear" in m["text"]
+            or "my reply has been written" in m["text"]
+            for m in attested_speech
+        )
+        with SpeechEmissionJournal(root) as speech:
+            for key, text in emissions:
+                row = speech._row(key)
+                assert row[2] == "acknowledged"
+                assert row[3] == "live-smoke-display"
+                assert row[1] == digest(text)
         assert len({m["source"] for m in accepted}) == 2
         assert brain.neural.tick >= 2
         assert all(
@@ -105,6 +133,8 @@ def main() -> int:
         print(json.dumps({
             "result": "PASS",
             "real_ollama_http_calls": len(outbound),
+            "host_acknowledged_exact_speech_emissions": len(emissions),
+            "subject_first_person_emission_memories": len(attested_speech),
             "distinct_persisted_external_user_turns": len(accepted),
             "neural_tick_minimum_met": True,
             "model_output_automatically_claimed_as_memory": False,
