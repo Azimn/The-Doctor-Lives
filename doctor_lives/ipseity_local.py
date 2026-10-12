@@ -9,12 +9,17 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+import sys
 from pathlib import Path
 import time
 from typing import Any, Callable
 
 from .ipseity_integration import DoctorSyntheticIpseitySession
-from .local_turn_journal import LocalTurnConflict, LocalTurnJournal, TurnRecord
+from .local_turn_journal import LocalTurnConflict, LocalTurnJournal
+from .speech_emission import (
+    SpeechEmissionJournal, SpeechEmissionReceipt, SpeechEmissionUncertain,
+    SpeechSinkAck, digest,
+)
 from synthetic_ipseity import LocalOllamaRenderer
 
 
@@ -29,6 +34,7 @@ def local_turn(
     resume: bool = False,
     model: str = "qwen3:1.5b",
     renderer: Callable[[str], str] | None = None,
+    emit: Callable[[str, str], SpeechSinkAck] | None = None,
     neural_config: dict[str, Any] | None = None,
     now_ms: int | None = None,
 ) -> str:
@@ -56,13 +62,42 @@ def local_turn(
     actual_renderer = (
         renderer if renderer is not None else LocalOllamaRenderer(model)
     )
+    if emit is not None and not callable(emit):
+        raise TypeError("emit must be a trusted output sink")
+
+    record = None
+    active_session = None
+    active_speech = None
+
+    def recording_renderer(subject: str) -> str:
+        # This callback runs BEFORE the organ ACKs subject delivery.
+        # Save the exact generated text first so a crash does not force
+        # another model inference on recovery.
+        if record is None or active_session is None or active_speech is None:
+            raise SpeechEmissionUncertain("Missing accountable output context")
+        existing = active_speech.prepared_text(record.key)
+        if existing is not None:
+            return existing
+        rendered = actual_renderer(subject)
+        brain = active_session._doctor.brain
+        return active_speech.prepare(
+            record.key, rendered,
+            before_tick=brain.store.tick,
+            before_neural_tick=brain.neural.tick,
+        )
     # Serialize the whole local operation across processes, but commit its
     # recovery record between each separate Doctor/Ipseity write. A crash
     # releases this lease while the intent and admitted experience survive.
     try:
-        with LocalTurnJournal(state_dir) as journal, DoctorSyntheticIpseitySession(
-            state_dir, renderer=actual_renderer, neural_config=neural_config
+        with LocalTurnJournal(state_dir) as journal, SpeechEmissionJournal(
+            state_dir
+        ) as speech, DoctorSyntheticIpseitySession(
+            state_dir,
+            renderer=recording_renderer if emit is not None else actual_renderer,
+            neural_config=neural_config,
         ) as session:
+            active_session = session
+            active_speech = speech
             pending = session.pending_count()
             record = journal.open_turn()
             if resume:
@@ -156,28 +191,96 @@ def local_turn(
 
                 if stage != "published":
                     raise LocalTurnConflict("Unexpected local turn stage")
-                if not pending:
-                    # The renderer's outbox was already ACKed before journal
-                    # completion. Do not invoke inference a second time.
+                if not pending and emit is None:
+                    # Legacy API returns a generated string without claiming
+                    # that text was actually emitted or perceived.
                     journal.advance(record.key, "published", "delivered")
                     raise PendingSubjectDelivery(
                         "Prior renderer delivery already acknowledged; "
                         "response is not replayable, so no duplicate inference"
                     )
+                if not pending and speech.prepared_text(record.key) is None:
+                    raise SpeechEmissionUncertain(
+                        "Renderer ACK preceded durable speech preparation; "
+                        "do not invent or regenerate a missing response"
+                    )
 
-            delivery = session.deliver_next(now_ms=now_ms)
-            if delivery is None:
-                raise PendingSubjectDelivery(
-                    "Subject delivery is leased by another worker. Retry "
-                    "--resume after the existing lease expires."
-                )
+            if pending:
+                delivery = session.deliver_next(now_ms=now_ms)
+                if delivery is None:
+                    raise PendingSubjectDelivery(
+                        "Subject delivery is leased by another worker. Retry "
+                        "--resume after the existing lease expires."
+                    )
+                response = delivery.response
+            elif record is not None and emit is not None:
+                response = speech.prepared_text(record.key)
+            else:
+                raise PendingSubjectDelivery("No subject frame remains to deliver")
+
+            if record is not None and emit is not None:
+                receipt = speech.emit_once(record.key, emit)
+                # The terminal host has now confirmed writing the exact
+                # output text. Only THIS event permits a subject-owned
+                # recollection of words the host actually emitted.
+                source = "local-emission:" + record.key
+                matches = [
+                    m for m in session._doctor.brain.store.memories()
+                    if m["source"] == source
+                ]
+                if len(matches) > 1:
+                    raise SpeechEmissionUncertain("Duplicate speech memory detected")
+                if not matches:
+                    brain = session._doctor.brain
+                    if (brain.store.tick != receipt.before_tick
+                        or brain.neural.tick != receipt.before_neural_tick):
+                        raise SpeechEmissionUncertain(
+                            "Brain moved since speech preparation; "
+                            "do not forge an emitted experience"
+                        )
+                    # Host verified the terminal WRITE, not that a human
+                    # read it or that the words were factually correct.
+                    statement = "I see my words appear in the conversation: “" + response + "”"
+                    from .models import Experience
+                    try:
+                        event = Experience(
+                            text=statement, source=source,
+                            kind="confirmed_written_utterance",
+                            tags=("host_attested_emission",),
+                        )
+                    except (ValueError, TypeError):
+                        # Malformed or control-like model prose must not
+                        # become a fabricated first-person quotation.
+                        event = Experience(
+                            text="I see that my reply has been written to the conversation.",
+                            source=source,
+                            kind="confirmed_written_utterance",
+                            tags=("host_attested_emission", "content_withheld"),
+                        )
+                    brain.ingest(event)
+                else:
+                    brain = session._doctor.brain
+                    if (int(matches[0]["created_tick"]) != receipt.before_tick + 1
+                        or brain.store.tick != receipt.before_tick + 1
+                        or brain.neural.tick <= receipt.before_neural_tick):
+                        raise SpeechEmissionUncertain(
+                            "Prior emitted-speech memory lacks neural continuity"
+                        )
             if record is not None:
                 journal.advance(record.key, "published", "delivered")
-            return delivery.response
+            return response
     except sqlite3.OperationalError as exc:
         raise LocalTurnConflict(
             "Concurrent local turn or unavailable journal lock; retry safely"
         ) from exc
+
+
+def _stdout_sink(text: str, delivery_key: str) -> SpeechSinkAck:
+    # ACK establishes successful local stream write + flush, not receipt by a
+    # remote viewer and not audible speech. Keep the signal engineer-owned.
+    sys.stdout.write(text + "\\n")
+    sys.stdout.flush()
+    return SpeechSinkAck(delivery_key, "local-stdout", digest(text))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -196,8 +299,8 @@ def main(argv: list[str] | None = None) -> int:
         user_text=opts.say,
         resume=opts.resume,
         model=opts.model,
+        emit=_stdout_sink,
     )
-    print(result)
     return 0
 
 
