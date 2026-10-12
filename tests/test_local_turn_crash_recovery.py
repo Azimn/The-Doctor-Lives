@@ -128,6 +128,24 @@ class LocalTurnCrashRecoveryTests(unittest.TestCase):
             self.take(resume=True)
         self.assertEqual(len(self.admitted()), 0)
 
+    def test_sql_admitted_but_neural_checkpoint_missing_stops_recovery(self):
+        from doctor_lives.neural import PretoriusRecurrentSubstrate
+        from doctor_lives.ipseity_local import LocalTurnConflict
+        with patch.object(
+            PretoriusRecurrentSubstrate, "step",
+            side_effect=RuntimeError("neural step interrupted"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "neural step interrupted"):
+                self.take(user_text="Measure the new specimen.")
+        self.assertEqual(len(self.admitted()), 1)
+        with self.assertRaisesRegex(
+            LocalTurnConflict, "memory/neural checkpoint continuity uncertain"
+        ):
+            self.take(resume=True)
+        # No replacement event and no hallucinated subject delivery.
+        self.assertEqual(len(self.admitted()), 1)
+        self.assertEqual(len(self.calls), 0)
+
     def test_prior_turn_blocks_new_input_after_crash(self):
         from doctor_lives.ipseity_integration import DoctorSyntheticIpseitySession
         from doctor_lives.ipseity_local import PendingSubjectDelivery
