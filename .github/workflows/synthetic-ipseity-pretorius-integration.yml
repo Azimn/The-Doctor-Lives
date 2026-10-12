@@ -1,0 +1,35 @@
+name: synthetic-ipseity-pretorius-integration
+
+on:
+  push:
+    branches:
+      - integration/synthetic-ipseity-subject-path
+  pull_request:
+    paths:
+      - doctor_lives/ipseity_integration.py
+      - tests/test_ipseity_integration.py
+      - .github/workflows/synthetic-ipseity-pretorius-integration.yml
+      - docs/SYNTHETIC_IPSEITY_PRETORIUS_INTEGRATION.md
+
+permissions:
+  contents: read
+
+jobs:
+  subject-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact Synthetic Ipseity donor
+        run: |
+          git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach 8b4853cb8cfe2244f5382710fa1434783444806b
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+          python -m pip install -e .
+          python -c "from synthetic_ipseity import Kind; assert Kind.PROJECTED_SUBJECT_EVENT.value == 'projected_subject_event'"
+      - name: Run actual cognitive integration tests
+        run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
+      - name: Run whole Doctor regression suite with donor installed
+        run: python -m unittest discover -s tests -v
