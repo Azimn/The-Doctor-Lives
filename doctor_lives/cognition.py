@@ -923,8 +923,9 @@ class PretoriusBrain:
             tags=tuple(row.get("tags", [])),
         )
 
-    def cognitive_view(self, query: str | None = None) -> CognitiveView:
-        direct_ranked, ranked = self._ranked_memory_sets(14, query=query, audit=True)
+    def cognitive_view(self, query: str | None = None, *, audit: bool = True) -> CognitiveView:
+        """Build a cognitive view; record retrieval audits unless explicitly disabled."""
+        direct_ranked, ranked = self._ranked_memory_sets(14, query=query, audit=audit)
         items = [self._view_item(score, row) for score, row in ranked]
         _, action_tendencies, _ = self._state_policy_scores(
             ranked, decision_text=query, direct_history_ranked=direct_ranked
@@ -957,7 +958,8 @@ class PretoriusBrain:
             self.store.digest(),
             self.neural.tick,
         )
-        frame = self._subject_frame_from_view(self.cognitive_view(query=query))
+        # This public read-only port must not append engineer retrieval audits.
+        frame = self._subject_frame_from_view(self.cognitive_view(query=query, audit=False))
         after = (
             self.store.tick,
             self.store.state_version,

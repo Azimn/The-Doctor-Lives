@@ -4,9 +4,12 @@ These tests are engineering positive controls. They do not establish that the
 subject elected to remember something without a trusted external host.
 """
 
+import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
+from unittest.mock import patch
 
 from doctor_lives import Experience, PretoriusBrainPort
 from doctor_lives.models import SubjectFrame
@@ -34,6 +37,10 @@ class SubjectRecollectionPortTests(unittest.TestCase):
         self.port = PretoriusBrainPort(self.state, neural_config=small_config())
         self.question = "What do I remember of the balance reading for the beaker?"
 
+    def retrieval_audit_count(self):
+        with closing(sqlite3.connect(self.port.brain.store.path)) as conn:
+            return conn.execute("SELECT COUNT(*) FROM retrieval_audits").fetchone()[0]
+
     def snapshot(self):
         brain = self.port.brain
         return (
@@ -43,6 +50,7 @@ class SubjectRecollectionPortTests(unittest.TestCase):
             brain.neural.tick,
             len(brain.store.memories()),
             brain._neural_checkpoint_sha256(),
+            self.retrieval_audit_count(),
         )
 
     def admit_test_observation(self):
@@ -75,6 +83,35 @@ class SubjectRecollectionPortTests(unittest.TestCase):
         reopened = PretoriusBrainPort(self.state)
         after_restart = reopened.subject_recollection(self.question)
         self.assertEqual(first, after_restart)
+
+    def test_recollection_is_read_only_even_with_sqlite_query_only(self):
+        self.admit_test_observation()
+        before = self.snapshot()
+        original_connect = self.port.brain.store.connect
+
+        def query_only_connect():
+            connection = original_connect()
+            connection.execute("PRAGMA query_only=ON")
+            return connection
+
+        # A genuine SQLite write, even one omitted by BrainStore.digest(),
+        # must not be required to answer the character's recollection.
+        with patch.object(self.port.brain.store, "connect", query_only_connect):
+            for _ in range(2):
+                reply = self.port.subject_recollection(self.question)
+                self.assertTrue(reply["subject_frame"])
+        self.assertEqual(before, self.snapshot())
+
+        reopened = PretoriusBrainPort(self.state)
+        reopened.subject_recollection(self.question)
+        self.assertEqual(before, self.snapshot())
+
+        # Preserve retrieval audit behavior for the ordinary engineering view.
+        self.port.brain.cognitive_view(query=self.question)
+        self.assertEqual(self.retrieval_audit_count(), before[-1] + 1)
+        after_audited_view = self.snapshot()
+        self.port.subject_recollection(self.question)
+        self.assertEqual(after_audited_view, self.snapshot())
 
     def test_same_projection_as_original_authority_without_external_message(self):
         self.admit_test_observation()
