@@ -43,9 +43,9 @@ def local_turn(
         raise ValueError("Provide either a new user message or --resume")
     if user_text is not None and (
         type(user_text) is not str or not user_text.strip() or
-        user_text != user_text.strip() or len(user_text) > 2000
+        user_text != user_text.strip() or len(user_text) > 800
     ):
-        raise ValueError("User message must be 1 to 2000 nonblank characters")
+        raise ValueError("User message must be 1 to 800 nonblank characters")
     if now_ms is None:
         now_ms = int(time.time() * 1000)
     if type(now_ms) is not int or now_ms < 0:
