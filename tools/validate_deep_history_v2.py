@@ -8,8 +8,6 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from doctor_lives.store import SCHEMA_VERSION
-
 
 V1_SHA = "7be60ed46add7c74359b322cc033aa7dfabb08e8"
 
@@ -77,6 +75,7 @@ def create_v1_fixture(repo_root: Path, state_dir: Path) -> None:
 
 def fresh_v2_validation(output: dict[str, Any]) -> None:
     from doctor_lives import Experience, PretoriusBrain
+    from doctor_lives.store import SCHEMA_VERSION
     from doctor_lives.neural import DEFAULT_CONFIG
 
     with tempfile.TemporaryDirectory(prefix="pretorius-v2-fresh-") as td:
@@ -195,6 +194,7 @@ def fresh_v2_validation(output: dict[str, Any]) -> None:
 
 def migrate_v1_validation(v1_root: Path, output: dict[str, Any]) -> None:
     from doctor_lives import PretoriusBrain
+    from doctor_lives.store import SCHEMA_VERSION
 
     with tempfile.TemporaryDirectory(prefix="pretorius-v1-v2-migration-") as td:
         state = Path(td)
