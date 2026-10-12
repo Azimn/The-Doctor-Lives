@@ -122,6 +122,25 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
         self.assertNotIn("source_record_ids", payload["prompt"])
         self.assertNotIn("action_scores", payload["prompt"])
 
+    def test_pending_subject_outbox_prevents_duplicate_publish_across_restart(self):
+        with self.session() as session:
+            session.publish_current()
+            checkpoint = session._ipseity.checkpoint()
+            with self.assertRaisesRegex(RuntimeError, "outstanding subject frame"):
+                session.publish_current()
+            self.assertEqual(session._ipseity.checkpoint(), checkpoint)
+            self.assertEqual(session.pending_count(), 1)
+        with self.session() as reopened:
+            with self.assertRaisesRegex(RuntimeError, "outstanding subject frame"):
+                reopened.publish_current()
+            self.assertEqual(reopened._ipseity.checkpoint(), checkpoint)
+            reopened.deliver_next(now_ms=7000)
+            self.assertEqual(reopened.pending_count(), 0)
+            reopened.publish_current()
+            self.assertEqual(reopened.pending_count(), 1)
+            self.assertEqual(reopened._ipseity.checkpoint().last_tick,
+                             checkpoint.last_tick + 1)
+
     def test_raw_data_not_accepted_as_subject_frame(self):
         with self.session() as session:
             with self.assertRaises(TypeError):
