@@ -50,9 +50,20 @@ The canonical Doctor projection already protects provenance and converts
 felt state, memories, impulses, relationships and incoming communication into
 first-person experience. The imported standalone Synthetic Ipseity organ
 enforces another *active* independent admission and restartable render gate.
-The new `PROJECTED_SUBJECT_EVENT` donor kind preserves that verified
-projection verbatim. Re-projecting as a new recollection or external tool
-result would generate false epistemic/source attribution.
+The new `PROJECTED_SUBJECT_EVENT` donor kind preserves the already
+projected first-person wording verbatim. Re-projecting as a new recollection or
+external tool result would generate false epistemic/source attribution.
+
+**Precise provenance scope:** The Doctor `SubjectFrame` is kept as a typed
+object until the trusted bridge extracts subject text. The bridge creates new
+Synthetic Ipseity `SourceSignal` objects, so it does **not** preserve the
+original Doctor object identity or full memory-level provenance inside the
+donor. The donor's `doctor-projection:<sequence>` reference identifies its own
+admission order, not the original Doctor memory ID. Authoritative objective
+lineage remains only in Doctor's engineer-owned store and projection records.
+The current implementation does not claim a durable event-by-event cross-organ
+provenance join or cryptographic origin attestation. Never reconstruct original
+provenance by parsing first-person text or expose engineer lineage to Ollama.
 
 ## Usage from trusted Python host
 
@@ -89,6 +100,29 @@ with DoctorSyntheticIpseitySession(
 The lambda is illustrative, not a real model installation or an endorsement
 of accepting generated text as truth. A genuine host must use a trusted
 renderer adapter, validate communication and assign action permission separately.
+
+## Trusted recollection controller contract
+
+A host binding `bind_recollection_controller(choose_question)` takes
+responsibility for the **origin of the callback**, not just the grammar of its
+returned question. The callback must be installed by privileged host startup
+code, before user communication and model output can supply callbacks. It
+must derive a question from a host-authorized cognitive-policy event associated
+with the current subject, not copy user messages, tool text, model completions,
+or externally queued prompts. If the host cannot establish such a selection,
+it must not bind the callback or claim endogenous recall. After choosing the
+question, it must retain an engineer-only trace of the policy-decision receipt
+and brain-state epoch, separate from the subject frame. In this review
+candidate, the Doctor interface checks one-use, question-bound and state-bound
+invocation, **not** cognitive authorship, as Python cannot authenticate the
+provenance of an arbitrary same-process callable. Future host integrations
+must test a forged, captured, stale, cross-subject, and replayed selector.
+
+The live Ollama CI additionally checks that calls with an unbound controller,
+caller-provided question, or unauthorized brain-port query produce **zero**
+model invocations. It then makes one actual Ollama request from a deliberately
+host-bound positive-control selector and confirms subject-only rendering. This
+positive control establishes plumbing, never spontaneous cognitive recall.
 
 ## Restart, trust, and scope limitations
 
