@@ -51,6 +51,19 @@ class PretoriusBrainPort:
     def render_request(self, user_input: str | None = None) -> dict[str, Any]:
         return self.brain.render_request(user_input).to_dict()
 
+    def subject_recollection(self, question: str) -> dict[str, Any]:
+        """Return protected first-person recollection without forging a User turn.
+
+        Trusted local callers must establish that the question originated from
+        the character's own controller, rather than relabeling external input.
+        This read-only lookup is not itself evidence of autonomous recall.
+        """
+        frame = self.brain.subject_recollection(question)
+        return {
+            "schema": "the-doctor-lives.subject-recollection.v1",
+            "subject_frame": list(frame.renderer_context()),
+        }
+
     def sleep(self, ticks: int = 12) -> dict[str, Any]:
         return self.brain.sleep(ticks)
 
