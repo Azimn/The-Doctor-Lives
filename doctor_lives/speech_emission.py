@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from .engineer_time import engineer_time
+
 
 class SpeechEmissionUncertain(RuntimeError):
     """Emission may have occurred; do not claim or repeat it automatically."""
@@ -39,6 +41,9 @@ class SpeechEmissionReceipt:
     text: str
     before_tick: int
     before_neural_tick: int
+    emitted_utc: str | None = None
+    emitted_bmt_date: str | None = None
+    emitted_beat: str | None = None
 
 
 class SpeechEmissionJournal:
@@ -63,14 +68,23 @@ class SpeechEmissionJournal:
                 ),
                 sink_id TEXT,
                 before_tick INTEGER NOT NULL,
-                before_neural_tick INTEGER NOT NULL
+                before_neural_tick INTEGER NOT NULL,
+                emitted_utc TEXT,
+                emitted_bmt_date TEXT,
+                emitted_beat TEXT
             )
         """)
+        # Candidate upgrades must not fabricate emission times for older ACKs.
+        columns = {row[1] for row in self._db.execute("PRAGMA table_info(emissions)")}
+        for name in ("emitted_utc", "emitted_bmt_date", "emitted_beat"):
+            if name not in columns:
+                self._db.execute("ALTER TABLE emissions ADD COLUMN " + name + " TEXT")
 
     def _row(self, key: str):
         row = self._db.execute(
             "SELECT content,content_sha256,state,sink_id,"
-            "before_tick,before_neural_tick FROM emissions WHERE delivery_key=?",
+            "before_tick,before_neural_tick,emitted_utc,emitted_bmt_date,"
+            "emitted_beat FROM emissions WHERE delivery_key=?",
             (key,),
         ).fetchone()
         if row is not None and digest(row[0]) != row[1]:
@@ -89,7 +103,9 @@ class SpeechEmissionJournal:
                 raise SpeechEmissionUncertain("Different output for a committed turn")
             return current[0]
         self._db.execute(
-            "INSERT INTO emissions VALUES (?,?,?,?,?,?,?)",
+            "INSERT INTO emissions (delivery_key,content,content_sha256,"
+            "state,sink_id,before_tick,before_neural_tick) "
+            "VALUES (?,?,?,?,?,?,?)",
             (key, text, digest(text), "prepared", None,
              before_tick, before_neural_tick),
         )
@@ -111,7 +127,8 @@ class SpeechEmissionJournal:
         row = self._row(key)
         if row is None:
             raise SpeechEmissionUncertain("No recorded model output to emit")
-        text, checksum, state, sink_id, before_tick, before_neural_tick = row
+        (text, checksum, state, sink_id, before_tick, before_neural_tick,
+         emitted_utc, emitted_bmt_date, emitted_beat) = row
         if state == "emitting":
             raise SpeechEmissionUncertain(
                 "Output may already be visible; manual reconciliation required"
@@ -135,15 +152,21 @@ class SpeechEmissionJournal:
                     "Output sink failed to attest exactly the emitted text"
                 )
             sink_id = ack.sink_id
+            stamp = engineer_time()  # Engineer-only, after confirmed sink write.
+            emitted_utc, emitted_bmt_date, emitted_beat = (
+                stamp.utc_iso, stamp.bmt_date, stamp.beat
+            )
             changed = self._db.execute(
-                "UPDATE emissions SET state='acknowledged',sink_id=? "
+                "UPDATE emissions SET state='acknowledged',sink_id=?,"
+                "emitted_utc=?,emitted_bmt_date=?,emitted_beat=? "
                 "WHERE delivery_key=? AND state='emitting'",
-                (sink_id, key),
+                (sink_id, emitted_utc, emitted_bmt_date, emitted_beat, key),
             )
             if changed.rowcount != 1:
                 raise SpeechEmissionUncertain("Speech acknowledgment lost")
         return SpeechEmissionReceipt(
             key, sink_id, checksum, text, before_tick, before_neural_tick,
+            emitted_utc, emitted_bmt_date, emitted_beat,
         )
 
     def close(self):
