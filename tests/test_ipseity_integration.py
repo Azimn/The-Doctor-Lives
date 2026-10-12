@@ -90,6 +90,38 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
             self.assertTrue(self.sent[0].startswith("I "))
             self.assertNotIn("source_record_ids", self.sent[0])
 
+    def test_local_ollama_transport_receives_only_authorized_subject_text(self):
+        import json
+        from synthetic_ipseity import LocalOllamaRenderer
+
+        requests = []
+        def fake_transport(body, timeout):
+            requests.append(json.loads(body))
+            return b'{"response":"I should examine that reading."}'
+
+        query = "What do I remember of the balance reading for the beaker?"
+        renderer = LocalOllamaRenderer("qwen3:1.5b", transport=fake_transport)
+        with self.cls(self.root, renderer=renderer,
+                      neural_config=small_config()) as session:
+            self.add_observation(session)
+            expected = "\\n".join(
+                session._doctor.brain.subject_recollection(query).renderer_context()
+            )
+            previous_state = session._doctor.brain.store.digest()
+            session.publish_recollection(query)
+            receipt = session.deliver_next(now_ms=8000)
+            self.assertEqual(receipt.response, "I should examine that reading.")
+            self.assertEqual(previous_state, session._doctor.brain.store.digest())
+        self.assertEqual(len(requests), 1)
+        payload = requests[0]
+        self.assertEqual(set(payload), {"model", "prompt", "stream", "options"})
+        self.assertEqual(payload["model"], "qwen3:1.5b")
+        self.assertEqual(payload["prompt"], expected)
+        self.assertIn("325", payload["prompt"])
+        self.assertNotIn("verified-laboratory-observation", payload["prompt"])
+        self.assertNotIn("source_record_ids", payload["prompt"])
+        self.assertNotIn("action_scores", payload["prompt"])
+
     def test_raw_data_not_accepted_as_subject_frame(self):
         with self.session() as session:
             with self.assertRaises(TypeError):
