@@ -13,7 +13,7 @@ Doctor subject-recollection interface proposal: PR #55, commit
 Synthetic Ipseity core baseline:
 `Azimn/synthetic-ipseity@d55e2a7fecda1760df1d21590ce3bdcfc7f0a729`.
 Cross-repository additive trusted-projector donor:
-`Azimn/synthetic-ipseity@8b4853cb8cfe2244f5382710fa1434783444806b`
+`Azimn/synthetic-ipseity@ed3a92b0b8ddcbdce47b2229e4783517bec611c6`
 (PR #31, v0.9.11 candidate). Exact donor commit is checked out in the
 specialized GitHub Actions workflow. It is not an unrestricted branch pin.
 
@@ -127,3 +127,65 @@ prompt handling, model-response admission discipline, and source-truth
 semantics. Run the actual laboratory across restart and one real local renderer
 with opt-in and baseline arms. Preserve the known negative model-action results
 under Issue #53 rather than retroactively claiming improved autonomy.
+
+## Concrete local entry point
+
+The optional `doctor-lives-local` command is the approved first integration
+chassis for a human-initiated dialogue turn. It does not use the previous raw
+brain CLI as a model entrypoint. The runtime requires the reviewed
+`synthetic-ipseity==0.9.11` package. It fails closed when the integration
+capability is unavailable or an earlier subject frame is outstanding.
+
+Use a **new disposable directory** until the release gate is reviewed. On
+Windows with Python 3.11+, a Git client, and Ollama installed:
+
+```powershell
+py -m pip install "git+https://github.com/Azimn/synthetic-ipseity.git@ed3a92b0b8ddcbdce47b2229e4783517bec611c6"
+py -m pip install "git+https://github.com/Azimn/The-Doctor-Lives.git@integration/synthetic-ipseity-subject-path"
+ollama pull qwen3:1.5b
+doctor-lives-local --state .\pretorius-test-state --model qwen3:1.5b --say "Good evening, Doctor."
+```
+
+For a temporary local inference failure, repeat **without** re-entering the
+human message:
+
+```powershell
+doctor-lives-local --state .\pretorius-test-state --model qwen3:1.5b --resume
+```
+
+A pending frame, including one already leased for delivery, must be
+acknowledged or reconciled before the host publishes another frame.
+`require_drained=True` is checked atomically within the donor's durable
+outbox transaction. It does not promise exactly-once model execution,
+consistent speech across model swaps, or atomic transactions between
+Pretorius's brain DB and the organ DB.
+
+The initial CLI presents **human-initiated dialogue only**. The user message
+is projected and stored as a received communication; only the authorized
+`SubjectFrame` goes to Ollama. The model reply is deliberately **not**
+re-ingested as lived memory, speech, action or world truth. There is not yet
+an autonomous wake schedule or tool executor in this CLI. The first
+lineage source remains PretoriusBrain, never the renderer.
+
+The donor remains an optional source package rather than a required global
+dependency because research and existing approved v0.5 brain runs must remain
+stable. The exact donor commit is tested in the dedicated cross-repository
+workflow. The version check rejects unreviewed package versions, while commit
+pinning during deployment is still the installer/operator's responsibility.
+
+## Bypass inventory and safe claims
+
+The ordinary `doctor-lives` CLI can print diagnostic/render data without
+Synthetic Ipseity, but does not invoke a language model. It must remain an
+engineer CLI, not become the renderer used by the local hosted experience.
+`PretoriusBrainPort.render_request` also remains callable by trusted Python
+for research and existing tests. The `doctor-lives-local` path invokes a
+model **only through** `SubjectOnlyRendererPort` after durable admission.
+Other standalone research scripts may call models directly; they are not
+authorized local-host entry points.
+
+The implementation has not proven global no-bypass across hostile Python
+code sharing process authority, an alternate host, or a future MMO adapter.
+Before moving these PRs into production main, an independent review must
+verify the actual deployed launcher, package/dependency lock, host action
+capabilities, conflict recovery and all future model-context assembly.
