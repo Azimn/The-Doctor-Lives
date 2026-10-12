@@ -9,7 +9,8 @@ exclusively to this port and all review gates are satisfied.
 Doctor production baseline:
 `Azimn/The-Doctor-Lives@56aab5493ef48cdb560881a138b2277ca6ebcce0`.
 Doctor subject-recollection interface proposal: PR #55, commit
-`97b2c9ad1e0d765ab07cd6c62541f3ee9c4896cc`.
+`c79e95ea71862f49afa8baa0909c13f8cf884ee4`,
+now including read-only retrieval and the host-controller question gate.
 Synthetic Ipseity core baseline:
 `Azimn/synthetic-ipseity@d55e2a7fecda1760df1d21590ce3bdcfc7f0a729`.
 Cross-repository additive trusted-projector donor:
@@ -76,10 +77,12 @@ with DoctorSyntheticIpseitySession(
     runtime.publish_current()
     receipt = runtime.deliver_next(now_ms=1000)
 
-    # PR #55's Doctor-owned first-person retrieval:
-    runtime.publish_recollection(
-        "What do I remember of the balance reading for the beaker?"
+    # Only the host-verified selector produces an internal question.
+    # This fixture selector is NOT evidence of self-initiated recall.
+    runtime.bind_recollection_controller(
+        lambda: "What do I remember of the balance reading for the beaker?"
     )
+    runtime.publish_recollection()
     recall_receipt = runtime.deliver_next(now_ms=2000)
 ```
 
@@ -97,9 +100,13 @@ Renderer failure leaves a subject-only outbox frame pending; a later process
 can lease and retry that original text. Delivery is at-least-once, not
 exactly-once. Host authorization, external action acknowledgements and
 cross-database Doctor/store atomicity must be handled by a future standalone
-runtime transaction/receipt protocol. Caller controls when a new
-`publish_current` or `publish_recollection` opportunity is created; this
-interface does not authenticate autonomous intention by itself.
+runtime transaction/receipt protocol. Caller controls when a new `publish_current` or
+`publish_recollection` opportunity is created; recollection requires a
+bound trusted selector and one-use brain-state authorization. The host must
+verify that the selector originates from a legitimate controller, not external
+user text, tool output, or a forged model claim. This still does not certify
+autonomous intention or prevent untrusted Python code with shared process
+authority from bypassing host policy.
 
 The trusted host must *not* hand arbitrary text to this organ as a supposedly
 preprojected event. `_publish_typed_subject_frame` only accepts the

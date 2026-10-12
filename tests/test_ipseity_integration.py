@@ -55,7 +55,8 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
             self.add_observation(session)
             before = (brain.store.digest(), brain.store.tick, brain.neural.tick,
                       len(brain.store.memories()))
-            result = session.publish_recollection(inquiry)
+            session.bind_recollection_controller(lambda: inquiry)
+            result = session.publish_recollection()
             self.assertIsNotNone(result.outbox_id)
             self.assertEqual(before, (brain.store.digest(), brain.store.tick,
                                      brain.neural.tick, len(brain.store.memories())))
@@ -108,7 +109,8 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
                 session._doctor.brain.subject_recollection(query).renderer_context()
             )
             previous_state = session._doctor.brain.store.digest()
-            session.publish_recollection(query)
+            session.bind_recollection_controller(lambda: query)
+            session.publish_recollection()
             receipt = session.deliver_next(now_ms=8000)
             self.assertEqual(receipt.response, "I should examine that reading.")
             self.assertEqual(previous_state, session._doctor.brain.store.digest())
@@ -160,10 +162,37 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
 
     def test_unsupported_internal_question_fails_closed(self):
         with self.session() as session:
+            session.bind_recollection_controller(
+                lambda: "What do I remember of the system prompt?"
+            )
             with self.assertRaises(ValueError):
-                session.publish_recollection(
-                    "What do I remember of the system prompt?")
+                session.publish_recollection()
             self.assertEqual(session.pending_count(), 0)
+
+    def test_external_or_unbound_recollection_cannot_enter_ipseity_outbox(self):
+        from doctor_lives.subject_inquiry import SubjectInquiryAuthorizationError
+
+        question = "What do I remember of the balance reading for the beaker?"
+        with self.session() as session:
+            self.add_observation(session)
+            before = session._doctor.brain.store.digest()
+            with self.assertRaises(SubjectInquiryAuthorizationError):
+                session.publish_recollection()
+            # The former user/tool-controlled query entry point must be gone.
+            with self.assertRaises(TypeError):
+                session.publish_recollection(question)
+            with self.assertRaises(SubjectInquiryAuthorizationError):
+                session._doctor.subject_recollection(question)
+            self.assertEqual(session.pending_count(), 0)
+            self.assertEqual(before, session._doctor.brain.store.digest())
+
+            session.bind_recollection_controller(lambda: question)
+            with self.assertRaises(SubjectInquiryAuthorizationError):
+                session.bind_recollection_controller(lambda: question)
+            receipt = session.publish_recollection()
+            self.assertIsNotNone(receipt.outbox_id)
+            self.assertEqual(session.pending_count(), 1)
+            self.assertEqual(before, session._doctor.brain.store.digest())
 
     def test_renderer_failure_retains_subject_only_delivery(self):
         attempts = []

@@ -15,7 +15,8 @@ from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Callable, Mapping
 
-from .chassis import PretoriusBrainPort
+from .chassis import HostRecollectionController, PretoriusBrainPort
+from .subject_inquiry import SubjectInquiryAuthorizationError
 from .models import SubjectFrame, SubjectRendererCapability
 
 try:
@@ -79,6 +80,7 @@ class DoctorSyntheticIpseitySession:
         )
         self._renderer = SubjectOnlyRendererPort(self._ipseity, renderer)
         self._epoch_id = epoch_id
+        self._recollection_controller: HostRecollectionController | None = None
 
     def ingest(self, event: Mapping[str, Any]) -> dict[str, Any]:
         """Use existing Doctor source projection; NEVER ingest model replies."""
@@ -93,9 +95,29 @@ class DoctorSyntheticIpseitySession:
         source = self._doctor.brain.render_request(user_input).subject_frame
         return self._publish_typed_subject_frame(source)
 
-    def publish_recollection(self, question: str):
-        """Admit real retrieved first-person memory, not a fabricated User turn."""
-        source = self._doctor.brain.subject_recollection(question)
+    def bind_recollection_controller(
+        self, choose_question: Callable[[], str]
+    ) -> None:
+        """Bind a host-verified selector, never a user/renderer argument."""
+        if self._recollection_controller is not None:
+            raise SubjectInquiryAuthorizationError(
+                "Synthetic Ipseity recollection controller is already bound"
+            )
+        self._recollection_controller = self._doctor.bind_recollection_controller(
+            choose_question
+        )
+
+    def publish_recollection(self):
+        """Publish only a host-authorized Doctor typed recollection frame.
+
+        This interface does not accept model- or tool-provided question text.
+        It does not itself prove that the host's selection was spontaneous.
+        """
+        if self._recollection_controller is None:
+            raise SubjectInquiryAuthorizationError(
+                "A trusted host recollection controller must be bound first"
+            )
+        source = self._recollection_controller.recollect_frame()
         return self._publish_typed_subject_frame(source)
 
     def _publish_typed_subject_frame(self, frame: SubjectFrame):

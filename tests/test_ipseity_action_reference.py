@@ -59,9 +59,10 @@ class DoctorActionContractTests(unittest.TestCase):
                 "source": "synthetic-reference-lab-fixture",
             })
             original = session._doctor.brain.store.digest()
-            published = session.publish_recollection(
-                "What do I remember of the small wooden drawer?"
+            session.bind_recollection_controller(
+                lambda: "What do I remember of the small wooden drawer?"
             )
+            published = session.publish_recollection()
             self.assertIsNotNone(published.outbox_id)
             with self.Gateway(
                 self.root / "synthetic_ipseity.sqlite3",
