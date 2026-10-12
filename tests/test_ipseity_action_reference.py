@@ -59,7 +59,9 @@ class DoctorActionContractTests(unittest.TestCase):
                 "source": "synthetic-reference-lab-fixture",
             })
             original = session._doctor.brain.store.digest()
-            published = session.publish_current()
+            published = session.publish_recollection(
+                "What do I remember of the small wooden drawer?"
+            )
             self.assertIsNotNone(published.outbox_id)
             with self.Gateway(
                 self.root / "synthetic_ipseity.sqlite3",
@@ -74,7 +76,8 @@ class DoctorActionContractTests(unittest.TestCase):
                 self.assertTrue(gate.drawer_open())
                 self.assertEqual(gate.action_count(), 1)
                 self.assertEqual(len(model_inputs), 1)
-                self.assertIn("I notice", model_inputs[0])
+                self.assertIn("drawer", model_inputs[0].lower())
+                self.assertTrue(model_inputs[0].startswith("I "))
                 self.assertNotIn("synthetic-reference-lab-fixture", model_inputs[0])
                 self.assertEqual(session.pending_count(), 0)
                 self.assertEqual(original, session._doctor.brain.store.digest())
