@@ -12,6 +12,7 @@ this path. The eventual standalone host must forbid such paths.
 from __future__ import annotations
 
 from pathlib import Path
+from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Callable, Mapping
 
 from .chassis import PretoriusBrainPort
@@ -53,8 +54,17 @@ class DoctorSyntheticIpseitySession:
     ):
         if not callable(renderer):
             raise TypeError("renderer must accept subject text")
-        if not hasattr(Kind, "PROJECTED_SUBJECT_EVENT"):
-            raise RuntimeError("Requires reviewed Synthetic Ipseity projected event API")
+        try:
+            donor_version = version("synthetic-ipseity")
+        except PackageNotFoundError as exc:
+            raise RuntimeError(
+                "Synthetic Ipseity must be installed from the reviewed donor"
+            ) from exc
+        if donor_version != "0.9.11" or not hasattr(Kind, "PROJECTED_SUBJECT_EVENT"):
+            raise RuntimeError(
+                "Unreviewed Synthetic Ipseity donor: expected 0.9.11 "
+                "with trusted projected-event and drained-outbox capabilities"
+            )
         self.state_dir = Path(state_dir)
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self._doctor = PretoriusBrainPort(self.state_dir, neural_config=neural_config)
