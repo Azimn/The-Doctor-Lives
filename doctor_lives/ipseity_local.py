@@ -166,9 +166,23 @@ def local_turn(
                 # memory without its neural consequence. Do not declare the
                 # turn recovered merely because a matching memory row exists.
                 brain = session._doctor.brain
+                speech_already_admitted = (
+                    emit is not None
+                    and stage == "published"
+                    and len([
+                        memory for memory in brain.store.memories()
+                        if memory["source"] == "local-emission:" + record.key
+                    ]) == 1
+                    and speech._row(record.key) is not None
+                    and speech._row(record.key)[2] == "acknowledged"
+                )
+                expected_tick = (
+                    record.before_tick + 2 if speech_already_admitted
+                    else record.before_tick + 1
+                )
                 if (
                     int(matched[0]["created_tick"]) != record.before_tick + 1
-                    or brain.store.tick != record.before_tick + 1
+                    or brain.store.tick != expected_tick
                     or brain.neural.tick <= record.before_neural_tick
                 ):
                     raise LocalTurnConflict(
