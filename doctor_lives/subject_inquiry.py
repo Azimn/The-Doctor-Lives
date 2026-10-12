@@ -16,6 +16,10 @@ class SubjectInquiryError(ValueError):
     """A proposed self-question cannot cross the subject-recollection boundary."""
 
 
+class SubjectInquiryAuthorizationError(SubjectInquiryError):
+    """A direct, forged or replayed self-question is not host-authorized."""
+
+
 _OPENING = re.compile(
     r"^(?:What do I remember|Do I recall|Have I|Can I remember|I wonder|Did I)\b",
     re.IGNORECASE,
