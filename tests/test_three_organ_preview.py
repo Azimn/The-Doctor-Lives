@@ -410,6 +410,76 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
                 row = db.execute("SELECT status FROM concerns WHERE id=?", (gap,)).fetchone()
             self.assertEqual(row["status"], "open")
 
+    def test_cross_restart_matched_object_resolution_affects_subsequent_policy(self):
+        """Sensus cache, concern closure and Doctor policy across restart."""
+        with self.host() as initial:
+            disputed = (
+                self.claim(
+                    event="persist-visual", channel="vision", attribute="pressure",
+                    value="high", object_hint="old-tick-hint",
+                    features=(("engraving", "A73"), ("shape", "round")),
+                    tick=initial._scene_tick,
+                ),
+                self.claim(
+                    event="persist-instrument", channel="instrument",
+                    attribute="pressure", value="low", object_hint="old-tick-hint",
+                    features=(("engraving", "A73"), ("shape", "round")),
+                    tick=initial._scene_tick,
+                ),
+            )
+            first = initial.cycle(
+                disputed,
+                trusted_source_refs=frozenset({
+                    "trusted:persist-visual", "trusted:persist-instrument",
+                }),
+                now_ms=1000,
+            )
+            gap = first["new_epistemic_gap_ids"][0]
+            with initial._doctor.brain.store.connect() as conn:
+                before_status = conn.execute(
+                    "SELECT status FROM concerns WHERE id=?", (gap,),
+                ).fetchone()["status"]
+            self.assertEqual(before_status, "open")
+        with self.host() as continued:
+            self.assertGreaterEqual(continued._scene_tick, 2)
+            corroboration = (
+                self.claim(
+                    event="later-visual", channel="vision", attribute="pressure",
+                    value="high", object_hint="new-tick-hint",
+                    features=(("engraving", "A73"), ("shape", "round")),
+                    tick=continued._scene_tick,
+                ),
+                self.claim(
+                    event="later-instrument", channel="instrument",
+                    attribute="pressure", value="high", object_hint="new-tick-hint",
+                    features=(("engraving", "A73"), ("shape", "round")),
+                    tick=continued._scene_tick,
+                ),
+            )
+            second = continued.cycle(
+                corroboration,
+                trusted_source_refs=frozenset({
+                    "trusted:later-visual", "trusted:later-instrument",
+                }),
+                now_ms=2000,
+            )
+            self.assertEqual(second["scene_object_ids"], first["scene_object_ids"])
+            self.assertEqual(second["resolved_epistemic_gap_ids"], [gap])
+            with continued._doctor.brain.store.connect() as conn:
+                row = conn.execute(
+                    "SELECT status,resolution FROM concerns WHERE id=?", (gap,),
+                ).fetchone()
+                effects = conn.execute(
+                    "SELECT outcome FROM concern_events WHERE concern_id=? "
+                    "AND transition='policy_effect'", (gap,),
+                ).fetchall()
+            self.assertEqual(row["status"], "resolved")
+            self.assertEqual(len(effects), 1)
+            self.assertEqual(
+                __import__("json").loads(effects[0]["outcome"])["decision_id"],
+                second["endogenous_decision_id"],
+            )
+
     def test_no_production_module_passes_preview_live_true(self):
         import ast
         import doctor_lives
