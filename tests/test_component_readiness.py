@@ -1,7 +1,8 @@
 """Component readiness is an honest package audit, not runtime activation."""
 from __future__ import annotations
 
-import ast
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 import tempfile
 import unittest
@@ -66,13 +67,17 @@ class ReadinessTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             readiness.audit(self.root)
 
-    def test_cli_does_not_claim_production_all_active(self):
-        self.assertEqual(
-            [a for a in ast.walk(ast.parse(readiness.__file__ and Path(readiness.__file__).read_text()))
-             if isinstance(a, ast.Constant) and a.value is True],
-            [],
-            "No hardcoded 'true' literal is needed for an all-active release claim",
-        )
+    def test_cli_fails_production_even_if_every_package_is_importable(self):
+        report = {
+            "schema": "the-doctor-lives.component-readiness.v1",
+            "all_three_importable_or_present": True,
+            "all_three_active_in_production": False,
+        }
+        with patch.object(readiness, "audit", return_value=report):
+            with redirect_stdout(StringIO()):
+                self.assertEqual(readiness.main(["--require-staging-components"]), 0)
+                self.assertEqual(readiness.main(["--require-production"]), 3)
+                self.assertEqual(readiness.main([]), 0)
 
 
 if __name__ == "__main__":
