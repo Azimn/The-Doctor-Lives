@@ -452,5 +452,85 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
                 recovery.resume_preview(now_ms=40000)
         self.assertEqual(len(called), 1)
 
+
+    def test_hard_exit_across_scene_boundaries(self):
+        """Actual child-process termination, beyond Python exception injection."""
+        import subprocess
+        import sys
+        stages = (
+            "scene_built", "applied_operation", "admitted",
+            "decision_persisted", "published_not_journaled",
+            "delivery_acknowledged",
+        )
+        child = """
+import os
+import sys
+from pathlib import Path
+from doctor_lives.three_organ_preview import ThreeOrganPretoriusPreview
+from sensus_artificialis import Evidence, Percept
+from doctor_lives.neural import DEFAULT_CONFIG
+state = Path(sys.argv[1])
+checkpoint = sys.argv[2]
+config = dict(DEFAULT_CONFIG)
+config.update(neurons=128, sensory_dim=64, avg_recurrent_degree=8,
+              input_degree=4, action_population_size=8)
+def renderer(_subject):
+    with (state / "renderer_calls.txt").open("a", encoding="utf-8") as file:
+        file.write("rendered\\n")
+    return "Hard-kill probe complete."
+with ThreeOrganPretoriusPreview(
+    state, enabled=True, renderer=renderer, neural_config=config,
+) as host:
+    def hard_exit(name):
+        if name == checkpoint:
+            os._exit(97)
+    host._checkpoint = hard_exit
+    percept = Percept(
+        event_id="hard-kill", channel="conversation",
+        evidence=Evidence.REPORTED, source_ref="trusted:hard-kill",
+        tick=host._scene_tick, attribute="message",
+        value="Retain this interaction across restart.", confidence=0.8,
+    )
+    host.cycle(
+        (percept,), trusted_source_refs=frozenset({"trusted:hard-kill"}),
+        now_ms=1000,
+    )
+raise RuntimeError("checkpoint was not reached")
+"""
+        for name in stages:
+            with self.subTest(stage=name), tempfile.TemporaryDirectory() as root:
+                state = Path(root) / "three-organ-preview"
+                result = subprocess.run(
+                    [sys.executable, "-c", child, str(state), name],
+                    capture_output=True, text=True, timeout=60,
+                )
+                self.assertEqual(result.returncode, 97, result.stderr)
+                with self.Host(
+                    state, enabled=True, renderer=lambda _subject: "Hard-kill probe complete.",
+                    neural_config=small_config(),
+                ) as recovered:
+                    if name == "delivery_acknowledged":
+                        with self.assertRaisesRegex(RuntimeError, "acknowledged"):
+                            recovered.resume_preview(now_ms=30101)
+                    else:
+                        self.assertEqual(
+                            recovered.resume_preview(now_ms=30101),
+                            "Hard-kill probe complete.",
+                        )
+                    with recovered._doctor.brain.store.connect() as conn:
+                        entries = conn.execute(
+                            "SELECT COUNT(*) FROM events WHERE source LIKE "
+                            "'preview-verified-user:trusted:hard-kill:%'"
+                        ).fetchone()[0]
+                        decisions = conn.execute(
+                            "SELECT COUNT(*) FROM policy_decisions WHERE "
+                            "policy_version='preview-epistemic-deliberation-v0.1'"
+                        ).fetchone()[0]
+                    self.assertEqual(entries, 1)
+                    self.assertEqual(decisions, 1)
+                marker = state / "renderer_calls.txt"
+                if name == "delivery_acknowledged":
+                    self.assertEqual(marker.read_text().count("rendered"), 1)
+
 if __name__ == "__main__":
     unittest.main()
