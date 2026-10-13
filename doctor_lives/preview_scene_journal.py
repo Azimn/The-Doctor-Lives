@@ -38,7 +38,8 @@ class PreviewSceneJournal:
             CREATE TABLE IF NOT EXISTS scenes (
                 id TEXT PRIMARY KEY, stage TEXT NOT NULL, op_index INTEGER NOT NULL,
                 payload TEXT NOT NULL, decision_json TEXT,
-                decision_before INTEGER, publish_before INTEGER
+                decision_before INTEGER, publish_before INTEGER,
+                op_active_index INTEGER, op_before_neural INTEGER
             );
             CREATE UNIQUE INDEX IF NOT EXISTS one_active_preview_scene
                 ON scenes ((1)) WHERE stage != 'delivered';
@@ -47,6 +48,12 @@ class PreviewSceneJournal:
                 snapshot_json TEXT NOT NULL
             );
         """)
+        existing = {row["name"] for row in self._db.execute(
+            "PRAGMA table_info(scenes)"
+        )}
+        for name in ("op_active_index", "op_before_neural"):
+            if name not in existing:
+                self._db.execute("ALTER TABLE scenes ADD COLUMN " + name + " INTEGER")
 
     def active(self) -> dict | None:
         row = self._db.execute(
@@ -89,12 +96,34 @@ class PreviewSceneJournal:
     def step(self, key: str, index: int) -> None:
         with self._db:
             result = self._db.execute(
-                "UPDATE scenes SET op_index=? WHERE id=? "
+                "UPDATE scenes SET op_index=?,op_active_index=NULL,"
+                "op_before_neural=NULL WHERE id=? "
                 "AND stage='scene_built' AND op_index=?",
                 (index + 1, key, index),
             )
             if result.rowcount != 1:
                 raise PreviewSceneConflict("Scene operation cursor changed")
+
+    def prepare_ingress(self, key: str, index: int, neural_tick: int) -> int:
+        """Durably seal the neural checkpoint baseline before ingress."""
+        row = self._db.execute(
+            "SELECT op_active_index,op_before_neural FROM scenes "
+            "WHERE id=? AND op_index=? AND stage='scene_built'",
+            (key, index),
+        ).fetchone()
+        if row is None:
+            raise PreviewSceneConflict("Ingress cursor is stale")
+        if row["op_active_index"] is not None:
+            if int(row["op_active_index"]) != index:
+                raise PreviewSceneConflict("Different incomplete ingress operation")
+            return int(row["op_before_neural"])
+        with self._db:
+            self._db.execute(
+                "UPDATE scenes SET op_active_index=?,op_before_neural=? "
+                "WHERE id=? AND op_index=? AND op_active_index IS NULL",
+                (index, neural_tick, key, index),
+            )
+        return neural_tick
 
     def stage(self, key: str, old: str, new: str) -> None:
         allowed = {
