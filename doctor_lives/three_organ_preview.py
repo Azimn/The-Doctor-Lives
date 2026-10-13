@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 from pathlib import Path
 import re
 import sys
@@ -42,14 +41,24 @@ def _require_pinned_sensus() -> None:
     """Check donor commit identity and the imported code bytes."""
     core_path = Path(_sensus_core.__file__).resolve()
     root = core_path.parent.parent
-    try:
-        result = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "HEAD"],
-            capture_output=True, text=True, timeout=4, check=True,
-        )
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise RuntimeError("Sensus preview requires a reviewed Git checkout") from exc
-    if result.stdout.strip() != _PINNED_SENSUS_COMMIT:
+    git_dir = root / ".git"
+    if not git_dir.is_dir():
+        raise RuntimeError("Sensus preview requires a reviewed Git checkout")
+    head_text = (git_dir / "HEAD").read_text(encoding="ascii").strip()
+    if head_text.startswith("ref: "):
+        ref = head_text[5:]
+        loose = git_dir / ref
+        if loose.is_file():
+            head_text = loose.read_text(encoding="ascii").strip()
+        else:
+            packed = git_dir / "packed-refs"
+            pairs = (
+                [line.split(" ", 1) for line in packed.read_text("ascii").splitlines()
+                 if line and not line.startswith(("#", "^")) and " " in line]
+                if packed.is_file() else []
+            )
+            head_text = next((sha for sha, name in pairs if name == ref), "")
+    if head_text != _PINNED_SENSUS_COMMIT:
         raise RuntimeError("Unreviewed Sensus commit; preview refuses to start")
     source = core_path.read_bytes()
     git_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
