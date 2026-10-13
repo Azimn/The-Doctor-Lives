@@ -121,7 +121,7 @@ The donor PR #34, parent Doctor PR #59 and stacked PR #60 remain **DRAFT/UNMERGE
 
 ## Host-neutral bounded speech control v0.1 (2026-10-13)
 
-**Canonical source:** Synthetic Ipseity donor `007c0a8df473df0fa10aeeec9ba1e17691268260` with reusable modules `speech_control.py` and `local_ollama.LocalOllamaConfiguredRenderer`. Doctor Lives does not copy these implementations. The exact donor revision is pinned both in the optional Python extra and the CI checkout.
+**Canonical source:** Synthetic Ipseity donor `a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa` with reusable modules `speech_control.py` and `local_ollama.LocalOllamaConfiguredRenderer`. Doctor Lives does not copy these implementations. The exact donor revision is pinned both in the optional Python extra and the CI checkout.
 
 The governor now has an independent `GovernedSpeechControl` port accepting **host-authoritative** typed identity, host-authoritative addressee, host-authoritative discourse mode (`direct`/`narrated`/`quoted`) and a declared language (`en` currently supported). The model receives only an already-admitted first-person subject text and separate trusted renderer-only instructions. Unsupported languages reject before the model can be called; they do not silently pass English regex rules.
 
