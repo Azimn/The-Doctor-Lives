@@ -1,0 +1,30 @@
+name: endogenous-recall-synthetic-research
+on:
+  push:
+    branches:
+      - research/endogenous-recall-v01
+  workflow_dispatch:
+
+jobs:
+  synthetic-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -e .
+      - name: Verify isolated synthetic policy action
+        run: python -m unittest discover -s tests -p 'test_endogenous_recall*.py' -v
+      - name: Run matched-arm source-grounded outcomes
+        run: python tools/run_endogenous_recall_benchmark.py --seed 1842 > /tmp/endogenous_recall_benchmark.json
+      - name: Print compact outcome summary
+        run: python -c 'import json; print(json.load(open("/tmp/endogenous_recall_benchmark.json"))["summary"])'
+      - name: Retain all paired outcome trials for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-endogenous-recall-outcomes-1842
+          path: /tmp/endogenous_recall_benchmark.json
+          if-no-files-found: warn
+          retention-days: 30
