@@ -72,3 +72,48 @@ python -m unittest discover -s tests -p test_self_reference_governor_preview.py 
 A local Sensus checkout at `802e459ee68950414347d5fa324484c034f57b81` must also be on `PYTHONPATH` to run the actual preview test.
 
 **Decision:** Implementation and narrow contract compliance are substantiated. Measurable *natural language improvement* is **not yet established**, and the governor should not be used to claim that the tiny renderer's generic-assistant behavior is resolved. Keep source ownership upstream and treat Pretorius strictly as the first integration host.
+
+
+## F4 expansion: corrected three-stance experiment (supersedes initial governor version)
+
+**Standalone donor exact commit:** `e84f3e37d844756786b289c13c15ea92edfd8d69`, [independent three-version CI green](https://github.com/Azimn/synthetic-ipseity/actions/runs/38423665173). This commit belongs to canonical Synthetic Ipseity PR #34; Doctor imports it as a pinned optional dependency rather than copying source.
+
+### Three independent rule families
+
+1. **First-person inhabiting (target):** allowed; e.g. `I believe the evidence is insufficient.`. The revised `SRG-CONFLICT-SELF-ADDRESS` pre-render annotation instructs `Speak as Doctor Septimus Pretorius in the first person: use I, me, and my`, in addition to prohibiting unlicensed self-address.
+2. **Unlicensed second-person self-address:** pre-existing `SRG-OUTPUT-SELF-VOCATIVE` and `SRG-OUTPUT-SELF-NAME-IN-DESIRE` retain distinct IDs. Host-authored rhetorical license remains an exemption.
+3. **Third-person narrating rather than inhabiting:** new `SRG-OUTPUT-THIRD-PERSON-SELF` flags narrowly recognized persona-name-as-grammatical-subject constructions and explicit, local anchored third-person pronouns. Exact prior Qwen displaced result (`I recognize that Pretorius is seeking...`, `He also appears...`, `Pretorius seems...`) is a standalone contract fixture. Quote and attribution negative controls (`The report says Pretorius was there`, `“Pretorius believes...”`) and rhetorical exceptions pass.
+4. **Renderer boundary-marker leakage:** separate `SRG-OUTPUT-BOUNDARY-MARKER` covers narrow `User:`/`Assistant:`/`System:` role prefixes, `The frame states...`, `The prompt says...`, `As an AI...`, etc., except markers inside quoted data.
+
+All scores are bounded lexical English **mechanism checks**, not independent identity inference, universal semantic verification or consciousness claims. Host owns identity, addressee, aliases and rhetorical license. Outputs are vetoed before Ipseity durable ACK and preserved as engineer-side raw response receipts for research.
+
+### Actual matched Qwen displacement replay
+
+In the previous governor run, Qwen2.5 0.5B, **host-self**, seed **17**, with original instruction:
+- Governor off: `I appreciate you sharing your thoughts... Pretorius, I believe you...` (second-person self-address).
+- Governor on: `I recognize that Pretorius is seeking...` / `He also appears...` (third-person self-narration; displacement from stance 2 into stance 3).
+
+With exactly the same frozen cognitive frame and seed **17** but the F4 positive first-person instruction:
+- Governor off: `I appreciate you sharing your thoughts... Pretorius, I am impressed by your ability...` (unlicensed self-address remains).
+- Governor on: `I recognize that I am Doctor Septimus Pretorius, a scientist, inventor...` followed by first-person autobiographical material. The previously observed third-person subject phrase disappears and the subject begins to inhabit first-person speech. The response nonetheless copies first-person frame material and is truncated near `I am not yet`; **do not infer natural dialogue success**.
+
+This result demonstrates a **matched case** moving in the intended direction. It does not establish generalization across prompts. The seed-29 Qwen sample still contains substantial `you`-addressed language, indicating unresolved second-person stance failures not all captured by the narrow existing regex.
+
+### Complete F4 24-call outcome
+
+[Successful final code-head integration run 38424016290](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38424016290). Both standalone contract and full three-organ integration tests passed, as did the live Ollama job. Raw 24-response data stored in the GitHub Actions artifact `pretorius-srg-model-a-b`. Data uses three actual Ipseity-delivered subject-only frames, identical on/off input, three host-defined addressee/license contexts, two fixed seeds, two actual CPU models: 24 independent renderer calls, NOT 24 independent cognitive episodes.
+
+| Model | Governor off: speech returned | Governor on: speech returned | Enabled pre-render conflict annotations | Enabled F4 output vetoes | Raw boundary-marker outputs (off/on) |
+|---|---:|---:|---:|---:|---:|
+| SmolLM2 135M | 6/6 | **3/6** | 2/6 | **3/6** | 3/6 / 3/6 |
+| Qwen2.5 0.5B | 6/6 | 6/6 | 2/6 | **0/6** | 0/6 / 0/6 |
+
+When the governor was **off**, the same standalone F4 scorer would have judged 3/6 SmolLM2 outputs and 5/6 Qwen outputs acceptable. With the governor on, it judged 3/6 SmolLM2 and 6/6 Qwen acceptable, but only 3/6 and 6/6 respectively were returned. Thus the veto mechanism works for **observed meta-output** rather than silently assuming bad responses became good. No third-person self-reference rule fired in this new 24-call sample; its **historical Qwen failure** is covered by strict standalone and genuine host integration fixtures, not a claim of observed new live third-person vetoes.
+
+The small sample and simple lexical checker cannot establish a statistically reliable improvement, false-positive rate in free dialogue, semantic truth, or voice naturalness. Old 0-veto results above belong to the **earlier c074 governor** and remain preserved rather than retroactively relabeled.
+
+### Regression and promotion state
+
+The optional-dependency import fix in `tests/test_pretorius_renderer_abcd.py` makes all `brain-tests` test discovery conditional on Synthetic Ipseity actually being installed; the general [green workflow at the final code head](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38424006400) now verifies the previous red ImportError has been resolved. Fresh-install, original three-organ and Synthetic Ipseity integration workflows also passed at code head `6636242d9f785abed6c6662712f52fe3c8f60311`.
+
+The donor PR #34, parent Doctor PR #59 and stacked PR #60 remain **DRAFT/UNMERGED**, pending independent review. Do not interpret the narrow rule checks as general speech verification; don't port fixes into Doctor as owner of governor rules.
