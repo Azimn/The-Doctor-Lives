@@ -242,5 +242,89 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
                 )
 
 
+    def test_provenance_and_subsequent_policy_change_on_resolution(self):
+        """Mechanical causal-state test, not evidence of general cognition."""
+        import json
+        with self.host() as host:
+            tick = host._scene_tick
+            dispute = (
+                self.claim(event="c1", channel="vision", attribute="balance",
+                           value="451 grams", object_hint="balance1", tick=tick),
+                self.claim(event="c2", channel="instrument", attribute="balance",
+                           value="919 grams", object_hint="balance1", tick=tick),
+            )
+            first = host.cycle(
+                dispute, trusted_source_refs=frozenset({"trusted:c1", "trusted:c2"}),
+                now_ms=1000,
+            )
+            gap = first["new_epistemic_gap_ids"][0]
+            with host._doctor.brain.store.connect() as db:
+                row = db.execute(
+                    "SELECT outcome FROM concern_events "
+                    "WHERE concern_id=? AND transition='opened'", (gap,),
+                ).fetchone()
+            evidence = json.loads(row["outcome"])
+            self.assertEqual({c["value"] for c in evidence["claims"]},
+                             {"451 grams", "919 grams"})
+            self.assertEqual({c["source_ref"] for c in evidence["claims"]},
+                             {"trusted:c1", "trusted:c2"})
+            before = host._doctor.brain.research_endogenous_recall(
+                enabled=True, persist=False, preview_live=True, cooldown_ticks=1,
+            )
+            tick = host._scene_tick
+            correction = (
+                self.claim(event="v1", channel="vision", attribute="balance",
+                           value="451 grams", object_hint="balance1", tick=tick),
+                self.claim(event="v2", channel="instrument", attribute="balance",
+                           value="451 grams", object_hint="balance1", tick=tick),
+            )
+            result = host.cycle(
+                correction, trusted_source_refs=frozenset({"trusted:v1", "trusted:v2"}),
+                now_ms=2000,
+            )
+            self.assertEqual(result["resolved_epistemic_gap_ids"], [gap])
+            after = host._doctor.brain.research_endogenous_recall(
+                enabled=True, persist=False, preview_live=True, cooldown_ticks=1,
+            )
+            self.assertIn(gap, before["audit"]["candidate_gap_ids"])
+            self.assertNotIn(gap, after["audit"]["candidate_gap_ids"])
+            self.assertGreater(
+                before["audit"]["information_need_family"]["recall_pressure"],
+                after["audit"]["information_need_family"]["recall_pressure"],
+            )
+            with host._doctor.brain.store.connect() as db:
+                row = db.execute(
+                    "SELECT status,resolution FROM concerns WHERE id=?", (gap,),
+                ).fetchone()
+            self.assertEqual(row["status"], "resolved")
+            resolution = json.loads(row["resolution"])
+            self.assertEqual(len(resolution["resolution"]), 2)
+            self.assertEqual(
+                resolution["downstream_effect"],
+                "remove_gap_from_future_policy_candidates",
+            )
+
+    def test_no_production_module_passes_preview_live_true(self):
+        import ast
+        import doctor_lives
+        root = Path(doctor_lives.__file__).parent
+        for module in root.glob("*.py"):
+            if module.name == "three_organ_preview.py":
+                continue
+            tree = ast.parse(module.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    for keyword in node.keywords:
+                        if keyword.arg == "preview_live" and isinstance(keyword.value, ast.Constant):
+                            self.assertIsNot(keyword.value.value, True, str(module))
+
+    def test_pinned_donor_modified_bytes_are_rejected_before_state_open(self):
+        from unittest.mock import patch
+        import doctor_lives.three_organ_preview as preview
+        with patch.object(preview, "_PINNED_SENSUS_CORE_BLOB", "unreviewed"):
+            with self.assertRaisesRegex(RuntimeError, "Dirty or substituted"):
+                self.Host(self.state, enabled=True, renderer=lambda _: "never")
+        self.assertFalse(self.state.exists())
+
 if __name__ == "__main__":
     unittest.main()
