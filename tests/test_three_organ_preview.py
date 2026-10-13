@@ -494,9 +494,10 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
         import subprocess
         import sys
         stages = (
-            "scene_built", "applied_operation", "admitted",
-            "decision_persisted", "published_not_journaled",
-            "delivery_acknowledged",
+            "scene_built", "applied_operation", "journaled_operation",
+            "admitted", "decision_persisted", "decided",
+            "published_not_journaled", "published",
+            "delivery_acknowledged", "delivered",
         )
         child = """
 import os
@@ -548,6 +549,9 @@ raise RuntimeError("checkpoint was not reached")
                     if name == "delivery_acknowledged":
                         with self.assertRaisesRegex(RuntimeError, "acknowledged"):
                             recovered.resume_preview(now_ms=30101)
+                    elif name == "delivered":
+                        with self.assertRaisesRegex(RuntimeError, "No pending"):
+                            recovered.resume_preview(now_ms=30101)
                     else:
                         self.assertEqual(
                             recovered.resume_preview(now_ms=30101),
@@ -565,7 +569,7 @@ raise RuntimeError("checkpoint was not reached")
                     self.assertEqual(entries, 1)
                     self.assertEqual(decisions, 1)
                 marker = state / "renderer_calls.txt"
-                if name == "delivery_acknowledged":
+                if name in ("delivery_acknowledged", "delivered"):
                     self.assertEqual(marker.read_text().count("rendered"), 1)
 
 
