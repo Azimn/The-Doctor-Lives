@@ -556,5 +556,32 @@ raise RuntimeError("checkpoint was not reached")
                 if name == "delivery_acknowledged":
                     self.assertEqual(marker.read_text().count("rendered"), 1)
 
+
+    def test_completed_scene_source_cannot_be_replayed_as_new_experience(self):
+        from doctor_lives.preview_scene_journal import PreviewSceneConflict
+        with self.host() as host:
+            p = self.claim(
+                event="replayed-id", channel="vision", attribute="cabinet",
+                value="closed", tick=host._scene_tick,
+            )
+            host.cycle(
+                (p,), trusted_source_refs=frozenset({"trusted:replayed-id"}),
+                now_ms=1000,
+            )
+            before = len(host._doctor.brain.store.memories())
+        with self.host() as restarted:
+            repeated = self.claim(
+                event="replayed-id", channel="vision", attribute="cabinet",
+                value="closed", tick=restarted._scene_tick,
+            )
+            with self.assertRaisesRegex(PreviewSceneConflict, "cannot be replayed"):
+                restarted.cycle(
+                    (repeated,),
+                    trusted_source_refs=frozenset({"trusted:replayed-id"}),
+                    now_ms=2000,
+                )
+            self.assertEqual(before, len(restarted._doctor.brain.store.memories()))
+            self.assertIsNone(restarted._journal.active())
+
 if __name__ == "__main__":
     unittest.main()
