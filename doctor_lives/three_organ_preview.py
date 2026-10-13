@@ -306,6 +306,11 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             raise PreviewSceneConflict("Interrupted scene must be resumed first")
         if len({p.source_ref for p in items}) != len(items):
             raise ValueError("Distinct Percepts require unique authenticated sources")
+        for p in items:
+            if self._journal.seen_percept(p.source_ref, p.event_id):
+                raise PreviewSceneConflict(
+                    "Previously processed Percept identity cannot be replayed"
+                )
         with self._doctor.brain.store.connect() as conn:
             for claim in items:
                 if claim.evidence not in (Evidence.OBSERVED, Evidence.REPORTED):
@@ -395,6 +400,10 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             "new_epistemic_gap_ids": gaps,
             "latest_reported_message": latest_message,
             "before_brain_tick": self._doctor.brain.store.tick,
+            "percept_identity": [
+                {"source_ref": p.source_ref, "event_id": p.event_id}
+                for p in items
+            ],
             "operations": operations,
         }
         self._journal.begin(payload, snapshot)
