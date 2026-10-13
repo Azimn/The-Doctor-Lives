@@ -92,11 +92,17 @@ def main() -> None:
                  "subject_boundary_intact": True}
             ), flush=True)
         if label == "05-continuity-across-second-restart":
-            # Concrete negative result: the host knows a verified resolution,
-            # yet the last subject-only frame omits all three measurements.
-            assert not any(
-                n in context for n in ("325 grams", "451 grams", "919 grams")
-            ), "The renderer unexpectedly gained factual continuity"
+            # An observed *negative* must not be locked into CI as an invariant.
+            # A later continuity fix should improve this metric, not fail tests.
+            supplied = {
+                number: number in context
+                for number in ("325 grams", "451 grams", "919 grams")
+            }
+            print("CHATGPT_CONTINUITY_OBSERVATION " + json.dumps(
+                {"case": label, "measurements_in_subject_frame": supplied,
+                 "contains_any_reading": any(supplied.values())},
+                sort_keys=True
+            ), flush=True)
         assert not any(
             sentinel in context for sentinel in (
                 "preview_sensus_conflict", "policy_decisions",
