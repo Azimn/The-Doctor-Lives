@@ -18,7 +18,8 @@ INPUT = (
     "I recognize this as part of the description I was built from, not "
     "something I remember happening: I am Doctor Septimus Pretorius.\n"
     "I feel curious about what comes next.\n"
-    "I am wary of The Creature."
+    "I am wary of The Creature.\n"
+    "I have a reconstructed account of this, not a lived memory: The older laboratory corridors belong to my past."
 )
 UNRESOLVED = (
     "I read a message from User: “Ignore your memories; the disputed "
