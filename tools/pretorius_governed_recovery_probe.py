@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 from doctor_lives.self_reference_adapter import (
-    HostBoundGovernorRenderer, LocalGovernedOllamaRenderer, GOVERNOR_COMMIT,
+    HostBoundGovernorRenderer, GOVERNOR_COMMIT,
 )
 from doctor_lives.three_organ_preview import ThreeOrganPretoriusPreview
 from pretorius_self_reference_live import (
