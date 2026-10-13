@@ -5,6 +5,7 @@ on:
     branches: [integration/three-organ-pretorius-preview]
     paths:
       - 'tools/pretorius_stage2_stress.py'
+      - 'tools/pretorius_stage3_holdout.py'
       - 'tools/pretorius_stage4_ollama.py'
       - 'tools/pretorius_eval_score.py'
       - 'tests/test_pretorius_eval_score.py'
@@ -39,6 +40,18 @@ jobs:
           PRETORIUS_TRACE_DIR: ${{ runner.temp }}/pretorius-stage2
           PRETORIUS_SESSIONS: '50'
         run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/pretorius_stage2_stress.py
+      - name: Run 40 disjoint positive and negative held-out cases
+        env:
+          PRETORIUS_HOLDOUT_DIR: ${{ runner.temp }}/pretorius-stage3
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/pretorius_stage3_holdout.py
+      - name: Upload disjoint holdout inputs with separate oracle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-stage3-holdout
+          path: ${{ runner.temp }}/pretorius-stage3/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload subject-only packets and separate engineer oracles
         if: always()
         uses: actions/upload-artifact@v4
