@@ -7,6 +7,7 @@ on:
     paths:
       - doctor_lives/three_organ_preview.py
       - doctor_lives/preview_scene_journal.py
+      - tests/test_preview_scene_journal.py
       - tests/test_three_organ_preview.py
       - doctor_lives/cognition.py
       - doctor_lives/ipseity_integration.py
@@ -38,6 +39,8 @@ jobs:
         run: |
           python tools/ipseity_entrypoint_gate.py
           PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python -m unittest discover -s "$RUNNER_TEMP/Sensus-Communis-Artificialis/tests" -v
+      - name: Prove scene journal atomicity and exclusive writer
+        run: python -m unittest discover -s tests -p test_preview_scene_journal.py -v
       - name: Test real three-component preview with both donors installed
         run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python -m unittest discover -s tests -p test_three_organ_preview.py -v
       - name: Regression Doctor's synthetic decision policy
