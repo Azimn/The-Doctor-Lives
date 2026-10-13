@@ -113,25 +113,33 @@ class HostBoundGovernorRenderer:
         if type(aliases) is not tuple or any(type(a) is not str for a in aliases):
             raise TypeError("Host aliases must be an explicit tuple of strings")
         canonical = host._doctor.brain.render_request().subject
-        self._bindings = ReferenceBindings(
-            host.SUBJECT_ID, canonical, aliases,
-        )
-        self._context = ReferenceContext(
+        bindings = ReferenceBindings(host.SUBJECT_ID, canonical, aliases)
+        context = ReferenceContext(
             speaker_subject_id=host.SUBJECT_ID,
             addressee_subject_id=addressee_subject_id,
             rhetorical_self_address=rhetorical_self_address,
             language=language,
             discourse_mode=discourse_mode,
         )
+        if context.language != "en":
+            raise SpeechControlRejected(
+                "No validated non-English governor; do not partially bind"
+            )
+        control = None
         if self.recovery_enabled:
-            self._controlled = GovernedSpeechControl(
-                bindings=self._bindings,
-                context=self._context,
+            # Validate ALL arguments before sealing identity; a failed bind
+            # must never leave a usable legacy callback or bypass.
+            control = GovernedSpeechControl(
+                bindings=bindings,
+                context=context,
                 trusted_instruction=self._instruction,
                 generate=self._render_with_recorded_instruction,
                 fallback_text=self._fallback_text,
                 max_model_attempts=self._max_model_attempts,
             )
+        self._bindings = bindings
+        self._context = context
+        self._controlled = control
 
     @property
     def control_receipts(self):
