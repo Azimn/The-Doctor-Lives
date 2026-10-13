@@ -549,8 +549,20 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             record = self._journal.active()
         if record["stage"] == "decided":
             if record["publish_before"] is None:
+                # An unrelated pending outbox frame must never be delivered as
+                # this scene's first-person experience. No publish from this
+                # scene could have occurred before its durable boundary.
+                if self.pending_count():
+                    raise PreviewSceneConflict(
+                        "Unrelated pending subject frame before publication boundary"
+                    )
                 self._journal.publish_boundary(key, self._ipseity.checkpoint().last_sequence)
                 record = self._journal.active()
+            current_sequence = self._ipseity.checkpoint().last_sequence
+            if self.pending_count() and current_sequence <= record["publish_before"]:
+                raise PreviewSceneConflict(
+                    "Pending subject frame predates scene publication"
+                )
             if not self.pending_count():
                 if self._ipseity.checkpoint().last_sequence > record["publish_before"]:
                     # The renderer already acknowledged a frame before this
@@ -573,6 +585,12 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             record = self._journal.active()
         if record["stage"] != "published":
             raise PreviewSceneConflict("Unrecognized preview scene stage")
+        if record["publish_before"] is None:
+            raise PreviewSceneConflict("Published scene is missing outbox boundary")
+        if self.pending_count() and (
+            self._ipseity.checkpoint().last_sequence <= record["publish_before"]
+        ):
+            raise PreviewSceneConflict("Pending subject frame is not from this scene")
         if not self.pending_count():
             self._journal.stage(key, "published", "delivered")
             raise PreviewSceneConflict(
