@@ -539,6 +539,144 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
         from pathlib import Path
         self.assertTrue((self.state / "preview_scene_journal.sqlite3").exists())
 
+    def test_recall_scene_crash_matrix_preserves_one_decision_and_subject_boundary(self):
+        """Exercise the actual recall branch across interrupted persistence.
+
+        This deliberately tests more than an ordinary user-message response:
+        selection comes from competing first-person memory and live conflict.
+        """
+        from unittest.mock import patch
+        checkpoints = (
+            "scene_built", "applied_operation", "journaled_operation",
+            "admitted", "decision_persisted", "decided",
+            "published_not_journaled", "published",
+        )
+        for checkpoint in checkpoints:
+            with self.subTest(checkpoint=checkpoint), tempfile.TemporaryDirectory() as directory:
+                state = Path(directory) / "three-organ-preview"
+                projections = []
+
+                def renderer(subject):
+                    projections.append(subject)
+                    return "I remember my previous measurement."
+
+                with self.Host(
+                    state, enabled=True, renderer=renderer,
+                    neural_config=small_config(),
+                ) as host:
+                    host.ingest({
+                        "channel": "world",
+                        "text": "I observed the balance reading 325 grams yesterday.",
+                        "source": "trusted:preexisting-world-evidence",
+                        "novelty": 0.4,
+                    })
+                    tick = host._scene_tick
+                    dispute = (
+                        self.claim(event="conflict-vision", channel="vision",
+                                   attribute="laboratory balance reading",
+                                   value="451 grams", object_hint="balance-1",
+                                   tick=tick),
+                        self.claim(event="conflict-instrument", channel="instrument",
+                                   attribute="laboratory balance reading",
+                                   value="919 grams", object_hint="balance-1",
+                                   tick=tick),
+                    )
+
+                    def fail_at(stage):
+                        if stage == checkpoint:
+                            raise RuntimeError("forced stop " + stage)
+
+                    with patch.object(host, "_checkpoint", side_effect=fail_at):
+                        with self.assertRaisesRegex(RuntimeError, "forced stop"):
+                            host.cycle(
+                                dispute,
+                                trusted_source_refs=frozenset({
+                                    "trusted:conflict-vision",
+                                    "trusted:conflict-instrument",
+                                }),
+                                now_ms=1000,
+                            )
+                    with host._doctor.brain.store.connect() as conn:
+                        before_decisions = conn.execute(
+                            "SELECT id,selected_action FROM policy_decisions "
+                            "WHERE policy_version='preview-epistemic-deliberation-v0.1'"
+                        ).fetchall()
+                        before_conflicts = conn.execute(
+                            "SELECT COUNT(*) FROM concerns "
+                            "WHERE source='preview_sensus_conflict'"
+                        ).fetchone()[0]
+                    self.assertLessEqual(len(before_decisions), 1)
+                    self.assertLessEqual(before_conflicts, 1)
+
+                with self.Host(
+                    state, enabled=True, renderer=renderer,
+                    neural_config=small_config(),
+                ) as restarted:
+                    self.assertEqual(
+                        restarted.resume_preview(now_ms=31001),
+                        "I remember my previous measurement.",
+                    )
+                    self.assertEqual(restarted.pending_count(), 0)
+                    with restarted._doctor.brain.store.connect() as conn:
+                        decisions = conn.execute(
+                            "SELECT id,selected_action FROM policy_decisions "
+                            "WHERE policy_version='preview-epistemic-deliberation-v0.1'"
+                        ).fetchall()
+                        concerns = conn.execute(
+                            "SELECT COUNT(*) FROM concerns WHERE source='preview_sensus_conflict'"
+                        ).fetchone()[0]
+                    self.assertEqual(len(decisions), 1)
+                    self.assertEqual(decisions[0]["selected_action"], "recall")
+                    self.assertEqual(concerns, 1)
+                    if before_decisions:
+                        self.assertEqual(decisions[0]["id"], before_decisions[0]["id"])
+                    self.assertEqual(len(projections), 1)
+                    self.assertIn("325", projections[0])
+                    self.assertNotIn("451 grams", projections[0])
+                    self.assertNotIn("919 grams", projections[0])
+                    self.assertNotIn("preview_sensus_conflict", projections[0])
+
+    def test_failed_neural_checkpoint_blocks_replay_of_durable_admission(self):
+        """Deliberate non-atomic Doctor neural write is a fail-closed case."""
+        from unittest.mock import patch
+        from doctor_lives.preview_scene_journal import PreviewSceneConflict
+        with self.host() as host:
+            incoming = self.claim(
+                event="neural-write-fails", channel="vision",
+                attribute="beaker", value="intact", tick=host._scene_tick,
+            )
+            with patch.object(
+                host._doctor.brain.neural, "save",
+                side_effect=OSError("injected neural checkpoint failure"),
+            ):
+                with self.assertRaisesRegex(OSError, "injected neural"):
+                    host.cycle(
+                        (incoming,),
+                        trusted_source_refs=frozenset({"trusted:neural-write-fails"}),
+                        now_ms=1000,
+                    )
+            with host._doctor.brain.store.connect() as conn:
+                committed_before = conn.execute(
+                    "SELECT COUNT(*) FROM events WHERE source=?",
+                    ("preview-verified-world:trusted:neural-write-fails:neural-write-fails",),
+                ).fetchone()[0]
+            self.assertEqual(committed_before, 1)
+        with self.host() as recovered:
+            with self.assertRaisesRegex(PreviewSceneConflict, "Neural checkpoint"):
+                recovered.resume_preview(now_ms=32000)
+            with recovered._doctor.brain.store.connect() as conn:
+                committed_after = conn.execute(
+                    "SELECT COUNT(*) FROM events WHERE source=?",
+                    ("preview-verified-world:trusted:neural-write-fails:neural-write-fails",),
+                ).fetchone()[0]
+                policy_count = conn.execute(
+                    "SELECT COUNT(*) FROM policy_decisions "
+                    "WHERE policy_version='preview-epistemic-deliberation-v0.1'"
+                ).fetchone()[0]
+            self.assertEqual(committed_after, 1)
+            self.assertEqual(policy_count, 0)
+            self.assertEqual(recovered.pending_count(), 0)
+
     def test_scene_journal_recovers_without_reingesting_or_reselecting(self):
         """Fault injection is software correctness evidence, not real-model QA."""
         from unittest.mock import patch
