@@ -11,6 +11,7 @@ on:
       - tests/test_three_organ_preview.py
       - tools/three_organ_chatgpt_probe.py
       - docs/experiments/three-organ-chatgpt-proxy-responses.json
+      - docs/experiments/three-organ-chatgpt-proxy-responses-v2.json
       - doctor_lives/cognition.py
       - doctor_lives/ipseity_integration.py
       - doctor_lives/ipseity_local.py
@@ -55,4 +56,8 @@ jobs:
       - name: Replay fixed ChatGPT-authored responses through real Ipseity (NO model call)
         env:
           PRETORIUS_CHATGPT_REPLAY: '1'
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/three_organ_chatgpt_probe.py
+      - name: Replay grounded ChatGPT-authored v2 responses after episodic repair
+        env:
+          PRETORIUS_CHATGPT_REPLAY_V2: '1'
         run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/three_organ_chatgpt_probe.py
