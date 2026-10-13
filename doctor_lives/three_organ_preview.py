@@ -628,10 +628,23 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                             "preview-verified-world:" + c["source_ref"]
                             + ":" + c["event_id"]
                         )
-                        if db.execute(
-                            "SELECT 1 FROM events WHERE source=? LIMIT 1",
+                        admitted_rows = db.execute(
+                            "SELECT payload_json,evidence_class,external "
+                            "FROM events WHERE source=?",
                             (source,),
-                        ).fetchone() is None:
+                        ).fetchall()
+                        expected_text = (
+                            "I notice: The " + attribute + " is " + c["value"] + "."
+                        )
+                        if len(admitted_rows) != 1:
+                            break
+                        admitted = admitted_rows[0]
+                        if (
+                            admitted["evidence_class"] != "lived_runtime_memory"
+                            or int(admitted["external"]) != 0
+                            or json.loads(admitted["payload_json"]).get("text")
+                                != expected_text
+                        ):
                             break
                     else:
                         value = next(iter(values))
