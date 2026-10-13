@@ -10,6 +10,7 @@ on:
       - tests/test_preview_scene_journal.py
       - tests/test_three_organ_preview.py
       - tools/three_organ_chatgpt_probe.py
+      - docs/experiments/three-organ-chatgpt-proxy-responses.json
       - doctor_lives/cognition.py
       - doctor_lives/ipseity_integration.py
       - doctor_lives/ipseity_local.py
@@ -50,4 +51,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
 
       - name: Capture first-person frames for manual ChatGPT proxy (NO model call)
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/three_organ_chatgpt_probe.py
+      - name: Replay fixed ChatGPT-authored responses through real Ipseity (NO model call)
+        env:
+          PRETORIUS_CHATGPT_REPLAY: '1'
         run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/three_organ_chatgpt_probe.py
