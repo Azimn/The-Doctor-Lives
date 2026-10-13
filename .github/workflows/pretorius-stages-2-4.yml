@@ -1,0 +1,102 @@
+name: Pretorius stages 2-4 research qualification
+
+on:
+  push:
+    branches: [integration/three-organ-pretorius-preview]
+    paths:
+      - 'tools/pretorius_stage2_stress.py'
+      - 'tools/pretorius_stage4_ollama.py'
+      - 'tools/pretorius_eval_score.py'
+      - 'tests/test_pretorius_eval_score.py'
+      - '.github/workflows/pretorius-stages-2-4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stress:
+    name: Real Doctor 50-session / 200-turn longitudinal gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact pinned donors and Doctor
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus-Communis-Artificialis"
+          git -C "$RUNNER_TEMP/Sensus-Communis-Artificialis" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+          python -m pip install -e .
+      - name: Independently test deterministic evaluator
+        run: python -m unittest discover -s tests -p test_pretorius_eval_score.py -v
+      - name: Run 50 isolated sessions and preserve honest results
+        env:
+          PRETORIUS_TRACE_DIR: ${{ runner.temp }}/pretorius-stage2
+          PRETORIUS_SESSIONS: '50'
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/pretorius_stage2_stress.py
+      - name: Upload subject-only packets and separate engineer oracles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-stage2-data
+          path: ${{ runner.temp }}/pretorius-stage2/
+          if-no-files-found: warn
+          retention-days: 14
+
+  actual-local-model:
+    name: Actual small Ollama CPU model, no paid APIs
+    needs: stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact reviewed subject-only Ollama adapter
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+      - uses: actions/download-artifact@v4
+        with:
+          name: pretorius-stage2-data
+          path: ${{ runner.temp }}/pretorius-stage2
+      - name: Install Ollama CLI, use loopback only
+        run: |
+          curl -fsSL --max-time 50 https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          sh "$RUNNER_TEMP/ollama-install.sh"
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > "$RUNNER_TEMP/ollama-server.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/version
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull smollm2:135m
+      - name: Run real tiny-model responses, preserve latency and raw output
+        run: |
+          python tools/pretorius_stage4_ollama.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-ollama-stage4" \
+            --model smollm2:135m --per-scene 3
+      - name: Score only groundedness and provenance, not voice quality
+        run: |
+          python tools/pretorius_eval_score.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-stage2/engineer_oracle.jsonl" \
+            --outputs "$RUNNER_TEMP/pretorius-ollama-stage4/outputs.jsonl" \
+            --report "$RUNNER_TEMP/pretorius-ollama-stage4/grounding-report.json" \
+            --allow-subset
+      - name: Upload local-model raw generations and scoring
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-ollama-smollm2-135m
+          path: ${{ runner.temp }}/pretorius-ollama-stage4/
+          if-no-files-found: warn
+          retention-days: 14
