@@ -48,7 +48,7 @@ Direct inspection of the generated speech shows major limitations:
 - Qwen sometimes addressed Pretorius in the second person, failed to consistently deliver a three-sentence response, or adopted assistant-like language.
 - Simple 3-sentence heuristic passed in only **3/6 off versus 2/6 on** outputs for SmolLM2, and **1/6 off versus 1/6 on** for Qwen (not a grammatical quality assessment).
 - A Qwen off/self sample addressed `Pretorius,` directly; the corresponding enabled/self sample did not. That is a useful example of the difference annotation can make but is **not statistically meaningful** by itself.
-- The first completed run did not persist vetoed raw text separately; later runs add engineer-only raw output retention and explicit sentence-count diagnostics for independent false-reject review. Those later runs must be checked separately before reporting new numerical results.
+- A later exact-pin rerun [38413139239](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38413139239) **passed both host and live-model CI jobs**, and kept raw model replies in an engineer-only artifact, including outputs eligible for veto. In that rerun the heuristic three-sentence count was **3/6 off versus 2/6 on** for SmolLM2, and **1/6 off versus 2/6 on** for Qwen. Per-model vetoes remained **zero**; each enabled group still annotated two host-self instruction conflicts. These are small-sample, nonblind diagnostics, not evidence of general quality improvement.
 
 ## Known unresolved gates
 
