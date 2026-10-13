@@ -20,11 +20,13 @@ class SceneJournalAtomicityTests(unittest.TestCase):
                 # a permanent orphan scene behind.
                 with self.assertRaises(TypeError):
                     journal.begin(
-                        {"scene_tick": 1, "operations": []},
+                        {"scene_tick": 1, "operations": [],
+                         "percept_identity": [{"source_ref": "shell:x", "event_id": "x"}]},
                         {"last_tick": 1, "files": [object()]},
                     )
                 self.assertIsNone(journal.active())
                 self.assertIsNone(journal.snapshot())
+                self.assertFalse(journal.seen_percept("shell:x", "x"))
                 good = journal.begin(
                     {"scene_tick": 1, "operations": []},
                     {"last_tick": 1, "next_id": 2, "files": []},
@@ -114,6 +116,29 @@ class SceneJournalAtomicityTests(unittest.TestCase):
             with PreviewSceneJournal(root) as reopened:
                 with self.assertRaisesRegex(PreviewSceneConflict, "scene payload integrity"):
                     reopened.active()
+
+    def test_receipts_reject_vetoed_percept_replay_across_scenes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "three-organ-preview"
+            with PreviewSceneJournal(root) as journal:
+                first = journal.begin(
+                    {"scene_tick": 1, "operations": [],
+                     "percept_identity": [{"source_ref": "sensor:a", "event_id": "zero"}]},
+                    {"last_tick": 1, "next_id": 2, "files": []},
+                )
+                journal.stage(first["id"], "scene_built", "admitted")
+                journal.stage(first["id"], "admitted", "decided")
+                journal.stage(first["id"], "decided", "published")
+                journal.stage(first["id"], "published", "delivered")
+                self.assertTrue(journal.seen_percept("sensor:a", "zero"))
+                with self.assertRaisesRegex(PreviewSceneConflict, "already processed"):
+                    journal.begin(
+                        {"scene_tick": 2, "operations": [],
+                         "percept_identity": [{"source_ref": "sensor:a", "event_id": "zero"}]},
+                        {"last_tick": 2, "next_id": 3, "files": []},
+                    )
+                self.assertIsNone(journal.active())
+                self.assertEqual(journal.snapshot()["last_tick"], 1)
 
     def test_one_preview_writer_owns_the_mutex(self):
         with tempfile.TemporaryDirectory() as directory:
