@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - doctor_lives/three_organ_preview.py
+      - doctor_lives/preview_scene_journal.py
       - tests/test_three_organ_preview.py
       - doctor_lives/cognition.py
       - doctor_lives/ipseity_integration.py
