@@ -229,3 +229,38 @@ event IDs. Any absent integrity evidence remains fail-closed rather than
 fabricated. The receipt index is engineer-only and intentionally retained
 for durable replay prevention; retention/privacy policy is still a
 deployment design requirement.
+
+### Policy-selected recall recovery and neural completion receipts
+
+Recovery tests now exercise actual policy-selected recollection from a
+contradictory visual/instrument scene with an existing first-person memory.
+Interrupted scenes are resumed at eight checkpoints. The checks require exactly
+one persisted preview policy decision, exactly one durable conflict concern,
+and only the earlier memory in the subject renderer context. Vetoed conflicting
+measurement values must remain exclusively in engineer-side evidence.
+
+The neural recovery proof has also been strengthened. A higher saved neural
+tick was previously accepted as sufficient evidence that an earlier Doctor
+admission had completed. It is not: unrelated neural activity may increase
+the tick even if the original event's checkpoint save failed. The preview scene
+journal now records `op_completed_tick` and `op_completed_sha` **per
+admission**, only after `Doctor.ingest` returns and its neural checkpoint
+exists. On restart, an already-persisted Doctor event is never re-ingested.
+It may be skipped only if the operation-specific receipt matches both the
+neural tick and on-disk checkpoint SHA-256. A committed event with a missing or
+mismatched completion receipt fails closed for operator reconciliation, even
+when neural time has advanced through other activity.
+
+This closes a tick-only false-positive path, not the underlying cross-database
+atomicity problem. A crash after Doctor commits its event but before the neural
+completion receipt will intentionally block automatic recovery. Existing
+interrupted preview states without the newly introduced receipts cannot be
+retrospectively certified. The test deliberately advances neural state without
+the original receipt and separately changes a completed operation's receipt;
+both must fail without duplicate ingestion or model delivery.
+
+The deterministic renderer and SQLite crash gates do not establish
+a sustained real-Ollama dialogue bar, objectively better character behavior,
+or reliable exactly-once delivery to the outside world. The 13/18 versus
+14/18 endogenous-recall loss remains unchanged. Promotion is still gated by
+independent review and real-model evaluation.
