@@ -266,6 +266,24 @@ class GovernedPretoriusTests(unittest.TestCase):
         )
         self.assertGreater(on["receipts"][-1].third_person_self, 0)
 
+
+    def test_live_qwen_possessive_nonbinding_rejected_before_host_ack(self):
+        output = "I want to know what comes next in Pretorius' story."
+        off = self._trial(
+            enabled=False, output=output, addressee="visitor",
+            suffix="qwen-possessive-off",
+        )
+        on = self._trial(
+            enabled=True, output=output, addressee="visitor",
+            suffix="qwen-possessive-on",
+        )
+        self.assertEqual(off["result"]["answer"], output)
+        self.assertFalse(off["failed"])
+        self.assertTrue(on["failed"])
+        self.assertEqual(on["pending"], 1)
+        self.assertIn("SRG-OUTPUT-THIRD-PERSON-SELF",
+                      on["receipts"][-1].violation_rule_ids)
+
     def test_new_boundary_marker_rejected_but_quoted_marker_allowed(self):
         rejected = self._trial(
             enabled=True, addressee="pretorius",
