@@ -90,11 +90,22 @@ jobs:
           assert m["mechanical_acceptance"] is True
           print("PRETORIUS_ACCEPTANCE_NOT_PRODUCTION",json.dumps(m,sort_keys=True))
           PY
-      - name: Upload blind ballots with separate condition key and audit transcript
+      - name: Upload BLIND ballots only (safe to share with reviewers)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pretorius-sustained-real-dialogue
-          path: ${{ runner.temp }}/pretorius-sustained/
+          name: pretorius-sustained-BLIND-review
+          path: ${{ runner.temp }}/pretorius-sustained/blind_judge_ballots.jsonl
+          if-no-files-found: warn
+          retention-days: 21
+      - name: Upload PRIVATE engineering transcript and separate condition key
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-sustained-ENGINEER-only
+          path: |
+            ${{ runner.temp }}/pretorius-sustained/engineering_transcript.jsonl
+            ${{ runner.temp }}/pretorius-sustained/separate_condition_key.jsonl
+            ${{ runner.temp }}/pretorius-sustained/metrics.json
           if-no-files-found: warn
           retention-days: 21
