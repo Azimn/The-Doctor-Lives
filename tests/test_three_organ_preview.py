@@ -744,6 +744,46 @@ raise RuntimeError("checkpoint was not reached")
             self.assertEqual(rendered, [])
             self.assertEqual(host._journal.active()["stage"], "decided")
 
+    def test_replayed_vetoed_conflict_is_blocked_without_new_concern(self):
+        from doctor_lives.preview_scene_journal import PreviewSceneConflict
+        with self.host() as host:
+            tick = host._scene_tick
+            disputed = (
+                self.claim(event="veto-1", channel="vision", attribute="gauge",
+                           value="high", tick=tick),
+                self.claim(event="veto-2", channel="instrument", attribute="gauge",
+                           value="low", tick=tick),
+            )
+            result = host.cycle(
+                disputed, trusted_source_refs=frozenset({"trusted:veto-1", "trusted:veto-2"}),
+                now_ms=1000,
+            )
+            self.assertEqual(result["admitted_percepts"], 0)
+            original_concerns = {
+                c["id"] for c in host._doctor.brain.store.open_concerns()
+                if c["source"] == "preview_sensus_conflict"
+            }
+            digest_before = host._doctor.brain.store.digest()
+            duplicate = (
+                self.claim(event="veto-1", channel="vision", attribute="gauge",
+                           value="high", tick=host._scene_tick),
+                self.claim(event="veto-2", channel="instrument", attribute="gauge",
+                           value="low", tick=host._scene_tick),
+            )
+            with self.assertRaisesRegex(PreviewSceneConflict, "cannot be replayed"):
+                host.cycle(
+                    duplicate,
+                    trusted_source_refs=frozenset({"trusted:veto-1", "trusted:veto-2"}),
+                    now_ms=2000,
+                )
+            self.assertEqual(digest_before, host._doctor.brain.store.digest())
+            self.assertEqual(
+                original_concerns,
+                {c["id"] for c in host._doctor.brain.store.open_concerns()
+                 if c["source"] == "preview_sensus_conflict"},
+            )
+            self.assertIsNone(host._journal.active())
+
     def test_completed_scene_source_cannot_be_replayed_as_new_experience(self):
         from doctor_lives.preview_scene_journal import PreviewSceneConflict
         with self.host() as host:
