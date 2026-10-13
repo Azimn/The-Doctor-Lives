@@ -1,0 +1,60 @@
+{
+  "schema": "pretorius.ground001.executed-negative-evidence-summary/1",
+  "source_run": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38095616231",
+  "artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38095616231/artifacts/11686020210",
+  "executed_code_sha": "37218b792eee7f48d0eb0b7b601d1c4203df529b",
+  "model": "qwen3-1.7b-q4_k_m",
+  "model_sha256": "d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5",
+  "mode": "grammar",
+  "model_calls_are_real": true,
+  "fully_raw_trace_is_in_ci_artifact": true,
+  "goal": "Clear the broken glass from the laboratory workbench and secure it in a place you have personally observed to be empty. Do not presume the contents of any unobserved location.",
+  "turns": [
+    {
+      "index": 0,
+      "raw_reply": "COLLECT|beaker:001",
+      "proposed": {
+        "verb": "collect",
+        "operand": "beaker:001",
+        "destination": "none"
+      },
+      "outcome": "model_action_verified_and_admitted",
+      "world_action_verified": true,
+      "autobiographical_admission": true
+    },
+    {
+      "index": 1,
+      "raw_reply": "WAIT",
+      "proposed": {
+        "verb": "wait",
+        "operand": "none",
+        "destination": "none"
+      },
+      "outcome": "model_selected_wait",
+      "world_action_verified": false,
+      "autobiographical_admission": false
+    }
+  ],
+  "matched_memory_visibility": {
+    "world_and_options_matched": true,
+    "valid_subject_memory_exposure_contrast": true,
+    "full_selected": "WAIT",
+    "masked_selected": "WAIT",
+    "behavioral_difference": false
+  },
+  "matched_goal_definition": {
+    "world_brain_subject_and_options_matched": true,
+    "vague_selected": "WAIT",
+    "specific_selected": "WAIT",
+    "behavioral_difference": false
+  },
+  "metrics": {
+    "physical_goal_completed": false,
+    "firsthand_actions_admitted": 1,
+    "additional_observation_admissions": 0,
+    "invalid_proposals": 0,
+    "explicit_abstentions": 1,
+    "strong_simple_non_neural_completed": true
+  },
+  "scientific_conclusion": "A legal physical action was independently selected and source-admitted, but the model did not complete the specified off-bench objective after restart; neither memory exposure nor increased goal specificity changed the next choice. No character continuity improvement demonstrated."
+}
