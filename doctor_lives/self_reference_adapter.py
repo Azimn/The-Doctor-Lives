@@ -20,7 +20,7 @@ except ImportError as exc:
         "Install the pinned Synthetic Ipseity governor donor revision"
     ) from exc
 
-GOVERNOR_COMMIT = "c0747901e7434b9418204a331487172a7894b6e0"
+GOVERNOR_COMMIT = "e84f3e37d844756786b289c13c15ea92edfd8d69"
 
 
 class GovernorOutputRejected(ValueError):
