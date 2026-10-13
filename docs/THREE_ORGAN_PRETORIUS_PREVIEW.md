@@ -86,15 +86,85 @@ rejection, and pending-outbox recovery.
   runs a **parallel experimental preview** with no donor mutations,
   reclassification of existing results, or production adoption. It
   must not contaminate independent blinded evaluation.
-- The fresh local preview host has no end-to-end journal for replaying
-  a scene-to-Doctor admission after a crash. Pending Ipseity delivery
-  can be resumed safely but a crash between Sensus scene and durable
-  outbox admission still requires operator intervention. Do not
-  deploy as an unattended production host.
-- Sensus short-lived object files are in-memory only. They reset on
-  re-invoking the preview CLI; continuity of cross-process object
-  re-identification is not yet guaranteed.
+- The preview now uses a separate, engineer-only SQLite scene journal
+  with a durable scene snapshot, operation cursor, neural-ingress baseline,
+  recovered policy decision, and protected outbox cursor. Restart resumes
+  the stored scene without running Sensus or the decision policy again.
+  An interrupted neural checkpoint, already acknowledged output, or a
+  mismatched ledger still fails closed for operator reconciliation.
+  Do not deploy as an unattended production host.
+- The pinned Sensus short-lived object files, tick and ID counter are
+  snapshotted in the preview scene journal and restored across CLI launches.
+  Their donor-defined short retention window and false-merge limitations
+  remain unchanged. The adapter touches the pinned donor's private in-memory
+  structure and must not be generalized to new donor versions.
 - The repo's existing production `doctor-lives-local` CLI and
   canonical state remain unmodified. Do not merge this branch into
   `main` until explicit independent security review, adoption gates,
   crash/replay transaction design and blinded downstream comparison.
+
+
+### Preview validation round: source, outcome and crash boundaries
+
+The review changes remain opt-in and only on draft PR #59. The original
+13/18 policy versus 14/18 simpler gap-rule benchmark remains a **negative
+result** and has not been rerun or reinterpreted as a positive finding. This
+round does not change the policy's score weights or ten recurrent outputs.
+
+**Causal loop, narrow claim:** a vetoed high-confidence observed conflict opens
+a source-marked epistemic concern whose opening event contains the full
+constituent assertions: event IDs, original source references, channel and
+evidence class, tick, attribute, value, confidence, object hints and features.
+Recollection may occur, but does not settle which world assertion is true.
+Only a later uncontested scene with at least two distinct, separately
+allowlisted observed sources agreeing about the same attribute and object hint
+may resolve the concern. The resolution carries both the original complete
+evidence and the later observations. Resolution removes that concern from the
+next endogenous-recall candidate set. A disposable matched-state intervention
+temporarily reopens the same concern, preserving other state, and compares
+the policy scores with the resolved version. A changed score vector is a
+causal policy test, not a claim that the character's conversational decisions
+or performance improved.
+
+**Durability contract:** scene binding occurs in Sensus and is then sealed into
+a separate SQLite journal before any Doctor state is mutated. The journal
+stores each approved Doctor operation and progresses a monotonic cursor.
+Re-opening an interrupted scene consults its source-addressed Doctor events,
+source-bearing concern history and existing policy decision receipts.
+Already committed admissions and decisions are not repeated. The donor's
+bounded short-lived object files are restored from the journal. All scene
+payloads, state keys, stage names, policy scores and source references remain
+engineer-only. None enter Synthetic Ipseity's subject payload.
+
+**Crash testing bars:** the preview suite covers deterministic injected
+exceptions at intermediate points, plus real child-process hard exits at
+scene-build persistence, operation admission, decision write, outbox
+publication, and delivery acknowledgement. The tests check one Doctor
+admission and one preview policy decision after recovery. If a renderer
+acknowledged output before the scene journal advanced, recovery records the
+delivered stage and refuses to replay that output. A human operator must
+confirm what was actually seen. Inference is still at-least-once until host
+output acknowledgements are reconciled. This test is an engineering durability
+bar, **not** a real-model sustained dialogue bar or a guarantee of exactly-once
+observable speech.
+
+**Donor guard:** at module import and before state initialization, the preview
+requires Git HEAD at the exact reviewed Sensus commit
+802e459ee68950414347d5fa324484c034f57b81, exact imported core Git blob
+507cd9f75af04353b5e42d67fb60c147acff5ffb, and exact package export
+blob ac434e8d41119ca11a91948e3c0dd7aca3fa3660. The donor must be a Git
+checkout and it must not contain source modifications to those files.
+The separate production-entrypoint import audit remains unweakened.
+The preview suite also statically refuses any production package call that
+passes literal preview_live=True.
+
+**Remaining limits:** source allowlisting and distinct source refs do not prove
+that two sensors have independent real-world custody. The Sensus 80/160
+re-identification result, and known false merges, remain in force. A crash
+inside a Doctor neural save can leave a mismatch requiring operator action;
+the journal refuses unsafe admission replay rather than falsely completing
+it. There has been no sustained local Ollama multi-turn trial, no blind
+improvement over the 14/18 gap-rule baseline, and no released Windows
+installer. All three organs are still research preview dependencies, not
+a three-organ production launch. Donor blinded ablations through October
+23, 2026 remain sealed, and Calibos must audit this draft before promotion.
