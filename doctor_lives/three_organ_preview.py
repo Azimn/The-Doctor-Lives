@@ -491,6 +491,11 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             record = self._journal.active()
         if record["stage"] != "published":
             raise PreviewSceneConflict("Unrecognized preview scene stage")
+        if not self.pending_count():
+            self._journal.stage(key, "published", "delivered")
+            raise PreviewSceneConflict(
+                "Previously acknowledged output is not replayed; operator verification required"
+            )
         delivery = self.deliver_next(now_ms=now_ms)
         if delivery is None:
             raise RuntimeError("First-person frame leased; delivery not acknowledged")
