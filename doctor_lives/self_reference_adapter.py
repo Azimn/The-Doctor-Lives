@@ -199,3 +199,56 @@ class HostBoundGovernorRenderer:
                 "Self-reference governor veto; subject delivery unacknowledged"
             )
         return response
+
+
+class LocalGovernedOllamaRenderer:
+    """Trusted Ollama transport; subject prompt and control system separated.
+
+    localhost only, no proxies or redirects, one bounded synchronous call.
+    The governor remains in Synthetic Ipseity; this is solely a host adapter.
+    """
+
+    def __init__(self, model: str, *, max_tokens: int = 120, timeout: int = 120):
+        if not isinstance(model, str) or not model.strip():
+            raise ValueError("An installed local Ollama model must be specified")
+        if type(max_tokens) is not int or not 16 <= max_tokens <= 512:
+            raise ValueError("Output budget must be between 16 and 512 tokens")
+        if type(timeout) is not int or not 1 <= timeout <= 180:
+            raise ValueError("Timeout must be 1..180 seconds")
+        self.model = model
+        self.max_tokens = max_tokens
+        self.timeout = timeout
+
+    def __call__(self, subject_text: str, instruction: str) -> str:
+        import json
+        from urllib import request
+        endpoint = "http://127.0.0.1:11434/api/generate"
+        # Neither raw host diagnostics nor privileged identity bindings enter
+        # the subject prompt. Instruction is trusted renderer configuration.
+        data = json.dumps({
+            "model": self.model,
+            "prompt": subject_text,
+            "system": instruction,
+            "stream": False,
+            "options": {"temperature": 0, "num_predict": self.max_tokens},
+        }, ensure_ascii=False).encode("utf8")
+
+        class NoRedirect(request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                raise ValueError("Refuse Ollama redirect")
+
+        opener = request.build_opener(
+            request.ProxyHandler({}), NoRedirect()
+        )
+        req = request.Request(endpoint, data=data, method="POST",
+                              headers={"Content-Type": "application/json"})
+        with opener.open(req, timeout=self.timeout) as response:
+            if response.geturl() != endpoint:
+                raise ValueError("Unexpected Ollama target")
+            raw = response.read(2_000_001)
+        if len(raw) > 2_000_000:
+            raise ValueError("Ollama reply exceeded bounded size")
+        result = json.loads(raw)["response"]
+        if type(result) is not str or not result.strip():
+            raise TypeError("Local model returned an empty speech candidate")
+        return result.strip()
