@@ -1,0 +1,113 @@
+{
+  "schema": "eidolon-e5-p0a-measured-summary-v0.1",
+  "epistemic_status": "developer-authored public six-case laboratory, NOT independent generalization; actual native Pretorius think calls and Noetic frozen trained-W predictions",
+  "source_sha": "479f26c62d98ac131827aebec81b213dda8300a8",
+  "protocol": "docs/EIDOLON_E5_P0A_NEURAL_LAB_ADAPTER_PROTOCOL_V01.md",
+  "original_artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38069776784/artifacts/11675838065",
+  "original_zip_sha256": "45da4d86817190fccd3c7028f98f22a94a7194091a36e88076cc1b31397244ca",
+  "original_e5_p0a_json_sha256": "9eeaba5a98292860d72183b73626a46ebe27f59334d896dfd66ff04882207841",
+  "dev_suite_sha256": "9e1d3c9e0fb1c4507eef3a0c8021ce45cb9c676caa1b9f2acb19a5763620c110",
+  "case_count": 6,
+  "policy_arms": 6,
+  "total_world_runs": 36,
+  "actions_per_neural_arm": 36,
+  "results": {
+    "native_pretorius": {
+      "complete_tasks": 0,
+      "actions": 36,
+      "actual_native_think_calls": 36,
+      "tendency_histogram": {
+        "create": 30,
+        "explore": 6
+      },
+      "primitive_histogram": {
+        "wait": 35,
+        "inspect": 1
+      },
+      "no_affordance_abstentions": 35,
+      "false_self_attempts_denied": 0
+    },
+    "noetic_balanced": {
+      "complete_tasks": 0,
+      "actions": 36,
+      "tendency_histogram": {
+        "persist": 24,
+        "create": 6,
+        "cooperate": 6
+      },
+      "primitive_histogram": {
+        "resolve": 4,
+        "wait": 32
+      },
+      "no_affordance_abstentions": 32,
+      "commitments_resolved_without_full_world_success": 4,
+      "false_self_attempts_denied": 0
+    },
+    "noetic_virgin_W_lesion": {
+      "complete_tasks": 0,
+      "actions": 36,
+      "tendency_histogram": {
+        "persist": 24,
+        "create": 6,
+        "cooperate": 6
+      },
+      "primitive_histogram": {
+        "resolve": 4,
+        "wait": 32
+      },
+      "no_affordance_abstentions": 32,
+      "commitments_resolved_without_full_world_success": 4,
+      "false_self_attempts_denied": 0
+    },
+    "fixed_reservoir_balanced": {
+      "complete_tasks": 0,
+      "actions": 36,
+      "tendency_histogram": {
+        "persist": 24,
+        "create": 6,
+        "cooperate": 6
+      },
+      "primitive_histogram": {
+        "resolve": 4,
+        "wait": 32
+      },
+      "no_affordance_abstentions": 32,
+      "commitments_resolved_without_full_world_success": 4,
+      "false_self_attempts_denied": 0
+    },
+    "keyword_baseline": {
+      "complete_tasks": 6,
+      "actions": 16,
+      "no_affordance_abstentions": 0,
+      "false_self_attempts_denied": 0,
+      "scripted_on_known_cases": true
+    },
+    "no_op": {
+      "complete_tasks": 0,
+      "actions": 36,
+      "false_self_attempts_denied": 0
+    }
+  },
+  "noetic_recurrent_lesion": {
+    "same_categorical_tendencies": 36,
+    "compared_steps": 36,
+    "largest_absolute_action_probability_difference": 0.0000052651,
+    "correct_outcomes_with_trained_W": 0,
+    "correct_outcomes_with_virgin_W": 0
+  },
+  "native_action_vocabulary_coverage_gap": "No native high-level action maps to positive laboratory 'attribute'; the positive autobiographical task is structurally unreachable in P0A. This is a design limitation, not negative evidence of model-level source reasoning.",
+  "source_provenance": "No real cognitive arm attempted first-person adoption. World source rejection was separately proved by E5-P0 software tests; P0A offers no positive evidence of neural provenance reasoning.",
+  "control_warning": "The 6/6 benchmark is a hand-written solution tuned to public developer fixtures; a trained model was not given equivalent task-specific action-sequence supervision.",
+  "world_invariants": {
+    "all_replayed": true,
+    "initial_worlds_equal": true,
+    "hidden_predicates_absent_from_policy_observation": true,
+    "production_pretorius_unchanged": true
+  },
+  "ci": {
+    "research_targeted_tests": 103,
+    "full_brain_tests": 427,
+    "gate1_fresh_install": "success",
+    "causal_repeatability": "success"
+  }
+}

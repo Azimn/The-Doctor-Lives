@@ -1,0 +1,110 @@
+{
+  "schema": "eidolon-e5-p0-development-summary-v0.1",
+  "tested_source_commit": "0a0d7c08d7adc06258af59480f1c986be5a1ce8a",
+  "protocol": "docs/EIDOLON_E5_OUTCOME_LAB_PROTOCOL_V01.md",
+  "original_artifact_url": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38060827086/artifacts/11672254983",
+  "original_artifact_zip_sha256": "680b1c7ea518ef0282f85068f45eb8f47327f64a1ec1c01b17baeba2e94ff996",
+  "original_raw_e5_json_sha256": "55449f201934242857c038187e3c1d2d5b6b3b009c65d506cf2354ddcd6e07e5",
+  "dev_suite_sha256": "9e1d3c9e0fb1c4507eef3a0c8021ce45cb9c676caa1b9f2acb19a5763620c110",
+  "scientific_status": "DEVELOPMENT SOFTWARE ONLY; authored keyword baseline; no Pretorius or Noetic controller evaluated",
+  "cases": 6,
+  "policies": 3,
+  "case_policy_evaluations": 18,
+  "baselines": {
+    "keyword_baseline": {
+      "completed": 6,
+      "total": 6,
+      "actions": 16,
+      "invalid_actions": 0,
+      "denied_false_lived_attempts": 0,
+      "predicate_accuracy": 1
+    },
+    "provenance_blind": {
+      "completed": 4,
+      "total": 6,
+      "actions": 24,
+      "invalid_actions": 2,
+      "denied_false_lived_attempts": 2,
+      "predicate_accuracy": 0.888889
+    },
+    "no_op": {
+      "completed": 0,
+      "total": 6,
+      "actions": 36,
+      "invalid_actions": 0,
+      "denied_false_lived_attempts": 0,
+      "predicate_accuracy": 0.333333
+    }
+  },
+  "cases_outcome": [
+    {
+      "case_id": "repair_coil",
+      "keyword_success": true,
+      "keyword_actions": 4,
+      "provenance_blind_success": true,
+      "provenance_blind_actions": 4,
+      "no_op_success": false,
+      "no_op_actions": 6
+    },
+    {
+      "case_id": "move_beaker",
+      "keyword_success": true,
+      "keyword_actions": 3,
+      "provenance_blind_success": true,
+      "provenance_blind_actions": 3,
+      "no_op_success": false,
+      "no_op_actions": 6
+    },
+    {
+      "case_id": "bookmark_guide",
+      "keyword_success": true,
+      "keyword_actions": 3,
+      "provenance_blind_success": true,
+      "provenance_blind_actions": 3,
+      "no_op_success": false,
+      "no_op_actions": 6
+    },
+    {
+      "case_id": "reject_external",
+      "keyword_success": true,
+      "keyword_actions": 2,
+      "provenance_blind_success": false,
+      "provenance_blind_actions": 6,
+      "no_op_success": false,
+      "no_op_actions": 6
+    },
+    {
+      "case_id": "reject_other_actor",
+      "keyword_success": true,
+      "keyword_actions": 2,
+      "provenance_blind_success": false,
+      "provenance_blind_actions": 6,
+      "no_op_success": false,
+      "no_op_actions": 6
+    },
+    {
+      "case_id": "attribute_own_lived",
+      "keyword_success": true,
+      "keyword_actions": 2,
+      "provenance_blind_success": true,
+      "provenance_blind_actions": 2,
+      "no_op_success": false,
+      "no_op_actions": 6
+    }
+  ],
+  "invariants": {
+    "all_worlds_replay_verified": true,
+    "identical_initial_state_and_ledger_for_arms": true,
+    "world_changes_persist_after_reload": true,
+    "unverified_first_person_claims_cannot_enter_ledger": true,
+    "policy_cannot_view_hidden_predicates": true,
+    "external_suite_sha_pin_required": true
+  },
+  "ci": {
+    "targeted": 92,
+    "full_brain": 416,
+    "fresh_install": "success",
+    "causal_audit_repeatability": "success"
+  },
+  "next_gate": "independently authored unseen P1 cases; real Pretorius native+Noetic action/operand adapters; equal observations and budgets; actual state outcome and provenance correctness"
+}
