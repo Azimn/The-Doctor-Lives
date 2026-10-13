@@ -200,12 +200,19 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             brain.store.bump_state_version(conn)
         return identifier
 
-    def _resolve_corrob_observations(self, claim_records: list[dict]) -> tuple[str, ...]:
-        """Later independent matching observations may settle a gap.
+    def _resolve_corrob_observations(self, operation: dict) -> tuple[str, ...]:
+        """Re-identified object plus cross-channel readings may settle a gap.
 
-        Recollection alone is never proof that a disputed world claim is true.
+        Percept.object_hint only binds within one tick. Never treat a reused
+        hint as persistent identity. Sensus matching remains fallible.
         """
-        by_attribute: dict[str, list[Percept]] = {}
+        if operation["identity_status"] != "matched":
+            return ()
+        ancestor_id = operation["reidentified_from"]
+        if not ancestor_id:
+            return ()
+        claim_records = operation["claims"]
+        by_attribute: dict[str, list[dict]] = {}
         for claim in claim_records:
             if claim['evidence'] == Evidence.OBSERVED.value and claim['confidence'] >= 0.60:
                 by_attribute.setdefault(claim['attribute'], []).append(claim)
@@ -225,13 +232,18 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             if not old:
                 continue
             evidence = json.loads(old)
+            if evidence["object_id"] != ancestor_id:
+                continue
             claims = by_attribute.get(evidence["attribute"], [])
-            if len({c["source_ref"] for c in claims}) < 2 or len({c["value"] for c in claims}) != 1:
+            # Distinct source references alone do not imply independent
+            # observation; require distinct sensory channels as well.
+            if len({c["source_ref"] for c in claims}) < 2:
+                continue
+            if len({c["channel"] for c in claims}) < 2:
+                continue
+            if len({c["value"] for c in claims}) != 1:
                 continue
             former = evidence["claims"]
-            former_hints = {c["object_hint"] for c in former if c["object_hint"]}
-            if not former_hints or not any(c["object_hint"] in former_hints for c in claims):
-                continue
             if any(c["source_ref"] in {x["source_ref"] for x in former} for c in claims):
                 continue
             outcome = {
@@ -338,7 +350,12 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                 continue
             records = [self._claim_record(c) for c in obj.claims]
             if any(c.evidence is Evidence.OBSERVED for c in obj.claims):
-                operations.append({"kind": "resolve", "claims": records})
+                operations.append({
+                    "kind": "resolve", "claims": records,
+                    "object_id": obj.object_id,
+                    "identity_status": obj.identity_status,
+                    "reidentified_from": obj.reidentified_from,
+                })
             for claim in obj.claims:
                 if claim.evidence is Evidence.OBSERVED:
                     operations.append({
@@ -398,7 +415,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                 tuple(operation["claims"]), identifier=operation["id"],
             )
         elif kind == "resolve":
-            self._resolve_corrob_observations(operation["claims"])
+            self._resolve_corrob_observations(operation)
         elif kind == "ingest":
             event = operation["event"]
             with self._doctor.brain.store.connect() as conn:
