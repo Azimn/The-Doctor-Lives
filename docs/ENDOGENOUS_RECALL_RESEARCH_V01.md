@@ -118,3 +118,41 @@ under identical evidence, recall budget and evaluator. The policy must beat
 that baseline on externally authored tasks with unseen variations before
 claims of policy benefit or promotion. If parity or worse persists, shelve
 the policy addition rather than rebranding forced lookup as autonomy.
+
+
+### Verified preliminary benchmark, 2026-10-12
+
+Exact code head `990e0ec1bfda10db41e9013429c664dad9711427`,
+seed `1842`, 18 synthetic episodes x 5 arms = **90 scored trials**.
+The test-runner and separate CLI both passed in GitHub Actions
+[38329691716](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38329691716).
+The paired fixture checks passed 17/17 unit tests; general brain,
+fresh-install and causal-audit workflows also passed on that head.
+
+| Condition | Success/18 | Correct sourced facts | Appropriate withheld-fact abstentions | Lookups | Unnecessary lookups | False claims |
+|---|---:|---:|---:|---:|---:|---:|
+| No recall | 6 | 0 | 6 | 0 | 0 | 0 |
+| Random recall | 12 | 6 | 6 | 8 | 2 | 0 |
+| Forced targeted recall (upper bound) | 18 | 12 | 6 | 18 | 6 | 0 |
+| Strong gap-trigger rule | **14** | **8** | 6 | 11 | 3 | 0 |
+| Policy-selected recall | 13 | 7 | 6 | 10 | 3 | 0 |
+
+**Outcome: provisional negative for policy advantage.** The new policy
+executed authorized synthetic recall and recovered real source-backed
+first-person facts, but scored **one fewer correct task** than the
+strong simple rule. None of the policy benefit hypotheses have been
+confirmed. Counts are illustrative, not significance tests or power
+analysis. These deterministic author-designed cases, the simple
+fixed renderer, and a short no-model horizon do not establish real
+autonomous model-initiated recall or transferable character cognition.
+
+**Disposition:** keep draft PR #57 as a research artifact. Do not
+promote the deliberative policy to production or expand the recurrent
+action set on this evidence. A new preregistered, independently authored
+blind holdout with matched budgets and real downstream action outcomes
+is needed before reconsideration. The historical Gate 4 0/8 outcome
+remains unchanged.
+
+The CI workflow also uploads the entire JSON trial ledger as a
+downloadable Actions artifact (separate from live Pretorius state)
+so the 90 individual trial outcomes can be independently inspected.

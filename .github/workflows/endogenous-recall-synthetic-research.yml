@@ -20,3 +20,11 @@ jobs:
         run: python tools/run_endogenous_recall_benchmark.py --seed 1842 > /tmp/endogenous_recall_benchmark.json
       - name: Print compact outcome summary
         run: python -c 'import json; print(json.load(open("/tmp/endogenous_recall_benchmark.json"))["summary"])'
+      - name: Retain all paired outcome trials for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-endogenous-recall-outcomes-1842
+          path: /tmp/endogenous_recall_benchmark.json
+          if-no-files-found: warn
+          retention-days: 30
