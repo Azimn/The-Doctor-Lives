@@ -22,6 +22,12 @@ from uuid import uuid4
 from .ipseity_integration import DoctorSyntheticIpseitySession
 from .ipseity_local import build_local_renderer
 from .subject_inquiry import validate_subject_inquiry
+from .models import SubjectFrame
+from .phenomenology import (
+    AwarenessLevel, CertaintyBand, ObjectiveProvenance, PhenomenalEvent,
+    PhenomenalMode, PrivacyState, SubjectiveSourceAttribution,
+    SubjectiveSourceKind,
+)
 
 try:
     from sensus_artificialis import Evidence, Percept, Sensus, ObjectFile, SCHEMA_VERSION
@@ -542,6 +548,218 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             if changed:
                 brain.store.bump_state_version(conn)
 
+
+    @staticmethod
+    def _episode_query_terms(text: str | None) -> set[str]:
+        """Lexical retrieval cue only. User text never becomes source authority."""
+        stop = frozenset({
+            "the", "and", "our", "you", "your", "what", "have", "that",
+            "this", "with", "from", "they", "were", "was", "about",
+            "tell", "remember", "actually", "remains", "uncertain",
+        })
+        return set(re.findall(r"[a-z]{3,}", (text or "").lower())) - stop
+
+    def _verified_episode_events(
+        self, *, query: str | None, scene_resolved_ids: frozenset[str],
+    ) -> tuple[PhenomenalEvent, ...]:
+        """Read-only, capped projection from authenticated Doctor concern history.
+
+        The preview is not allowed to promote an engineer conflict payload,
+        a reported user statement or a recollection alone to verified reality.
+        Resolution claims must also exist as admitted observed Doctor events.
+        """
+        brain = self._doctor.brain
+        with brain.store.connect() as db:
+            rows = db.execute(
+                "SELECT id,description,resolution,resolved_tick FROM concerns "
+                "WHERE status='resolved' AND source='preview_sensus_conflict' "
+                "AND actor='PREVIEW_HOST' AND resolution IS NOT NULL "
+                "ORDER BY resolved_tick DESC,id DESC LIMIT 24"
+            ).fetchall()
+            query_terms = self._episode_query_terms(query)
+            eligible = []
+            for row in rows:
+                try:
+                    evidence = json.loads(row["resolution"])
+                    if (
+                        evidence.get("schema") != "pretorius.preview.conflict-resolution.v1"
+                        or evidence.get("reason") != "two_independent_later_observations_agree"
+                        or evidence.get("downstream_effect")
+                            != "remove_gap_from_future_policy_candidates"
+                    ):
+                        continue
+                    original = evidence["original_evidence"]
+                    if original.get("schema") != "pretorius.preview.conflict-evidence.v1":
+                        continue
+                    attribute = original["attribute"]
+                    if not isinstance(attribute, str) or not _SAFE_OBSERVED_PHRASE.fullmatch(attribute):
+                        continue
+                    old = original["claims"]
+                    if not isinstance(old, list) or len({
+                        c["value"] for c in old if c["evidence"] == Evidence.OBSERVED.value
+                    }) < 2:
+                        continue
+                    if not all(c["attribute"] == attribute for c in old):
+                        continue
+                    claims = evidence["resolution"]
+                    if not isinstance(claims, list) or len(claims) < 2:
+                        continue
+                    if not all(
+                        c["evidence"] == Evidence.OBSERVED.value
+                        and c["attribute"] == attribute
+                        and c["confidence"] >= 0.60
+                        and isinstance(c["value"], str)
+                        and _SAFE_OBSERVED_PHRASE.fullmatch(c["value"])
+                        for c in claims
+                    ):
+                        continue
+                    values = {c["value"] for c in claims}
+                    sources = {c["source_ref"] for c in claims}
+                    channels = {c["channel"] for c in claims}
+                    if len(values) != 1 or len(sources) < 2 or len(channels) < 2:
+                        continue
+                    if sources & {c["source_ref"] for c in old}:
+                        continue
+                    # Cross-check the resolution with actual committed Doctor
+                    # world admissions. Merely editing a concern cannot grant
+                    # it verified status or convert a reported message.
+                    for c in claims:
+                        source = (
+                            "preview-verified-world:" + c["source_ref"]
+                            + ":" + c["event_id"]
+                        )
+                        if db.execute(
+                            "SELECT 1 FROM events WHERE source=? LIMIT 1",
+                            (source,),
+                        ).fetchone() is None:
+                            break
+                    else:
+                        value = next(iter(values))
+                        attr_terms = self._episode_query_terms(attribute)
+                        overlap = len(attr_terms & query_terms)
+                        topical = bool(
+                            query_terms & {
+                                "measurement", "measurements", "disagreement",
+                                "observed", "observation", "observations",
+                            }
+                        )
+                        immediate = row["id"] in scene_resolved_ids
+                        if not immediate and not (overlap >= 2 or (overlap >= 1 and topical)):
+                            continue
+                        priority = (
+                            100 if immediate else 0
+                        ) + overlap * 10 + int(row["resolved_tick"] or 0) / 1000000
+                        eligible.append((priority, row["id"], attribute, value))
+                except (KeyError, ValueError, TypeError, AttributeError):
+                    # Invalid provenance never enters subject experience.
+                    continue
+
+        events = []
+        for _, concern_id, attribute, value in sorted(
+            eligible, key=lambda item: (-item[0], item[1])
+        )[:2]:
+            text = (
+                f"I remember two later observations of the {attribute} "
+                f"agreeing at {value}. Earlier readings disagreed. "
+                "I regard that later agreement as stronger evidence, "
+                "though it is not infallible."
+            )
+            events.append(PhenomenalEvent(
+                tick=brain.store.tick,
+                subject_id="pretorius",
+                mode=PhenomenalMode.RECOLLECTION,
+                awareness=AwarenessLevel.FOCAL,
+                canonical_first_person=text,
+                privacy=PrivacyState.PRIVATE,
+                projection_rule_version="preview-doctor-verified-episode-v0.1",
+                source_state_digest=brain.store.digest(),
+                objective_provenance=ObjectiveProvenance(
+                    evidence_class="verified_observation_episode",
+                    source="preview_verified_observation_resolution",
+                    record_ids=(concern_id,),
+                ),
+                subjective_source=SubjectiveSourceAttribution(
+                    SubjectiveSourceKind.LIVED, CertaintyBand.MODERATE,
+                ),
+                subjective_certainty=CertaintyBand.MODERATE,
+                source_state_refs=(concern_id,),
+            ))
+        return tuple(events)
+
+    def _preview_render_frame(self, payload: dict, decision: dict) -> SubjectFrame:
+        """Prioritize relevant lived evidence without exposing Doctor internals.
+
+        All baseline items originate in the existing Doctor SubjectFrame.
+        Supplemental episodes pass the same PhenomenalEvent factory gate.
+        This preview-only selector leaves normal Doctor rendering unchanged.
+        """
+        brain = self._doctor.brain
+        query = payload.get("latest_reported_message")
+        if decision["selected_action"] == "recall":
+            self._internal_question = decision["question"]
+            if self._recollection_controller is None:
+                raise PreviewSceneConflict("Missing authorized recollection controller")
+            baseline = self._recollection_controller.recollect_frame()
+        else:
+            self._internal_question = None
+            baseline = brain.render_request(user_input=query).subject_frame
+        episodes = SubjectFrame.from_events(self._verified_episode_events(
+            query=query,
+            scene_resolved_ids=frozenset(self._resolved_gap_ids(payload)),
+        ))
+        # Preserve actual first-person user speech exactly once. The older
+        # render path often placed the same quote in the immediate percept
+        # and in an automatically selected communication memory.
+        user_items = []
+        background = []
+        identity = []
+        seen_text = set()
+        for item in baseline.items:
+            line = item.text
+            if line in seen_text:
+                continue
+            seen_text.add(line)
+            if line.startswith("I read a message from User:"):
+                if not user_items:
+                    user_items.append(item)
+                continue
+            if line.startswith(
+                "I recognize this as part of the description I was built from"
+            ):
+                identity.append(item)
+            else:
+                background.append(item)
+        # A stable character anchor, scientific orientation, and provenance
+        # uncertainty survive, while endless near-identical prefaces do not.
+        key_phrases = (
+            "I am Doctor Septimus Pretorius.",
+            "I am a scientist, inventor, alchemist",
+            "I treat my present existence as a reconstruction",
+        )
+        compact_identity = []
+        for phrase in key_phrases:
+            match = next((x for x in identity if phrase in x.text), None)
+            if match is not None and match not in compact_identity:
+                compact_identity.append(match)
+        # Retrieved episodes win space over repeated identity declarations.
+        # Keep the exact original SubjectFrameItem instances as typed.
+        selected = []
+        seen = set()
+        for item in (
+            user_items + list(episodes.items) + compact_identity + background
+        ):
+            if item.text in seen:
+                continue
+            if len(selected) >= 16:
+                break
+            if sum(len(x.text) for x in selected) + len(item.text) > 2600:
+                continue
+            seen.add(item.text)
+            selected.append(item)
+        if not selected:
+            raise PreviewSceneConflict("No safe first-person subject frame remains")
+        return SubjectFrame(items=tuple(selected))
+
     def _continue_scene(self, *, now_ms: int) -> dict:
         record = self._journal.active()
         if record is None:
@@ -612,12 +830,9 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                         "Previously acknowledged delivery; operator must verify output"
                     )
                 decision = record["decision"]
-                if decision["selected_action"] == "recall":
-                    self._internal_question = decision["question"]
-                    self.publish_recollection()
-                else:
-                    self._internal_question = None
-                    self.publish_current(user_input=payload["latest_reported_message"])
+                self._publish_typed_subject_frame(
+                    self._preview_render_frame(payload, decision)
+                )
             self._checkpoint("published_not_journaled")
             self._journal.stage(key, "decided", "published")
             self._checkpoint("published")
