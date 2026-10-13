@@ -961,7 +961,7 @@ def main(argv: list[str] | None = None) -> int:
             enabled=True,
             recovery_enabled=True,
             trusted_instruction="Express the current experience as your own speech.",
-            render=LocalGovernedOllamaRenderer(args.model),
+            render=LocalOllamaConfiguredRenderer(args.model),
             fallback_text=(None if args.governor_no_fallback else
                            "I must consider my words more carefully."),
             max_model_attempts=2,
