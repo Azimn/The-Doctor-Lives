@@ -366,6 +366,46 @@ class GovernedPretoriusTests(unittest.TestCase):
         self.assertEqual(len(t["seen"]), 2)
 
 
+
+    def test_offline_renderer_trusted_fallback_real_ipseity_ack(self):
+        state = Path(self.temp.name) / "offline-governor" / "three-organ-preview"
+        attempted = []
+        def disconnected(subject, instruction):
+            attempted.append(subject)
+            raise ConnectionError("Ollama is stopped")
+        governed = self.Wrapper(
+            enabled=True, recovery_enabled=True,
+            trusted_instruction=self.INSTRUCTION,
+            fallback_text="I must consider my words carefully.",
+            render=disconnected,
+        )
+        with self.Host(
+            state, renderer=governed, enabled=True,
+            neural_config=tiny_config()
+        ) as host:
+            governed.bind_doctor_host(host, addressee_subject_id="visitor")
+            p = self.Percept(
+                event_id="offline-user",
+                source_ref="trusted:offline-user",
+                tick=host._scene_tick, attribute="message",
+                value="I have a question.", channel="conversation",
+                evidence=self.Evidence.REPORTED, confidence=.90,
+                object_hint="visitor",
+            )
+            delivered = host.cycle(
+                (p,), trusted_source_refs=frozenset({p.source_ref}),
+                now_ms=1000,
+            )
+            self.assertEqual(delivered["answer"],
+                             "I must consider my words carefully.")
+            self.assertEqual(host.pending_count(), 0)
+        self.assertEqual(len(attempted), 1)
+        self.assertEqual(governed.control_receipts[-1].disposition, "fallback")
+        self.assertEqual(
+            governed.control_receipts[-1].attempts[0].violation_rule_ids,
+            ("SRG-RENDERER-UNAVAILABLE",),
+        )
+
     def test_rejected_model_after_restart_can_deliver_once(self):
         state = Path(self.temp.name) / "governor-recovery-restart" / "three-organ-preview"
         first = self.Wrapper(
