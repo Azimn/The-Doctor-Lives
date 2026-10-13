@@ -677,6 +677,90 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             self.assertEqual(policy_count, 0)
             self.assertEqual(recovered.pending_count(), 0)
 
+    def test_unrelated_neural_progress_cannot_certify_failed_ingress(self):
+        """A later neural tick is not proof that this particular ingest finished."""
+        from unittest.mock import patch
+        from doctor_lives.preview_scene_journal import PreviewSceneConflict
+
+        with self.host() as host:
+            p = self.claim(
+                event="uncertified-neural", channel="vision",
+                attribute="laboratory door", value="ajar",
+                tick=host._scene_tick,
+            )
+            with patch.object(
+                host._doctor.brain.neural, "save",
+                side_effect=OSError("neural disk interrupted"),
+            ):
+                with self.assertRaisesRegex(OSError, "neural disk interrupted"):
+                    host.cycle(
+                        (p,), trusted_source_refs=frozenset({"trusted:uncertified-neural"}),
+                        now_ms=1000,
+                    )
+            record = host._journal.active()
+            self.assertEqual(record["stage"], "scene_built")
+            self.assertIsNone(record["op_completed_sha"])
+            old_tick = record["op_before_neural"]
+
+        with self.host() as restarted:
+            # A separate engineer-side neural update advances the persisted
+            # tick but cannot satisfy the abandoned scene's completion receipt.
+            restarted._doctor.brain.neural.step(
+                "An unrelated experiment", {}, reward=0.0, learn=False,
+            )
+            restarted._doctor.brain.neural.save(restarted._doctor.brain.neural_path)
+            self.assertGreater(restarted._doctor.brain.neural.tick, old_tick)
+            with self.assertRaisesRegex(PreviewSceneConflict, "cannot be certified"):
+                restarted.resume_preview(now_ms=32000)
+            self.assertEqual(restarted.pending_count(), 0)
+            with restarted._doctor.brain.store.connect() as conn:
+                self.assertEqual(conn.execute(
+                    "SELECT COUNT(*) FROM policy_decisions "
+                    "WHERE policy_version='preview-epistemic-deliberation-v0.1'"
+                ).fetchone()[0], 0)
+
+    def test_tampered_ingress_receipt_is_not_accepted_on_resume(self):
+        """Completed save still cannot certify an altered per-operation receipt."""
+        import sqlite3
+        from unittest.mock import patch
+        from doctor_lives.preview_scene_journal import PreviewSceneConflict
+
+        with self.host() as host:
+            p = self.claim(
+                event="tamper-ingress-receipt", channel="vision",
+                attribute="beaker", value="intact", tick=host._scene_tick,
+            )
+            with patch.object(
+                host, "_checkpoint",
+                side_effect=lambda stage: (
+                    (_ for _ in ()).throw(RuntimeError("ingress stopped"))
+                    if stage == "applied_operation" else None
+                ),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "ingress stopped"):
+                    host.cycle(
+                        (p,),
+                        trusted_source_refs=frozenset({"trusted:tamper-ingress-receipt"}),
+                        now_ms=1000,
+                    )
+            current = host._journal.active()
+            self.assertIsNotNone(current["op_completed_sha"])
+        with sqlite3.connect(self.state / "preview_scene_journal.sqlite3") as conn:
+            conn.execute(
+                "UPDATE scenes SET op_completed_sha=? WHERE id=?",
+                ("0" * 64, current["id"]),
+            )
+        with self.host() as recovered:
+            with self.assertRaisesRegex(PreviewSceneConflict, "cannot be certified"):
+                recovered.resume_preview(now_ms=31000)
+            with recovered._doctor.brain.store.connect() as conn:
+                admitted = conn.execute(
+                    "SELECT COUNT(*) FROM events WHERE source=?",
+                    ("preview-verified-world:trusted:tamper-ingress-receipt:tamper-ingress-receipt",),
+                ).fetchone()[0]
+            self.assertEqual(admitted, 1)
+            self.assertEqual(recovered.pending_count(), 0)
+
     def test_scene_journal_recovers_without_reingesting_or_reselecting(self):
         """Fault injection is software correctness evidence, not real-model QA."""
         from unittest.mock import patch
