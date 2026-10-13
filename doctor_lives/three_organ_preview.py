@@ -416,6 +416,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
 
     def _apply_scene_operation(
         self, operation: dict, before_tick: int, before_neural: int | None = None,
+        *, scene_key: str | None = None, op_index: int | None = None,
     ) -> None:
         kind = operation["kind"]
         if kind == "gap":
@@ -434,13 +435,24 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                 ).fetchall()
             if len(rows) > 1:
                 raise PreviewSceneConflict("Duplicate persisted Doctor admission")
+            if scene_key is None or op_index is None or before_neural is None:
+                raise PreviewSceneConflict("Ingress operation lacks a durable journal cursor")
             if not rows:
                 self.ingest(event)
+                # This is written only after Doctor's event, neural update and
+                # on-disk checkpoint have all completed. A crash before it is
+                # ambiguous and must never be inferred from a later tick.
+                self._journal.complete_ingress(
+                    scene_key, op_index, self._doctor.brain.neural.tick,
+                    self._doctor.brain._neural_checkpoint_sha256(),
+                )
             else:
-                # An already recorded admission is never replayed. Any neural
-                # checkpoint gap requires separate operator reconciliation.
-                if before_neural is None or self._doctor.brain.neural.tick <= before_neural:
-                    raise PreviewSceneConflict("Neural checkpoint cannot certify ingress")
+                # Never replay a Doctor event. Require this exact operation's
+                # previously committed neural-completion receipt.
+                self._journal.verify_completed_ingress(
+                    scene_key, op_index, self._doctor.brain.neural.tick,
+                    self._doctor.brain._neural_checkpoint_sha256(),
+                )
         else:
             raise PreviewSceneConflict("Unknown scene journal operation")
 
@@ -546,6 +558,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                     )
                 self._apply_scene_operation(
                     op, payload["before_brain_tick"], before_neural,
+                    scene_key=key, op_index=index,
                 )
                 self._checkpoint("applied_operation")
                 self._journal.step(key, index)
