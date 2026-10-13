@@ -117,3 +117,42 @@ The small sample and simple lexical checker cannot establish a statistically rel
 The optional-dependency import fix in `tests/test_pretorius_renderer_abcd.py` makes all `brain-tests` test discovery conditional on Synthetic Ipseity actually being installed; the general [green workflow at the final code head](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38424006400) now verifies the previous red ImportError has been resolved. Fresh-install, original three-organ and Synthetic Ipseity integration workflows also passed at code head `6636242d9f785abed6c6662712f52fe3c8f60311`.
 
 The donor PR #34, parent Doctor PR #59 and stacked PR #60 remain **DRAFT/UNMERGED**, pending independent review. Do not interpret the narrow rule checks as general speech verification; don't port fixes into Doctor as owner of governor rules.
+
+
+## Host-neutral bounded speech control v0.1 (2026-10-13)
+
+**Canonical source:** Synthetic Ipseity donor `007c0a8df473df0fa10aeeec9ba1e17691268260` with reusable modules `speech_control.py` and `local_ollama.LocalOllamaConfiguredRenderer`. Doctor Lives does not copy these implementations. The exact donor revision is pinned both in the optional Python extra and the CI checkout.
+
+The governor now has an independent `GovernedSpeechControl` port accepting **host-authoritative** typed identity, host-authoritative addressee, host-authoritative discourse mode (`direct`/`narrated`/`quoted`) and a declared language (`en` currently supported). The model receives only an already-admitted first-person subject text and separate trusted renderer-only instructions. Unsupported languages reject before the model can be called; they do not silently pass English regex rules.
+
+Operational path under explicit opt-in:
+
+1. The reviewed Sensus/Doctor/Synthetic Ipseity pipeline generates an admitted first-person frame as previously.
+2. The host seals `ReferenceBindings` and `ReferenceContext` from actual Doctor identity and trusted operator addressee selection. Partial or failed bindings are never made active.
+3. Primary local Ollama inference receives subject text as `prompt`, trusted task instruction as `system`.
+4. On a recognized SRG output violation or unverified direct first-person stance, the controller runs **at most one bounded fresh repair call** with the *same first-person input*, adding only an instruction correction. Rejected speech is not fed back into cognition.
+5. If both outputs fail, the host may choose its approved exact first-person fallback, default in experimental CLI: `I must consider my words more carefully.` No model text is allowed to mutate the fallback. If fallback is disabled, a rejected delivery raises before Synthetic Ipseity acknowledges its durable outbox; operator/resume reconciliation is required.
+6. Engineer-only SHA-256 attempt receipts and disposition (`primary`/`repaired`/`fallback`/`rejected`) stay separate from Pretorius's subjective experience.
+
+The **normal production launcher remains unchanged**. The optional experimental CLI is:
+
+```sh
+doctor-lives-three-organ-preview \
+  --state ./scratch/three-organ-preview \
+  --enable-experimental-preview \
+  --enable-governed-speech \
+  --model qwen2.5:0.5b \
+  --governor-addressee-id visitor \
+  --say "What can you tell me about our laboratory?"
+```
+
+Use `--governor-no-fallback` to test hard refusal/nonacknowledgment; use `--resume` with the same isolated state on an interrupted scene, per existing preview recovery controls. The `--governor-rhetorical-license` flag is a **host/operator authorization**, not a user-message command.
+
+Host-independent tests include synthetic Calibos, Kiki and Pretorius identity bindings without importing their production runtimes. Actual integrated Pretorius tests exercise the real Ipseity durable outbox and the reviewed two-channel model transport. These are not tests of full Kiki or Calibos integration. CI uses `tools/pretorius_governed_recovery_probe.py` for real local-model inference on already frozen original Pretorius first-person frames; it records safe fallback and failure rates separately and does not claim conversation naturalness.
+
+### Limitations and adoption HOLD
+
+- This is not universal speech interpretation. English only; quoted/nested/coreference ambiguity and semantic truth remain unsolved. Legitimate terse direct replies may fail the conservative first-person-anchor requirement.
+- Host fallback is generic; it does not guarantee inclusion of important facts from cognition. Protected-slot grammatical constructions must be separately engineered and grounded in typed host evidence before relying on factual fallback.
+- Volatile engineer-only receipts do not yet establish crash-durable audit of every attempted model emission.
+- Review false-positive rates, repeatability under model swapping, and sustained natural dialogue separately. Do **not** merge PRs #34, #59, #60 yet.
