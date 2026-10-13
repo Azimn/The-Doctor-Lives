@@ -210,3 +210,22 @@ custody separately.
 This is still a preview engineering and causal-state test. The 13/18 vs
 14/18 recall-policy negative result remains untouched. Neither independent
 real-model cognitive improvement nor production eligibility is claimed.
+
+
+### Scene-input replay protection
+
+The preview scene journal now records a unique pair of
+`(source_ref, event_id)` for **every authenticated input in a bound scene**.
+That includes claims withheld because their object was contested, so a
+disputed Percept cannot be reintroduced at the next scene tick to create
+another concern. These records commit atomically with scene intent and the
+Sensus state snapshot. If snapshot serialization fails, the percept receipts
+also roll back. A distinct source reference is a separate namespace: host
+authentication, not this database index, must prevent forged source identity.
+
+Receipt enforcement is prospective for scenes processed under this journal
+version. Earlier research states are not retroactively attributed unseen
+event IDs. Any absent integrity evidence remains fail-closed rather than
+fabricated. The receipt index is engineer-only and intentionally retained
+for durable replay prevention; retention/privacy policy is still a
+deployment design requirement.
