@@ -15,12 +15,15 @@ try:
     from synthetic_ipseity.self_reference import (
         ReferenceBindings, ReferenceContext, SelfReferenceGovernor,
     )
+    from synthetic_ipseity.speech_control import (
+        GovernedSpeechControl, SpeechControlRejected,
+    )
 except ImportError as exc:
     raise ImportError(
         "Install the pinned Synthetic Ipseity governor donor revision"
     ) from exc
 
-GOVERNOR_COMMIT = "e84f3e37d844756786b289c13c15ea92edfd8d69"
+GOVERNOR_COMMIT = "ebc2d5d34b23ce0a56c6792f938b3d2735934472"
 
 
 class GovernorOutputRejected(ValueError):
@@ -64,6 +67,9 @@ class HostBoundGovernorRenderer:
         enabled: bool,
         render: Callable[[str, str], str],
         trusted_instruction: str,
+        recovery_enabled: bool = False,
+        fallback_text: str | None = None,
+        max_model_attempts: int = 2,
     ):
         if type(enabled) is not bool:
             raise TypeError("Governor switch must be explicitly boolean")
@@ -74,6 +80,14 @@ class HostBoundGovernorRenderer:
         self.enabled = enabled
         self._render = render
         self._instruction = trusted_instruction
+        if type(recovery_enabled) is not bool:
+            raise TypeError("Recovery switch must be explicitly boolean")
+        if recovery_enabled and not enabled:
+            raise ValueError("Cannot enable controlled recovery with governor off")
+        self.recovery_enabled = recovery_enabled
+        self._fallback_text = fallback_text
+        self._max_model_attempts = max_model_attempts
+        self._controlled = None
         self._gov = SelfReferenceGovernor() if enabled else None
         self._bindings = None
         self._context = None
@@ -86,6 +100,8 @@ class HostBoundGovernorRenderer:
         addressee_subject_id: str | None,
         rhetorical_self_address: bool = False,
         aliases: tuple[str, ...] = ("Pretorius",),
+        language: str = "en",
+        discourse_mode: str = "direct",
     ) -> None:
         """Seal canonical identity from the real Doctor's authority only."""
         if self._bindings is not None:
@@ -104,7 +120,27 @@ class HostBoundGovernorRenderer:
             speaker_subject_id=host.SUBJECT_ID,
             addressee_subject_id=addressee_subject_id,
             rhetorical_self_address=rhetorical_self_address,
+            language=language,
+            discourse_mode=discourse_mode,
         )
+        if self.recovery_enabled:
+            self._controlled = GovernedSpeechControl(
+                bindings=self._bindings,
+                context=self._context,
+                trusted_instruction=self._instruction,
+                generate=self._render_with_recorded_instruction,
+                fallback_text=self._fallback_text,
+                max_model_attempts=self._max_model_attempts,
+            )
+
+    @property
+    def control_receipts(self):
+        """Immutable donor receipts; engineer side, never subject memory."""
+        return tuple(self._controlled.receipts) if self._controlled else ()
+
+    def _render_with_recorded_instruction(self, subject: str, instruction: str) -> str:
+        self.render_instructions.append(instruction)
+        return self._render(subject, instruction)
 
     def __call__(self, subject_text: str) -> str:
         if self._bindings is None or self._context is None:
@@ -112,6 +148,14 @@ class HostBoundGovernorRenderer:
         if type(subject_text) is not str or not subject_text.strip():
             raise ValueError("Only admitted nonblank subject text may be rendered")
         self.subject_inputs.append(subject_text)
+        if self._controlled is not None:
+            try:
+                return self._controlled(subject_text)
+            except SpeechControlRejected as exc:
+                raise GovernorOutputRejected(
+                    "Reusable speech controller exhausted repair/fallback; "
+                    "durable Ipseity outbox remains pending"
+                ) from exc
         instruction = self._instruction
         rule = "SRG-DISABLED"
         disposition = "disabled"
