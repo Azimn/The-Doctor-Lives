@@ -591,6 +591,27 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                     original = evidence["original_evidence"]
                     if original.get("schema") != "pretorius.preview.conflict-evidence.v1":
                         continue
+                    # Both lifecycle receipts must still agree with the
+                    # canonical concern. A fabricated resolved status or an
+                    # edited resolution cannot gain authority from a row alone.
+                    closure = db.execute(
+                        "SELECT outcome FROM concern_events WHERE concern_id=? "
+                        "AND transition='resolved' AND actor='PREVIEW_HOST' "
+                        "AND source='preview_verified_observation_resolution'",
+                        (row["id"],),
+                    ).fetchall()
+                    opening = db.execute(
+                        "SELECT outcome FROM concern_events WHERE concern_id=? "
+                        "AND transition='opened' AND actor='PREVIEW_HOST' "
+                        "AND source='preview_sensus_conflict'",
+                        (row["id"],),
+                    ).fetchall()
+                    if len(closure) != 1 or len(opening) != 1:
+                        continue
+                    if closure[0]["outcome"] != row["resolution"]:
+                        continue
+                    if json.loads(opening[0]["outcome"]) != original:
+                        continue
                     attribute = original["attribute"]
                     if not isinstance(attribute, str) or not _SAFE_OBSERVED_PHRASE.fullmatch(attribute):
                         continue
