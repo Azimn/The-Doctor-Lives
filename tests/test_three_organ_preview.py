@@ -573,6 +573,35 @@ raise RuntimeError("checkpoint was not reached")
                     self.assertEqual(marker.read_text().count("rendered"), 1)
 
 
+    def test_unrelated_pending_frame_cannot_be_recovered_as_scene_delivery(self):
+        """Recovery must never consume an independently queued organ frame."""
+        from unittest.mock import patch
+        from doctor_lives.preview_scene_journal import PreviewSceneConflict
+        rendered = []
+        with self.host(renderer=lambda text: rendered.append(text) or "wrong") as host:
+            p = self.claim(
+                event="queued-message", channel="conversation",
+                attribute="message", value="Original communication.",
+                evidence=self.Evidence.REPORTED, tick=host._scene_tick,
+            )
+            def stop_decided(name):
+                if name == "decided":
+                    raise RuntimeError("stop before publish boundary")
+            with patch.object(host, "_checkpoint", side_effect=stop_decided):
+                with self.assertRaisesRegex(RuntimeError, "stop before publish"):
+                    host.cycle(
+                        (p,),
+                        trusted_source_refs=frozenset({"trusted:queued-message"}),
+                        now_ms=1000,
+                    )
+            self.assertIsNone(host._journal.active()["publish_before"])
+            host.publish_current()
+            self.assertGreater(host.pending_count(), 0)
+            with self.assertRaisesRegex(PreviewSceneConflict, "Unrelated pending"):
+                host.resume_preview(now_ms=40000)
+            self.assertEqual(rendered, [])
+            self.assertEqual(host._journal.active()["stage"], "decided")
+
     def test_completed_scene_source_cannot_be_replayed_as_new_experience(self):
         from doctor_lives.preview_scene_journal import PreviewSceneConflict
         with self.host() as host:
