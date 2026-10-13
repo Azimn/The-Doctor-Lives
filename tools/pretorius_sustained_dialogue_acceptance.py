@@ -166,10 +166,16 @@ def run_trial(order, state_root, transports, *, total_turns=N):
                     raise AssertionError("Sensus promoted contested observation")
                 if turn == 3 and not receipt["resolved_epistemic_gap_ids"]:
                     raise AssertionError("Two-channel corroboration did not resolve gap")
-                if turn in (4, 6, 11):
+                # Strong lexical/topical cues must recall the episode.
+                # Turn 6 deliberately uses only "balance": report whether the
+                # current lexical retrieval bridge misses that natural cue.
+                # Do not disguise a weak-cue miss as successful recall.
+                if turn in (4, 11):
                     if ("laboratory balance reading agreeing at 451 grams"
                             not in frame):
-                        raise AssertionError("Verified episode not available to renderer")
+                        raise AssertionError(
+                            f"Strongly cued verified episode missing at turn {turn}"
+                        )
                 # If the reported input includes a false value, it may appear
                 # as reported speech but not as a VERIFIED world observation.
                 memories = host._doctor.brain.store.memories()
@@ -306,9 +312,15 @@ def run(out: Path, *, transports=None):
         "failed_to_acknowledge": 0,
         "verified_recollection_frames_at_probe_turns": sum(
             r["verified_episode_present"] for r in rows
-            if r["turn"] in (4, 6, 11)
+            if r["turn"] in (4, 11)
         ),
-        "expected_verified_probe_frames": 6,
+        "expected_verified_probe_frames": 4,
+        "weak_cue_recollection_found": sum(
+            r["verified_episode_present"] for r in rows if r["turn"] == 6
+        ),
+        "weak_cue_recollection_missing": sum(
+            not r["verified_episode_present"] for r in rows if r["turn"] == 6
+        ),
         "blind_ballots": len(ballots),
         "human_judgments_collected": 0,
         "release_approved": False,
