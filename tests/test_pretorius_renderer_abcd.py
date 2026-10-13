@@ -1,5 +1,6 @@
 """Strict unit gates for renderer-only A/B/C/D/E experiment."""
 from __future__ import annotations
+import importlib.util
 import json
 import sys
 import unittest
@@ -7,8 +8,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-import pretorius_renderer_abcd as abcd
-import pretorius_renderer_abcd_score as score
+HAVE_SYNTHETIC_IPSEITY = importlib.util.find_spec("synthetic_ipseity") is not None
+if HAVE_SYNTHETIC_IPSEITY:
+    import pretorius_renderer_abcd as abcd
+    import pretorius_renderer_abcd_score as score
 
 INPUT = (
     "I read a message from User: “Can you recall our measurement disagreement?”\n"
@@ -30,6 +33,7 @@ UNRESOLVED = (
 )
 
 
+@unittest.skipUnless(HAVE_SYNTHETIC_IPSEITY, "optional Synthetic Ipseity donor not installed")
 class RendererStudyTests(unittest.TestCase):
     def test_distillation_never_adds_fake_evidence(self):
         compact = abcd.distill(INPUT)
