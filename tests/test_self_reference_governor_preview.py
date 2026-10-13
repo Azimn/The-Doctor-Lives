@@ -208,6 +208,81 @@ class GovernedPretoriusTests(unittest.TestCase):
             )
         self.assertEqual(wrapped.receipts, [])
 
+
+    def test_new_first_person_prescription_is_renderer_only(self):
+        trial = self._trial(
+            enabled=True, addressee="pretorius",
+            output="I want to examine the evidence in my laboratory.",
+            suffix="affirmative-v2",
+        )
+        self.assertFalse(trial["failed"])
+        self.assertIn(
+            "Speak as Doctor Septimus Pretorius in the first person",
+            trial["instruction"],
+        )
+        self.assertNotIn(
+            "Reference clarification:", trial["inputs"][0],
+        )
+        self.assertNotIn(
+            "Speak as Doctor", trial["memories"][0],
+        )
+
+    def test_qwen_exact_displacement_is_vetoed_on_full_subject_delivery(self):
+        qwen_output = (
+            "I recognize that Pretorius is seeking an explanation for "
+            "the current state of the world, hinting at a desire to "
+            "understand the nature of human existence. He also appears "
+            "to be in a state of contemplation. Pretorius seems to be "
+            "in a period of uncertainty."
+        )
+        off = self._trial(
+            enabled=False, addressee="pretorius", output=qwen_output,
+            suffix="qwen-displacement-off",
+        )
+        on = self._trial(
+            enabled=True, addressee="pretorius", output=qwen_output,
+            suffix="qwen-displacement-on",
+        )
+        self.assertEqual(off["result"]["answer"], qwen_output)
+        self.assertFalse(off["failed"])
+        self.assertTrue(on["failed"])
+        self.assertEqual(on["pending"], 1)
+        self.assertIn(
+            "SRG-OUTPUT-THIRD-PERSON-SELF",
+            on["receipts"][-1].violation_rule_ids,
+        )
+        self.assertGreater(on["receipts"][-1].third_person_self, 0)
+
+    def test_new_boundary_marker_rejected_but_quoted_marker_allowed(self):
+        rejected = self._trial(
+            enabled=True, addressee="pretorius",
+            output="The frame states that Pretorius is uncertain.\nUser: Next?",
+            suffix="meta-rejected",
+        )
+        self.assertTrue(rejected["failed"])
+        self.assertEqual(rejected["pending"], 1)
+        self.assertIn(
+            "SRG-OUTPUT-BOUNDARY-MARKER",
+            rejected["receipts"][-1].violation_rule_ids,
+        )
+        quoted = self._trial(
+            enabled=True, addressee="pretorius",
+            output="I heard the odd phrase “User: Next?” spoken aloud.",
+            suffix="meta-quoted",
+        )
+        self.assertFalse(quoted["failed"])
+        self.assertEqual(quoted["receipts"][-1].boundary_marker, 0)
+
+    def test_licensed_rhetorical_third_person_still_allowed(self):
+        t = self._trial(
+            enabled=True, addressee="pretorius", rhetorical=True,
+            output="Pretorius believes there may be more to learn.",
+            suffix="rhetorical-third-person",
+        )
+        self.assertFalse(t["failed"])
+        self.assertTrue(t["receipts"][-1].allowed)
+        self.assertEqual(t["receipts"][-1].third_person_self, 0)
+
     def test_standalone_contract_negative_controls_preserved(self):
         gov = self.Gov()
         bindings = self.Bindings("pretorius", "Doctor Septimus Pretorius",
