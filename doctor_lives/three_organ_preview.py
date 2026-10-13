@@ -138,6 +138,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
         self._scene_tick += 1
         admitted = 0
         gap_ids = []
+        latest_reported_message: str | None = None
         for obj in scene.objects:
             if obj.contested_attributes:
                 # Conservative: withhold ALL claims about a contested object,
@@ -172,6 +173,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                         "source": "preview-verified-user:" + claim.source_ref,
                         "text": claim.value,
                     })
+                    latest_reported_message = claim.value
                     admitted += 1
                 # Inferred, remembered and interoceptive claims are NOT
                 # rewritten as world observations or autobiographical memory.
@@ -184,7 +186,11 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             self.publish_recollection()
         else:
             self._internal_question = None
-            self.publish_current()
+            # A general memory rank can bury a fresh User statement under
+            # inherited identity roots. Use Doctor's existing FIRST-PERSON
+            # user-input projector for the already-attested communication.
+            # This creates no second memory or direct model-input bypass.
+            self.publish_current(user_input=latest_reported_message)
         delivery = self.deliver_next(now_ms=now_ms)
         if delivery is None:
             raise RuntimeError("First-person frame leased; delivery not acknowledged")
