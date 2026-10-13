@@ -29,6 +29,7 @@ def main() -> None:
     # Only this callback receives renderer-visible material. The separate
     # ENGINEER line is never passed back as model input.
     captured = []
+    continuity_gap_observed = None
     replay = os.environ.get("PRETORIUS_CHATGPT_REPLAY") == "1"
     replies = []
     if replay:
@@ -64,6 +65,7 @@ def main() -> None:
         )
 
     def run(host: ThreeOrganPretoriusPreview, label: str, items):
+        nonlocal continuity_gap_observed
         old = len(captured)
         result = host.cycle(
             items,
@@ -98,6 +100,7 @@ def main() -> None:
                 number: number in context
                 for number in ("325 grams", "451 grams", "919 grams")
             }
+            continuity_gap_observed = not any(supplied.values())
             print("CHATGPT_CONTINUITY_OBSERVATION " + json.dumps(
                 {"case": label, "measurements_in_subject_frame": supplied,
                  "contains_any_reading": any(supplied.values())},
@@ -194,7 +197,7 @@ def main() -> None:
          "renderer": "manual_chatgpt_response_playback" if replay
                      else "capture_only_no_model",
          "fixed_responses_delivered": 5 if replay else 0,
-         "continuity_gap_observed": True},
+         "continuity_gap_observed": continuity_gap_observed},
         sort_keys=True
     ), flush=True)
 
