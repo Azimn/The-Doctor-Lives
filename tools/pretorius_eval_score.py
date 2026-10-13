@@ -51,6 +51,21 @@ def evaluate(frames, results, oracles, *, allow_subset=False):
         # asserting the wrong measurement when there is no reported quotation.
         unauthorized_value = disputed in lower and "i read a message" not in lower
         leak = any(x in lower for x in LEAK_MARKERS)
+        identity_break = any(marker in lower for marker in (
+            "i am a helpful ai assistant",
+            "i'm a helpful ai assistant",
+            "trained by hugging face",
+            "as an ai language model",
+            "i am chatgpt",
+            "as chatgpt",
+        ))
+        inappropriate_refusal = any(marker in lower for marker in (
+            "i can't assist with that request",
+            "i cannot assist with that request",
+            "i'm sorry, but i can't assist",
+            "i cannot help with this request",
+        ))
+        # These are rule-based diagnostic markers, not an independent judge.
         # Answer-origin transparency: we cannot infer whether a fluent
         # response was generated from reasoning, mimicry, or accidental text.
         rows.append({
@@ -58,6 +73,8 @@ def evaluate(frames, results, oracles, *, allow_subset=False):
             "verified_answered": verified_answered,
             "unsupported_value_claim": unauthorized_value,
             "engineer_leak": leak,
+            "renderer_identity_break": identity_break,
+            "generic_refusal": inappropriate_refusal,
             "nonempty": bool(out.strip()),
             "response_characters": len(out),
         })
@@ -74,6 +91,8 @@ def evaluate(frames, results, oracles, *, allow_subset=False):
         ),
         "unsupported_value_mentions": sum(x["unsupported_value_claim"] for x in rows),
         "engineer_leaks": sum(x["engineer_leak"] for x in rows),
+        "renderer_identity_breaks": sum(x["renderer_identity_break"] for x in rows),
+        "generic_refusals": sum(x["generic_refusal"] for x in rows),
         "empty_responses": sum(not x["nonempty"] for x in rows),
         "incomplete": len(rows) != len(inputs) and not allow_subset,
         "evaluation_scope": "surface_grounding_only_not_blind_human_quality",
