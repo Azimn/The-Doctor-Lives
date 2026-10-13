@@ -15,4 +15,8 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install -e .
       - name: Verify isolated synthetic policy action
-        run: python -m unittest discover -s tests -p 'test_endogenous_recall*.py' -v\n      - name: Run matched-arm source-grounded outcomes\n        run: python tools/run_endogenous_recall_benchmark.py --seed 1842 > /tmp/endogenous_recall_benchmark.json\n      - name: Print compact outcome summary\n        run: python -c 'import json; print(json.load(open("/tmp/endogenous_recall_benchmark.json"))["summary"])'
+        run: python -m unittest discover -s tests -p 'test_endogenous_recall*.py' -v
+      - name: Run matched-arm source-grounded outcomes
+        run: python tools/run_endogenous_recall_benchmark.py --seed 1842 > /tmp/endogenous_recall_benchmark.json
+      - name: Print compact outcome summary
+        run: python -c 'import json; print(json.load(open("/tmp/endogenous_recall_benchmark.json"))["summary"])'
