@@ -322,6 +322,18 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
                 ).fetchone()
             self.assertEqual(row["status"], "resolved")
             resolution = json.loads(row["resolution"])
+            with host._doctor.brain.store.connect() as db:
+                effects = db.execute(
+                    "SELECT outcome FROM concern_events WHERE concern_id=? "
+                    "AND transition='policy_effect'", (gap,),
+                ).fetchall()
+            self.assertEqual(len(effects), 1)
+            receipt = json.loads(effects[0]["outcome"])
+            self.assertEqual(receipt["decision_id"], result["endogenous_decision_id"])
+            self.assertEqual(
+                receipt["effect"],
+                "resolved_concern_excluded_from_policy_candidates",
+            )
             self.assertEqual(len(resolution["resolution"]), 2)
             self.assertEqual(
                 resolution["downstream_effect"],
