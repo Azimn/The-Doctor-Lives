@@ -135,9 +135,15 @@ def main(total=40):
                     if len(context) > 2700:
                         metrics["leakage"] += 1
                     pid = f"holdout-{i:03}"
-                    f.write(json.dumps({
-                        "packet_id": pid, "renderer_input": context,
-                    }, ensure_ascii=False) + "\n")
+                    packet = {"packet_id": pid, "renderer_input": context}
+                    # Export a small predeclared subset of SUBJECT-ONLY text to
+                    # the manual ChatGPT proxy. Never attach the engineer oracle
+                    # to a renderer input. All content is fabricated laboratory data.
+                    if i < 8:
+                        print("PRETORIUS_BLIND_SUBJECT_PACKET "
+                              + json.dumps(packet, ensure_ascii=False),
+                              flush=True)
+                    f.write(json.dumps(packet, ensure_ascii=False) + "\n")
                     oracle.write(json.dumps({
                         "packet_id": pid, "verified": case["resolved"],
                         "verified_value": observed if case["resolved"] else None,
