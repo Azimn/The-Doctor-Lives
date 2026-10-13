@@ -294,6 +294,21 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             raise PreviewSceneConflict("Interrupted scene must be resumed first")
         if len({p.source_ref for p in items}) != len(items):
             raise ValueError("Distinct Percepts require unique authenticated sources")
+        with self._doctor.brain.store.connect() as conn:
+            for claim in items:
+                if claim.evidence not in (Evidence.OBSERVED, Evidence.REPORTED):
+                    continue
+                channel = "world" if claim.evidence is Evidence.OBSERVED else "user"
+                source = (
+                    "preview-verified-" + channel + ":"
+                    + claim.source_ref + ":" + claim.event_id
+                )
+                if conn.execute(
+                    "SELECT 1 FROM events WHERE source=? LIMIT 1", (source,),
+                ).fetchone():
+                    raise PreviewSceneConflict(
+                        "Previously admitted Percept event ID cannot be replayed"
+                    )
         scene = self._sensus.step(self._scene_tick, items)
         operations = []
         gaps = []
