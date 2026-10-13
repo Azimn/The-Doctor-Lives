@@ -365,6 +365,57 @@ class GovernedPretoriusTests(unittest.TestCase):
         self.assertEqual(t["control_receipts"][-1].disposition, "rejected")
         self.assertEqual(len(t["seen"]), 2)
 
+
+    def test_rejected_model_after_restart_can_deliver_once(self):
+        state = Path(self.temp.name) / "governor-recovery-restart" / "three-organ-preview"
+        first = self.Wrapper(
+            enabled=True, recovery_enabled=True,
+            trusted_instruction=self.INSTRUCTION, fallback_text=None,
+            render=lambda subject, instruction: "User: Pretorius knows everything.",
+        )
+        with self.Host(
+            state, renderer=first, enabled=True,
+            neural_config=tiny_config()
+        ) as host:
+            first.bind_doctor_host(host, addressee_subject_id="visitor")
+            p = self.Percept(
+                event_id="srg-recovery-original", source_ref="trusted:srg-recovery",
+                tick=host._scene_tick, attribute="message",
+                value="What happened in the laboratory?", channel="conversation",
+                evidence=self.Evidence.REPORTED,
+                confidence=0.9, object_hint="visitor",
+            )
+            with self.assertRaises(self.Rejected):
+                host.cycle(
+                    (p,), trusted_source_refs=frozenset({p.source_ref}),
+                    now_ms=1000,
+                )
+            self.assertEqual(host.pending_count(), 1)
+            with host._doctor.brain.store.connect() as conn:
+                initial_count = conn.execute(
+                    "SELECT COUNT(*) FROM events"
+                ).fetchone()[0]
+        second = self.Wrapper(
+            enabled=True, recovery_enabled=True,
+            trusted_instruction=self.INSTRUCTION,
+            fallback_text="I must consider my words carefully.",
+            render=lambda subject, instruction: "I remember being uncertain.",
+        )
+        with self.Host(
+            state, renderer=second, enabled=True,
+            neural_config=tiny_config()
+        ) as reopened:
+            second.bind_doctor_host(reopened, addressee_subject_id="visitor")
+            delivered = reopened.resume_preview(now_ms=35000)
+            self.assertEqual(delivered, "I remember being uncertain.")
+            self.assertEqual(reopened.pending_count(), 0)
+            with reopened._doctor.brain.store.connect() as conn:
+                self.assertEqual(conn.execute(
+                    "SELECT COUNT(*) FROM events"
+                ).fetchone()[0], initial_count)
+            with self.assertRaises(RuntimeError):
+                reopened.resume_preview(now_ms=39000)
+
     def test_host_narration_is_explicit_and_english_only(self):
         t = self._trial(
             enabled=True, addressee="visitor", recovery_enabled=True,
