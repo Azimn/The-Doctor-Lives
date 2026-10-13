@@ -52,3 +52,18 @@ The natural weak-cue follow-up at turn 6 mentions only “the balance.” Doctor
 - Production staging integration and security review. The three draft PRs must remain unmerged until these gates are met.
 
 **Decision rule:** Mechanical success means “interactive alpha candidate”. A production decision requires independent quality ratings and endurance/security evidence. Do not call this pass a completed production acceptance test.
+
+
+## First actual two-model sustained trial: observed results, 2026-10-13
+
+**Evidence:** [real GitHub Actions run 38451980755](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38451980755), successful mechanical CI. Follow-up [run 38452145705](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38452145705) publishes judge-only ballots and the sealed engineer transcript as **different** artifacts. These are real CPU Ollama inferences, not stub model replies.
+
+- **24/24** scene-driven turns acknowledged; 2 independent 12-turn sessions; mid-session switch at turn 6; two durable state restarts per session.
+- **34 model inference calls** (including ten failed second attempts), **14/24 primary responses** (58.3%), **0 successful repairs**, **10/24 host-approved generic fallback responses** (41.7%). These ten fallbacks are all in the **SmolLM2 135M** half of the counterbalanced trial; Qwen2.5 0.5B passed the *narrow* governor on all twelve turns.
+- 4/4 strongly cued first-person episode projections correctly contained the verified laboratory reading **451 grams**. 0/2 weak-cue probes (“the balance”) projected the same memory despite its availability.
+- The raw engineering transcript shows that successful Qwen output is not synonymous with good dialogue. Eight of twelve Qwen replies begin by repeating `I read a message from User:`; nine of twelve copy the explicit `I recognize this as part of the description I was built from` clause, and ten of twelve contain conspicuous source-frame text fragments by a 40-character-substring spot check. It often summarizes the admitted SubjectFrame instead of responding naturally. These are observed quality problems even though the narrow governor marks the reply accepted.
+- Some Qwen replies expose the subject frame's first-person reaction to a *previous* User message rather than responding to the current question. This may be a renderer-prioritization or cognitive frame ordering problem and requires controlled investigation; not evidence of a proven model-only defect.
+- The human blind packets are prepared, but **0 independent human judgments** have been collected. Persona quality, conversational usefulness and grounding are **NOT** verified.
+- A separate `tools/pretorius_sustained_dialogue_score.py` now records fallback and exact source-frame copying in an engineer-only quality report; its heuristic measures are not a replacement for blind human ratings or a semantic judge.
+
+**Assessment:** Mechanical acceptance **PASS**; production-quality dialogue acceptance **FAIL/HOLD**. The observed fallback rate is over four times the exploratory 10% target, and the model-driven repair rate is zero. The weak-cue retrieval miss is independent of the governor. Keep all PRs draft and do not merge on this evidence. The next engineering work is renderer-output fidelity and memory-cue coverage, not a new cognitive organ.
