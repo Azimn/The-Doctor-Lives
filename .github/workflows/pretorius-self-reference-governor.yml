@@ -1,0 +1,96 @@
+name: Pretorius pinned Self-Reference Governor integration
+on:
+  push:
+    branches: [integration/self-reference-governor-pinned-preview]
+  pull_request:
+    paths:
+      - doctor_lives/self_reference_adapter.py
+      - tests/test_self_reference_governor_preview.py
+      - tools/pretorius_self_reference_live.py
+      - pyproject.toml
+      - .github/workflows/pretorius-self-reference-governor.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-and-unified-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Clone and verify exact standalone governor donor revision
+        run: |
+          git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach c0747901e7434b9418204a331487172a7894b6e0
+          test "$(git -C "$RUNNER_TEMP/synthetic-ipseity" rev-parse HEAD)" = "c0747901e7434b9418204a331487172a7894b6e0"
+          python -m pip install -e ".[self-reference-governor-preview]"
+          python - <<'PY'
+          import inspect
+          import synthetic_ipseity.self_reference as gov
+          print("PINNED_GOVERNOR_MODULE",inspect.getfile(gov))
+          print("PINNED_GOVERNOR_CLASSES", gov.SelfReferenceGovernor, gov.ReferenceContext)
+          PY
+      - name: Run independent canonical Self-Reference Governor contract tests
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/synthetic-ipseity/src:$PWD" python -m unittest discover \
+            -s "$RUNNER_TEMP/synthetic-ipseity/tests" -p test_self_reference.py -v
+      - name: Install reviewed Sensus donor exact revision
+        run: |
+          git clone --quiet https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+          test "$(git -C "$RUNNER_TEMP/Sensus" rev-parse HEAD)" = "802e459ee68950414347d5fa324484c034f57b81"
+      - name: Run independent Doctor end-to-end on/off host governor contracts
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
+            -s tests -p test_self_reference_governor_preview.py -v
+      - name: Regression integrated unified host
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
+            -s tests -p test_three_organ_preview.py -v
+      - name: Verify original subject-only ingress structure
+        run: python tools/ipseity_entrypoint_gate.py
+
+  native-small-model-contrast:
+    needs: contract-and-unified-host
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact standalone donor and Doctor
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach c0747901e7434b9418204a331487172a7894b6e0
+          python -m pip install -e ".[self-reference-governor-preview]"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+      - name: Install loopback CPU Ollama
+        run: |
+          curl -fsSL --max-time 60 https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          sh "$RUNNER_TEMP/ollama-install.sh"
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > "$RUNNER_TEMP/ollama-server.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull smollm2:135m
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:0.5b
+      - name: Run matched-instruction two-draw naming-ladder A/B
+        env:
+          PRETORIUS_SRG_ARTIFACT_DIR: ${{ runner.temp }}/pretorius-srg-model-test
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python tools/pretorius_self_reference_live.py
+      - name: Upload raw model text and model-free oracle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-srg-model-a-b
+          path: ${{ runner.temp }}/pretorius-srg-model-test/
+          if-no-files-found: warn
+          retention-days: 14
