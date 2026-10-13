@@ -12,7 +12,7 @@ dependencies = ["numpy>=1.26", "scipy>=1.11"]
 
 [project.optional-dependencies]
 self-reference-governor-preview = [
-  "synthetic-ipseity @ git+https://github.com/Azimn/synthetic-ipseity.git@e84f3e37d844756786b289c13c15ea92edfd8d69",
+  "synthetic-ipseity @ git+https://github.com/Azimn/synthetic-ipseity.git@ebc2d5d34b23ce0a56c6792f938b3d2735934472",
 ]
 
 [project.scripts]
