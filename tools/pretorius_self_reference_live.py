@@ -152,6 +152,14 @@ def main():
                                 response = ""
                             receipts = governor.receipts
                             recorded = receipts[-1] if receipts else None
+                            # Measure BOTH conditions with the exact same new
+                            # standalone F4 scorer, independent of host gate.
+                            raw_text = raw_outputs[-1] if raw_outputs else ""
+                            independent = (
+                                SelfReferenceGovernor().check(
+                                    raw_text, governor._bindings, governor._context
+                                ) if raw_text else None
+                            )
                             rows.append({
                                 "model": model, "case": label, "seed": seed,
                                 "governor_enabled": enabled,
@@ -165,6 +173,18 @@ def main():
                                 "output_digest": recorded.response_sha256
                                 if recorded else None,
                                 "spoken_response": response,
+                                "standalone_score_accepted": (
+                                    independent.accepted if independent else None
+                                ),
+                                "standalone_third_person_self": (
+                                    independent.third_person_self if independent else None
+                                ),
+                                "standalone_boundary_markers": (
+                                    independent.boundary_marker if independent else None
+                                ),
+                                "standalone_violation_ids": (
+                                    independent.violation_rule_ids if independent else ()
+                                ),
                                 "raw_model_response_engineer_only": (
                                     raw_outputs[-1] if raw_outputs else None
                                 ),
@@ -229,6 +249,18 @@ def main():
                         ),
                         "unlicensed_self_vocatives": sum(
                             x["unlicensed_self_vocative"] or 0 for x in relevant
+                        ),
+                        "third_person_outputs": sum(
+                            (x["standalone_third_person_self"] or 0) > 0
+                            for x in relevant
+                        ),
+                        "boundary_marker_outputs": sum(
+                            (x["standalone_boundary_markers"] or 0) > 0
+                            for x in relevant
+                        ),
+                        "independent_f4_passes": sum(
+                            x["standalone_score_accepted"] is True
+                            for x in relevant
                         ),
                         "total_ms": sum(x["elapsed_ms"] for x in relevant),
                         "three_sentence_outputs_heuristic": sum(
