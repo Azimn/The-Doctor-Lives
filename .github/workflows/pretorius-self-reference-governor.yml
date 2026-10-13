@@ -92,6 +92,20 @@ jobs:
         env:
           PRETORIUS_SRG_ARTIFACT_DIR: ${{ runner.temp }}/pretorius-srg-model-test
         run: PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python tools/pretorius_governed_recovery_probe.py
+      - name: Smoke real opted-in Pretorius CLI through localhost model
+        run: |
+          mkdir -p "$RUNNER_TEMP/governed-cli"
+          reply="$(PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m doctor_lives.three_organ_preview \
+            --state "$RUNNER_TEMP/governed-cli/three-organ-preview" \
+            --enable-experimental-preview --enable-governed-speech \
+            --model smollm2:135m --governor-addressee-id visitor \
+            --say "What can you tell me about our laboratory?")"
+          test -n "$reply"
+          if printf '%s' "$reply" | grep -Eq "policy_decisions|recurrent_tick|source_ref"; then
+            echo "Protected subject-only renderer leaked engineer metadata"
+            exit 1
+          fi
+          printf 'PRETORIUS_GOVERNED_CLI_PASS reply_chars=%d\\n' "${#reply}"
       - name: Upload raw model text and model-free oracle
         if: always()
         uses: actions/upload-artifact@v4
