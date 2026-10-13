@@ -43,6 +43,9 @@ class GovernedRendererReceipt:
     in_clause_self_name: int
     vocative_self: int
     unlicensed_vocative_self: int
+    third_person_self: int
+    boundary_marker: int
+    violation_rule_ids: tuple[str, ...]
 
 
 def _sha(text: str) -> str:
@@ -143,6 +146,9 @@ class HostBoundGovernorRenderer:
             in_clause_self_name=score.in_clause_self_name if score else 0,
             vocative_self=score.vocative_self if score else 0,
             unlicensed_vocative_self=score.unlicensed_vocative_self if score else 0,
+            third_person_self=score.third_person_self if score else 0,
+            boundary_marker=score.boundary_marker if score else 0,
+            violation_rule_ids=score.violation_rule_ids if score else (),
         ))
         if not allowed:
             raise GovernorOutputRejected(
