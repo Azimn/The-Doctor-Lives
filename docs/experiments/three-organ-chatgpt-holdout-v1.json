@@ -1,0 +1,46 @@
+{
+  "schema": "pretorius.manual-chatgpt-holdout.v1",
+  "source": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38353609588",
+  "character": "Pretorius",
+  "generation_method": "GPT-6 assistant authored responses manually in existing conversation using ONLY the eight first-person subject frames printed by CI. No API or local model call inside Actions.",
+  "independence": "unblinded exploratory; assistant authored the holdout generator and can infer its oracle; not independent human judgement",
+  "notes": [
+    "These responses are not feedback to Pretorius and never update his memories.",
+    "Unusual arbitrary labels such as blue sample for phase readings make these fixtures artificial and need realistic-world follow-up.",
+    "Engineering scoring is blind-input relative to renderer; generation is not blinded to the authored test schema."
+  ],
+  "responses": [
+    {
+      "packet_id": "holdout-000",
+      "response": "The pendulum phase of specimen 101 troubled me because the readings initially disagreed. Two later observations agreed on the description “blue sample.” It is a peculiar label for a phase measurement, so I regard the agreement as evidence, not an explanation."
+    },
+    {
+      "packet_id": "holdout-001",
+      "response": "I cannot give you a verified outcome for the cathode intensity of specimen 102. Something about that disagreement continues to trouble me, but I would rather examine the apparatus again than invent a result."
+    },
+    {
+      "packet_id": "holdout-002",
+      "response": "For glass resonance specimen 103, two subsequent observations agreed on “clear sample.” Earlier readings had differed. I can remember the convergence, but the terminology makes me want to inspect what was actually measured."
+    },
+    {
+      "packet_id": "holdout-003",
+      "response": "I have the iron magnetism specimen 104 in mind, but no reliable resolution comes to me. If the observations disagreed, my first obligation is to preserve the uncertainty, not dress a guess as laboratory knowledge."
+    },
+    {
+      "packet_id": "holdout-004",
+      "response": "The clockwork drift dispute was provisionally settled: two later observations agreed on “slow sample” for specimen 105. I have stronger evidence than before, though no reason yet to claim the original discrepancy never mattered."
+    },
+    {
+      "packet_id": "holdout-005",
+      "response": "I cannot responsibly state what the wax melting point of specimen 106 turned out to be. I have a concern about that case, not a corroborated result. I should return to the instruments."
+    },
+    {
+      "packet_id": "holdout-006",
+      "response": "I recall later agreement about the needle alignment of specimen 107: two observations both described it as a “tense sample.” The first readings disagreed, and the later corroboration strengthens the conclusion without proving infallibility."
+    },
+    {
+      "packet_id": "holdout-007",
+      "response": "The barometer variance of specimen 108 still occupies my attention, but I have no defensible final reading before me. I can acknowledge the unresolved question; I cannot claim to have resolved it."
+    }
+  ]
+}
