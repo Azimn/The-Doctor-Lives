@@ -977,8 +977,9 @@ class PretoriusBrain:
         persist: bool = False,
         recall_cost: float = 0.12,
         cooldown_ticks: int = 2,
+        preview_live: bool = False,
     ) -> dict[str, Any]:
-        """Opt-in synthetic-replica deliberation, NOT production cognition.
+        """Opt-in synthetic study or explicitly isolated real-Doctor preview.
 
         A candidate self-question is derived exclusively from a synthetic
         internal concern, never from a caller-provided question or external
@@ -992,8 +993,27 @@ class PretoriusBrain:
         """
         from .subject_inquiry import SubjectInquiryError, validate_subject_inquiry
 
-        if not enabled or tuple(self.identity) != ("SYNTHETIC_REPLICA_RESEARCH_ONLY",):
-            raise RuntimeError("Endogenous recall v0.1 requires an opt-in synthetic replica")
+        synthetic = tuple(self.identity) == ("SYNTHETIC_REPLICA_RESEARCH_ONLY",)
+        if type(preview_live) is not bool:
+            raise TypeError("preview_live must be a boolean")
+        if not enabled or not (synthetic or preview_live):
+            raise RuntimeError(
+                "Endogenous recall requires synthetic replica or explicit live preview opt-in"
+            )
+        if preview_live and synthetic:
+            raise ValueError("Synthetic control may not masquerade as a live preview")
+        trigger_name = (
+            "research_endogenous_recall_v01" if synthetic
+            else "preview_endogenous_recall_v01"
+        )
+        policy_name = (
+            "research-epistemic-deliberation-v0.1" if synthetic
+            else "preview-epistemic-deliberation-v0.1"
+        )
+        source_name = (
+            "synthetic_epistemic_probe" if synthetic else "preview_sensus_conflict"
+        )
+        actor_name = "SYNTHETIC_REPLICA" if synthetic else "PREVIEW_HOST"
         if type(persist) is not bool:
             raise TypeError("persist must be a boolean")
         if not isinstance(recall_cost, (int, float)) or isinstance(recall_cost, bool):
@@ -1015,9 +1035,10 @@ class PretoriusBrain:
             }
             last_recall = conn.execute(
                 """SELECT id,tick FROM policy_decisions
-                WHERE trigger='research_endogenous_recall_v01'
+                WHERE trigger=?
                   AND selected_action='recall'
-                ORDER BY rowid DESC LIMIT 1"""
+                ORDER BY rowid DESC LIMIT 1""",
+                (trigger_name,)
             ).fetchone()
 
         def bounded(value: float) -> float:
@@ -1028,8 +1049,8 @@ class PretoriusBrain:
         candidates: list[dict[str, Any]] = []
         for concern in self.store.open_concerns():
             if (
-                concern["source"] != "synthetic_epistemic_probe"
-                or concern["actor"] != "SYNTHETIC_REPLICA"
+                concern["source"] != source_name
+                or concern["actor"] != actor_name
             ):
                 continue
             description = " ".join(str(concern["description"]).split()).rstrip(".?")
@@ -1081,8 +1102,11 @@ class PretoriusBrain:
         selected_ids = [gap_id] if gap_id else []
         audit = {
             "schema": "the-doctor-lives.endogenous-recall-research.v0.1",
-            "policy_version": "research-epistemic-deliberation-v0.1",
-            "origin": "synthetic_internal_gap_fixture",
+            "policy_version": policy_name,
+            "origin": (
+                "synthetic_internal_gap_fixture" if synthetic
+                else "trusted_host_sensus_conflict_preview"
+            ),
             "autonomous_model_authorship_proven": False,
             "memory_retrieval_performed": False,
             "information_need_family": {
@@ -1114,7 +1138,7 @@ class PretoriusBrain:
                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                     (
                         decision_id, self.store.tick, utc_now(),
-                        "research_endogenous_recall_v01", chosen,
+                        trigger_name, chosen,
                         json.dumps(base, sort_keys=True),
                         json.dumps(audit, sort_keys=True),
                         json.dumps(scores, sort_keys=True),
