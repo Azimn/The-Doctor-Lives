@@ -35,6 +35,7 @@ except ImportError as exc:
 _EXPECTED_SENSUS_SCHEMA = "sensus.scene.v0.1"
 _PINNED_SENSUS_COMMIT = "802e459ee68950414347d5fa324484c034f57b81"
 _PINNED_SENSUS_CORE_BLOB = "507cd9f75af04353b5e42d67fb60c147acff5ffb"
+_PINNED_SENSUS_INIT_BLOB = "ac434e8d41119ca11a91948e3c0dd7aca3fa3660"
 
 
 def _require_pinned_sensus() -> None:
@@ -64,6 +65,16 @@ def _require_pinned_sensus() -> None:
     git_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
     if git_blob != _PINNED_SENSUS_CORE_BLOB:
         raise RuntimeError("Dirty or substituted Sensus core; preview refuses to start")
+    init_bytes = (core_path.parent / "__init__.py").read_bytes()
+    init_blob = hashlib.sha1(
+        b"blob " + str(len(init_bytes)).encode("ascii") + b"\0" + init_bytes
+    ).hexdigest()
+    if init_blob != _PINNED_SENSUS_INIT_BLOB:
+        raise RuntimeError("Dirty or substituted Sensus exports; preview refuses to start")
+    if (Percept is not _sensus_core.Percept
+            or Evidence is not _sensus_core.Evidence
+            or Sensus is not _sensus_core.Sensus):
+        raise RuntimeError("Substituted Sensus type exports")
 
 _ALLOWED_OBSERVED_CHANNELS = frozenset({
     "vision", "hearing", "instrument", "touch",
@@ -359,7 +370,9 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
     def _checkpoint(self, name: str) -> None:
         """Injectable deterministic kill point; inert in normal execution."""
 
-    def _apply_scene_operation(self, operation: dict, before_tick: int) -> None:
+    def _apply_scene_operation(
+        self, operation: dict, before_tick: int, before_neural: int | None = None,
+    ) -> None:
         kind = operation["kind"]
         if kind == "gap":
             self._record_conflict_as_epistemic_concern(
@@ -382,7 +395,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             else:
                 # An already recorded admission is never replayed. Any neural
                 # checkpoint gap requires separate operator reconciliation.
-                if self._doctor.brain.neural.tick <= 0:
+                if before_neural is None or self._doctor.brain.neural.tick <= before_neural:
                     raise PreviewSceneConflict("Neural checkpoint cannot certify ingress")
         else:
             raise PreviewSceneConflict("Unknown scene journal operation")
@@ -447,7 +460,14 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
         if record["stage"] == "scene_built":
             for index in range(record["op_index"], len(payload["operations"])):
                 op = payload["operations"][index]
-                self._apply_scene_operation(op, payload["before_brain_tick"])
+                before_neural = None
+                if op["kind"] == "ingest":
+                    before_neural = self._journal.prepare_ingress(
+                        key, index, self._doctor.brain.neural.tick,
+                    )
+                self._apply_scene_operation(
+                    op, payload["before_brain_tick"], before_neural,
+                )
                 self._checkpoint("applied_operation")
                 self._journal.step(key, index)
                 self._checkpoint("journaled_operation")
