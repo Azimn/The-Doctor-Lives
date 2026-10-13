@@ -39,7 +39,7 @@ def run():
             frozen = three_first_person_frames(host, frames_received)
             cases = []
             for model in MODELS:
-                local = LocalGovernedOllamaRenderer(model, max_tokens=120)
+                local = LocalOllamaConfiguredRenderer(model, max_output_tokens=120)
                 for label, addressee, rhetorical, _question in CASES:
                     candidates = []
 
