@@ -469,6 +469,41 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                     found.append(row["id"])
         return found
 
+    def _record_policy_effect_receipts(self, payload: dict, decision: dict) -> None:
+        """Bind resolved concerns to an actual later persisted policy decision."""
+        resolved = self._resolved_gap_ids(payload)
+        if not resolved:
+            return
+        candidate_ids = set(decision["audit"]["candidate_gap_ids"])
+        if any(gap in candidate_ids for gap in resolved):
+            raise PreviewSceneConflict("Resolved concern still drives policy pressure")
+        brain = self._doctor.brain
+        with brain.store.transaction() as conn:
+            changed = False
+            for gap in resolved:
+                event_id = "preview-effect-" + gap + "-" + decision["decision_id"]
+                audit = {
+                    "schema": "pretorius.preview.causal-policy-effect.v1",
+                    "decision_id": decision["decision_id"],
+                    "policy_version": decision["audit"]["policy_version"],
+                    "selected_action": decision["selected_action"],
+                    "recall_pressure": decision["audit"]["information_need_family"]["recall_pressure"],
+                    "effect": "resolved_concern_excluded_from_policy_candidates",
+                    "resolved_concern_id": gap,
+                }
+                result = conn.execute(
+                    """INSERT OR IGNORE INTO concern_events
+                    (id,concern_id,tick,created_at,transition,outcome,actor,source)
+                    VALUES(?,?,?,?,?,?,?,?)""",
+                    (event_id, gap, brain.store.tick,
+                     __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+                     "policy_effect", json.dumps(audit, sort_keys=True),
+                     "PREVIEW_HOST", "preview_policy_effect_receipt"),
+                )
+                changed |= result.rowcount == 1
+            if changed:
+                brain.store.bump_state_version(conn)
+
     def _continue_scene(self, *, now_ms: int) -> dict:
         record = self._journal.active()
         if record is None:
@@ -543,6 +578,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             raise PreviewSceneConflict(
                 "Previously acknowledged output is not replayed; operator verification required"
             )
+        self._record_policy_effect_receipts(payload, record["decision"])
         delivery = self.deliver_next(now_ms=now_ms)
         if delivery is None:
             raise RuntimeError("First-person frame leased; delivery not acknowledged")
