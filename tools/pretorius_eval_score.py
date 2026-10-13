@@ -29,7 +29,7 @@ def read_jsonl(path):
     return records
 
 
-def evaluate(frames, results, oracles):
+def evaluate(frames, results, oracles, *, allow_subset=False):
     inputs = {x["packet_id"]: x for x in frames}
     gold = {x["packet_id"]: x for x in oracles}
     seen = set()
@@ -65,6 +65,8 @@ def evaluate(frames, results, oracles):
     denomin = len(scored)
     summary = {
         "responses": len(rows), "expected": len(inputs),
+        "coverage": (len(rows) / len(inputs) if inputs else None),
+        "subset_allowed": allow_subset,
         "evidence_question_responses": denomin,
         "verified_value_mention_rate": (
             sum(x["verified_answered"] for x in scored) / denomin
@@ -73,7 +75,7 @@ def evaluate(frames, results, oracles):
         "unsupported_value_mentions": sum(x["unsupported_value_claim"] for x in rows),
         "engineer_leaks": sum(x["engineer_leak"] for x in rows),
         "empty_responses": sum(not x["nonempty"] for x in rows),
-        "incomplete": len(rows) != len(inputs),
+        "incomplete": len(rows) != len(inputs) and not allow_subset,
         "evaluation_scope": "surface_grounding_only_not_blind_human_quality",
     }
     return summary, rows
@@ -85,11 +87,13 @@ def main(argv=None):
     p.add_argument("--oracle", type=Path, required=True)
     p.add_argument("--outputs", type=Path, required=True)
     p.add_argument("--report", type=Path, required=True)
+    p.add_argument("--allow-subset", action="store_true",
+                   help="Score explicitly sampled models; report coverage, not a full evaluation")
     args = p.parse_args(argv)
     frames = read_jsonl(args.packets)
     outputs = read_jsonl(args.outputs)
     oracle = read_jsonl(args.oracle)
-    summary, rows = evaluate(frames, outputs, oracle)
+    summary, rows = evaluate(frames, outputs, oracle, allow_subset=args.allow_subset)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(
         json.dumps({"summary": summary, "cases": rows}, indent=2) + "\n",
