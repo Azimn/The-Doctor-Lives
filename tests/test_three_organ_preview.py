@@ -730,12 +730,15 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
                 event="tamper-ingress-receipt", channel="vision",
                 attribute="beaker", value="intact", tick=host._scene_tick,
             )
+            def interrupt_after_receipted_ingest(stage):
+                # A normal observed scene first processes a resolution
+                # candidate before the Doctor's INGEST operation.
+                # Target the latter, not the preceding no-op resolution.
+                if (stage == "applied_operation"
+                        and host._journal.active()["op_completed_sha"] is not None):
+                    raise RuntimeError("ingress stopped")
             with patch.object(
-                host, "_checkpoint",
-                side_effect=lambda stage: (
-                    (_ for _ in ()).throw(RuntimeError("ingress stopped"))
-                    if stage == "applied_operation" else None
-                ),
+                host, "_checkpoint", side_effect=interrupt_after_receipted_ingest,
             ):
                 with self.assertRaisesRegex(RuntimeError, "ingress stopped"):
                     host.cycle(
