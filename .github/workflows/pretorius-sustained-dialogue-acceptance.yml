@@ -1,0 +1,98 @@
+name: Pretorius sustained conversation acceptance (research)
+on:
+  push:
+    branches: [integration/self-reference-governor-pinned-preview]
+    paths:
+      - tools/pretorius_sustained_dialogue_acceptance.py
+      - tests/test_sustained_dialogue_acceptance.py
+      - .github/workflows/pretorius-sustained-dialogue-acceptance.yml
+  pull_request:
+    paths:
+      - tools/pretorius_sustained_dialogue_acceptance.py
+      - tests/test_sustained_dialogue_acceptance.py
+      - .github/workflows/pretorius-sustained-dialogue-acceptance.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  continuous-host-mechanics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact reviewed governor and Doctor
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/ipseity"
+          git -C "$RUNNER_TEMP/ipseity" checkout --detach a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          test "$(git -C "$RUNNER_TEMP/ipseity" rev-parse HEAD)" = a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          python -m pip install -e ".[self-reference-governor-preview]"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+          test "$(git -C "$RUNNER_TEMP/Sensus" rev-parse HEAD)" = 802e459ee68950414347d5fa324484c034f57b81
+      - name: True 12-turn sequential host tests using deterministic speech stub
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
+            -s tests -p test_sustained_dialogue_acceptance.py -v
+      - name: Assert reviewed entrypoint and production boundary unchanged
+        run: python tools/ipseity_entrypoint_gate.py
+
+  sustained-two-model-dialogue:
+    needs: continuous-host-mechanics
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact cognitive donors
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/ipseity"
+          git -C "$RUNNER_TEMP/ipseity" checkout --detach a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          python -m pip install -e ".[self-reference-governor-preview]"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+      - name: Install local CPU Ollama and two models (no API)
+        run: |
+          curl -fsSL --max-time 60 https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          sh "$RUNNER_TEMP/ollama-install.sh"
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull smollm2:135m
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:0.5b
+      - name: Two real continuous 12-turn sessions with live model switch
+        env:
+          PRETORIUS_DIALOGUE_DIR: ${{ runner.temp }}/pretorius-sustained
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python tools/pretorius_sustained_dialogue_acceptance.py
+      - name: Check sealed blind ballots, run-not-release condition
+        env:
+          PRETORIUS_DIALOGUE_DIR: ${{ runner.temp }}/pretorius-sustained
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ["PRETORIUS_DIALOGUE_DIR"])
+          m=json.loads((p/"metrics.json").read_text())
+          assert m["turns"]==24 and m["blind_ballots"]==24
+          assert m["verified_recollection_frames_at_probe_turns"]==6
+          assert m["human_judgments_collected"]==0
+          assert m["release_approved"] is False
+          assert m["mechanical_acceptance"] is True
+          print("PRETORIUS_ACCEPTANCE_NOT_PRODUCTION",json.dumps(m,sort_keys=True))
+          PY
+      - name: Upload blind ballots with separate condition key and audit transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-sustained-real-dialogue
+          path: ${{ runner.temp }}/pretorius-sustained/
+          if-no-files-found: warn
+          retention-days: 21
