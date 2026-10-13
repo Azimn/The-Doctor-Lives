@@ -955,9 +955,8 @@ def main(argv: list[str] | None = None) -> int:
     governed = None
     if args.enable_governed_speech:
         # Imports and pin checks occur only in the experimental path.
-        from .self_reference_adapter import (
-            HostBoundGovernorRenderer, LocalGovernedOllamaRenderer,
-        )
+        from .self_reference_adapter import HostBoundGovernorRenderer
+        from synthetic_ipseity.local_ollama import LocalOllamaConfiguredRenderer
         governed = HostBoundGovernorRenderer(
             enabled=True,
             recovery_enabled=True,
