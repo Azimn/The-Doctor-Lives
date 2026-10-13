@@ -1,0 +1,24 @@
+name: Pretorius component readiness audit
+on:
+  push:
+    branches:
+      - integration/component-readiness-audit-20261012
+  pull_request:
+    paths:
+      - tools/pretorius_component_readiness.py
+      - tests/test_component_readiness.py
+      - .github/workflows/component-readiness-audit.yml
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify all component statuses fail closed
+        run: python -m unittest discover -s tests -p 'test_component_readiness.py' -v
+      - name: Report basic fresh-checkout readiness
+        run: python tools/pretorius_component_readiness.py
