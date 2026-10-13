@@ -16,6 +16,7 @@ from doctor_lives.self_reference_adapter import (
     HostBoundGovernorRenderer, GOVERNOR_COMMIT,
 )
 from doctor_lives.three_organ_preview import ThreeOrganPretoriusPreview
+from synthetic_ipseity.local_ollama import LocalOllamaConfiguredRenderer
 from pretorius_self_reference_live import (
     CASES, INSTRUCTION, config, three_first_person_frames,
 )
