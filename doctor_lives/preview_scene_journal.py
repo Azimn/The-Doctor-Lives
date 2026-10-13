@@ -5,6 +5,7 @@ This is a durable reconciliation log, not a Sensus donor modification.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
@@ -40,13 +41,14 @@ class PreviewSceneJournal:
                 id TEXT PRIMARY KEY, stage TEXT NOT NULL, op_index INTEGER NOT NULL,
                 payload TEXT NOT NULL, decision_json TEXT,
                 decision_before INTEGER, publish_before INTEGER,
-                op_active_index INTEGER, op_before_neural INTEGER
+                op_active_index INTEGER, op_before_neural INTEGER,
+                payload_sha256 TEXT, decision_sha256 TEXT
             );
             CREATE UNIQUE INDEX IF NOT EXISTS one_active_preview_scene
                 ON scenes ((1)) WHERE stage != 'delivered';
             CREATE TABLE IF NOT EXISTS sensus_state (
                 singleton INTEGER PRIMARY KEY CHECK(singleton=1),
-                snapshot_json TEXT NOT NULL
+                snapshot_json TEXT NOT NULL, snapshot_sha256 TEXT
             );
         """)
         existing = {row["name"] for row in self._db.execute(
@@ -55,6 +57,14 @@ class PreviewSceneJournal:
         for name in ("op_active_index", "op_before_neural"):
             if name not in existing:
                 self._db.execute("ALTER TABLE scenes ADD COLUMN " + name + " INTEGER")
+        for name in ("payload_sha256", "decision_sha256"):
+            if name not in existing:
+                self._db.execute("ALTER TABLE scenes ADD COLUMN " + name + " TEXT")
+        snapshot_cols = {row["name"] for row in self._db.execute(
+            "PRAGMA table_info(sensus_state)"
+        )}
+        if "snapshot_sha256" not in snapshot_cols:
+            self._db.execute("ALTER TABLE sensus_state ADD COLUMN snapshot_sha256 TEXT")
 
     @contextmanager
     def _transaction(self):
@@ -80,32 +90,64 @@ class PreviewSceneJournal:
         return self._decode(row)
 
     @staticmethod
-    def _decode(row) -> dict:
+    def _digest(value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def _verify(cls, value: str | None, checksum: str | None, label: str) -> str:
+        if not isinstance(value, str) or checksum != cls._digest(value):
+            raise PreviewSceneConflict(
+                "Unverified " + label + " integrity; operator reconciliation required"
+            )
+        return value
+
+    @classmethod
+    def _decode(cls, row) -> dict:
         data = dict(row)
-        data["payload"] = json.loads(data["payload"])
-        if data["decision_json"] is not None:
-            data["decision"] = json.loads(data["decision_json"])
+        text = cls._verify(data["payload"], data["payload_sha256"], "scene payload")
+        try:
+            data["payload"] = json.loads(text)
+            if data["decision_json"] is not None:
+                decision = cls._verify(
+                    data["decision_json"], data["decision_sha256"], "policy decision"
+                )
+                data["decision"] = json.loads(decision)
+        except (ValueError, TypeError) as exc:
+            raise PreviewSceneConflict("Malformed durable preview scene") from exc
         return data
 
     def snapshot(self) -> dict | None:
         row = self._db.execute(
-            "SELECT snapshot_json FROM sensus_state WHERE singleton=1"
+            "SELECT snapshot_json,snapshot_sha256 FROM sensus_state WHERE singleton=1"
         ).fetchone()
-        return json.loads(row[0]) if row else None
+        if row is None:
+            return None
+        snapshot = self._verify(row["snapshot_json"], row["snapshot_sha256"], "Sensus snapshot")
+        try:
+            return json.loads(snapshot)
+        except (ValueError, TypeError) as exc:
+            raise PreviewSceneConflict("Malformed durable Sensus snapshot") from exc
 
     def begin(self, payload: dict, snapshot: dict) -> dict:
         if self.active():
             raise PreviewSceneConflict("Pending scene must be reconciled first")
         key = "preview-scene-" + uuid4().hex
         with self._transaction():
+            serialized = json.dumps(payload, sort_keys=True)
             self._db.execute(
-                "INSERT INTO scenes (id,stage,op_index,payload) VALUES(?,?,?,?)",
-                (key, "scene_built", 0, json.dumps(payload, sort_keys=True)),
+                "INSERT INTO scenes (id,stage,op_index,payload,payload_sha256) "
+                "VALUES(?,?,?,?,?)",
+                (key, "scene_built", 0, serialized, self._digest(serialized)),
             )
+            # Deliberately inside the same transaction: an exception while
+            # serializing the second record must roll back the first insert.
+            snapshot_text = json.dumps(snapshot, sort_keys=True)
             self._db.execute(
-                "INSERT INTO sensus_state (singleton,snapshot_json) VALUES(1,?) "
-                "ON CONFLICT(singleton) DO UPDATE SET snapshot_json=excluded.snapshot_json",
-                (json.dumps(snapshot, sort_keys=True),),
+                "INSERT INTO sensus_state (singleton,snapshot_json,snapshot_sha256) "
+                "VALUES(1,?,?) ON CONFLICT(singleton) DO UPDATE SET "
+                "snapshot_json=excluded.snapshot_json,"
+                "snapshot_sha256=excluded.snapshot_sha256",
+                (snapshot_text, self._digest(snapshot_text)),
             )
         return self.active()
 
@@ -167,10 +209,12 @@ class PreviewSceneJournal:
             )
 
     def set_decision(self, key: str, decision: dict) -> None:
+        serialized = json.dumps(decision, sort_keys=True)
         with self._transaction():
             result = self._db.execute(
-                "UPDATE scenes SET decision_json=? WHERE id=? AND stage='admitted'",
-                (json.dumps(decision, sort_keys=True), key),
+                "UPDATE scenes SET decision_json=?,decision_sha256=? "
+                "WHERE id=? AND stage='admitted'",
+                (serialized, self._digest(serialized), key),
             )
             if result.rowcount != 1:
                 raise PreviewSceneConflict("Decision stage changed")
