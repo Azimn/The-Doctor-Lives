@@ -1,0 +1,63 @@
+name: Three-organ Pretorius preview integration
+on:
+  push:
+    branches:
+      - integration/three-organ-pretorius-preview
+  pull_request:
+    paths:
+      - doctor_lives/three_organ_preview.py
+      - doctor_lives/preview_scene_journal.py
+      - tests/test_preview_scene_journal.py
+      - tests/test_three_organ_preview.py
+      - tools/three_organ_chatgpt_probe.py
+      - docs/experiments/three-organ-chatgpt-proxy-responses.json
+      - docs/experiments/three-organ-chatgpt-proxy-responses-v2.json
+      - doctor_lives/cognition.py
+      - doctor_lives/ipseity_integration.py
+      - doctor_lives/ipseity_local.py
+      - pyproject.toml
+      - .github/workflows/three-organ-pretorius-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  triple-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install reviewed Synthetic Ipseity and Sensus donors
+        run: |
+          git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+          git clone --quiet https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus-Communis-Artificialis"
+          git -C "$RUNNER_TEMP/Sensus-Communis-Artificialis" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+          python -m pip install -e .
+      - name: Prove renderer inventory and independent Sensus contracts
+        run: |
+          python tools/ipseity_entrypoint_gate.py
+          PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python -m unittest discover -s "$RUNNER_TEMP/Sensus-Communis-Artificialis/tests" -v
+      - name: Prove scene journal atomicity and exclusive writer
+        run: python -m unittest discover -s tests -p test_preview_scene_journal.py -v
+      - name: Test real three-component preview with both donors installed
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python -m unittest discover -s tests -p test_three_organ_preview.py -v
+      - name: Regression Doctor's synthetic decision policy
+        run: python -m unittest discover -s tests -p test_endogenous_recall_synthetic.py -v
+      - name: Check existing Doctor Ipseity integration
+        run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
+
+      - name: Capture first-person frames for manual ChatGPT proxy (NO model call)
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/three_organ_chatgpt_probe.py
+      - name: Replay fixed ChatGPT-authored responses through real Ipseity (NO model call)
+        env:
+          PRETORIUS_CHATGPT_REPLAY: '1'
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/three_organ_chatgpt_probe.py
+      - name: Replay grounded ChatGPT-authored v2 responses after episodic repair
+        env:
+          PRETORIUS_CHATGPT_REPLAY_V2: '1'
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/three_organ_chatgpt_probe.py

@@ -1,0 +1,170 @@
+name: Pretorius stages 2-4 research qualification
+
+on:
+  push:
+    branches: [integration/three-organ-pretorius-preview]
+    paths:
+      - 'tools/pretorius_stage2_stress.py'
+      - 'tools/pretorius_stage3_holdout.py'
+      - 'tools/pretorius_chatgpt_holdout_check.py'
+      - 'docs/experiments/three-organ-chatgpt-holdout-v1.json'
+      - 'tools/pretorius_stage4_ollama.py'
+      - 'tools/pretorius_eval_score.py'
+      - 'tests/test_pretorius_eval_score.py'
+      - '.github/workflows/pretorius-stages-2-4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stress:
+    name: Real Doctor 50-session / 200-turn longitudinal gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact pinned donors and Doctor
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus-Communis-Artificialis"
+          git -C "$RUNNER_TEMP/Sensus-Communis-Artificialis" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+          python -m pip install -e .
+      - name: Independently test deterministic evaluator
+        run: python -m unittest discover -s tests -p test_pretorius_eval_score.py -v
+      - name: Run 50 isolated sessions and preserve honest results
+        env:
+          PRETORIUS_TRACE_DIR: ${{ runner.temp }}/pretorius-stage2
+          PRETORIUS_SESSIONS: '50'
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/pretorius_stage2_stress.py
+      - name: Run 40 disjoint positive and negative held-out cases
+        env:
+          PRETORIUS_HOLDOUT_DIR: ${{ runner.temp }}/pretorius-stage3
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/pretorius_stage3_holdout.py
+      - name: Score eight manual ChatGPT holdout responses after sealed data generation
+        run: |
+          python tools/pretorius_chatgpt_holdout_check.py \
+            --packets "$RUNNER_TEMP/pretorius-stage3/blind_subject_frames.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-stage3/holdout_oracle.jsonl" \
+            --fixture "docs/experiments/three-organ-chatgpt-holdout-v1.json" \
+            --out "$RUNNER_TEMP/pretorius-stage3/manual-chatgpt-report.json"
+      - name: Upload disjoint holdout inputs with separate oracle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-stage3-holdout
+          path: ${{ runner.temp }}/pretorius-stage3/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload subject-only packets and separate engineer oracles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-stage2-data
+          path: ${{ runner.temp }}/pretorius-stage2/
+          if-no-files-found: warn
+          retention-days: 14
+
+  actual-local-model:
+    name: Actual small Ollama CPU model, no paid APIs
+    needs: stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact reviewed subject-only Ollama adapter
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+      - uses: actions/download-artifact@v4
+        with:
+          name: pretorius-stage2-data
+          path: ${{ runner.temp }}/pretorius-stage2
+      - name: Install Ollama CLI, use loopback only
+        run: |
+          curl -fsSL --max-time 50 https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          sh "$RUNNER_TEMP/ollama-install.sh"
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > "$RUNNER_TEMP/ollama-server.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/version
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull smollm2:135m
+      - name: Run real tiny-model responses, preserve latency and raw output
+        run: |
+          python tools/pretorius_stage4_ollama.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-ollama-stage4" \
+            --model smollm2:135m --per-scene 3
+      - name: Score only groundedness and provenance, not voice quality
+        run: |
+          python tools/pretorius_eval_score.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-stage2/engineer_oracle.jsonl" \
+            --outputs "$RUNNER_TEMP/pretorius-ollama-stage4/outputs.jsonl" \
+            --report "$RUNNER_TEMP/pretorius-ollama-stage4/grounding-report.json" \
+            --allow-subset
+      - name: Fetch second CPU model for paired comparison
+        run: OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:0.5b
+      - name: Render exactly the same packets with Qwen2.5 0.5B
+        run: |
+          python tools/pretorius_stage4_ollama.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-qwen-stage4" \
+            --model qwen2.5:0.5b --per-scene 3
+      - name: Independently score Qwen factual grounding
+        run: |
+          python tools/pretorius_eval_score.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-stage2/engineer_oracle.jsonl" \
+            --outputs "$RUNNER_TEMP/pretorius-qwen-stage4/outputs.jsonl" \
+            --report "$RUNNER_TEMP/pretorius-qwen-stage4/grounding-report.json" \
+            --allow-subset
+      - name: Compare two actual local models without equating metrics to quality
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          for name, folder in [("smollm2:135m","pretorius-ollama-stage4"), ("qwen2.5:0.5b","pretorius-qwen-stage4")]:
+              m=json.loads((root / folder / "metadata.json").read_text())
+              q=json.loads((root / folder / "grounding-report.json").read_text())["summary"]
+              print("PRETORIUS_MODEL_COMPARISON",json.dumps({
+                  "name":name, "calls":m["calls"], "inference_ms":m["total_ms"],
+                  "coverage":q["coverage"], "answer_value_mention_rate":q["verified_value_mention_rate"],
+                  "unsupported_claims":q["unsupported_value_mentions"],
+                  "engineer_leaks":q["engineer_leaks"],
+              },sort_keys=True))
+              example=(root / folder / "outputs.jsonl").read_text().splitlines()[2]
+              obj=json.loads(example)
+              print("PRETORIUS_MODEL_SAMPLE",json.dumps({
+                  "model":name,"case":obj["packet_id"],
+                  "response":obj["response"][:700]
+              },ensure_ascii=False))
+          PY
+      - name: Upload Qwen raw generations and scoring
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-ollama-qwen25-05b
+          path: ${{ runner.temp }}/pretorius-qwen-stage4/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload local-model raw generations and scoring
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-ollama-smollm2-135m
+          path: ${{ runner.temp }}/pretorius-ollama-stage4/
+          if-no-files-found: warn
+          retention-days: 14

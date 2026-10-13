@@ -1,0 +1,109 @@
+name: Pretorius tiny renderer A-B-C-D-E
+on:
+  push:
+    branches: [integration/three-organ-pretorius-preview]
+    paths:
+      - tools/pretorius_renderer_abcd.py
+      - tools/pretorius_renderer_abcd_score.py
+      - tests/test_pretorius_renderer_abcd.py
+      - .github/workflows/pretorius-renderer-abcd.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact reviewed Synthetic Ipseity and Sensus donors
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus-Communis-Artificialis"
+          git -C "$RUNNER_TEMP/Sensus-Communis-Artificialis" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+          python -m pip install -e .
+      - name: Test protected construction and isolate renderer controls
+        run: python -m unittest discover -s tests -p test_pretorius_renderer_abcd.py -v
+      - name: Capture 50 sessions of real Doctor-Sensus-Ipseity frames
+        env:
+          PRETORIUS_TRACE_DIR: ${{ runner.temp }}/pretorius-renderer-study/frames
+          PRETORIUS_SESSIONS: '50'
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/pretorius_stage2_stress.py
+      - name: Install Ollama and lock experiment to localhost
+        run: |
+          curl -fsSL --max-time 60 https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          sh "$RUNNER_TEMP/ollama-install.sh"
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > "$RUNNER_TEMP/ollama-server.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/version
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull smollm2:135m
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:0.5b
+      - name: Run paired A B C D E contrast on SmolLM2 135M
+        run: |
+          python tools/pretorius_renderer_abcd.py \
+            --packets "$RUNNER_TEMP/pretorius-renderer-study/frames/subject_packets.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-renderer-study/smollm2-135m" \
+            --model smollm2:135m --per-scene 5
+      - name: Score SmolLM2 without model seeing answer key
+        run: |
+          python tools/pretorius_renderer_abcd_score.py \
+            --packets "$RUNNER_TEMP/pretorius-renderer-study/frames/subject_packets.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-renderer-study/frames/engineer_oracle.jsonl" \
+            --outputs "$RUNNER_TEMP/pretorius-renderer-study/smollm2-135m/raw_outputs.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-renderer-study/smollm2-135m"
+      - name: Run paired A B C D E contrast on Qwen2.5 0.5B
+        run: |
+          python tools/pretorius_renderer_abcd.py \
+            --packets "$RUNNER_TEMP/pretorius-renderer-study/frames/subject_packets.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-renderer-study/qwen25-05b" \
+            --model qwen2.5:0.5b --per-scene 5
+      - name: Score Qwen without model seeing answer key
+        run: |
+          python tools/pretorius_renderer_abcd_score.py \
+            --packets "$RUNNER_TEMP/pretorius-renderer-study/frames/subject_packets.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-renderer-study/frames/engineer_oracle.jsonl" \
+            --outputs "$RUNNER_TEMP/pretorius-renderer-study/qwen25-05b/raw_outputs.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-renderer-study/qwen25-05b"
+      - name: Publish concise scientific comparison
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "pretorius-renderer-study"
+          for model, folder in (
+              ("smollm2:135m", "smollm2-135m"), ("qwen2.5:0.5b", "qwen25-05b")
+          ):
+              scores=json.loads((root/folder/"scores.json").read_text())["scores"]
+              for arm in ("A","B","C","D","E"):
+                  item=scores[arm]
+                  print("PRETORIUS_ABCD_COMPARISON",json.dumps({
+                      "model":model, "arm":arm,
+                      "verified_n":item["positive_n"],
+                      "exact_value_rate":item["verified_value_mention_rate"],
+                      "generic_refusals":item["generic_refusals"],
+                      "identity_breaks":item["identity_breaks"],
+                      "model_styles_accepted":item["model_style_choices_accepted"],
+                      "fallbacks":item["construction_fallbacks"],
+                      "prompt_chars":item["mean_prompt_chars"],
+                      "total_ms":item["total_elapsed_ms"],
+                      "fact_guarantee_source":item["verification_truth"],
+                  },sort_keys=True))
+          PY
+      - name: Upload frozen frames, separate oracle, responses and blinded ballots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-renderer-abcd-study
+          path: ${{ runner.temp }}/pretorius-renderer-study/
+          if-no-files-found: warn
+          retention-days: 14

@@ -23,6 +23,11 @@ from .speech_emission import (
 from synthetic_ipseity import LocalOllamaRenderer
 
 
+def build_local_renderer(model: str):
+    """Reviewed model adapter reused only behind a subject-only delivery port."""
+    return LocalOllamaRenderer(model)
+
+
 class PendingSubjectDelivery(RuntimeError):
     """An earlier first-person frame must be reconciled before new input."""
 

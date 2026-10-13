@@ -13,6 +13,7 @@ dependencies = ["numpy>=1.26", "scipy>=1.11"]
 [project.scripts]
 doctor-lives = "doctor_lives.cli:main"
 doctor-lives-local = "doctor_lives.ipseity_local:main"
+doctor-lives-three-organ-preview = "doctor_lives.three_organ_preview:main"
 
 [tool.setuptools]
 packages = ["doctor_lives"]
