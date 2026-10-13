@@ -50,6 +50,11 @@ class PreviewSceneJournal:
                 singleton INTEGER PRIMARY KEY CHECK(singleton=1),
                 snapshot_json TEXT NOT NULL, snapshot_sha256 TEXT
             );
+            CREATE TABLE IF NOT EXISTS percept_receipts (
+                source_ref TEXT NOT NULL, event_id TEXT NOT NULL,
+                scene_id TEXT NOT NULL,
+                PRIMARY KEY (source_ref,event_id)
+            );
         """)
         existing = {row["name"] for row in self._db.execute(
             "PRAGMA table_info(scenes)"
@@ -128,6 +133,12 @@ class PreviewSceneJournal:
         except (ValueError, TypeError) as exc:
             raise PreviewSceneConflict("Malformed durable Sensus snapshot") from exc
 
+    def seen_percept(self, source_ref: str, event_id: str) -> bool:
+        return self._db.execute(
+            "SELECT 1 FROM percept_receipts WHERE source_ref=? AND event_id=? LIMIT 1",
+            (source_ref, event_id),
+        ).fetchone() is not None
+
     def begin(self, payload: dict, snapshot: dict) -> dict:
         if self.active():
             raise PreviewSceneConflict("Pending scene must be reconciled first")
@@ -139,8 +150,21 @@ class PreviewSceneJournal:
                 "VALUES(?,?,?,?,?)",
                 (key, "scene_built", 0, serialized, self._digest(serialized)),
             )
+            # Include vetoed percepts: disputed inputs must not be replayed
+            # later to manufacture new epistemic concerns.
+            for percept in payload.get("percept_identity", []):
+                try:
+                    self._db.execute(
+                        "INSERT INTO percept_receipts(source_ref,event_id,scene_id) "
+                        "VALUES(?,?,?)",
+                        (percept["source_ref"], percept["event_id"], key),
+                    )
+                except sqlite3.IntegrityError as exc:
+                    raise PreviewSceneConflict(
+                        "Percept identity already processed in a prior scene"
+                    ) from exc
             # Deliberately inside the same transaction: an exception while
-            # serializing the second record must roll back the first insert.
+            # serializing the second record must roll back all first inserts.
             snapshot_text = json.dumps(snapshot, sort_keys=True)
             self._db.execute(
                 "INSERT INTO sensus_state (singleton,snapshot_json,snapshot_sha256) "
