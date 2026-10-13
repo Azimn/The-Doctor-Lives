@@ -42,6 +42,7 @@ class PreviewSceneJournal:
                 payload TEXT NOT NULL, decision_json TEXT,
                 decision_before INTEGER, publish_before INTEGER,
                 op_active_index INTEGER, op_before_neural INTEGER,
+                op_completed_tick INTEGER, op_completed_sha TEXT,
                 payload_sha256 TEXT, decision_sha256 TEXT
             );
             CREATE UNIQUE INDEX IF NOT EXISTS one_active_preview_scene
@@ -59,7 +60,8 @@ class PreviewSceneJournal:
         existing = {row["name"] for row in self._db.execute(
             "PRAGMA table_info(scenes)"
         )}
-        for name in ("op_active_index", "op_before_neural"):
+        for name in ("op_active_index", "op_before_neural",
+                     "op_completed_tick", "op_completed_sha"):
             if name not in existing:
                 self._db.execute("ALTER TABLE scenes ADD COLUMN " + name + " INTEGER")
         for name in ("payload_sha256", "decision_sha256"):
@@ -179,7 +181,8 @@ class PreviewSceneJournal:
         with self._transaction():
             result = self._db.execute(
                 "UPDATE scenes SET op_index=?,op_active_index=NULL,"
-                "op_before_neural=NULL WHERE id=? "
+                "op_before_neural=NULL,op_completed_tick=NULL,"
+                "op_completed_sha=NULL WHERE id=? "
                 "AND stage='scene_built' AND op_index=?",
                 (index + 1, key, index),
             )
@@ -201,11 +204,64 @@ class PreviewSceneJournal:
             return int(row["op_before_neural"])
         with self._transaction():
             self._db.execute(
-                "UPDATE scenes SET op_active_index=?,op_before_neural=? "
+                "UPDATE scenes SET op_active_index=?,op_before_neural=?,"
+                "op_completed_tick=NULL,op_completed_sha=NULL "
                 "WHERE id=? AND op_index=? AND op_active_index IS NULL",
                 (index, neural_tick, key, index),
             )
         return neural_tick
+
+    def complete_ingress(
+        self, key: str, index: int, neural_tick: int, checkpoint_sha: str,
+    ) -> None:
+        """Seal a per-operation neural receipt only after Doctor ingest returns.
+
+        Missing receipt following an already committed Doctor event is
+        ambiguous. A later neural tick cannot substitute for this evidence.
+        """
+        if type(neural_tick) is not int or neural_tick < 0:
+            raise PreviewSceneConflict("Invalid completed neural tick")
+        if (type(checkpoint_sha) is not str or len(checkpoint_sha) != 64
+                or any(c not in "0123456789abcdef" for c in checkpoint_sha)):
+            raise PreviewSceneConflict("Invalid neural checkpoint digest")
+        with self._transaction():
+            row = self._db.execute(
+                "SELECT op_completed_tick,op_completed_sha FROM scenes "
+                "WHERE id=? AND stage='scene_built' AND op_index=? "
+                "AND op_active_index=?",
+                (key, index, index),
+            ).fetchone()
+            if row is None:
+                raise PreviewSceneConflict("Ingress completion cursor is stale")
+            if row["op_completed_sha"] is not None:
+                if (row["op_completed_tick"] != neural_tick
+                        or row["op_completed_sha"] != checkpoint_sha):
+                    raise PreviewSceneConflict("Contradictory neural completion receipt")
+                return
+            self._db.execute(
+                "UPDATE scenes SET op_completed_tick=?,op_completed_sha=? "
+                "WHERE id=? AND op_index=? AND op_active_index=? "
+                "AND op_completed_sha IS NULL",
+                (neural_tick, checkpoint_sha, key, index, index),
+            )
+
+    def verify_completed_ingress(
+        self, key: str, index: int, neural_tick: int, checkpoint_sha: str,
+    ) -> None:
+        """Recover only the checkpoint attested after this exact operation."""
+        row = self._db.execute(
+            "SELECT op_completed_tick,op_completed_sha FROM scenes "
+            "WHERE id=? AND stage='scene_built' AND op_index=? "
+            "AND op_active_index=?",
+            (key, index, index),
+        ).fetchone()
+        if (row is None or row["op_completed_sha"] is None
+                or row["op_completed_tick"] != neural_tick
+                or row["op_completed_sha"] != checkpoint_sha):
+            raise PreviewSceneConflict(
+                "Neural checkpoint completion cannot be certified; "
+                "operator reconciliation required"
+            )
 
     def stage(self, key: str, old: str, new: str) -> None:
         allowed = {
