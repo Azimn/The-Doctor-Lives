@@ -158,7 +158,16 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             )
             self.assertEqual(result["admitted_percepts"], 1)
             self.assertTrue(any(
-                m["external"] and "beaker might be missing" in m["text"]
+                m["source"] == "preview-verified-user:trusted:user1"
+                and m["kind"] == "communication"
+                and "I read a message from User" in m["text"]
+                and "beaker might be missing" in m["text"]
+                for m in host._doctor.brain.store.memories()
+            ))
+            # Doctor's lived-runtime record is of hearing a message; the
+            # reported proposition is never promoted to a world observation.
+            self.assertFalse(any(
+                m["source"].startswith("preview-verified-world:")
                 for m in host._doctor.brain.store.memories()
             ))
             self.assertIn("I read a message from User", self.frames[0])
