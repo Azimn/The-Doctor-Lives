@@ -158,7 +158,7 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             )
             self.assertEqual(result["admitted_percepts"], 1)
             self.assertTrue(any(
-                m["source"] == "preview-verified-user:trusted:user1"
+                m["source"].startswith("preview-verified-user:trusted:user1:")
                 and m["kind"] == "communication"
                 and "I read a message from User" in m["text"]
                 and "beaker might be missing" in m["text"]
@@ -325,6 +325,132 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Dirty or substituted"):
                 self.Host(self.state, enabled=True, renderer=lambda _: "never")
         self.assertFalse(self.state.exists())
+
+
+    def test_sensus_object_id_persists_across_processes(self):
+        with self.host() as host:
+            one = self.claim(
+                event="identity-one", channel="vision", attribute="glass colour",
+                value="amber", tick=host._scene_tick,
+            )
+            one = self.Percept(
+                event_id=one.event_id, channel=one.channel,
+                evidence=one.evidence, source_ref=one.source_ref,
+                tick=one.tick, attribute=one.attribute, value=one.value,
+                confidence=one.confidence, object_hint="glass",
+                features=(("material", "glass"), ("shape", "round")),
+            )
+            first = host.cycle(
+                (one,), trusted_source_refs=frozenset({"trusted:identity-one"}),
+                now_ms=1000,
+            )
+            original_id = first["scene_object_ids"][0]
+        with self.host() as reopened:
+            second = self.Percept(
+                event_id="identity-two", channel="touch",
+                evidence=self.Evidence.OBSERVED, source_ref="trusted:identity-two",
+                tick=reopened._scene_tick, attribute="glass texture", value="smooth",
+                confidence=0.99, object_hint="glass",
+                features=(("material", "glass"), ("shape", "round")),
+            )
+            result = reopened.cycle(
+                (second,), trusted_source_refs=frozenset({"trusted:identity-two"}),
+                now_ms=2000,
+            )
+            self.assertEqual(result["scene_object_ids"], [original_id])
+        from pathlib import Path
+        self.assertTrue((self.state / "preview_scene_journal.sqlite3").exists())
+
+    def test_scene_journal_recovers_without_reingesting_or_reselecting(self):
+        """Fault injection is software correctness evidence, not real-model QA."""
+        from unittest.mock import patch
+        checkpoints = (
+            "scene_built", "applied_operation", "journaled_operation",
+            "admitted", "decision_persisted", "decided",
+            "published_not_journaled", "published",
+        )
+        for crash_stage in checkpoints:
+            with self.subTest(stage=crash_stage):
+                with tempfile.TemporaryDirectory() as root:
+                    state = Path(root) / "three-organ-preview"
+                    def renderer(_text):
+                        return "I received it."
+                    with self.Host(
+                        state, enabled=True, renderer=renderer,
+                        neural_config=small_config(),
+                    ) as host:
+                        p = self.Percept(
+                            event_id="message", channel="conversation",
+                            evidence=self.Evidence.REPORTED,
+                            source_ref="trusted:message", tick=host._scene_tick,
+                            attribute="message", value="An ordinary inquiry.",
+                            confidence=0.8,
+                        )
+                        def fail_once(name):
+                            if name == crash_stage:
+                                raise RuntimeError("injected kill " + name)
+                        with patch.object(host, "_checkpoint", side_effect=fail_once):
+                            with self.assertRaisesRegex(RuntimeError, "injected kill"):
+                                host.cycle(
+                                    (p,),
+                                    trusted_source_refs=frozenset({"trusted:message"}),
+                                    now_ms=1000,
+                                )
+                        with host._doctor.brain.store.connect() as db:
+                            before_events = db.execute(
+                                "SELECT COUNT(*) FROM events WHERE source LIKE "
+                                "'preview-verified-user:trusted:message:%'"
+                            ).fetchone()[0]
+                            before_decisions = db.execute(
+                                "SELECT COUNT(*) FROM policy_decisions "
+                                "WHERE policy_version='preview-epistemic-deliberation-v0.1'"
+                            ).fetchone()[0]
+                    with self.Host(
+                        state, enabled=True, renderer=renderer,
+                        neural_config=small_config(),
+                    ) as restarted:
+                        self.assertEqual(restarted.resume_preview(now_ms=30101),
+                                         "I received it.")
+                        with restarted._doctor.brain.store.connect() as db:
+                            after_events = db.execute(
+                                "SELECT COUNT(*) FROM events WHERE source LIKE "
+                                "'preview-verified-user:trusted:message:%'"
+                            ).fetchone()[0]
+                            after_decisions = db.execute(
+                                "SELECT COUNT(*) FROM policy_decisions "
+                                "WHERE policy_version='preview-epistemic-deliberation-v0.1'"
+                            ).fetchone()[0]
+                        self.assertEqual(after_events, 1)
+                        self.assertEqual(after_decisions, 1)
+                        self.assertLessEqual(before_events, after_events)
+                        self.assertLessEqual(before_decisions, after_decisions)
+                        with self.assertRaises(RuntimeError):
+                            restarted.resume_preview(now_ms=60101)
+
+    def test_crash_after_delivery_ack_never_replays_output(self):
+        from unittest.mock import patch
+        called = []
+        with self.host(renderer=lambda _text: called.append(1) or "Delivered.") as host:
+            p = self.Percept(
+                event_id="last", channel="conversation",
+                evidence=self.Evidence.REPORTED,
+                source_ref="trusted:last", tick=host._scene_tick,
+                attribute="message", value="Last statement.", confidence=0.8,
+            )
+            with patch.object(
+                host, "_checkpoint",
+                side_effect=lambda name: (_ for _ in ()).throw(RuntimeError("ack crash"))
+                if name == "delivery_acknowledged" else None,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "ack crash"):
+                    host.cycle(
+                        (p,), trusted_source_refs=frozenset({"trusted:last"}),
+                        now_ms=1000,
+                    )
+        with self.host(renderer=lambda _text: called.append(1) or "Duplicate.") as recovery:
+            with self.assertRaisesRegex(RuntimeError, "acknowledged"):
+                recovery.resume_preview(now_ms=40000)
+        self.assertEqual(len(called), 1)
 
 if __name__ == "__main__":
     unittest.main()
