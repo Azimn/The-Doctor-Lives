@@ -26,8 +26,8 @@ jobs:
       - name: Clone and verify exact standalone governor donor revision
         run: |
           git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
-          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach c0747901e7434b9418204a331487172a7894b6e0
-          test "$(git -C "$RUNNER_TEMP/synthetic-ipseity" rev-parse HEAD)" = "c0747901e7434b9418204a331487172a7894b6e0"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e84f3e37d844756786b289c13c15ea92edfd8d69
+          test "$(git -C "$RUNNER_TEMP/synthetic-ipseity" rev-parse HEAD)" = "e84f3e37d844756786b289c13c15ea92edfd8d69"
           python -m pip install -e ".[self-reference-governor-preview]"
           python - <<'PY'
           import inspect
@@ -67,7 +67,7 @@ jobs:
       - name: Install exact standalone donor and Doctor
         run: |
           git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
-          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach c0747901e7434b9418204a331487172a7894b6e0
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e84f3e37d844756786b289c13c15ea92edfd8d69
           python -m pip install -e ".[self-reference-governor-preview]"
           git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
           git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
