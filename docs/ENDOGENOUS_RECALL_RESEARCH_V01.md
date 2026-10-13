@@ -72,3 +72,49 @@ proper abstention, latency and restart trace coherence. Only promote if the
 policy beats the strong simple controller in downstream utility, without an
 increase in false memory claims. This is not a release blocker for Synthetic
 Ipseity's existing integration.
+
+
+## Research v0.2: source-backed, matched-arm outcome harness
+
+Run `python tools/run_endogenous_recall_benchmark.py --seed 1842
+--output /tmp/endogenous-recall-outcomes.json` (or omit `--output`).
+The runner in `tools/run_endogenous_recall_benchmark.py` now creates
+**separate disposable synthetic BrainStore replicas** for five arms and
+18 frozen fixture tasks: no recall, seeded random recall, forced targeted
+recall (upper bound), an explicit and nontrivial uncertainty/fatigue
+gap-trigger baseline, and opt-in policy-selected recall.
+
+All arms receive the **same per-task recorded first-person source facts**,
+uncertainty, curiosity and fatigue, with at most **one** authorized lookup.
+The existing `subject_recollection()` projects retrieved content into a
+typed first-person SubjectFrame. A fixed, deliberately simple non-LLM
+answer reader receives only the first-person text; it cannot inspect the
+gold answer, decision audit, memory IDs, source metadata or arm label.
+The evaluator scores a correct source-backed answer, appropriate abstention
+on withheld information, false claims, unnecessary lookups, and recovery
+of the experimental receipt after SQLite reopening.
+
+Research controller authorization is **strictly confined** to the disposable
+synthetic harness. For a policy-selected lookup it checks the persisted
+`policy_decisions` row and internal-question SHA before executing.
+The existing `events` table receives an engineer-only experiment receipt,
+with decision reference and subject-frame digest. Duplicate attempts with
+the same attempt key are refused. Such receipts **never** become autobiographical
+subject memories. The live Doctor chassis host authorization and Synthetic
+Ipseity donor are neither bypassed nor altered by this research harness.
+
+### Interpretation and promotion bar
+
+These are **frozen teaching fixtures**, not independently constructed
+holdouts, and the fixed text reader is not a role-playing language model.
+Results measure narrow factual continuity from a subject-safe retrieval,
+not general conversational quality, autonomous neural authorship, emergent
+mind, or an LLM's creative decision. Forced targeted recall has privileged
+timing by design and is an *upper-bound control*. No production merge is
+authorized on the strength of this benchmark alone.
+
+The exact falsification comparison is **policy-selected vs strong gap rule**
+under identical evidence, recall budget and evaluator. The policy must beat
+that baseline on externally authored tasks with unseen variations before
+claims of policy benefit or promotion. If parity or worse persists, shelve
+the policy addition rather than rebranding forced lookup as autonomy.
