@@ -935,6 +935,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--state", type=Path, required=True)
     parser.add_argument("--model", default="qwen3:1.5b")
     parser.add_argument("--enable-experimental-preview", action="store_true")
+    parser.add_argument("--enable-governed-speech", action="store_true",
+                        help="Opt in to pinned reusable governor, two attempts and guarded fallback")
+    parser.add_argument("--governor-addressee-id", default="visitor",
+                        help="Trusted launcher addressee identity (never inferred from user speech)")
+    parser.add_argument("--governor-rhetorical-license", action="store_true",
+                        help="Host authorizes rhetorical self-address")
+    parser.add_argument("--governor-no-fallback", action="store_true",
+                        help="Fail closed and leave the frame pending if both model attempts are rejected")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--say", help="Reported User speech, not world observation")
     mode.add_argument("--resume", action="store_true")
@@ -944,9 +952,31 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--enable-experimental-preview is required")
     if args.state.name != "three-organ-preview":
         parser.error("--state must be a dedicated three-organ-preview directory")
+    governed = None
+    if args.enable_governed_speech:
+        # Imports and pin checks occur only in the experimental path.
+        from .self_reference_adapter import (
+            HostBoundGovernorRenderer, LocalGovernedOllamaRenderer,
+        )
+        governed = HostBoundGovernorRenderer(
+            enabled=True,
+            recovery_enabled=True,
+            trusted_instruction="Express the current experience as your own speech.",
+            render=LocalGovernedOllamaRenderer(args.model),
+            fallback_text=(None if args.governor_no_fallback else
+                           "I must consider my words more carefully."),
+            max_model_attempts=2,
+        )
     with ThreeOrganPretoriusPreview(
-        args.state, enabled=True, renderer=build_local_renderer(args.model),
+        args.state, enabled=True,
+        renderer=governed if governed is not None else build_local_renderer(args.model),
     ) as host:
+        if governed is not None:
+            governed.bind_doctor_host(
+                host,
+                addressee_subject_id=args.governor_addressee_id,
+                rhetorical_self_address=args.governor_rhetorical_license,
+            )
         when = int(time.time() * 1000)
         if args.resume:
             result = host.resume_preview(now_ms=when)
