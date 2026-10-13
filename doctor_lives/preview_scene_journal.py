@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
 
@@ -55,6 +56,21 @@ class PreviewSceneJournal:
             if name not in existing:
                 self._db.execute("ALTER TABLE scenes ADD COLUMN " + name + " INTEGER")
 
+    @contextmanager
+    def _transaction(self):
+        """Autocommit connections require an explicit SQLite transaction.
+
+        Grouped journal writes must never become independently committed
+        statements, especially scene intent and its matching Sensus snapshot.
+        """
+        self._db.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+            self._db.execute("COMMIT")
+        except BaseException:
+            self._db.execute("ROLLBACK")
+            raise
+
     def active(self) -> dict | None:
         row = self._db.execute(
             "SELECT * FROM scenes WHERE stage!='delivered'"
@@ -81,7 +97,7 @@ class PreviewSceneJournal:
         if self.active():
             raise PreviewSceneConflict("Pending scene must be reconciled first")
         key = "preview-scene-" + uuid4().hex
-        with self._db:
+        with self._transaction():
             self._db.execute(
                 "INSERT INTO scenes (id,stage,op_index,payload) VALUES(?,?,?,?)",
                 (key, "scene_built", 0, json.dumps(payload, sort_keys=True)),
@@ -94,7 +110,7 @@ class PreviewSceneJournal:
         return self.active()
 
     def step(self, key: str, index: int) -> None:
-        with self._db:
+        with self._transaction():
             result = self._db.execute(
                 "UPDATE scenes SET op_index=?,op_active_index=NULL,"
                 "op_before_neural=NULL WHERE id=? "
@@ -117,7 +133,7 @@ class PreviewSceneJournal:
             if int(row["op_active_index"]) != index:
                 raise PreviewSceneConflict("Different incomplete ingress operation")
             return int(row["op_before_neural"])
-        with self._db:
+        with self._transaction():
             self._db.execute(
                 "UPDATE scenes SET op_active_index=?,op_before_neural=? "
                 "WHERE id=? AND op_index=? AND op_active_index IS NULL",
@@ -134,7 +150,7 @@ class PreviewSceneJournal:
         }
         if (old, new) not in allowed:
             raise PreviewSceneConflict("Illegal scene transition")
-        with self._db:
+        with self._transaction():
             result = self._db.execute(
                 "UPDATE scenes SET stage=? WHERE id=? AND stage=?",
                 (new, key, old),
@@ -143,7 +159,7 @@ class PreviewSceneJournal:
                 raise PreviewSceneConflict("Scene stage was modified concurrently")
 
     def decision_boundary(self, key: str, rowid: int) -> None:
-        with self._db:
+        with self._transaction():
             self._db.execute(
                 "UPDATE scenes SET decision_before=? WHERE id=? "
                 "AND stage='admitted' AND decision_before IS NULL",
@@ -151,7 +167,7 @@ class PreviewSceneJournal:
             )
 
     def set_decision(self, key: str, decision: dict) -> None:
-        with self._db:
+        with self._transaction():
             result = self._db.execute(
                 "UPDATE scenes SET decision_json=? WHERE id=? AND stage='admitted'",
                 (json.dumps(decision, sort_keys=True), key),
@@ -160,7 +176,7 @@ class PreviewSceneJournal:
                 raise PreviewSceneConflict("Decision stage changed")
 
     def publish_boundary(self, key: str, seq: int) -> None:
-        with self._db:
+        with self._transaction():
             self._db.execute(
                 "UPDATE scenes SET publish_before=? WHERE id=? "
                 "AND stage='decided' AND publish_before IS NULL",
