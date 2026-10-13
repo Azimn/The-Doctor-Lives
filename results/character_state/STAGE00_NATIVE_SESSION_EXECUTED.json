@@ -1,0 +1,19 @@
+{
+  "schema": "pretorius.phase.native-session-engineering.v01",
+  "source_workflow_run_id": 38022209246,
+  "source_execution_commit": "a78d2f06b04ebbd5eb6d7cd8194cf5795e752b99",
+  "source_manifest": "c26652e8712dce315e10ef4eabc29b806fdc69026db5b6defea8bc78176188e8",
+  "focused_tests_passed": 9,
+  "initial_has_commitment": false,
+  "after_add_has_commitment": true,
+  "after_resolve_has_open_commitment": false,
+  "static_initial_snapshot_stale_after_add": true,
+  "immutable_root_all_three": true,
+  "persona_unchanged": true,
+  "snapshot_digests_differ": true,
+  "no_new_autobiography": true,
+  "native_brain_state_committed": true,
+  "shadow_canonical_modification": false,
+  "world_outcome_independently_verified": false,
+  "claim": "Real native source-state integration PASS; not a character quality or real world outcome validation."
+}
