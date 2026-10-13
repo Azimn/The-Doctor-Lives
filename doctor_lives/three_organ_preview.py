@@ -81,6 +81,9 @@ _ALLOWED_OBSERVED_CHANNELS = frozenset({
 })
 _SAFE_OBSERVED_PHRASE = re.compile(r"^[a-zA-Z0-9 ,.'-]{1,90}$")
 
+# Import-time fail-closed source verification, repeated before state open.
+_require_pinned_sensus()
+
 
 class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
     """Experimental full Doctor brain with a real three-component cycle.
