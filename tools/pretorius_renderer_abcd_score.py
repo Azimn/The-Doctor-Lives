@@ -113,7 +113,10 @@ def main():
     args = p.parse_args()
     # The oracle is only accessed after the completed model-run file exists.
     frames = read_jsonl(args.packets)
-    rows = read_jsonl(args.outputs)
+    # Output JSONL deliberately contains five arms per packet. Validate
+    # uniqueness on (packet_id, arm) in assess(), not on packet_id alone.
+    rows = [json.loads(line) for line in args.outputs.read_text(
+        encoding="utf8").splitlines() if line.strip()]
     oracles = read_jsonl(args.oracle)
     scores = assess(frames, oracles, rows)
     args.out.mkdir(parents=True, exist_ok=True)
