@@ -169,7 +169,7 @@ def main():
                                     raw_outputs[-1] if raw_outputs else None
                                 ),
                                 "spoken_sentence_count_heuristic": len([
-                                    x for x in re.split(r"[.!?]+(?:\\s+|$)", response)
+                                    x for x in re.split(r"[.!?]+(?:\s+|$)", response)
                                     if x.strip()
                                 ]) if response else 0,
                                 "reject_before_ack_in_live_replay": rejected,
