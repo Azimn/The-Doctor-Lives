@@ -7,6 +7,8 @@ on:
       - doctor_lives/self_reference_adapter.py
       - tests/test_self_reference_governor_preview.py
       - tools/pretorius_self_reference_live.py
+      - tools/pretorius_governed_recovery_probe.py
+      - doctor_lives/three_organ_preview.py
       - pyproject.toml
       - .github/workflows/pretorius-self-reference-governor.yml
   workflow_dispatch:
@@ -86,6 +88,10 @@ jobs:
         env:
           PRETORIUS_SRG_ARTIFACT_DIR: ${{ runner.temp }}/pretorius-srg-model-test
         run: PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python tools/pretorius_self_reference_live.py
+      - name: Run actual tiny models through bounded repair and host fallback
+        env:
+          PRETORIUS_SRG_ARTIFACT_DIR: ${{ runner.temp }}/pretorius-srg-model-test
+        run: PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python tools/pretorius_governed_recovery_probe.py
       - name: Upload raw model text and model-free oracle
         if: always()
         uses: actions/upload-artifact@v4
