@@ -288,6 +288,30 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             )
             self.assertIn(gap, before["audit"]["candidate_gap_ids"])
             self.assertNotIn(gap, after["audit"]["candidate_gap_ids"])
+            # Matched-state intervention: reopen ONLY this concern, with all
+            # memories, needs, recurrent weights and renderer held unchanged.
+            with host._doctor.brain.store.transaction() as db:
+                prior_row = db.execute(
+                    "SELECT resolved_tick,resolution FROM concerns WHERE id=?",
+                    (gap,),
+                ).fetchone()
+                db.execute(
+                    "UPDATE concerns SET status='open',resolved_tick=NULL,"
+                    "resolution=NULL WHERE id=?", (gap,),
+                )
+                host._doctor.brain.store.bump_state_version(db)
+            counterfactual = host._doctor.brain.research_endogenous_recall(
+                enabled=True, persist=False, preview_live=True, cooldown_ticks=1,
+            )
+            with host._doctor.brain.store.transaction() as db:
+                db.execute(
+                    "UPDATE concerns SET status='resolved',resolved_tick=?,"
+                    "resolution=? WHERE id=?",
+                    (prior_row["resolved_tick"], prior_row["resolution"], gap),
+                )
+                host._doctor.brain.store.bump_state_version(db)
+            self.assertIn(gap, counterfactual["audit"]["candidate_gap_ids"])
+            self.assertNotEqual(counterfactual["scores"], after["scores"])
             self.assertGreater(
                 before["audit"]["information_need_family"]["recall_pressure"],
                 after["audit"]["information_need_family"]["recall_pressure"],
