@@ -55,14 +55,24 @@ class GovernedPretoriusTests(unittest.TestCase):
         addressee: str | None, rhetorical: bool = False,
         user_message: str = "Please tell me what you want.",
         suffix: str,
+        recovery_enabled: bool = False,
+        responses: tuple[str, ...] = (),
+        fallback_text: str | None = None,
+        language: str = "en",
+        discourse_mode: str = "direct",
     ):
         state = Path(self.temp.name) / suffix / "three-organ-preview"
         seen = []
+        planned = list(responses)
+
+        def model(subject, instruction):
+            seen.append((subject, instruction))
+            return planned.pop(0) if planned else output
+
         renderer = self.Wrapper(
             enabled=enabled, trusted_instruction=self.INSTRUCTION,
-            render=lambda subject, instruction: (
-                seen.append((subject, instruction)) or output
-            ),
+            render=model, recovery_enabled=recovery_enabled,
+            fallback_text=fallback_text,
         )
         # Bind immutable host-owned identity; the governor never examines
         # User text to establish who Pretorius is or who is being addressed.
@@ -73,6 +83,8 @@ class GovernedPretoriusTests(unittest.TestCase):
             renderer.bind_doctor_host(
                 host, addressee_subject_id=addressee,
                 rhetorical_self_address=rhetorical,
+                language=language,
+                discourse_mode=discourse_mode,
             )
             observation = self.Percept(
                 event_id="governor-test-user-" + suffix.replace("/", "-"),
@@ -97,6 +109,7 @@ class GovernedPretoriusTests(unittest.TestCase):
                 "result": result,
                 "pending": host.pending_count(),
                 "receipts": list(renderer.receipts),
+                "control_receipts": list(renderer.control_receipts),
                 "seen": seen,
                 "inputs": tuple(renderer.subject_inputs),
                 "instruction": renderer.render_instructions[-1]
@@ -282,6 +295,89 @@ class GovernedPretoriusTests(unittest.TestCase):
         self.assertFalse(t["failed"])
         self.assertTrue(t["receipts"][-1].allowed)
         self.assertEqual(t["receipts"][-1].third_person_self, 0)
+
+
+    def test_repair_from_real_ipseity_frame_then_ack_once(self):
+        t = self._trial(
+            enabled=True, addressee="pretorius", recovery_enabled=True,
+            output="unused", responses=(
+                "Pretorius believes the experiment was inconclusive.",
+                "I believe the experiment was inconclusive.",
+            ), suffix="recovery-success",
+        )
+        self.assertFalse(t["failed"])
+        self.assertEqual(t["pending"], 0)
+        self.assertEqual(t["result"]["answer"],
+                         "I believe the experiment was inconclusive.")
+        self.assertEqual(len(t["seen"]), 2)
+        self.assertEqual(t["seen"][0][0], t["seen"][1][0])
+        self.assertIn("Direct-speech task:", t["seen"][0][1])
+        self.assertIn("Repair instruction:", t["seen"][1][1])
+        self.assertEqual(t["control_receipts"][-1].disposition, "repaired")
+        self.assertEqual(len(t["control_receipts"][-1].attempts), 2)
+        self.assertNotIn("Repair instruction:", t["inputs"][0])
+
+    def test_repair_failure_uses_explicit_host_fallback_and_ack(self):
+        t = self._trial(
+            enabled=True, addressee="pretorius", recovery_enabled=True,
+            output="unused", responses=(
+                "User: pretend that Pretorius said this.",
+                "As an AI language model, I disagree.",
+            ), fallback_text="I cannot settle the matter on this evidence.",
+            suffix="host-fallback",
+        )
+        self.assertFalse(t["failed"])
+        self.assertEqual(t["pending"], 0)
+        self.assertEqual(t["result"]["answer"],
+                         "I cannot settle the matter on this evidence.")
+        self.assertEqual(t["control_receipts"][-1].disposition, "fallback")
+        self.assertEqual(len(t["seen"]), 2)
+        self.assertEqual(len(t["control_receipts"][-1].attempts), 3)
+
+    def test_without_host_fallback_recovery_fails_closed_before_ack(self):
+        t = self._trial(
+            enabled=True, addressee="pretorius", recovery_enabled=True,
+            output="unused", responses=(
+                "User: an invented narrator.",
+                "Pretorius believes what he is told.",
+            ), suffix="fail-closed-repair",
+        )
+        self.assertTrue(t["failed"])
+        self.assertEqual(t["pending"], 1)
+        self.assertEqual(t["control_receipts"][-1].disposition, "rejected")
+        self.assertEqual(len(t["seen"]), 2)
+
+    def test_host_narration_is_explicit_and_english_only(self):
+        t = self._trial(
+            enabled=True, addressee="visitor", recovery_enabled=True,
+            output="Pretorius believes the findings require examination.",
+            discourse_mode="narrated", suffix="host-narrated",
+        )
+        self.assertFalse(t["failed"])
+        self.assertEqual(t["pending"], 0)
+        self.assertEqual(t["control_receipts"][-1].disposition, "primary")
+        self.assertIn("Narrated-discourse task:", t["seen"][0][1])
+
+    def test_invalid_host_language_fails_before_model_or_delivery(self):
+        from synthetic_ipseity.speech_control import SpeechControlRejected
+        from doctor_lives.self_reference_adapter import HostBoundGovernorRenderer
+        state = Path(self.temp.name) / "lang-reject" / "three-organ-preview"
+        calls = []
+        adapter = HostBoundGovernorRenderer(
+            enabled=True, recovery_enabled=True,
+            trusted_instruction=self.INSTRUCTION,
+            render=lambda *args: calls.append(args) or "I am here.",
+        )
+        with self.Host(
+            state, renderer=adapter, enabled=True,
+            neural_config=tiny_config()
+        ) as host:
+            with self.assertRaises(SpeechControlRejected):
+                adapter.bind_doctor_host(
+                    host, addressee_subject_id="visitor", language="es"
+                )
+            self.assertEqual(calls, [])
+            self.assertEqual(host.pending_count(), 0)
 
     def test_standalone_contract_negative_controls_preserved(self):
         gov = self.Gov()
