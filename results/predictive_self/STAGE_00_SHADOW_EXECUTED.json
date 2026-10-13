@@ -1,0 +1,52 @@
+{
+  "source_workflow_run": 38015971437,
+  "source_head_sha": "b7d71ccd03ebf2ab37ce749db0aa87ea1e4cac44",
+  "source_job_id": 114106171148,
+  "limitations": "mechanics/synthetic evidence; not independent behavioral efficacy",
+  "result": {
+    "claim_status": "synthetic_and_native_shadow_mechanics_not_continuity_evidence",
+    "native_shadow": {
+      "log_loss": 2.30258509,
+      "manifest_digest": "c26652e8712dce315e10ef4eabc29b806fdc69026db5b6defea8bc78176188e8",
+      "n_scored": 1,
+      "observed_action": "create",
+      "source_neural_action_count": 10,
+      "source_store_digest": "c705aca02a040da1954b1e2d958dc3759901bc3ec2f7efdf8a292eb22022ba15",
+      "store_unchanged_by_shadow_observer": true,
+      "witness_kind": "runtime_policy",
+      "world_result_verified": false
+    },
+    "protocol": "pretorius-predictive-self-loop-v0.1",
+    "synthetic": {
+      "evidence": "mock_world_witness_synthetic_only",
+      "forecast_errors": [
+        {
+          "action_log_loss": 0.98861139,
+          "forecast_digest": "238f9f809c67e846a694702eab952dca26cfa26e1474318d714c782b14750114",
+          "partner_before": 0.5,
+          "suggestion": "ask_partner"
+        },
+        {
+          "action_log_loss": 0.74077523,
+          "forecast_digest": "57fbd60066cd3743b448613ceb8bcde93233810ba6cd9d9b49041f1751a119ab",
+          "partner_before": 0.6666666666666666,
+          "suggestion": "inspect_evidence"
+        },
+        {
+          "action_log_loss": 0.98861139,
+          "forecast_digest": "b0606dd30e44ed7b516ce47b5c4ad2945053464ead0bcfcba23fa9206330f1ef",
+          "partner_before": null,
+          "suggestion": "inspect_evidence"
+        }
+      ],
+      "ledger_digest": "b3cf9d535300b617239b0582bb366c961b27fa43a7318ac080e87e3a7257b319",
+      "n_scored": 3,
+      "semantic_after": {
+        "independence_testable_proxy": 0.6
+      },
+      "semantic_before": {
+        "independence_testable_proxy": 0.75
+      }
+    }
+  }
+}
