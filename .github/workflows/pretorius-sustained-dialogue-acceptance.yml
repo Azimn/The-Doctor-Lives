@@ -82,7 +82,9 @@ jobs:
           p=pathlib.Path(os.environ["PRETORIUS_DIALOGUE_DIR"])
           m=json.loads((p/"metrics.json").read_text())
           assert m["turns"]==24 and m["blind_ballots"]==24
-          assert m["verified_recollection_frames_at_probe_turns"]==6
+          assert m["verified_recollection_frames_at_probe_turns"]==4
+          assert m["expected_verified_probe_frames"]==4
+          assert m["weak_cue_recollection_missing"] in (0,1,2)
           assert m["human_judgments_collected"]==0
           assert m["release_approved"] is False
           assert m["mechanical_acceptance"] is True
