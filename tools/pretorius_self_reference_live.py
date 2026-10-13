@@ -124,9 +124,14 @@ def main():
                             start = time.monotonic()
                             # Use a model transport whose trusted host config
                             # is independent of cognitive frame and user text.
+                            raw_outputs = []
                             def render(text, instruction, *, _model=model,
                                        _seed=seed):
-                                return local_ollama(_model, text, instruction, _seed)
+                                raw = local_ollama(_model, text, instruction, _seed)
+                                # Engineer-only raw model output remains available
+                                # for independent review even when governor vetoes.
+                                raw_outputs.append(raw)
+                                return raw
                             governor = HostBoundGovernorRenderer(
                                 enabled=enabled, render=render,
                                 trusted_instruction=INSTRUCTION,
@@ -160,6 +165,13 @@ def main():
                                 "output_digest": recorded.response_sha256
                                 if recorded else None,
                                 "spoken_response": response,
+                                "raw_model_response_engineer_only": (
+                                    raw_outputs[-1] if raw_outputs else None
+                                ),
+                                "spoken_sentence_count_heuristic": len([
+                                    x for x in re.split(r"[.!?]+(?:\\s+|$)", response)
+                                    if x.strip()
+                                ]) if response else 0,
                                 "reject_before_ack_in_live_replay": rejected,
                                 "accepted": (recorded.allowed
                                              if recorded is not None else False),
@@ -193,7 +205,8 @@ def main():
                 "model_count": len(MODELS), "model_calls": len(rows),
                 "source_frame_captured_through_unified_host": True,
                 "model_study_uses_frozen_frame_replay": True,
-                "raw_model_rejection_text_unavailable_after_veto": True,
+                "raw_model_rejection_text_engineer_only": True,
+                "independent_false_reject_human_ratings": None,
                 "oracle_visible_to_models": False,
                 "same_subject_prompt_per_pair": True,
                 "failures": sum(bool(x["error"]) for x in rows),
@@ -218,6 +231,10 @@ def main():
                             x["unlicensed_self_vocative"] or 0 for x in relevant
                         ),
                         "total_ms": sum(x["elapsed_ms"] for x in relevant),
+                        "three_sentence_outputs_heuristic": sum(
+                            x["spoken_sentence_count_heuristic"] == 3
+                            for x in relevant
+                        ),
                     }
                 summary["by_model"][model] = counts
             (OUT / "summary.json").write_text(
