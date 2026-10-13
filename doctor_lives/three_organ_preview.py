@@ -8,7 +8,9 @@ the Sensus donor's separately blinded experiments.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 from pathlib import Path
 import re
 import sys
@@ -22,6 +24,7 @@ from .subject_inquiry import validate_subject_inquiry
 
 try:
     from sensus_artificialis import Evidence, Percept, Sensus, SCHEMA_VERSION
+    from sensus_artificialis import core as _sensus_core
 except ImportError as exc:
     raise ImportError(
         "Three-organ preview requires the exact reviewed Sensus donor on PYTHONPATH"
@@ -29,6 +32,28 @@ except ImportError as exc:
 
 
 _EXPECTED_SENSUS_SCHEMA = "sensus.scene.v0.1"
+_PINNED_SENSUS_COMMIT = "802e459ee68950414347d5fa324484c034f57b81"
+_PINNED_SENSUS_CORE_BLOB = "507cd9f75af04353b5e42d67fb60c147acff5ffb"
+
+
+def _require_pinned_sensus() -> None:
+    """Check donor commit identity and the imported code bytes."""
+    core_path = Path(_sensus_core.__file__).resolve()
+    root = core_path.parent.parent
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=4, check=True,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise RuntimeError("Sensus preview requires a reviewed Git checkout") from exc
+    if result.stdout.strip() != _PINNED_SENSUS_COMMIT:
+        raise RuntimeError("Unreviewed Sensus commit; preview refuses to start")
+    source = core_path.read_bytes()
+    git_blob = hashlib.sha1(b"blob " + str(len(source)).encode("ascii") + b"\0" + source).hexdigest()
+    if git_blob != _PINNED_SENSUS_CORE_BLOB:
+        raise RuntimeError("Dirty or substituted Sensus core; preview refuses to start")
+
 _ALLOWED_OBSERVED_CHANNELS = frozenset({
     "vision", "hearing", "instrument", "touch",
 })
@@ -58,6 +83,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             raise ValueError("Preview state directory must be named three-organ-preview")
         if SCHEMA_VERSION != _EXPECTED_SENSUS_SCHEMA:
             raise RuntimeError("Unreviewed Sensus scene schema")
+        _require_pinned_sensus()
         super().__init__(
             path, renderer=renderer,
             epoch_id="pretorius-three-organ-preview-v1",
@@ -73,13 +99,32 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             raise RuntimeError("No policy-selected internal recollection pending")
         return self._internal_question
 
-    def _record_conflict_as_epistemic_concern(self, attribute: str) -> str:
+    @staticmethod
+    def _claim_record(claim: Percept) -> dict:
+        """Engineer-only source assertion, never passed to SubjectFrame."""
+        return {
+            "event_id": claim.event_id, "source_ref": claim.source_ref,
+            "channel": claim.channel, "evidence": claim.evidence.value,
+            "tick": claim.tick, "attribute": claim.attribute,
+            "value": claim.value, "confidence": claim.confidence,
+            "object_hint": claim.object_hint, "features": claim.features,
+        }
+
+    def _record_conflict_as_epistemic_concern(
+        self, attribute: str, object_id: str, claims: tuple[Percept, ...],
+    ) -> str:
         if not _SAFE_OBSERVED_PHRASE.fullmatch(attribute):
             raise ValueError("Untrusted conflict attribute cannot form a subject cue")
         description = "the " + attribute.strip()
         validate_subject_inquiry(f"What do I remember of {description}?")
         identifier = "preview-gap-" + uuid4().hex
         brain = self._doctor.brain
+        evidence = {
+            "schema": "pretorius.preview.conflict-evidence.v1",
+            "attribute": attribute, "object_id": object_id,
+            "claims": [self._claim_record(c) for c in claims],
+            "resolution": None, "downstream_effect": "open_epistemic_pressure",
+        }
         with brain.store.transaction() as conn:
             conn.execute(
                 """INSERT INTO concerns
@@ -89,8 +134,65 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                 (identifier, brain.store.tick, brain.store.tick, description,
                  "open", 0.95, 0.95, "PREVIEW_HOST", "preview_sensus_conflict"),
             )
+            conn.execute(
+                """INSERT INTO concern_events
+                (id,concern_id,tick,created_at,transition,outcome,actor,source)
+                VALUES(?,?,?,?,?,?,?,?)""",
+                ("preview-evidence-" + identifier, identifier, brain.store.tick,
+                 __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+                 "opened", json.dumps(evidence, sort_keys=True),
+                 "PREVIEW_HOST", "preview_sensus_conflict"),
+            )
             brain.store.bump_state_version(conn)
         return identifier
+
+    def _resolve_corrob_observations(self, obj) -> tuple[str, ...]:
+        """Later independent matching observations may settle a gap.
+
+        Recollection alone is never proof that a disputed world claim is true.
+        """
+        by_attribute: dict[str, list[Percept]] = {}
+        for claim in obj.claims:
+            if claim.evidence is Evidence.OBSERVED and claim.confidence >= 0.60:
+                by_attribute.setdefault(claim.attribute, []).append(claim)
+        with self._doctor.brain.store.connect() as conn:
+            concerns = conn.execute(
+                "SELECT id FROM concerns WHERE status='open' "
+                "AND source='preview_sensus_conflict'"
+            ).fetchall()
+            source_rows = conn.execute(
+                "SELECT concern_id,outcome FROM concern_events "
+                "WHERE transition='opened' AND source='preview_sensus_conflict'"
+            ).fetchall()
+        evidence_rows = {row["concern_id"]: row["outcome"] for row in source_rows}
+        resolved = []
+        for gap in concerns:
+            old = evidence_rows.get(gap["id"])
+            if not old:
+                continue
+            evidence = json.loads(old)
+            claims = by_attribute.get(evidence["attribute"], [])
+            if len({c.source_ref for c in claims}) < 2 or len({c.value for c in claims}) != 1:
+                continue
+            former = evidence["claims"]
+            former_hints = {c["object_hint"] for c in former if c["object_hint"]}
+            if not former_hints or not any(c.object_hint in former_hints for c in claims):
+                continue
+            if any(c.source_ref in {x["source_ref"] for x in former} for c in claims):
+                continue
+            outcome = {
+                "schema": "pretorius.preview.conflict-resolution.v1",
+                "reason": "two_independent_later_observations_agree",
+                "original_evidence": evidence,
+                "resolution": [self._claim_record(c) for c in claims],
+                "downstream_effect": "remove_gap_from_future_policy_candidates",
+            }
+            self._doctor.brain.close_concern(
+                gap["id"], json.dumps(outcome, sort_keys=True),
+                actor="PREVIEW_HOST", source="preview_verified_observation_resolution",
+            )
+            resolved.append(gap["id"])
+        return tuple(resolved)
 
     def cycle(
         self, percepts: Iterable[Percept], *,
@@ -138,6 +240,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
         self._scene_tick += 1
         admitted = 0
         gap_ids = []
+        resolved_gap_ids = []
         latest_reported_message: str | None = None
         for obj in scene.objects:
             if obj.contested_attributes:
@@ -153,10 +256,12 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                         if len(observed_sources) >= 2:
                             gap_ids.append(
                                 self._record_conflict_as_epistemic_concern(
-                                    conflict.attribute
+                                    conflict.attribute, obj.object_id,
+                                    tuple(c for c in obj.claims if c.attribute == conflict.attribute),
                                 )
                             )
                 continue
+            resolved_gap_ids.extend(self._resolve_corrob_observations(obj))
             for claim in obj.claims:
                 if claim.evidence is Evidence.OBSERVED:
                     self.ingest({
@@ -201,6 +306,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             "scene_conflicts": len(scene.conflicts),
             "admitted_percepts": admitted,
             "new_epistemic_gap_ids": gap_ids,
+            "resolved_epistemic_gap_ids": resolved_gap_ids,
             "endogenous_decision_id": decision["decision_id"],
             "endogenous_action": decision["selected_action"],
             "recollection_selected": decision["selected_action"] == "recall",
