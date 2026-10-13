@@ -105,6 +105,52 @@ jobs:
             --outputs "$RUNNER_TEMP/pretorius-ollama-stage4/outputs.jsonl" \
             --report "$RUNNER_TEMP/pretorius-ollama-stage4/grounding-report.json" \
             --allow-subset
+      - name: Fetch second CPU model for paired comparison
+        run: OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:0.5b
+      - name: Render exactly the same packets with Qwen2.5 0.5B
+        run: |
+          python tools/pretorius_stage4_ollama.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --out "$RUNNER_TEMP/pretorius-qwen-stage4" \
+            --model qwen2.5:0.5b --per-scene 3
+      - name: Independently score Qwen factual grounding
+        run: |
+          python tools/pretorius_eval_score.py \
+            --packets "$RUNNER_TEMP/pretorius-stage2/subject_packets.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-stage2/engineer_oracle.jsonl" \
+            --outputs "$RUNNER_TEMP/pretorius-qwen-stage4/outputs.jsonl" \
+            --report "$RUNNER_TEMP/pretorius-qwen-stage4/grounding-report.json" \
+            --allow-subset
+      - name: Compare two actual local models without equating metrics to quality
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])
+          for name, folder in [("smollm2:135m","pretorius-ollama-stage4"), ("qwen2.5:0.5b","pretorius-qwen-stage4")]:
+              m=json.loads((root / folder / "metadata.json").read_text())
+              q=json.loads((root / folder / "grounding-report.json").read_text())["summary"]
+              print("PRETORIUS_MODEL_COMPARISON",json.dumps({
+                  "name":name, "calls":m["calls"], "inference_ms":m["total_ms"],
+                  "coverage":q["coverage"], "answer_value_mention_rate":q["verified_value_mention_rate"],
+                  "unsupported_claims":q["unsupported_value_mentions"],
+                  "engineer_leaks":q["engineer_leaks"],
+              },sort_keys=True))
+              example=(root / folder / "outputs.jsonl").read_text().splitlines()[2]
+              obj=json.loads(example)
+              print("PRETORIUS_MODEL_SAMPLE",json.dumps({
+                  "model":name,"case":obj["packet_id"],
+                  "response":obj["response"][:700]
+              },ensure_ascii=False))
+          PY
+      - name: Upload Qwen raw generations and scoring
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-ollama-qwen25-05b
+          path: ${{ runner.temp }}/pretorius-qwen-stage4/
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload local-model raw generations and scoring
         if: always()
         uses: actions/upload-artifact@v4
