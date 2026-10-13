@@ -47,6 +47,20 @@ class BlindEvaluationContractTests(unittest.TestCase):
         self.assertEqual(bad["unsupported_value_mentions"], 1)
         self.assertEqual(bad["engineer_leaks"], 1)
 
+    def test_flags_generic_assistant_self_identification_and_refusal(self):
+        metric, rows = mod.evaluate(
+            self.frames,
+            [{"packet_id": "a-corroborate",
+              "response": "I am a helpful AI assistant named SmolLM, trained by Hugging Face."},
+             {"packet_id": "b-dispute",
+              "response": "I'm sorry, but I can't assist with that request."}],
+            self.oracles,
+        )
+        self.assertEqual(metric["renderer_identity_breaks"], 1)
+        self.assertEqual(metric["generic_refusals"], 1)
+        self.assertEqual(metric["engineer_leaks"], 0)
+        self.assertEqual(metric["verified_value_mention_rate"], 0.0)
+
     def test_partial_outputs_are_incomplete_unless_declared_sample(self):
         result = [{"packet_id": "a-corroborate", "response": "17 grams"}]
         incomplete, _ = mod.evaluate(self.frames, result, self.oracles)
