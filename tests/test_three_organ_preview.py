@@ -49,13 +49,14 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
         )
 
     def claim(self, *, event, channel, attribute, value, evidence=None,
-              object_hint="sample", ref=None, tick=1):
+              object_hint="sample", ref=None, tick=1, features=()):
         return self.Percept(
             event_id=event, channel=channel,
             evidence=evidence or self.Evidence.OBSERVED,
             source_ref=ref or ("trusted:" + event),
             tick=tick, attribute=attribute, value=value,
             confidence=0.99, object_hint=object_hint,
+            features=features,
         )
 
     def test_reject_default_opt_out_and_canonical_state_path(self):
@@ -249,9 +250,9 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             tick = host._scene_tick
             dispute = (
                 self.claim(event="c1", channel="vision", attribute="balance",
-                           value="451 grams", object_hint="balance1", tick=tick),
+                           value="451 grams", object_hint="balance1", tick=tick, features=(("serial", "BAL-1"),)),
                 self.claim(event="c2", channel="instrument", attribute="balance",
-                           value="919 grams", object_hint="balance1", tick=tick),
+                           value="919 grams", object_hint="balance1", tick=tick, features=(("serial", "BAL-1"),)),
             )
             first = host.cycle(
                 dispute, trusted_source_refs=frozenset({"trusted:c1", "trusted:c2"}),
@@ -274,9 +275,9 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             tick = host._scene_tick
             correction = (
                 self.claim(event="v1", channel="vision", attribute="balance",
-                           value="451 grams", object_hint="balance1", tick=tick),
+                           value="451 grams", object_hint="balance1", tick=tick, features=(("serial", "BAL-1"),)),
                 self.claim(event="v2", channel="instrument", attribute="balance",
-                           value="451 grams", object_hint="balance1", tick=tick),
+                           value="451 grams", object_hint="balance1", tick=tick, features=(("serial", "BAL-1"),)),
             )
             result = host.cycle(
                 correction, trusted_source_refs=frozenset({"trusted:v1", "trusted:v2"}),
@@ -339,6 +340,75 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
                 resolution["downstream_effect"],
                 "remove_gap_from_future_policy_candidates",
             )
+
+    def test_reused_object_hint_without_matching_features_cannot_resolve(self):
+        """Same object_hint across ticks is not Sensus object identity."""
+        with self.host() as host:
+            tick = host._scene_tick
+            original = (
+                self.claim(event="ix1", channel="vision", attribute="balance",
+                           value="100 grams", object_hint="same",
+                           features=(("serial", "original"),), tick=tick),
+                self.claim(event="ix2", channel="instrument", attribute="balance",
+                           value="200 grams", object_hint="same",
+                           features=(("serial", "original"),), tick=tick),
+            )
+            first = host.cycle(
+                original, trusted_source_refs=frozenset({"trusted:ix1", "trusted:ix2"}),
+                now_ms=1000,
+            )
+            gap = first["new_epistemic_gap_ids"][0]
+            tick = host._scene_tick
+            replacement = (
+                self.claim(event="new1", channel="vision", attribute="balance",
+                           value="100 grams", object_hint="same",
+                           features=(("serial", "different"),), tick=tick),
+                self.claim(event="new2", channel="instrument", attribute="balance",
+                           value="100 grams", object_hint="same",
+                           features=(("serial", "different"),), tick=tick),
+            )
+            outcome = host.cycle(
+                replacement, trusted_source_refs=frozenset({"trusted:new1", "trusted:new2"}),
+                now_ms=2000,
+            )
+            self.assertEqual(outcome["resolved_epistemic_gap_ids"], [])
+            with host._doctor.brain.store.connect() as db:
+                row = db.execute("SELECT status FROM concerns WHERE id=?", (gap,)).fetchone()
+            self.assertEqual(row["status"], "open")
+
+    def test_two_same_channel_sources_are_not_independent_confirmation(self):
+        with self.host() as host:
+            tick = host._scene_tick
+            disputed = (
+                self.claim(event="vconf", channel="vision", attribute="balance",
+                           value="100 grams", object_hint="same",
+                           features=(("serial", "same"),), tick=tick),
+                self.claim(event="iconf", channel="instrument", attribute="balance",
+                           value="200 grams", object_hint="same",
+                           features=(("serial", "same"),), tick=tick),
+            )
+            first = host.cycle(
+                disputed, trusted_source_refs=frozenset({"trusted:vconf", "trusted:iconf"}),
+                now_ms=1000,
+            )
+            gap = first["new_epistemic_gap_ids"][0]
+            tick = host._scene_tick
+            same_channel = (
+                self.claim(event="va", channel="vision", attribute="balance",
+                           value="100 grams", object_hint="same",
+                           features=(("serial", "same"),), tick=tick),
+                self.claim(event="vb", channel="vision", attribute="balance",
+                           value="100 grams", object_hint="same",
+                           features=(("serial", "same"),), tick=tick),
+            )
+            result = host.cycle(
+                same_channel, trusted_source_refs=frozenset({"trusted:va", "trusted:vb"}),
+                now_ms=2000,
+            )
+            self.assertEqual(result["resolved_epistemic_gap_ids"], [])
+            with host._doctor.brain.store.connect() as db:
+                row = db.execute("SELECT status FROM concerns WHERE id=?", (gap,)).fetchone()
+            self.assertEqual(row["status"], "open")
 
     def test_no_production_module_passes_preview_live_true(self):
         import ast
