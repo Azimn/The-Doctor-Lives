@@ -6,6 +6,8 @@ on:
     paths:
       - 'tools/pretorius_stage2_stress.py'
       - 'tools/pretorius_stage3_holdout.py'
+      - 'tools/pretorius_chatgpt_holdout_check.py'
+      - 'docs/experiments/three-organ-chatgpt-holdout-v1.json'
       - 'tools/pretorius_stage4_ollama.py'
       - 'tools/pretorius_eval_score.py'
       - 'tests/test_pretorius_eval_score.py'
@@ -44,6 +46,13 @@ jobs:
         env:
           PRETORIUS_HOLDOUT_DIR: ${{ runner.temp }}/pretorius-stage3
         run: PYTHONPATH="$RUNNER_TEMP/Sensus-Communis-Artificialis:$PWD" python tools/pretorius_stage3_holdout.py
+      - name: Score eight manual ChatGPT holdout responses after sealed data generation
+        run: |
+          python tools/pretorius_chatgpt_holdout_check.py \
+            --packets "$RUNNER_TEMP/pretorius-stage3/blind_subject_frames.jsonl" \
+            --oracle "$RUNNER_TEMP/pretorius-stage3/holdout_oracle.jsonl" \
+            --fixture "docs/experiments/three-organ-chatgpt-holdout-v1.json" \
+            --out "$RUNNER_TEMP/pretorius-stage3/manual-chatgpt-report.json"
       - name: Upload disjoint holdout inputs with separate oracle
         if: always()
         uses: actions/upload-artifact@v4
