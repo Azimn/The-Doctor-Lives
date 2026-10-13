@@ -170,3 +170,43 @@ improvement over the 14/18 gap-rule baseline, and no released Windows
 installer. All three organs are still research preview dependencies, not
 a three-organ production launch. Donor blinded ablations through October
 23, 2026 remain sealed, and Calibos must audit this draft before promotion.
+
+
+### Follow-up adversarial integrity review (draft-only)
+
+This round corrects a transaction defect: `isolation_level=None` disables
+implicit SQLite transactions, so an ordinary `with connection` block did not
+atomically bind the scene intent to its Sensus snapshot. The preview journal
+now explicitly uses `BEGIN IMMEDIATE` and `COMMIT` with rollback on failure.
+The no-donor journal test deliberately throws while serializing the second
+record, and confirms that neither record remains before a clean retry.
+
+The stored scene payload, Sensus object-file snapshot and selected policy
+decision now include SHA-256 integrity checks. Missing checksums from older
+unverified preview state are rejected, not silently backfilled. Recovery from
+this condition requires operator review of the isolated research state.
+These checks detect unintentional changes and naive row tampering. They are
+**not signatures or proof of hostile-host resistance**: an actor with SQLite
+write access can also replace the hash. Genuine source custody requires a
+separate trusted host boundary.
+
+A pending Synthetic Ipseity frame that precedes the scene's publication
+boundary is rejected instead of being consumed as the current scene's
+first-person output. This test remains a trusted-in-process integration
+test, not a cryptographic binding of every outbox frame to a scene.
+
+The donor expressly defines `Percept.object_hint` as a **same-tick binding
+hint only**. It is no longer used to establish persistent object identity
+across scenes. Evidence-based concern resolution now additionally requires
+Sensus to report a matched cross-tick object identifier equal to the
+original disputed object, and requires at least two later agreeing observed
+claims from different sensory channels and source references. Negative tests
+hold the concern open when another object reuses the same hint or when only
+one sensory channel confirms it. This does **not** overturn Sensus's
+80/160 re-identification result or prove two channels have independently
+authenticated physical origin. A future real sensor host must establish that
+custody separately.
+
+This is still a preview engineering and causal-state test. The 13/18 vs
+14/18 recall-policy negative result remains untouched. Neither independent
+real-model cognitive improvement nor production eligibility is claimed.
