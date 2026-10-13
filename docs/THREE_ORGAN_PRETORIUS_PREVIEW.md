@@ -120,7 +120,9 @@ Only a later uncontested scene with at least two distinct, separately
 allowlisted observed sources agreeing about the same attribute and object hint
 may resolve the concern. The resolution carries both the original complete
 evidence and the later observations. Resolution removes that concern from the
-next endogenous-recall candidate set. A disposable matched-state intervention
+next endogenous-recall candidate set. An idempotent, durable policy-effect
+receipt links that closure to the subsequent decision ID and recall pressure.
+A disposable matched-state intervention
 temporarily reopens the same concern, preserving other state, and compares
 the policy scores with the resolved version. A changed score vector is a
 causal policy test, not a claim that the character's conversational decisions
