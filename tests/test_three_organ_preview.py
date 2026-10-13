@@ -491,8 +491,10 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
                     for keyword in node.keywords:
-                        if keyword.arg == "preview_live" and isinstance(keyword.value, ast.Constant):
-                            self.assertIsNot(keyword.value.value, True, str(module))
+                        # Reject computed values and aliases as well as a
+                        # literal True. Only the isolated preview entrypoint
+                        # is allowed to supply this activation argument.
+                        self.assertNotEqual(keyword.arg, "preview_live", str(module))
 
     def test_pinned_donor_modified_bytes_are_rejected_before_state_open(self):
         from unittest.mock import patch
