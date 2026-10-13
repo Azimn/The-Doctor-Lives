@@ -480,6 +480,212 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
                 second["endogenous_decision_id"],
             )
 
+    def test_preview_episodic_resolution_is_first_person_and_survives_restart(self):
+        """Do not lose an admitted resolution when the policy selects continue."""
+        frames = []
+        def renderer(subject):
+            frames.append(subject)
+            return "I shall report only what I have actually observed."
+
+        with self.host(renderer=renderer) as host:
+            tick = host._scene_tick
+            original = (
+                self.claim(
+                    event="episodic-veto-vision", channel="vision",
+                    attribute="laboratory balance reading", value="451 grams",
+                    object_hint="balance", features=(("serial", "EP-1"),),
+                    tick=tick,
+                ),
+                self.claim(
+                    event="episodic-veto-instrument", channel="instrument",
+                    attribute="laboratory balance reading", value="919 grams",
+                    object_hint="balance", features=(("serial", "EP-1"),),
+                    tick=tick,
+                ),
+            )
+            dispute = host.cycle(
+                original, trusted_source_refs=frozenset(
+                    {"trusted:episodic-veto-vision", "trusted:episodic-veto-instrument"}
+                ), now_ms=1000,
+            )
+            self.assertEqual(dispute["admitted_percepts"], 0)
+            self.assertEqual(dispute["endogenous_action"], "recall")
+            self.assertNotIn("451 grams", frames[-1])
+            self.assertNotIn("919 grams", frames[-1])
+            tick = host._scene_tick
+            evidence = (
+                self.claim(
+                    event="episodic-verified-vision", channel="vision",
+                    attribute="laboratory balance reading", value="451 grams",
+                    object_hint="balance", features=(("serial", "EP-1"),),
+                    tick=tick,
+                ),
+                self.claim(
+                    event="episodic-verified-instrument", channel="instrument",
+                    attribute="laboratory balance reading", value="451 grams",
+                    object_hint="balance", features=(("serial", "EP-1"),),
+                    tick=tick,
+                ),
+            )
+            resolved = host.cycle(
+                evidence, trusted_source_refs=frozenset(
+                    {"trusted:episodic-verified-vision", "trusted:episodic-verified-instrument"}
+                ), now_ms=40000,
+            )
+            self.assertEqual(len(resolved["resolved_epistemic_gap_ids"]), 1)
+            self.assertEqual(resolved["endogenous_action"], "continue")
+            self.assertIn("two later observations", frames[-1])
+            self.assertIn("451 grams", frames[-1])
+            self.assertIn("Earlier readings disagreed", frames[-1])
+            self.assertNotIn("919 grams", frames[-1])
+            self.assertNotIn("source_ref", frames[-1])
+            self.assertNotIn("preview-gap-", frames[-1])
+            self.assertNotIn("policy_decisions", frames[-1])
+
+        with self.host(renderer=renderer) as restarted:
+            message = self.claim(
+                event="episodic-followup",
+                channel="conversation", attribute="message",
+                evidence=self.Evidence.REPORTED, object_hint="speech",
+                value=("Do you remember our laboratory measurement disagreement? "
+                       "What have you observed?"),
+                tick=restarted._scene_tick,
+            )
+            outcome = restarted.cycle(
+                (message,),
+                trusted_source_refs=frozenset({"trusted:episodic-followup"}),
+                now_ms=80000,
+            )
+            self.assertEqual(outcome["endogenous_action"], "continue")
+            self.assertIn("451 grams", frames[-1])
+            self.assertIn("Earlier readings disagreed", frames[-1])
+            self.assertNotIn("919 grams", frames[-1])
+            self.assertNotIn("source_ref", frames[-1])
+            self.assertEqual(
+                frames[-1].count("Do you remember our laboratory measurement disagreement"),
+                1,
+            )
+            self.assertLessEqual(len(frames[-1]), 2700)
+            self.assertLessEqual(
+                frames[-1].count(
+                    "I recognize this as part of the description I was built from"
+                ), 3,
+            )
+
+    def test_preview_subject_frame_deduplicates_user_speech_and_identity(self):
+        captured = []
+        with self.host(renderer=lambda subject: captured.append(subject) or "Acknowledged.") as host:
+            item = self.claim(
+                event="long-identical-quote", channel="conversation",
+                attribute="message", evidence=self.Evidence.REPORTED,
+                object_hint="speech", value="A distinct evening inquiry.",
+                tick=host._scene_tick,
+            )
+            host.cycle(
+                (item,), trusted_source_refs=frozenset({"trusted:long-identical-quote"}),
+                now_ms=1000,
+            )
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0].count("A distinct evening inquiry."), 1)
+        self.assertLessEqual(len(captured[0]), 2700)
+        self.assertLessEqual(
+            captured[0].count(
+                "I recognize this as part of the description I was built from"
+            ), 3,
+        )
+        self.assertIn("I am Doctor Septimus Pretorius", captured[0])
+
+    def test_unrelated_question_does_not_force_episode_projection(self):
+        captured = []
+        with self.host(renderer=lambda subject: captured.append(subject) or "Acknowledged.") as host:
+            tick = host._scene_tick
+            dispute = (
+                self.claim(event="topic-a", channel="vision", attribute="balance reading",
+                           value="high", features=(("serial", "TOP"),), tick=tick),
+                self.claim(event="topic-b", channel="instrument", attribute="balance reading",
+                           value="low", features=(("serial", "TOP"),), tick=tick),
+            )
+            host.cycle(
+                dispute, trusted_source_refs=frozenset({"trusted:topic-a", "trusted:topic-b"}),
+                now_ms=1000,
+            )
+            tick = host._scene_tick
+            corroboration = (
+                self.claim(event="topic-c", channel="vision", attribute="balance reading",
+                           value="high", features=(("serial", "TOP"),), tick=tick),
+                self.claim(event="topic-d", channel="instrument", attribute="balance reading",
+                           value="high", features=(("serial", "TOP"),), tick=tick),
+            )
+            host.cycle(
+                corroboration, trusted_source_refs=frozenset({"trusted:topic-c", "trusted:topic-d"}),
+                now_ms=40000,
+            )
+        with self.host(renderer=lambda subject: captured.append(subject) or "Acknowledged.") as host:
+            message = self.claim(
+                event="topic-question", channel="conversation", attribute="message",
+                value="Tell me about the homunculi and the nature of artificial life.",
+                evidence=self.Evidence.REPORTED, tick=host._scene_tick,
+            )
+            host.cycle(
+                (message,), trusted_source_refs=frozenset({"trusted:topic-question"}),
+                now_ms=80000,
+            )
+        self.assertNotIn("two later observations of the balance reading", captured[-1])
+
+    def test_forged_episodic_resolution_cannot_enter_subject_projection(self):
+        """Valid-looking concern prose is insufficient without Doctor admission."""
+        import json
+        captured = []
+        with self.host(renderer=lambda subject: captured.append(subject) or "Acknowledged.") as host:
+            tick = host._scene_tick
+            original = (
+                self.claim(event="forged-a", channel="vision", attribute="balance reading",
+                           value="red", features=(("serial", "FORGE"),), tick=tick),
+                self.claim(event="forged-b", channel="instrument", attribute="balance reading",
+                           value="blue", features=(("serial", "FORGE"),), tick=tick),
+            )
+            first = host.cycle(
+                original, trusted_source_refs=frozenset({"trusted:forged-a", "trusted:forged-b"}),
+                now_ms=1000,
+            )
+            tick = host._scene_tick
+            later = (
+                self.claim(event="forged-c", channel="vision", attribute="balance reading",
+                           value="red", features=(("serial", "FORGE"),), tick=tick),
+                self.claim(event="forged-d", channel="instrument", attribute="balance reading",
+                           value="red", features=(("serial", "FORGE"),), tick=tick),
+            )
+            host.cycle(
+                later, trusted_source_refs=frozenset({"trusted:forged-c", "trusted:forged-d"}),
+                now_ms=40000,
+            )
+            gap = first["new_epistemic_gap_ids"][0]
+            with host._doctor.brain.store.transaction() as db:
+                row = db.execute(
+                    "SELECT resolution FROM concerns WHERE id=?", (gap,),
+                ).fetchone()
+                altered = json.loads(row["resolution"])
+                for item in altered["resolution"]:
+                    item["value"] = "777 grams"
+                db.execute(
+                    "UPDATE concerns SET resolution=? WHERE id=?",
+                    (json.dumps(altered, sort_keys=True), gap),
+                )
+                host._doctor.brain.store.bump_state_version(db)
+        with self.host(renderer=lambda subject: captured.append(subject) or "Acknowledged.") as host:
+            message = self.claim(
+                event="forged-followup", channel="conversation", attribute="message",
+                value="What happened to the balance reading disagreement?",
+                evidence=self.Evidence.REPORTED, tick=host._scene_tick,
+            )
+            host.cycle(
+                (message,), trusted_source_refs=frozenset({"trusted:forged-followup"}),
+                now_ms=80000,
+            )
+        self.assertNotIn("777 grams", captured[-1])
+        self.assertNotIn("I remember two later observations", captured[-1])
+
+
     def test_no_production_module_passes_preview_live_true(self):
         import ast
         import doctor_lives
