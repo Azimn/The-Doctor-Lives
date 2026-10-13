@@ -93,19 +93,38 @@ def main() -> None:
                  "reply_entered_memory": False,
                  "subject_boundary_intact": True}
             ), flush=True)
+        if label == "04-corroboration":
+            assert "451 grams" in context, (
+                "A verified recent observation must reach the renderer"
+            )
+            assert "Earlier readings disagreed" in context
+            assert "919 grams" not in context, (
+                "The vetoed reading must not become a verified event"
+            )
         if label == "05-continuity-across-second-restart":
-            # An observed *negative* must not be locked into CI as an invariant.
+            # Require relevant, evidence-backed episodic access after restart.
             # A later continuity fix should improve this metric, not fail tests.
             supplied = {
                 number: number in context
                 for number in ("325 grams", "451 grams", "919 grams")
             }
-            continuity_gap_observed = not any(supplied.values())
+            continuity_gap_observed = not ("451 grams" in context
+                                            and "Earlier readings disagreed" in context)
+            assert not continuity_gap_observed, (
+                "Verified episode was lost in the subject frame after restart"
+            )
+            assert "919 grams" not in context or "I read a message from User:" in context, (
+                "Unverified reading must not be projected as observed"
+            )
             print("CHATGPT_CONTINUITY_OBSERVATION " + json.dumps(
                 {"case": label, "measurements_in_subject_frame": supplied,
                  "contains_any_reading": any(supplied.values())},
                 sort_keys=True
             ), flush=True)
+        assert context.count(
+            "I recognize this as part of the description I was built from"
+        ) <= 3, "Inherited identity prefaces still dominate the renderer context"
+        assert len(context) <= 2700, "Preview first-person frame exceeded budget"
         assert not any(
             sentinel in context for sentinel in (
                 "preview_sensus_conflict", "policy_decisions",
