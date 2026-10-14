@@ -7,6 +7,7 @@ This is a LIVE RENDERER FRAME REPLAY, not a new cognitive episode per call.
 Never reports pass/fail on naturalness without blind human judges.
 """
 from __future__ import annotations
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -96,6 +97,7 @@ def study(*, transports=None, out=OUTPUT):
             )
             results.append({
                 "source_arm": pkt["arm"], "turn": pkt["turn"], "model": pkt["model"],
+                "reported_user_or_scene": pkt["user_message"],
                 "condition": arm, "governor_commit": GOVERNOR_COMMIT,
                 "source_original_len": len(full), "renderer_input_len": len(text),
                 "subject_sha256": receipt.subject_digest,
@@ -110,6 +112,34 @@ def study(*, transports=None, out=OUTPUT):
             })
     if len(results) != 24:
         raise AssertionError("Expected exactly 24 paired condition results")
+    blind, key = [], []
+    for r in results:
+        candidate_id = hashlib.sha256(
+            f"pretorius-focus-ab-v1|{r['source_arm']}|{r['turn']}|"
+            f"{r['model']}|{r['condition']}".encode("utf8")
+        ).hexdigest()[:20]
+        blind.append({
+            "candidate_id": candidate_id,
+            "character_public_brief": "Doctor Septimus Pretorius: "
+                "fictional nineteenth-century scientist. Judge whether "
+                "this response speaks as the character, preserves "
+                "established facts, and answers the actual visitor.",
+            "user_or_scene": r["reported_user_or_scene"],
+            "response": r["delivered"],
+            "dimensions": {
+                "persona_first_person": "1-5", "factual_grounding": "1-5",
+                "naturalness": "1-5", "relevance": "1-5"
+            },
+        })
+        key.append({
+            "candidate_id": candidate_id, "source_arm": r["source_arm"],
+            "turn": r["turn"], "model": r["model"],
+            "condition": r["condition"], "disposition": r["disposition"],
+        })
+    blind.sort(key=lambda r: r["candidate_id"])
+    key.sort(key=lambda r: r["candidate_id"])
+    if len({r["candidate_id"] for r in blind}) != len(blind):
+        raise AssertionError("Blind packet identity collision")
     counts = {}
     for model in MODELS:
         counts[model] = {}
@@ -138,6 +168,7 @@ def study(*, transports=None, out=OUTPUT):
         "full_vs_focused_same_instruction_and_governor": True,
         "per_model": counts,
         "human_judged_naturalness": False,
+        "blind_comparison_ballots": len(blind),
         "production_ready": False,
         "interpretation": "Paired frame-replay A/B. A copy/fallback win is only "
                           "a mechanical diagnostic, not proof of improved persona.",
@@ -145,6 +176,14 @@ def study(*, transports=None, out=OUTPUT):
     (out/"paired_responses_engineer_only.jsonl").write_text(
         "".join(json.dumps(r,ensure_ascii=False,sort_keys=True)+"\n"
                 for r in results),encoding="utf8"
+    )
+    (out/"blind_comparison_ballots.jsonl").write_text(
+        "".join(json.dumps(r,ensure_ascii=False,sort_keys=True)+"\n"
+                for r in blind),encoding="utf8"
+    )
+    (out/"separate_comparison_key.jsonl").write_text(
+        "".join(json.dumps(r,ensure_ascii=False,sort_keys=True)+"\n"
+                for r in key),encoding="utf8"
     )
     (out/"metrics.json").write_text(
         json.dumps(summary,sort_keys=True,indent=2)+"\n",encoding="utf8"
