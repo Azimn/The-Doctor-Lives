@@ -7,6 +7,8 @@ on:
       - tests/test_sustained_dialogue_acceptance.py
       - tools/pretorius_sustained_dialogue_score.py
       - tests/test_sustained_dialogue_score.py
+      - tests/test_verified_weak_cue.py
+      - doctor_lives/three_organ_preview.py
       - .github/workflows/pretorius-sustained-dialogue-acceptance.yml
   pull_request:
     paths:
@@ -14,6 +16,8 @@ on:
       - tests/test_sustained_dialogue_acceptance.py
       - tools/pretorius_sustained_dialogue_score.py
       - tests/test_sustained_dialogue_score.py
+      - tests/test_verified_weak_cue.py
+      - doctor_lives/three_organ_preview.py
       - .github/workflows/pretorius-sustained-dialogue-acceptance.yml
   workflow_dispatch:
 
@@ -44,6 +48,10 @@ jobs:
             -s tests -p test_sustained_dialogue_acceptance.py -v
       - name: Unit test separate renderer quality audit
         run: python -m unittest discover -s tests -p test_sustained_dialogue_score.py -v
+      - name: Verify ambiguous and unique recollection cue controls
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
+            -s tests -p test_verified_weak_cue.py -v
       - name: Assert reviewed entrypoint and production boundary unchanged
         run: python tools/ipseity_entrypoint_gate.py
 
