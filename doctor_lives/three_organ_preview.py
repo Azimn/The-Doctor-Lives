@@ -578,6 +578,14 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             ).fetchall()
             query_terms = self._episode_query_terms(query)
             eligible = []
+            weak_candidates = []
+            # Single-key recall is allowed only for an explicit memory
+            # question and only when one PROVENANCE-VERIFIED episode matches.
+            # Disambiguate before projection; never infer a memory from text.
+            wants_recall = bool(re.search(
+                r"\b(?:remember|recall|recollect)\b", query or "",
+                re.IGNORECASE,
+            ))
             for row in rows:
                 try:
                     evidence = json.loads(row["resolution"])
@@ -678,16 +686,23 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                             }
                         )
                         immediate = row["id"] in scene_resolved_ids
-                        if not immediate and not (overlap >= 2 or (overlap >= 1 and topical)):
-                            continue
                         priority = (
                             100 if immediate else 0
                         ) + overlap * 10 + int(row["resolved_tick"] or 0) / 1000000
-                        eligible.append((priority, row["id"], attribute, value))
+                        candidate = (priority, row["id"], attribute, value)
+                        if immediate or overlap >= 2 or (overlap >= 1 and topical):
+                            eligible.append(candidate)
+                        elif overlap == 1 and wants_recall:
+                            weak_candidates.append(candidate)
                 except (KeyError, ValueError, TypeError, AttributeError):
                     # Invalid provenance never enters subject experience.
                     continue
 
+        # A lone specific recollection cue may retrieve one matching
+        # verified episode. Multiple matching episodes remain ambiguous;
+        # this mechanism cannot select on unverifiable conversational hunch.
+        if not eligible and len(weak_candidates) == 1:
+            eligible = weak_candidates
         events = []
         for _, concern_id, attribute, value in sorted(
             eligible, key=lambda item: (-item[0], item[1])
