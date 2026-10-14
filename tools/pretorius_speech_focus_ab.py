@@ -115,6 +115,7 @@ def study(*, transports=None, out=OUTPUT):
                 "reported_user_or_scene": pkt["user_message"],
                 "condition": arm, "governor_commit": GOVERNOR_COMMIT,
                 "source_original_len": len(full), "renderer_input_len": len(text),
+                "renderer_input_text": text,
                 "subject_sha256": receipt.subject_digest,
                 "disposition": receipt.disposition,
                 "model_calls": len(raw_generations),
