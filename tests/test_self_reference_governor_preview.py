@@ -60,6 +60,7 @@ class GovernedPretoriusTests(unittest.TestCase):
         fallback_text: str | None = None,
         language: str = "en",
         discourse_mode: str = "direct",
+        speech_focus: bool = False,
     ):
         state = Path(self.temp.name) / suffix / "three-organ-preview"
         seen = []
@@ -69,10 +70,13 @@ class GovernedPretoriusTests(unittest.TestCase):
             seen.append((subject, instruction))
             return planned.pop(0) if planned else output
 
+        if speech_focus:
+            from doctor_lives.preview_renderer_focus import focus_subject_frame
         renderer = self.Wrapper(
             enabled=enabled, trusted_instruction=self.INSTRUCTION,
             render=model, recovery_enabled=recovery_enabled,
             fallback_text=fallback_text,
+            subject_projection=focus_subject_frame if speech_focus else None,
         )
         # Bind immutable host-owned identity; the governor never examines
         # User text to establish who Pretorius is or who is being addressed.
@@ -314,6 +318,42 @@ class GovernedPretoriusTests(unittest.TestCase):
         self.assertTrue(t["receipts"][-1].allowed)
         self.assertEqual(t["receipts"][-1].third_person_self, 0)
 
+
+
+    def test_speech_focus_is_renderer_only_and_canonical_subject_still_sealed(self):
+        from hashlib import sha256
+        t = self._trial(
+            enabled=True, recovery_enabled=True, speech_focus=True,
+            addressee="visitor", output="I am examining the question.",
+            suffix="speech-focused-real-host",
+            user_message="What do you think about the laboratory?",
+        )
+        self.assertFalse(t["failed"])
+        self.assertEqual(t["pending"], 0)
+        self.assertEqual(t["host_name"], "Doctor Septimus Pretorius")
+        self.assertEqual(t["subject_id"], "pretorius")
+        full = t["inputs"][0]
+        projected = t["seen"][0][0]
+        self.assertIn("I read a message from User:", full)
+        self.assertIn("I read the visitor's words:", projected)
+        self.assertNotIn("part of the description I was built from", projected)
+        self.assertLess(len(projected), len(full))
+        self.assertEqual(
+            t["control_receipts"][-1].subject_digest,
+            sha256(full.encode("utf8")).hexdigest(),
+        )
+        self.assertEqual(t["result"]["answer"],
+                         "I am examining the question.")
+
+    def test_uncontrolled_projection_cannot_bypass_canonical_governor(self):
+        from doctor_lives.preview_renderer_focus import focus_subject_frame
+        with self.assertRaises(ValueError):
+            self.Wrapper(
+                enabled=False, recovery_enabled=False,
+                trusted_instruction=self.INSTRUCTION,
+                render=lambda s,i: "I shall examine it.",
+                subject_projection=focus_subject_frame,
+            )
 
     def test_repair_from_real_ipseity_frame_then_ack_once(self):
         t = self._trial(
