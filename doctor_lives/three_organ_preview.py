@@ -952,6 +952,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--enable-experimental-preview", action="store_true")
     parser.add_argument("--enable-governed-speech", action="store_true",
                         help="Opt in to pinned reusable governor, two attempts and guarded fallback")
+    parser.add_argument("--enable-speech-focus", action="store_true",
+                        help="Experimental shortened first-person speech projection; requires --enable-governed-speech")
     parser.add_argument("--governor-addressee-id", default="visitor",
                         help="Trusted launcher addressee identity (never inferred from user speech)")
     parser.add_argument("--governor-rhetorical-license", action="store_true",
@@ -967,11 +969,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--enable-experimental-preview is required")
     if args.state.name != "three-organ-preview":
         parser.error("--state must be a dedicated three-organ-preview directory")
+    if args.enable_speech_focus and not args.enable_governed_speech:
+        parser.error("--enable-speech-focus requires --enable-governed-speech")
     governed = None
     if args.enable_governed_speech:
         # Imports and pin checks occur only in the experimental path.
         from .self_reference_adapter import HostBoundGovernorRenderer
         from synthetic_ipseity.local_ollama import LocalOllamaConfiguredRenderer
+        if args.enable_speech_focus:
+            from .preview_renderer_focus import focus_subject_frame
         governed = HostBoundGovernorRenderer(
             enabled=True,
             recovery_enabled=True,
@@ -980,6 +986,9 @@ def main(argv: list[str] | None = None) -> int:
             fallback_text=(None if args.governor_no_fallback else
                            "I must consider my words more carefully."),
             max_model_attempts=2,
+            subject_projection=(
+                focus_subject_frame if args.enable_speech_focus else None
+            ),
         )
     with ThreeOrganPretoriusPreview(
         args.state, enabled=True,
