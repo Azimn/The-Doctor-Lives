@@ -42,7 +42,7 @@ def diagnose(speech: str, input_text: str) -> dict:
     boilerplate = any(label in text for label in _META_COPY)
     editing = any(label in text for label in _INSTRUCTIONAL)
     long_copy = any(
-        len(line.strip()) >= 55 and line.strip().lower() in text
+        len(line.strip()) >= 45 and line.strip().lower() in text
         for line in input_text.splitlines() if line.strip()
     )
     nontrivial_repeat = high_repeat >= 4
