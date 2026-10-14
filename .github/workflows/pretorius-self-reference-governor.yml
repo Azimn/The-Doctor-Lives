@@ -106,6 +106,21 @@ jobs:
             exit 1
           fi
           printf 'PRETORIUS_GOVERNED_CLI_PASS reply_chars=%d\\n' "${#reply}"
+      - name: Smoke explicit speech-focus opt-in with real unified host
+        run: |
+          mkdir -p "$RUNNER_TEMP/governed-cli-focused"
+          reply="$(PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m doctor_lives.three_organ_preview \
+            --state "$RUNNER_TEMP/governed-cli-focused/three-organ-preview" \
+            --enable-experimental-preview --enable-governed-speech \
+            --enable-speech-focus --model smollm2:135m \
+            --governor-addressee-id visitor \
+            --say "What can you tell me about our laboratory?")"
+          test -n "$reply"
+          if printf '%s' "$reply" | grep -Eq 'policy_decisions|recurrent_tick|source_ref'; then
+            echo "First-person speech-focus projector leaked hidden engineer state"
+            exit 1
+          fi
+          printf 'PRETORIUS_FOCUSED_GOVERNED_CLI_PASS reply_chars=%d\\n' "${#reply}"
       - name: Upload raw model text and model-free oracle
         if: always()
         uses: actions/upload-artifact@v4
