@@ -7,6 +7,8 @@ on:
       - tests/test_sustained_dialogue_acceptance.py
       - tools/pretorius_sustained_dialogue_score.py
       - tests/test_sustained_dialogue_score.py
+      - tools/pretorius_renderer_projection_ab.py
+      - tests/test_renderer_subject_projection.py
       - tests/test_verified_weak_cue.py
       - doctor_lives/three_organ_preview.py
       - .github/workflows/pretorius-sustained-dialogue-acceptance.yml
@@ -16,6 +18,8 @@ on:
       - tests/test_sustained_dialogue_acceptance.py
       - tools/pretorius_sustained_dialogue_score.py
       - tests/test_sustained_dialogue_score.py
+      - tools/pretorius_renderer_projection_ab.py
+      - tests/test_renderer_subject_projection.py
       - tests/test_verified_weak_cue.py
       - doctor_lives/three_organ_preview.py
       - .github/workflows/pretorius-sustained-dialogue-acceptance.yml
@@ -52,6 +56,10 @@ jobs:
         run: |
           PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
             -s tests -p test_verified_weak_cue.py -v
+      - name: Verify subject-subset monotonicity and adversarial quote preservation
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
+            -s tests -p test_renderer_subject_projection.py -v
       - name: Assert reviewed entrypoint and production boundary unchanged
         run: python tools/ipseity_entrypoint_gate.py
 
@@ -113,6 +121,20 @@ jobs:
           assert m["mechanical_acceptance"] is True
           print("PRETORIUS_ACCEPTANCE_NOT_PRODUCTION",json.dumps(m,sort_keys=True))
           PY
+      - name: Experimental paired renderer projection A/B (NOT production)
+        env:
+          PRETORIUS_PROJECTION_DIR: ${{ runner.temp }}/pretorius-projection-ab
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD:$PWD/tools" \
+            python tools/pretorius_renderer_projection_ab.py
+      - name: Upload separate engineering-only projection A/B
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-renderer-projection-ENGINEER-only
+          path: ${{ runner.temp }}/pretorius-projection-ab/
+          if-no-files-found: warn
+          retention-days: 21
       - name: Upload BLIND ballots only (safe to share with reviewers)
         if: always()
         uses: actions/upload-artifact@v4
