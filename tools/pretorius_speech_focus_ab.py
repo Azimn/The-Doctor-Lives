@@ -94,9 +94,17 @@ def study(*, transports=None, out=OUTPUT):
                 line for line in full.splitlines()
                 if len(line.strip()) >= 45 and line.strip() in spoken
             ]
+            # The focused candidate rewrites the read-User preamble in
+            # first-person. Scoring ORIGINAL copies alone would artificially
+            # reward a mere prefix substitution. Measure both copies.
+            input_lines = [
+                line for line in text.splitlines()
+                if len(line.strip()) >= 45 and line.strip() in spoken
+            ]
             literal_frame_meta = any(
                 x in spoken.lower() for x in (
                     "i read a message from user",
+                    "i read the visitor's words:",
                     "i recognize this as part of the description",
                     "i have a reconstructed account of this",
                     "source_ref", "policy_decisions",
@@ -113,6 +121,7 @@ def study(*, transports=None, out=OUTPUT):
                 "generated_raw_engineer_only": raw_generations,
                 "delivered": spoken,
                 "verbatim_long_original_frame_copy": bool(original_lines),
+                "verbatim_long_actual_input_copy": bool(input_lines),
                 "literal_frame_meta": literal_frame_meta,
                 "violations": [list(a.violation_rule_ids)
                                for a in receipt.attempts],
@@ -163,6 +172,9 @@ def study(*, transports=None, out=OUTPUT):
                 "long_original_frame_copy": sum(
                     r["verbatim_long_original_frame_copy"] for r in a
                 ),
+                "long_actual_input_copy": sum(
+                    r["verbatim_long_actual_input_copy"] for r in a
+                ),
                 "literal_frame_meta": sum(r["literal_frame_meta"] for r in a),
                 "total_model_calls": sum(r["model_calls"] for r in a),
                 "mean_prompt_chars": round(sum(r["renderer_input_len"]
@@ -174,6 +186,7 @@ def study(*, transports=None, out=OUTPUT):
         "paired_conditions": len(results),
         "full_vs_focused_same_instruction_and_governor": True,
         "render_order_counterbalanced": True,
+        "copy_score_checks_both_original_and_renderer_prompt": True,
         "per_model": counts,
         "human_judged_naturalness": False,
         "blind_comparison_ballots": len(blind),
