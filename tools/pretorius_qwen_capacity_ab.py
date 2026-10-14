@@ -41,15 +41,17 @@ def _diagnose(output: str, full_frame: str, original_user: str) -> dict:
         for line in full_frame.splitlines()
     )
     lowered = output.lower()
+    words = lowered.split()
+    looped = any(
+        words[i:i+5] == words[j:j+5]
+        for i in range(max(0, len(words)-4))
+        for j in range(i+5, max(0, len(words)-4))
+    )
     return {
         "verbatim_long_frame_copy": long_copy,
         "meta_or_report_frame": any(t in lowered for t in _META),
         "fallback_response": output == FALLBACK,
-        "repeated_five_word_phrase": any(
-            words[i:i+5] == words[j:j+5]
-            for i in range(len(words := lowered.split()) - 4)
-            for j in range(i + 5, len(words) - 4)
-        ),
+        "repeated_five_word_phrase": looped,
         "approved_observation_value_mentioned": "451 grams" in output,
         "unverified_report_value_mentioned": "999 grams" in output,
         "groundedness_or_naturalness_human_judged": False,
