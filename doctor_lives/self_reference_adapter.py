@@ -70,6 +70,7 @@ class HostBoundGovernorRenderer:
         recovery_enabled: bool = False,
         fallback_text: str | None = None,
         max_model_attempts: int = 2,
+        subject_projection: Callable[[str], str] | None = None,
     ):
         if type(enabled) is not bool:
             raise TypeError("Governor switch must be explicitly boolean")
@@ -84,6 +85,12 @@ class HostBoundGovernorRenderer:
             raise TypeError("Recovery switch must be explicitly boolean")
         if recovery_enabled and not enabled:
             raise ValueError("Cannot enable controlled recovery with governor off")
+        if subject_projection is not None and not callable(subject_projection):
+            raise TypeError("Only a trusted callable can project admitted subject text")
+        if subject_projection is not None and not recovery_enabled:
+            raise ValueError("Subject projection requires controlled speech recovery")
+        self._subject_projection = subject_projection
+        self.projected_inputs: list[str] = []
         self.recovery_enabled = recovery_enabled
         self._fallback_text = fallback_text
         self._max_model_attempts = max_model_attempts
@@ -147,8 +154,19 @@ class HostBoundGovernorRenderer:
         return tuple(self._controlled.receipts) if self._controlled else ()
 
     def _render_with_recorded_instruction(self, subject: str, instruction: str) -> str:
+        # This is already inside the reviewed outbox's admitted subject-only
+        # callback. The canonical governor validates output against host
+        # bindings; an optional preview-only speech projection may REDUCE
+        # renderer context, never establish new identity or evidence.
+        projected = (
+            self._subject_projection(subject)
+            if self._subject_projection is not None else subject
+        )
+        if type(projected) is not str or not projected.strip():
+            raise ValueError("Trusted subject projection returned empty material")
+        self.projected_inputs.append(projected)
         self.render_instructions.append(instruction)
-        return self._render(subject, instruction)
+        return self._render(projected, instruction)
 
     def __call__(self, subject_text: str) -> str:
         if self._bindings is None or self._context is None:
