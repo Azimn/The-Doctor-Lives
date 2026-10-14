@@ -18,6 +18,7 @@ import tempfile
 
 import pretorius_stage2_stress as stress
 from doctor_lives.self_reference_adapter import HostBoundGovernorRenderer, GOVERNOR_COMMIT
+from doctor_lives.preview_renderer_focus import reject_multiline_reported_quotes
 from synthetic_ipseity.local_ollama import LocalOllamaConfiguredRenderer
 
 OUT = Path(os.environ.get("PRETORIUS_PROJECTION_DIR", "/tmp/pretorius-projection"))
@@ -42,6 +43,7 @@ def focused_subject_subset(full_frame: str, *, max_characters: int = 1050) -> st
         raise ValueError("An already-admitted nonempty frame is required")
     if type(max_characters) is not int or max_characters < 180:
         raise ValueError("Invalid focused subject budget")
+    reject_multiline_reported_quotes(full_frame)
     lines = [line.strip() for line in full_frame.splitlines() if line.strip()]
     if any(not line.startswith("I ") for line in lines):
         raise ValueError("Non-first-person content in purported admitted frame")
