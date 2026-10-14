@@ -23,6 +23,27 @@ MAX_INPUT = 32000
 MAX_OUTPUT = 1250
 
 
+def reject_multiline_reported_quotes(subject_text: str) -> None:
+    """Refuse flattened frames with quoted visitor material across lines.
+
+    Without typed SubjectFrame event boundaries, text inside a visitor quote
+    can imitate the prefix of an observed/recollected first-person line.
+    This guard closes the common multiline spoof; it is NOT a proof that
+    arbitrary flattened text has authentic provenance. Keep experimental.
+    """
+    if type(subject_text) is not str:
+        raise TypeError("Admitted first-person text required")
+    for line in subject_text.splitlines():
+        if line.startswith("I read a message from User:"):
+            quoted = line.split("User:", 1)[1].strip()
+            if (quoted.count("“") != 1 or quoted.count("”") != 1
+                    or quoted.index("“") >= quoted.index("”")):
+                raise ValueError(
+                    "Reported speech spans lines or has ambiguous quote bounds; "
+                    "require typed source events before projecting"
+                )
+
+
 def focus_subject_frame(subject_text: str) -> str:
     """Retain exact provenanced first-person recollections and immediate speech.
 
@@ -36,6 +57,7 @@ def focus_subject_frame(subject_text: str) -> str:
         bad in subject_text for bad in _FORBIDDEN
     ):
         raise ValueError("Unrecognized frame shape or engineer-only metadata")
+    reject_multiline_reported_quotes(subject_text)
 
     messages, episodes, motives = [], [], []
     for raw in subject_text.splitlines():
