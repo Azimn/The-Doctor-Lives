@@ -578,6 +578,14 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             ).fetchall()
             query_terms = self._episode_query_terms(query)
             eligible = []
+            weak_candidates = []
+            # Single-key recall is allowed only for an explicit memory
+            # question and only when one PROVENANCE-VERIFIED episode matches.
+            # Disambiguate before projection; never infer a memory from text.
+            wants_recall = bool(re.search(
+                r"\b(?:remember|recall|recollect)\b", query or "",
+                re.IGNORECASE,
+            ))
             for row in rows:
                 try:
                     evidence = json.loads(row["resolution"])
@@ -678,16 +686,23 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                             }
                         )
                         immediate = row["id"] in scene_resolved_ids
-                        if not immediate and not (overlap >= 2 or (overlap >= 1 and topical)):
-                            continue
                         priority = (
                             100 if immediate else 0
                         ) + overlap * 10 + int(row["resolved_tick"] or 0) / 1000000
-                        eligible.append((priority, row["id"], attribute, value))
+                        candidate = (priority, row["id"], attribute, value)
+                        if immediate or overlap >= 2 or (overlap >= 1 and topical):
+                            eligible.append(candidate)
+                        elif overlap == 1 and wants_recall:
+                            weak_candidates.append(candidate)
                 except (KeyError, ValueError, TypeError, AttributeError):
                     # Invalid provenance never enters subject experience.
                     continue
 
+        # A lone specific recollection cue may retrieve one matching
+        # verified episode. Multiple matching episodes remain ambiguous;
+        # this mechanism cannot select on unverifiable conversational hunch.
+        if not eligible and len(weak_candidates) == 1:
+            eligible = weak_candidates
         events = []
         for _, concern_id, attribute, value in sorted(
             eligible, key=lambda item: (-item[0], item[1])
@@ -935,6 +950,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--state", type=Path, required=True)
     parser.add_argument("--model", default="qwen3:1.5b")
     parser.add_argument("--enable-experimental-preview", action="store_true")
+    parser.add_argument("--enable-governed-speech", action="store_true",
+                        help="Opt in to pinned reusable governor, two attempts and guarded fallback")
+    parser.add_argument("--enable-speech-focus", action="store_true",
+                        help="Experimental shortened first-person speech projection; requires --enable-governed-speech")
+    parser.add_argument("--governor-addressee-id", default="visitor",
+                        help="Trusted launcher addressee identity (never inferred from user speech)")
+    parser.add_argument("--governor-rhetorical-license", action="store_true",
+                        help="Host authorizes rhetorical self-address")
+    parser.add_argument("--governor-no-fallback", action="store_true",
+                        help="Fail closed and leave the frame pending if both model attempts are rejected")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--say", help="Reported User speech, not world observation")
     mode.add_argument("--resume", action="store_true")
@@ -944,9 +969,37 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--enable-experimental-preview is required")
     if args.state.name != "three-organ-preview":
         parser.error("--state must be a dedicated three-organ-preview directory")
+    if args.enable_speech_focus and not args.enable_governed_speech:
+        parser.error("--enable-speech-focus requires --enable-governed-speech")
+    governed = None
+    if args.enable_governed_speech:
+        # Imports and pin checks occur only in the experimental path.
+        from .self_reference_adapter import HostBoundGovernorRenderer
+        from synthetic_ipseity.local_ollama import LocalOllamaConfiguredRenderer
+        if args.enable_speech_focus:
+            from .preview_renderer_focus import focus_subject_frame
+        governed = HostBoundGovernorRenderer(
+            enabled=True,
+            recovery_enabled=True,
+            trusted_instruction="Express the current experience as your own speech.",
+            render=LocalOllamaConfiguredRenderer(args.model),
+            fallback_text=(None if args.governor_no_fallback else
+                           "I must consider my words more carefully."),
+            max_model_attempts=2,
+            subject_projection=(
+                focus_subject_frame if args.enable_speech_focus else None
+            ),
+        )
     with ThreeOrganPretoriusPreview(
-        args.state, enabled=True, renderer=build_local_renderer(args.model),
+        args.state, enabled=True,
+        renderer=governed if governed is not None else build_local_renderer(args.model),
     ) as host:
+        if governed is not None:
+            governed.bind_doctor_host(
+                host,
+                addressee_subject_id=args.governor_addressee_id,
+                rhetorical_self_address=args.governor_rhetorical_license,
+            )
         when = int(time.time() * 1000)
         if args.resume:
             result = host.resume_preview(now_ms=when)

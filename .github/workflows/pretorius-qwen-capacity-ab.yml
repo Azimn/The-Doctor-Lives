@@ -1,0 +1,102 @@
+name: Pretorius Qwen capacity A/B (research only)
+on:
+  push:
+    branches: [integration/self-reference-governor-pinned-preview]
+    paths:
+      - tools/pretorius_qwen_capacity_ab.py
+      - tests/test_qwen_capacity_ab.py
+      - .github/workflows/pretorius-qwen-capacity-ab.yml
+  pull_request:
+    paths:
+      - tools/pretorius_qwen_capacity_ab.py
+      - tests/test_qwen_capacity_ab.py
+      - .github/workflows/pretorius-qwen-capacity-ab.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact donors and pinned governor
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/ipseity"
+          git -C "$RUNNER_TEMP/ipseity" checkout --detach a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          python -m pip install -e ".[self-reference-governor-preview]"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+      - name: Match cognitive frames with two fake speech renderers
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
+            -s tests -p test_qwen_capacity_ab.py -v
+      - name: Verify production subject-only boundary unaffected
+        run: python tools/ipseity_entrypoint_gate.py
+  live-ollama:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact donors
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/ipseity"
+          git -C "$RUNNER_TEMP/ipseity" checkout --detach a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          python -m pip install -e ".[self-reference-governor-preview]"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+      - name: Local CPU Ollama (no API) with 0.5B and 1.5B
+        run: |
+          curl -fsSL --max-time 60 https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          sh "$RUNNER_TEMP/ollama-install.sh"
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:0.5b
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:1.5b
+      - name: Matched real-host frames, counterbalanced model order
+        env:
+          PRETORIUS_CAPACITY_AB_DIR: ${{ runner.temp }}/pretorius-capacity
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD:$PWD/tools" \
+            python tools/pretorius_qwen_capacity_ab.py
+      - name: Verify results remain research HOLD
+        env:
+          PRETORIUS_CAPACITY_AB_DIR: ${{ runner.temp }}/pretorius-capacity
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          m=json.loads((pathlib.Path(os.environ["PRETORIUS_CAPACITY_AB_DIR"])/"metrics.json").read_text())
+          assert m["model_responses"]==12 and m["matched_frames"]==6
+          assert m["blind_ballots"]==12 and m["human_judgments_collected"]==0
+          assert m["release_approved"] is False
+          print("PRETORIUS_CAPACITY_RESEARCH_HOLD",m["by_model"])
+          PY
+      - name: Upload BLIND human judge packets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-capacity-BLIND
+          path: ${{ runner.temp }}/pretorius-capacity/blind_review.jsonl
+          if-no-files-found: warn
+          retention-days: 21
+      - name: Upload ENGINEER only model labels, transcripts and metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-capacity-ENGINEER
+          path: |
+            ${{ runner.temp }}/pretorius-capacity/engineer_only.jsonl
+            ${{ runner.temp }}/pretorius-capacity/separate_key.jsonl
+            ${{ runner.temp }}/pretorius-capacity/metrics.json
+          if-no-files-found: warn
+          retention-days: 21

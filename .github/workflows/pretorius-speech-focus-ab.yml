@@ -1,0 +1,125 @@
+name: Pretorius focused small-model renderer A/B (research)
+on:
+  push:
+    branches: [integration/self-reference-governor-pinned-preview]
+    paths:
+      - doctor_lives/preview_renderer_focus.py
+      - tools/pretorius_speech_focus_ab.py
+      - tests/test_pretorius_speech_focus.py
+      - tools/pretorius_focus_response_audit.py
+      - tests/test_pretorius_focus_response_audit.py
+      - .github/workflows/pretorius-speech-focus-ab.yml
+  pull_request:
+    paths:
+      - doctor_lives/preview_renderer_focus.py
+      - tools/pretorius_speech_focus_ab.py
+      - tests/test_pretorius_speech_focus.py
+      - tools/pretorius_focus_response_audit.py
+      - tests/test_pretorius_focus_response_audit.py
+      - .github/workflows/pretorius-speech-focus-ab.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned subject governor and Sensus donor
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/ipseity"
+          git -C "$RUNNER_TEMP/ipseity" checkout --detach a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          python -m pip install -e ".[self-reference-governor-preview]"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+      - name: Unit and true cognitive-host fixture with fake speech renderer
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python -m unittest discover \
+            -s tests -p test_pretorius_speech_focus.py -v
+      - name: Unit-test separate tiny-model repetition/meta diagnostics
+        run: |
+          python -m unittest discover -s tests -p test_pretorius_focus_response_audit.py -v
+      - name: Production entrypoint remains unchanged
+        run: python tools/ipseity_entrypoint_gate.py
+
+  real-paired-ollama:
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact cognitive donors
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/ipseity"
+          git -C "$RUNNER_TEMP/ipseity" checkout --detach a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          python -m pip install -e ".[self-reference-governor-preview]"
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+      - name: Install local CPU Ollama models
+        run: |
+          curl -fsSL --max-time 60 https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          sh "$RUNNER_TEMP/ollama-install.sh"
+          (OLLAMA_HOST=127.0.0.1:11434 ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:11434/api/version >/dev/null; then break; fi
+            sleep 1
+          done
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull smollm2:135m
+          OLLAMA_HOST=127.0.0.1:11434 ollama pull qwen2.5:0.5b
+      - name: Run matched subject full-frame versus speech-focus renderer study
+        env:
+          PRETORIUS_FOCUS_AB_DIR: ${{ runner.temp }}/pretorius-focus-ab
+        run: |
+          PYTHONPATH="$RUNNER_TEMP/Sensus:$PWD" python tools/pretorius_speech_focus_ab.py
+      - name: Independently audit repetition, prompt copying, writing commentary
+        env:
+          PRETORIUS_FOCUS_AB_DIR: ${{ runner.temp }}/pretorius-focus-ab
+        run: |
+          python tools/pretorius_focus_response_audit.py \
+            --results "$PRETORIUS_FOCUS_AB_DIR/paired_responses_engineer_only.jsonl" \
+            --metrics "$PRETORIUS_FOCUS_AB_DIR/metrics.json" \
+            --output "$PRETORIUS_FOCUS_AB_DIR/quality_screen.json"
+      - name: Preserve negative results; do not convert CI to release certification
+        env:
+          PRETORIUS_FOCUS_AB_DIR: ${{ runner.temp }}/pretorius-focus-ab
+        run: |
+          python - <<'PY'
+          import os,json,pathlib
+          p=pathlib.Path(os.environ["PRETORIUS_FOCUS_AB_DIR"])
+          m=json.loads((p/"metrics.json").read_text("utf8"))
+          assert m["paired_conditions"]==24
+          assert m["real_host_source_frames"]==12
+          assert m["blind_comparison_ballots"]==24
+          assert m["human_judged_naturalness"] is False
+          assert m["production_ready"] is False
+          print("PRETORIUS_FOCUS_RESEARCH_ONLY",json.dumps(m["per_model"],sort_keys=True))
+          PY
+      - name: Publish BLIND responses without condition labels
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-focus-BLIND-review
+          path: ${{ runner.temp }}/pretorius-focus-ab/blind_comparison_ballots.jsonl
+          if-no-files-found: warn
+          retention-days: 21
+      - name: Publish engineer-only condition key, raw responses and metrics separately
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-focus-ENGINEER-only
+          path: |
+            ${{ runner.temp }}/pretorius-focus-ab/metrics.json
+            ${{ runner.temp }}/pretorius-focus-ab/quality_screen.json
+            ${{ runner.temp }}/pretorius-focus-ab/paired_responses_engineer_only.jsonl
+            ${{ runner.temp }}/pretorius-focus-ab/separate_comparison_key.jsonl
+          if-no-files-found: warn
+          retention-days: 21
