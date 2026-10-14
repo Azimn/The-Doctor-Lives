@@ -1,12 +1,16 @@
 """Non-speech / first-person authority regressions for focus renderer candidate."""
 from __future__ import annotations
+import importlib.util
 import sys
 from pathlib import Path
 import unittest
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
 
 from doctor_lives.preview_renderer_focus import focus_subject_frame
-from pretorius_speech_focus_ab import study, MODELS
+HAVE_DONORS = (
+    importlib.util.find_spec("synthetic_ipseity") is not None
+    and importlib.util.find_spec("sensus_artificialis") is not None
+)
 
 
 class FocusProjectionTests(unittest.TestCase):
@@ -62,7 +66,9 @@ class FocusProjectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             focus_subject_frame("My mind is quiet."*5000)
 
+    @unittest.skipUnless(HAVE_DONORS, "Optional reviewed cognitive donors required")
     def test_study_pair_balance_no_network(self):
+        from pretorius_speech_focus_ab import study, MODELS
         import tempfile
         import json
         calls={m:[] for m in MODELS}
