@@ -41,7 +41,6 @@ class CapacityExperimentTests(unittest.TestCase):
                 self.assertTrue(all("source_ref" not in subject
                                     for subject,_ in seen[model]))
             import json
-            from pathlib import Path
             out=Path(td)
             blind=[json.loads(line) for line in (out/"blind_review.jsonl").read_text().splitlines()]
             keys=[json.loads(line) for line in (out/"separate_key.jsonl").read_text().splitlines()]
