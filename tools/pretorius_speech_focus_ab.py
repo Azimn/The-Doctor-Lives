@@ -58,7 +58,14 @@ def study(*, transports=None, out=OUTPUT):
         focused = focus_subject_frame(full)
         if any(term in focused for term in ("policy_decisions","source_ref")):
             raise AssertionError("Forbidden internal state entered projection")
-        for arm, text in (("full", full), ("focused", focused)):
+        # Counterbalance order within each model (six selected packets):
+        # warmed-up inference must not systematically favor the focus arm.
+        condition_order = (
+            (("full", full), ("focused", focused))
+            if pkt["turn"] in (0, 4, 8)
+            else (("focused", focused), ("full", full))
+        )
+        for arm, text in condition_order:
             raw_generations = []
             def generate(subject, instruction, model=pkt["model"]):
                 output = transports[model](subject, instruction)
@@ -166,6 +173,7 @@ def study(*, transports=None, out=OUTPUT):
         "real_host_source_frames": len(packets),
         "paired_conditions": len(results),
         "full_vs_focused_same_instruction_and_governor": True,
+        "render_order_counterbalanced": True,
         "per_model": counts,
         "human_judged_naturalness": False,
         "blind_comparison_ballots": len(blind),
