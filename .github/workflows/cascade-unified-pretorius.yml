@@ -14,6 +14,8 @@ on:
       - tests/test_cascade_articles.py
       - tests/test_cascade_pilot.py
       - tools/run_cascade_articles_pilot.py
+      - tools/run_cascade_cooldown_diagnostic.py
+      - tests/test_cascade_cooldown_diagnostic.py
       - .github/workflows/cascade-unified-pretorius.yml
       - pyproject.toml
   workflow_dispatch:
@@ -50,6 +52,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_cascade*.py' -v
           python -m tools.run_cascade_articles_pilot --output results/cascade/CI_ARTICLES_V3_PILOT.json
+          python -m tools.run_cascade_cooldown_diagnostic --output results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
       - name: Protect existing three-organ behavior
         env:
           PYTHONPATH: ${{ runner.temp }}/Sensus:.
@@ -75,4 +78,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cascade-articles-v3-py${{ matrix.python-version }}
-          path: results/cascade/CI_ARTICLES_V3_PILOT.json
+          path: |
+            results/cascade/CI_ARTICLES_V3_PILOT.json
+            results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
