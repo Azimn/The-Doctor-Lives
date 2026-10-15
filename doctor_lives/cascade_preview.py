@@ -141,6 +141,11 @@ class CascadePretoriusPreview(ThreeOrganPretoriusPreview):
         from .task_action_preview import execute_task
         return execute_task(self, **kwargs)
 
+    def laboratory_read(self, port, **task):
+        """Opt-in authorized world action using the existing Doctor memory."""
+        from .cascade_laboratory import run_read_task
+        return run_read_task(self, port, **task)
+
     def counterfactual_gate(
         self, items: Iterable[Percept], *,
         trusted_source_refs: frozenset[str],

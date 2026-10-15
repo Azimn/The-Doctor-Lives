@@ -69,6 +69,8 @@ def execute_task(host, *, grant, text, authorized=False):
         raise PermissionError("Task content differs from authorized input")
     with operation_lock(host.state_dir):
         host._cascade_background.assert_reconciled()
+        if host.pending_count() or host._journal.active() is not None:
+            raise RuntimeError("Complete pending subject delivery before task actions")
         brain = host._doctor.brain
         with brain.store.connect() as conn:
             records = conn.execute("SELECT payload_json FROM events WHERE kind='preview_task_reservation'").fetchall()

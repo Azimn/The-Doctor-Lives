@@ -13,9 +13,9 @@
         "result_sha256": "f881222a2e7c31e63863ddae9a6a79bdd070a1c832274096ef80c5505e9bfb6d",
         "selected_action": "explore",
         "executed_method": "direct_sha256",
-        "policy_decision_id": "policy_945d12c738b342b79dd4e06dfd970dde",
+        "policy_decision_id": "policy_3900e9dd16f148e0b35581e7b31b0859",
         "policy_version": "neural-cognitive-policy-v2-state-bridge:executable-action-constraint-v1",
-        "elapsed_ns": 23926534,
+        "elapsed_ns": 23377758,
         "renderer_called_for_selection": false,
         "external_io": false
       },
@@ -33,9 +33,9 @@
         "result_sha256": "f881222a2e7c31e63863ddae9a6a79bdd070a1c832274096ef80c5505e9bfb6d",
         "selected_action": "comply",
         "executed_method": "stream_sha256",
-        "policy_decision_id": "policy_b45406b6ea4f41a49c1d350fb428a001",
+        "policy_decision_id": "policy_3793163116924412a1c80c599ce14217",
         "policy_version": "neural-cognitive-policy-v2-state-bridge:executable-action-constraint-v1",
-        "elapsed_ns": 25007292,
+        "elapsed_ns": 22317754,
         "renderer_called_for_selection": false,
         "external_io": false
       },

@@ -7,7 +7,7 @@ The uploaded revised manuscript is now the source of record for this build. This
 | 1 | Self and Introspection | Partial | Doctor self-model and causal audit | Independent advance prediction with input-only controls |
 | 2 | Spontaneous Thought | Partial | CASCADE background worker and Doctor heartbeat | History-specific task progress and independent autonomous recurrence |
 | 3 | Temporal Continuity | Partial | Doctor durable commitments and preview restart | Real elapsed-time and interruption validation |
-| 4 | Memory Artificiality | Partial | Doctor recollection and typed source history | Selective-memory intervention changing external task choice |
+| 4 | Memory Artificiality | Partial | Doctor recollection and typed source history | Extend new Laboratory lesion/restoration effect to independent task families |
 | 5 | Relationship Artificiality | Partial | Doctor relationship state and bridge | Partner-specific reliability repair and coordination controls |
 | 6 | Social Cognition | Missing | No dedicated partner-belief visibility ledger | Fallible per-partner knowledge and false-belief tasks |
 | 7 | Motivation | Partial | Doctor needs commitments and bounded policy | Matched real resource trade-off tasks |
@@ -22,10 +22,10 @@ The uploaded revised manuscript is now the source of record for this build. This
 | 16 | Personality | Partial | Canonical personality constraints and policy | Cross-context dispositions under tone and prompt controls |
 | 17 | Goal Structure | Partial | Doctor commitment lifecycle | Environment-triggered permitted resumption and completion controls |
 | 18 | Prospection | Partial | Due commitments and authorized clock worker | Preparation before deadline rather than only overdue response |
-| 19 | Agency | Partial | Authorized internal cognition worker | World-authorized tool action and independently observed consequence |
+| 19 | Agency | Partial | Authorized internal cognition worker | Authorized Laboratory action now exists; autonomous initiation and longitudinal consequences remain |
 | 20 | Environmental Coupling | Missing | No empirical affordance learner in CASCADE | Context-specific tool reliability and adaptation |
 | 21 | Error and Imperfection | Partial | Durable failure receipts and source checks | Natural error attribution and correction of responsible component |
-| 22 | Internal Causality | Partial | Doctor causal audit and policy receipts | New matched lesion or restoration affecting external behavior |
+| 22 | Internal Causality | Partial | Doctor causal audit and policy receipts | Replicate new Laboratory route-and-delivery lesion/restoration outside authored shelf tasks |
 | 23 | LLM Leakage | Partial | SubjectFrame Ipseity and syntactic governor | Semantic unsupported-claim tests and history-specific reflection |
 | 24 | Excessive Coherence | Partial | Durable unresolved concerns | Narrative-pressure probes preserving actual unresolved constraints |
 | 25 | Excessive Responsiveness | Partial | Single-host locks and explicit wake budgets | Conversational resource allocation under competing work |
@@ -40,3 +40,5 @@ The uploaded revised manuscript is now the source of record for this build. This
 | 34 | Cultural Situatedness | Missing | No learned local pragmatic norm graph | Different benign local histories changing ambiguous interpretation |
 
 The machine-readable source contract is `doctor_lives/data/articles_v3_contract.json`. It preserves the exact uploaded document SHA-256, Article headings, individual Article hashes, explicit prerequisites and article-specific controls. No unpublished manuscript text or author contact details are copied into this repository. Assessment is conditional on a specific claim and deployment, and is not a consciousness score.
+
+The [Laboratory action loop](CASCADE_LABORATORY_LOOP.md) now supplies a narrow executable memory-to-route-to-source-delivery mechanism. Its simple receipt-ledger control ties. These exploratory results do not promote any full-domain Article outcome.
