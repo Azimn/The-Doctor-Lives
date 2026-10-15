@@ -12,7 +12,7 @@ from pathlib import Path
 import shutil
 import tempfile
 
-from doctor_lives.cascade_laboratory import remember_look
+from doctor_lives.cascade_laboratory import _verified_looks, remember_look
 from tools.run_cascade_articles_pilot import open_host
 from tools.run_cascade_laboratory_pilot import simple_read
 from pretorius_lab.habitat_v2 import SpatialHabitat
@@ -63,14 +63,24 @@ def run_pilot():
                     contract = {"book_id": "book:007", "budget": 4,
                                 "authorized": True, "expires_ms": 100_000}
                     contract_path = case_dir / "receipt-ledger.json"
-                    contract_path.write_text(json.dumps(contract))
+                    contract_path.write_text(json.dumps(
+                        {"intent": contract, "sighting": None}))
+                    dormant = json.loads(contract_path.read_text())
+                    before = {"status": "waiting_prerequisite"
+                              if dormant["sighting"] is None else "ready",
+                              "actions": 0}
                     actor.move(f"station:shelf:{shelf}")
                     sighting = actor.look()
                     actor.move("station:center")
                     contract_path.write_text(json.dumps(
                         {"intent": contract, "sighting": sighting}))
                     after_restart = json.loads(contract_path.read_text())
-                    before = {"status": "waiting_prerequisite", "actions": 0}
+                    matches = any(e["event_id"] == sighting["event_id"]
+                                  and h == sighting["event_hash"]
+                                  and e["offered_payload"] == sighting["offered_payload"]
+                                  for e, h in _verified_looks(actor))
+                    if not matches or not after_restart["intent"]["authorized"]:
+                        raise RuntimeError("Simple controller has no verified permission/receipt")
                     result = simple_read(actor, after_restart["sighting"],
                                          budget=after_restart["intent"]["budget"])
                     result["status"] = "completed" if result["success"] else "needs_review"
