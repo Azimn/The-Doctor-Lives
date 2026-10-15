@@ -1,5 +1,10 @@
 # The Doctor Lives
 
+## Progress across all 34 Articles
+
+The [34-Article engineering progress dashboard](docs/experiments/ARTICLES_34_PROGRESS.md) shows a 1 to 100 progress bar for each Article, the next missing evidence gate, and a separate Article qualification outcome. Scores are derived from the [versioned milestone tracker](research/articles_34_progress.json) and checked by CI. **100 means engineering work addressed, not automatic scientific qualification.** Experimental work in draft pull requests is labeled as such.
+
+
 > **Research coordination (2026-10-08):** The Doctor Lives remains the definitive production Pretorius, not a competitor experimental brain. It participates in the [cumulative Character Continuity Program](https://github.com/Azimn/Artificial-Life-Research-Journal/blob/main/programs/CHARACTER_CONTINUITY_PROGRAM_V1.md) as a candidate for independently gated, opt-in mechanism transfer. Experimental neural, retrieval and conditioning claims are tracked in the [cross-project evidence register](https://github.com/Azimn/Artificial-Life-Research-Journal/blob/main/programs/CHARACTER_CONTINUITY_EVIDENCE_REGISTER_V1.md) and [comparison protocol](https://github.com/Azimn/Artificial-Life-Research-Journal/blob/main/programs/CHARACTER_CONTINUITY_COMPARISON_PROTOCOL_V1.md). Production release, evidence authority, persistence and migration gates remain separate and must not be bypassed by research results.
 
 The Doctor Lives is the production assembly repository for Doctor Septimus Pretorius as a persistent, renderer-neutral cognitive system.
