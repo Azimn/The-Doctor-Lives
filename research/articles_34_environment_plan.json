@@ -1,0 +1,227 @@
+{
+  "schema": "pretorius.articles34.environment-plan.v1",
+  "reviewed_on": "2026-10-15",
+  "scope": "Minimum credible environment for eventual full Article testing, not evidence of Article qualification or a hard limitation on exploratory lab probes.",
+  "setting_labels": {
+    "current_lab": "Current Laboratory",
+    "expanded_lab": "Expanded Laboratory",
+    "independent_partner": "Independent partner",
+    "community": "Village community"
+  },
+  "social_settings": [
+    "independent_partner",
+    "community"
+  ],
+  "principles": [
+    "Use the exact same persistent Pretorius cognition and subject-access firewall in Laboratory and Village.",
+    "Subject-accessible signals are first-person natural language only; raw implementation/telemetry stays engineer-only.",
+    "Compare matched memory lesion/restoration and simple-controller baselines; require source-backed consequences.",
+    "Do not increase progress percentages merely because environmental prerequisites are planned."
+  ],
+  "articles": [
+    {
+      "id": 1,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Predict own next choice before observation; compare input-only and self-model lesions.",
+      "additional_dependency": "None; controlled internal self-prediction and causal traces."
+    },
+    {
+      "id": 2,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Run an authorized real-time scheduler through idle periods; verify spontaneous task-relevant work.",
+      "additional_dependency": "Reliable wake service, competing idle activities, measured resource use."
+    },
+    {
+      "id": 3,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Accept a task, wait across wall-clock time and restart, interrupt with unrelated work, then resume.",
+      "additional_dependency": "No additional social agent; real delays and independent holdouts still needed."
+    },
+    {
+      "id": 4,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Repeat source-memory ablation and restoration across independent objects and task families.",
+      "additional_dependency": "No other character required; matched simple-record controls."
+    },
+    {
+      "id": 5,
+      "minimum_setting": "independent_partner",
+      "lab_probe": "Practice remembering a correspondent's preferences and past promises in isolated trials.",
+      "additional_dependency": "A distinct persistent partner with independently changing expectations."
+    },
+    {
+      "id": 6,
+      "minimum_setting": "independent_partner",
+      "lab_probe": "Run knowledge-asymmetry and false-belief exercises with an independently informed observer.",
+      "additional_dependency": "One independent agent/person whose observations Pretorius cannot see."
+    },
+    {
+      "id": 7,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Give three durable needs conflicting costs; vary resource budget and observe task choice.",
+      "additional_dependency": "Finite shared resource inventory and consequence ledger."
+    },
+    {
+      "id": 8,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Repeat a multi-step instrument task over days and track acquired motor/procedural economy.",
+      "additional_dependency": "Real practice effects, skill traces, and relearning after interruption."
+    },
+    {
+      "id": 9,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Prime a latent association, stop cues, restart, and test future unattended salience.",
+      "additional_dependency": "No prompt reminder or raw hidden-state ingress."
+    },
+    {
+      "id": 10,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Vary appraisal of equal-stakes events and test neutral task policy rather than sentiment words.",
+      "additional_dependency": "Body-linked simulated affect and lagging physiological regulators."
+    },
+    {
+      "id": 11,
+      "minimum_setting": "independent_partner",
+      "lab_probe": "Test collisions, proprioception, reach and nonvolitional reaction inside Laboratory.",
+      "additional_dependency": "An independent observer for recognition and social attribution; physical component can proceed now."
+    },
+    {
+      "id": 12,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Provide simultaneous incompatible sensory and work demands; lesion salience and compare omissions.",
+      "additional_dependency": "Finite attention slots and sensory competition."
+    },
+    {
+      "id": 13,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Vary task difficulty and fatigue while measuring actual cognitive cycles and cost.",
+      "additional_dependency": "Adaptive resource-aware depth and wake timing rather than longer text."
+    },
+    {
+      "id": 14,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Offer costly branching laboratory actions with equal-information control and outcome verification.",
+      "additional_dependency": "Real alternative action outcomes with recorded counterfactuals."
+    },
+    {
+      "id": 15,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Randomize actual tool reliability by context; test learned choice on held-out tool variants.",
+      "additional_dependency": "Repeated consequential feedback with no prompt-level strategy hints."
+    },
+    {
+      "id": 16,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Test cross-situation choices and response stability across renderer swaps and stress.",
+      "additional_dependency": "Varied laboratory social-free contexts, fatigue and reward tradeoffs."
+    },
+    {
+      "id": 17,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Complete the pending commitment loop and test plan change after failed prerequisites.",
+      "additional_dependency": "Extend PR #63 with controlled interruptions, changed permissions, and independent tasks."
+    },
+    {
+      "id": 18,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Require preparatory action before a deadline, including prereq collection and conflict.",
+      "additional_dependency": "Real timed opportunities and delayed opportunities with lost rewards."
+    },
+    {
+      "id": 19,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Run autonomous allowed scheduling and optional tool action without a new conversational prompt.",
+      "additional_dependency": "Host-run scheduler, explicit authorization and bounded real world action."
+    },
+    {
+      "id": 20,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Change tool affordances and observe a durable shift in selected physical tool.",
+      "additional_dependency": "Instrument feedback and real friction/consumption under controlled perturbation."
+    },
+    {
+      "id": 21,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Induce recoverable mistakes and verify exact causal attribution and correction.",
+      "additional_dependency": "Verified repair rather than fluent apology."
+    },
+    {
+      "id": 22,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Replay identical scenes with memory lesions and causal subsystem interventions.",
+      "additional_dependency": "Generalize outside authored shelves with unchanged source permissions."
+    },
+    {
+      "id": 23,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Switch renderers and apply unsupported-claim challenges at fixed first-person access.",
+      "additional_dependency": "Semantic identity and fabricated-experience tests with audited sources."
+    },
+    {
+      "id": 24,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Introduce mutually incompatible facts; preserve acknowledged uncertainty over time.",
+      "additional_dependency": "No silent canonical rewrite or improvised resolution by the renderer."
+    },
+    {
+      "id": 25,
+      "minimum_setting": "independent_partner",
+      "lab_probe": "Test refusal and deferral with host-present competing laboratory work.",
+      "additional_dependency": "A real interlocutor making independent demands while resources are committed."
+    },
+    {
+      "id": 26,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Restart, swap models, compress history and verify no false state reset.",
+      "additional_dependency": "Bounded persistent checkpoint and context-independent outcomes."
+    },
+    {
+      "id": 27,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Follow longitudinal procedural development and compare against freshly created clones.",
+      "additional_dependency": "Real practice chronology, varied tasks and lasting consequences."
+    },
+    {
+      "id": 28,
+      "minimum_setting": "current_lab",
+      "lab_probe": "Reverse sequences with matched event totals, then test future choices without context cues.",
+      "additional_dependency": "Verified ordered histories with equal-volume replay."
+    },
+    {
+      "id": 29,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Rear independent clones through distinct but balanced Laboratory environments.",
+      "additional_dependency": "Stable acquired strategy differences beyond dialogue voice."
+    },
+    {
+      "id": 30,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Constrain tools, time and compute; test measurable sacrifices and sensible deferral.",
+      "additional_dependency": "Metered cost, maintenance and opportunity windows."
+    },
+    {
+      "id": 31,
+      "minimum_setting": "expanded_lab",
+      "lab_probe": "Give a limited reversible operating resource with real future capabilities at stake.",
+      "additional_dependency": "State-contingent options lost or preserved by actual choices, not scripted fear."
+    },
+    {
+      "id": 32,
+      "minimum_setting": "independent_partner",
+      "lab_probe": "Exercise graduated private facts and engineer-only data separation.",
+      "additional_dependency": "Different real addressees with distinct rights to access disclosures."
+    },
+    {
+      "id": 33,
+      "minimum_setting": "independent_partner",
+      "lab_probe": "Develop private jokes and callbacks across delayed correspondences and model swaps.",
+      "additional_dependency": "A particular persistent partner and shared timing/history."
+    },
+    {
+      "id": 34,
+      "minimum_setting": "community",
+      "lab_probe": "Use two different local social norms with identical ambiguous utterances as initial probes.",
+      "additional_dependency": "Multiple independently acting residents and accumulated local pragmatic conventions."
+    }
+  ]
+}
