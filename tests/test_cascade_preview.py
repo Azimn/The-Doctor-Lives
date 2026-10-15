@@ -172,6 +172,58 @@ class ActualCASCADEHost(unittest.TestCase):
                 current_tick=10, last_wake_tick=5, min_interval=5,
                 host_authorized=False).reason, "permission_denied")
 
+    def test_conflicting_observations_pass_new_arbiter_and_real_recall(self):
+        with self.host() as host:
+            host.ingest({
+                "channel": "world",
+                "text": "The laboratory balance reading was 325 grams.",
+                "source": "trusted:prior-meter-reading",
+                "novelty": 0.4,
+            })
+            tick = host._scene_tick
+            contradictory = (
+                self.Percept(
+                    event_id="vision-conflict", channel="vision",
+                    evidence=self.Evidence.OBSERVED,
+                    source_ref="trusted:vision-conflict", tick=tick,
+                    attribute="laboratory balance reading",
+                    value="451 grams", confidence=0.99,
+                    object_hint="sample",
+                ),
+                self.Percept(
+                    event_id="instrument-conflict", channel="instrument",
+                    evidence=self.Evidence.OBSERVED,
+                    source_ref="trusted:instrument-conflict", tick=tick,
+                    attribute="laboratory balance reading",
+                    value="919 grams", confidence=0.99,
+                    object_hint="sample",
+                ),
+            )
+            grant = host.make_host_grant(
+                permissions=frozenset({"observe"}), max_percepts=2,
+            )
+            response = host.cycle(
+                contradictory,
+                trusted_source_refs=frozenset({
+                    "trusted:vision-conflict", "trusted:instrument-conflict",
+                }),
+                now_ms=1000, cascade_grant=grant,
+            )
+            self.assertEqual(response["scene_conflicts"], 1)
+            self.assertEqual(response["admitted_percepts"], 0)
+            self.assertTrue(response["recollection_selected"])
+            self.assertEqual(response["endogenous_action"], "recall")
+            self.assertEqual(response["ipseity_pending"], 0)
+            self.assertIn("325", self.frames[0])
+            self.assertNotIn("451 grams", self.frames[0])
+            self.assertNotIn("919 grams", self.frames[0])
+            self.assertEqual(
+                response["cascade_causal_trace"]["policy_action"], "recall"
+            )
+            self.assertEqual(
+                response["cascade_arbiter"]["requested_permissions"], ("observe",)
+            )
+
     def test_governor_is_required_in_full_profile(self):
         with self.assertRaises(PermissionError):
             self.Host(self.state_dir, enabled=True,
