@@ -160,5 +160,45 @@ class PersistentCommitmentLoop(unittest.TestCase):
             self.service()
 
 
+    def test_distinct_book_transfer_without_changing_dispatcher(self):
+        from pretorius_lab.book_library import BookLibrary
+        from doctor_lives.cascade_laboratory import remember_look
+        BookLibrary(self.lab).install(
+            "book:006", edition_id="transfer-v1", title="Optics Notes",
+            author="Synthetic Fixture", pages=["Glass transmits light."],
+            source_class="original_fixture",
+            source_reference="authored transfer case")
+        accepted = self.host.accept_laboratory_commitment(
+            self.port, task_id="second-volume", book_id="book:006",
+            expires_ms=100_000, max_actions=4, authorized=True)
+        self.assertEqual(self.host.service_laboratory_commitment(
+            self.port, task_id="second-volume", now_ms=10,
+            authorized=True)["status"], "waiting_prerequisite")
+        self.port.move("station:shelf:3")
+        remember_look(self.host, self.port, self.port.look())
+        self.port.move("station:center")
+        self.reopen()
+        result = self.host.service_laboratory_commitment(
+            self.port, task_id="second-volume", now_ms=10, authorized=True)
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(self.doctor_row(accepted["doctor_commitment_id"])["status"], "kept")
+
+    def test_post_action_failure_replays_receipt_not_physical_move(self):
+        accepted = self.accept()
+        self.witness()
+        with patch.object(self.host._doctor.brain, "resolve_commitment",
+                          side_effect=RuntimeError("simulated post-action crash")):
+            with self.assertRaises(RuntimeError):
+                self.service()
+        revision = self.port.verify()["revision"]
+        self.assertIn(self.doctor_row(accepted["doctor_commitment_id"])["status"],
+                      ("open", "overdue"))
+        self.reopen()
+        completed = self.service()
+        self.assertEqual(completed["status"], "completed")
+        self.assertEqual(self.port.verify()["revision"], revision)
+        self.assertEqual(self.doctor_row(accepted["doctor_commitment_id"])["status"], "kept")
+
+
 if __name__ == "__main__":
     unittest.main()
