@@ -1,0 +1,64 @@
+name: CASCADE unified Pretorius experiment
+on:
+  push:
+    branches: [experiment/cascade-unified-pretorius-20261014]
+  pull_request:
+    paths:
+      - doctor_lives/cascade_governance.py
+      - doctor_lives/cascade_preview.py
+      - tests/test_cascade_preview.py
+      - .github/workflows/cascade-unified-pretorius.yml
+      - pyproject.toml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  conformance:
+    name: Real four-organ host and CASCADE contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Checkout frozen organ donors
+        run: |
+          git clone -q https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/ipseity"
+          git -C "$RUNNER_TEMP/ipseity" checkout --detach a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          test "$(git -C "$RUNNER_TEMP/ipseity" rev-parse HEAD)" = a70a7e9fc61ddf1706d27bfa0b0edf3caf71b7fa
+          git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
+          git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
+          test "$(git -C "$RUNNER_TEMP/Sensus" rev-parse HEAD)" = 802e459ee68950414347d5fa324484c034f57b81
+      - name: Install canonical host and pinned optional governor
+        run: |
+          python -m pip install -e ".[self-reference-governor-preview]"
+      - name: Run CASCADE contracts and ACTUAL Pretorius integration
+        env:
+          PYTHONPATH: ${{ runner.temp }}/Sensus:.
+        run: |
+          python -m unittest discover -s tests -p test_cascade_preview.py -v
+      - name: Protect existing three-organ behavior
+        env:
+          PYTHONPATH: ${{ runner.temp }}/Sensus:.
+        run: |
+          python -m unittest discover -s tests -p test_three_organ_preview.py -v
+          python -m unittest discover -s tests -p test_self_reference_governor_preview.py -v
+      - name: Protect production first-person entrypoint
+        run: python tools/ipseity_entrypoint_gate.py
+      - name: Ensure no optional live hosts silently skipped
+        env:
+          PYTHONPATH: ${{ runner.temp }}/Sensus:.
+        run: |
+          python - <<'PY'
+          import importlib
+          from sensus_artificialis import Percept
+          from synthetic_ipseity import DurableIpseityHost
+          from doctor_lives.cascade_preview import CascadePretoriusPreview
+          assert Percept and DurableIpseityHost and CascadePretoriusPreview
+          print("Real optional donor imports and experiment host present")
+          PY
