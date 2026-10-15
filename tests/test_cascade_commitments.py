@@ -193,6 +193,8 @@ class PersistentCommitmentLoop(unittest.TestCase):
         revision = self.port.verify()["revision"]
         self.assertIn(self.doctor_row(accepted["doctor_commitment_id"])["status"],
                       ("open", "overdue"))
+        with self.assertRaises(RuntimeError):
+            self.host._cascade_background.assert_reconciled()
         self.reopen()
         completed = self.service()
         self.assertEqual(completed["status"], "completed")
