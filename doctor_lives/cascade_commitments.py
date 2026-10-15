@@ -122,7 +122,8 @@ def service_lab_commitment(host, port, *, task_id, now_ms, authorized=False):
     integer(now_ms, 0)
     with operation_lock(host.state_dir, "cascade-commitment-dispatch.lock"):
         with operation_lock(host.state_dir):
-            host._cascade_background.assert_reconciled()
+            host._cascade_background.assert_reconciled(
+                allowed_commitment_task_id=task_id)
             if host.pending_count() or host._journal.active() is not None:
                 raise RuntimeError("Pending subject delivery blocks the wake")
             with closing(_ledger(host)) as db, db:
@@ -173,9 +174,11 @@ def service_lab_commitment(host, port, *, task_id, now_ms, authorized=False):
         # every action before the tool call and verifies source delivery.
         outcome = host.laboratory_read(
             port, task_id="commit-" + task_id, book_id=book_id,
-            max_actions=max_actions, authorized=True)
+            max_actions=max_actions, authorized=True,
+            _commitment_task_id=task_id)
         with operation_lock(host.state_dir):
-            host._cascade_background.assert_reconciled()
+            host._cascade_background.assert_reconciled(
+                allowed_commitment_task_id=task_id)
             if not outcome["success"]:
                 with closing(_ledger(host)) as db, db:
                     db.execute("""UPDATE executable_commitments
