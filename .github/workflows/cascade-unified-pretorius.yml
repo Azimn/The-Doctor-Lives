@@ -7,8 +7,11 @@ on:
       - doctor_lives/cascade_governance.py
       - doctor_lives/cascade_preview.py
       - doctor_lives/cascade_laboratory.py
+      - doctor_lives/cascade_commitments.py
       - tools/run_cascade_laboratory_pilot.py
       - tests/test_cascade_laboratory.py
+      - tests/test_cascade_commitments.py
+      - tools/run_cascade_commitment_pilot.py
       - doctor_lives/cascade_background.py
       - doctor_lives/cascade_articles.py
       - doctor_lives/data/articles_v3_contract.json
@@ -63,6 +66,7 @@ jobs:
           python -m tools.run_cascade_articles_pilot --output results/cascade/CI_ARTICLES_V3_PILOT.json
           python -m tools.run_cascade_cooldown_diagnostic --output results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
           python -m tools.run_cascade_laboratory_pilot --output results/cascade/CI_LABORATORY_ACTION_PILOT.json
+          python -m tools.run_cascade_commitment_pilot --output results/cascade/CI_COMMITMENT_ACTION_PILOT.json
       - name: Protect existing three-organ behavior
         env:
           PYTHONPATH: ${{ runner.temp }}/Sensus:.
@@ -93,3 +97,4 @@ jobs:
             results/cascade/CI_ARTICLES_V3_PILOT.json
             results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
             results/cascade/CI_LABORATORY_ACTION_PILOT.json
+            results/cascade/CI_COMMITMENT_ACTION_PILOT.json

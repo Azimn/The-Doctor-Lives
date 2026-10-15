@@ -110,7 +110,8 @@ def remembered_shelf(host, port, book_id):
     return None
 
 
-def run_read_task(host, port, *, task_id, book_id, max_actions, authorized=False):
+def run_read_task(host, port, *, task_id, book_id, max_actions,
+                  authorized=False, _commitment_task_id=None):
     """Trusted local host call. Every move/look/open/read consumes one action.
 
     Authority is per task invocation. No background actions are authorized by
@@ -123,8 +124,21 @@ def run_read_task(host, port, *, task_id, book_id, max_actions, authorized=False
     if (not isinstance(task_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", task_id)
             or type(max_actions) is not int or not 1 <= max_actions <= 40):
         raise ValueError("Bounded task ID and integer action budget required")
+    if _commitment_task_id is not None:
+        if type(_commitment_task_id) is not str or task_id != "commit-" + _commitment_task_id:
+            raise PermissionError("Invalid internal commitment dispatch binding")
+        commitment_path = host.state_dir / "cascade-commitments.sqlite3"
+        if not commitment_path.exists():
+            raise PermissionError("No durable commitment authorization")
+        with sqlite3.connect(commitment_path) as commitments:
+            linked = commitments.execute(
+                "SELECT book_id,max_actions,status FROM executable_commitments WHERE task_id=?",
+                (_commitment_task_id,)).fetchone()
+        if linked != (book_id, max_actions, "dispatching"):
+            raise PermissionError("Commitment is not currently authorized to dispatch")
     with operation_lock(host.state_dir):
-        host._cascade_background.assert_reconciled()
+        host._cascade_background.assert_reconciled(
+            allowed_commitment_task_id=_commitment_task_id)
         if host.pending_count() or host._journal.active() is not None:
             raise RuntimeError("Complete pending subject delivery before external actions")
         body = port.verify()

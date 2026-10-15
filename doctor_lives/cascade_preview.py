@@ -138,6 +138,16 @@ class CascadePretoriusPreview(ThreeOrganPretoriusPreview):
         from .cascade_laboratory import run_read_task
         return run_read_task(self, port, **task)
 
+    def accept_laboratory_commitment(self, port, **task):
+        """Register a durable bounded intention with the existing Doctor."""
+        from .cascade_commitments import accept_lab_commitment
+        return accept_lab_commitment(self, port, **task)
+
+    def service_laboratory_commitment(self, port, **wake):
+        """Host-triggered, prerequisite-gated execution without another prompt."""
+        from .cascade_commitments import service_lab_commitment
+        return service_lab_commitment(self, port, **wake)
+
     def counterfactual_gate(
         self, items: Iterable[Percept], *,
         trusted_source_refs: frozenset[str],
