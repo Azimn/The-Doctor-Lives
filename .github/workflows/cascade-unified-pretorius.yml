@@ -1,9 +1,13 @@
 name: CASCADE unified Pretorius experiment
 on:
   push:
-    branches: [experiment/cascade-unified-pretorius-20261014]
+    branches: [experiment/cascade-unified-pretorius-20261014, experiment/articles-v3-native-task-actions]
   pull_request:
     paths:
+      - doctor_lives/task_action_preview.py
+      - doctor_lives/cognition.py
+      - tests/test_cascade_native_tasks.py
+      - tools/run_cascade_native_task_pilot.py
       - doctor_lives/cascade_governance.py
       - doctor_lives/cascade_preview.py
       - doctor_lives/cascade_background.py
@@ -53,6 +57,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_cascade*.py' -v
           python -m tools.run_cascade_articles_pilot --output results/cascade/CI_ARTICLES_V3_PILOT.json
           python -m tools.run_cascade_cooldown_diagnostic --output results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
+          python -m tools.run_cascade_native_task_pilot --output results/cascade/CI_NATIVE_TASK_ACTION_PILOT.json
       - name: Protect existing three-organ behavior
         env:
           PYTHONPATH: ${{ runner.temp }}/Sensus:.
@@ -81,3 +86,4 @@ jobs:
           path: |
             results/cascade/CI_ARTICLES_V3_PILOT.json
             results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
+            results/cascade/CI_NATIVE_TASK_ACTION_PILOT.json

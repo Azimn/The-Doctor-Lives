@@ -133,6 +133,14 @@ class CascadePretoriusPreview(ThreeOrganPretoriusPreview):
             "cascade_conformance_only": True,
         }
 
+    def issue_task_grant(self, **kwargs):
+        from .task_action_preview import issue_task_grant
+        return issue_task_grant(self, **kwargs)
+
+    def execute_task(self, **kwargs):
+        from .task_action_preview import execute_task
+        return execute_task(self, **kwargs)
+
     def counterfactual_gate(
         self, items: Iterable[Percept], *,
         trusted_source_refs: frozenset[str],

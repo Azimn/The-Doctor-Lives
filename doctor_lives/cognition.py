@@ -1165,7 +1165,16 @@ class PretoriusBrain:
         *,
         decision_text: str | None = None,
         bridge_enabled: bool = True,
+        allowed_actions: tuple[str, ...] | None = None,
     ) -> dict[str, Any]:
+        # A trusted host can restrict an experimental task to currently
+        # executable actions. The native policy still ranks the alternatives.
+        # The default production call keeps the accepted ten-action policy.
+        if allowed_actions is not None:
+            if (type(allowed_actions) is not tuple or not allowed_actions
+                    or any(type(action) is not str or action not in ACTIONS for action in allowed_actions)
+                    or len(set(allowed_actions)) != len(allowed_actions)):
+                raise ValueError("Nonempty unique native action tuple required")
         direct_ranked_all, ranked_all = self._ranked_memory_sets(
             48, query=decision_text, audit=True
         )
@@ -1175,6 +1184,15 @@ class PretoriusBrain:
             direct_history_ranked=direct_ranked_all,
             bridge_enabled=bridge_enabled,
         )
+        if allowed_actions is not None:
+            unconstrained = dict(scores)
+            mass = sum(scores[action] for action in allowed_actions)
+            scores = {action: scores[action] / mass for action in allowed_actions}
+            state_pressure = dict(state_pressure, executable_action_constraint={
+                "allowed_actions": list(allowed_actions),
+                "unconstrained_scores": unconstrained,
+                "rule": "native scores conditioned on host-authorized executable actions",
+            })
         tendency = max(scores, key=scores.get)
         candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
         if not candidates:
@@ -1194,6 +1212,8 @@ class PretoriusBrain:
         candidate_ids = [row["id"] for _, row in candidates]
         checkpoint_sha = self._neural_checkpoint_sha256()
         policy_version = str(self.evolution_policy["neural_policy_version"])
+        if allowed_actions is not None:
+            policy_version += ":executable-action-constraint-v1"
         with self.store.transaction() as conn:
             decision_id = new_id("policy")
             conn.execute(

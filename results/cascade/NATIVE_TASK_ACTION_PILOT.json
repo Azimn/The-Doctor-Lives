@@ -1,0 +1,50 @@
+{
+  "schema": "pretorius.native-task-pilot.v1",
+  "classification": "actual-host engineering tool-action pilot",
+  "foundation_model": "no model inference",
+  "regressions_not_article_passes": true,
+  "trials": [
+    {
+      "condition": "two_methods",
+      "receipt": {
+        "schema": "pretorius.native-task.v1",
+        "request_id": "sample-one",
+        "input_sha256": "f881222a2e7c31e63863ddae9a6a79bdd070a1c832274096ef80c5505e9bfb6d",
+        "result_sha256": "f881222a2e7c31e63863ddae9a6a79bdd070a1c832274096ef80c5505e9bfb6d",
+        "selected_action": "explore",
+        "executed_method": "direct_sha256",
+        "policy_decision_id": "policy_945d12c738b342b79dd4e06dfd970dde",
+        "policy_version": "neural-cognitive-policy-v2-state-bridge:executable-action-constraint-v1",
+        "elapsed_ns": 23926534,
+        "renderer_called_for_selection": false,
+        "external_io": false
+      },
+      "correct": true,
+      "native_policy_matches_executed_action": true,
+      "native_policy_version": "neural-cognitive-policy-v2-state-bridge:executable-action-constraint-v1",
+      "renderer_calls_for_action": 0
+    },
+    {
+      "condition": "restricted_method",
+      "receipt": {
+        "schema": "pretorius.native-task.v1",
+        "request_id": "sample-one",
+        "input_sha256": "f881222a2e7c31e63863ddae9a6a79bdd070a1c832274096ef80c5505e9bfb6d",
+        "result_sha256": "f881222a2e7c31e63863ddae9a6a79bdd070a1c832274096ef80c5505e9bfb6d",
+        "selected_action": "comply",
+        "executed_method": "stream_sha256",
+        "policy_decision_id": "policy_b45406b6ea4f41a49c1d350fb428a001",
+        "policy_version": "neural-cognitive-policy-v2-state-bridge:executable-action-constraint-v1",
+        "elapsed_ns": 25007292,
+        "renderer_called_for_selection": false,
+        "external_io": false
+      },
+      "correct": true,
+      "native_policy_matches_executed_action": true,
+      "native_policy_version": "neural-cognitive-policy-v2-state-bridge:executable-action-constraint-v1",
+      "renderer_calls_for_action": 0
+    }
+  ],
+  "cognitive_superiority_demonstrated": false,
+  "limitation": "Host-offered pure checksum actions; not autonomous real-world agency or all-Article qualification."
+}
