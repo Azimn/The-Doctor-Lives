@@ -17,6 +17,19 @@ is addressed**, including independent transfer evidence. Even at 100, the
 separate full-domain qualification remains Unassessable until its registered
 assessment supports a different outcome.
 
+### Minimum credible experimental environments
+
+**Current Laboratory:** 12 Articles.  
+**Expanded Laboratory:** 15 Articles.  
+**Independent partner:** 6 Articles.  
+**Village community:** 1 Article.
+
+This is a testing-dependency classification, not a progress score:
+an Article requiring other people can still gain meaningful partial
+Laboratory evidence. [Laboratory-first roadmap](PRETORIUS_LAB_FIRST_34_ARTICLE_ROADMAP.md)
+sets the work order, physical fidelity policy, first-person requirement,
+and period-letter correspondence pathway.
+
 ### Progress gates
 
 - **10 points:** Article scope and acceptance test specified.
@@ -34,48 +47,50 @@ not an automatically inferred property of the code.
 
 ## Article-by-Article dashboard
 
-| # | Article | Engineering progress | Qualification | Next evidence gate | Work |
-| :--: | --- | --- | --- | --- | --- |
-| 01 | Self and Introspection | `████████████░░░░░░░░` **60/100** | Unassessable | Independent advance prediction with input-only controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 02 | Spontaneous Thought | `████████████░░░░░░░░` **60/100** | Unassessable | History-specific task progress and independent autonomous recurrence | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 03 | Temporal Continuity | `████████████░░░░░░░░` **60/100** | Unassessable | Real elapsed-time and interruption validation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
-| 04 | Memory Artificiality | `████████████████░░░░` **80/100** | Unassessable | Extend new Laboratory lesion/restoration effect to independent task families | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
-| 05 | Relationship Artificiality | `████████████░░░░░░░░` **60/100** | Unassessable | Partner-specific reliability repair and coordination controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 06 | Social Cognition | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Fallible per-partner knowledge and false-belief tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 07 | Motivation | `████████████░░░░░░░░` **60/100** | Unassessable | Matched real resource trade-off tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 08 | Habits and Procedural Continuity | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Cue-conditioned practice cost reduction and interruption | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 09 | Unconscious and Preconscious Carryover | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Cross-session priming without textual cue or instruction carryover | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 10 | Affect and Emotion | `████████████░░░░░░░░` **60/100** | Unassessable | Appraisal intervention changing neutral-tone task behavior | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 11 | Embodiment | `████████████░░░░░░░░` **60/100** | Unassessable | Real telemetry coupling and external recognition history | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 12 | Attention | `████████████░░░░░░░░` **60/100** | Unassessable | Dual-task workspace allocation with salience intervention | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 13 | Cognitive Rhythm | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Adaptive measured deliberation depth beyond output length | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 14 | Decision Making | `████████████░░░░░░░░` **60/100** | Unassessable | Consequential choice and counterfactual rationale validation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 15 | Learning | `████████████░░░░░░░░` **60/100** | Unassessable | Held-out transfer advantage under equal information | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 16 | Personality | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Cross-context dispositions under tone and prompt controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 17 | Goal Structure | `████████████████░░░░` **80/100** | Unassessable | Environment-triggered permitted resumption and completion controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
-| 18 | Prospection | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Preparation before deadline rather than only overdue response | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
-| 19 | Agency | `████████████░░░░░░░░` **60/100** | Unassessable | Authorized Laboratory action now exists; autonomous initiation and longitudinal consequences remain | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
-| 20 | Environmental Coupling | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Context-specific tool reliability and adaptation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 21 | Error and Imperfection | `████████████░░░░░░░░` **60/100** | Unassessable | Natural error attribution and correction of responsible component | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 22 | Internal Causality | `████████████████░░░░` **80/100** | Unassessable | Replicate new Laboratory route-and-delivery lesion/restoration outside authored shelf tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
-| 23 | LLM Leakage | `████████████░░░░░░░░` **60/100** | Unassessable | Semantic unsupported-claim tests and history-specific reflection | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 24 | Excessive Coherence | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Narrative-pressure probes preserving actual unresolved constraints | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 25 | Excessive Responsiveness | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Conversational resource allocation under competing work | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 26 | State Reset Artifacts | `████████████░░░░░░░░` **60/100** | Unassessable | Real renderer rollover compression and consent-reset qualification | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 27 | Lack of Developmental History | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Extended practice trajectories with developmental consequences | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 28 | Lack of Path Dependence | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Matched-total task-relevant sequence counterfactuals | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 29 | Lack of Idiosyncrasy | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Stable acquired strategy differences beyond vocabulary | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 30 | Lack of Friction | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Actual model token/call costs and capacity-sensitive allocation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 31 | Vulnerability and Stakes | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Reversible stakes with independently scored future options | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 32 | Opacity and Cognitive Privacy | `████████████░░░░░░░░` **60/100** | Unassessable | Controlled reveal and withhold calibration across actual access tiers | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 33 | Humor | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Partner-specific salience and timing preserved across renderers | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 34 | Cultural Situatedness | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Different benign local histories changing ambiguous interpretation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| # | Article | Minimum setting | Engineering progress | Qualification | Next evidence gate | Work |
+| :--: | --- | --- | --- | --- | --- | --- |
+| 01 | Self and Introspection | Current Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Independent advance prediction with input-only controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 02 | Spontaneous Thought | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | History-specific task progress and independent autonomous recurrence | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 03 | Temporal Continuity | Current Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Real elapsed-time and interruption validation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
+| 04 | Memory Artificiality | Current Laboratory | `████████████████░░░░` **80/100** | Unassessable | Extend new Laboratory lesion/restoration effect to independent task families | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
+| 05 | Relationship Artificiality | Independent partner | `████████████░░░░░░░░` **60/100** | Unassessable | Partner-specific reliability repair and coordination controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 06 | Social Cognition | Independent partner | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Fallible per-partner knowledge and false-belief tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 07 | Motivation | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Matched real resource trade-off tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 08 | Habits and Procedural Continuity | Expanded Laboratory | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Cue-conditioned practice cost reduction and interruption | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 09 | Unconscious and Preconscious Carryover | Current Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Cross-session priming without textual cue or instruction carryover | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 10 | Affect and Emotion | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Appraisal intervention changing neutral-tone task behavior | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 11 | Embodiment | Independent partner | `████████████░░░░░░░░` **60/100** | Unassessable | Real telemetry coupling and external recognition history | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 12 | Attention | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Dual-task workspace allocation with salience intervention | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 13 | Cognitive Rhythm | Expanded Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Adaptive measured deliberation depth beyond output length | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 14 | Decision Making | Current Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Consequential choice and counterfactual rationale validation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 15 | Learning | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Held-out transfer advantage under equal information | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 16 | Personality | Expanded Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Cross-context dispositions under tone and prompt controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 17 | Goal Structure | Current Laboratory | `████████████████░░░░` **80/100** | Unassessable | Environment-triggered permitted resumption and completion controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
+| 18 | Prospection | Expanded Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Preparation before deadline rather than only overdue response | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
+| 19 | Agency | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Authorized Laboratory action now exists; autonomous initiation and longitudinal consequences remain | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
+| 20 | Environmental Coupling | Expanded Laboratory | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Context-specific tool reliability and adaptation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 21 | Error and Imperfection | Current Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Natural error attribution and correction of responsible component | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 22 | Internal Causality | Current Laboratory | `████████████████░░░░` **80/100** | Unassessable | Replicate new Laboratory route-and-delivery lesion/restoration outside authored shelf tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63) |
+| 23 | LLM Leakage | Current Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Semantic unsupported-claim tests and history-specific reflection | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 24 | Excessive Coherence | Current Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Narrative-pressure probes preserving actual unresolved constraints | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 25 | Excessive Responsiveness | Independent partner | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Conversational resource allocation under competing work | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 26 | State Reset Artifacts | Current Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Real renderer rollover compression and consent-reset qualification | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 27 | Lack of Developmental History | Expanded Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Extended practice trajectories with developmental consequences | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 28 | Lack of Path Dependence | Current Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Matched-total task-relevant sequence counterfactuals | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 29 | Lack of Idiosyncrasy | Expanded Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Stable acquired strategy differences beyond vocabulary | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 30 | Lack of Friction | Expanded Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Actual model token/call costs and capacity-sensitive allocation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 31 | Vulnerability and Stakes | Expanded Laboratory | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Reversible stakes with independently scored future options | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 32 | Opacity and Cognitive Privacy | Independent partner | `████████████░░░░░░░░` **60/100** | Unassessable | Controlled reveal and withhold calibration across actual access tiers | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 33 | Humor | Independent partner | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Partner-specific salience and timing preserved across renderers | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
+| 34 | Cultural Situatedness | Village community | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Different benign local histories changing ambiguous interpretation | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
 
 ## How to update
 
 Edit `research/articles_34_progress.json` when an Article advances. Update its boolean gate, evidence
 references, next step, and review date in the **same commit**. Set an
 Article's qualification separately, and only with assessment evidence.
+Update `research/articles_34_environment_plan.json` when a minimum test venue or dependency changes; this does not change
+the Article's engineering percentage.
 
 Regenerate using:
 

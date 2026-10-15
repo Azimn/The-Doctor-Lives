@@ -6,7 +6,8 @@ import json
 import unittest
 
 from tools.render_articles_progress import (
-    GATES, OUTPUT, SOURCE, WEIGHTS, progress_bar, render, score, validate,
+    ENV_SOURCE, GATES, OUTPUT, SOURCE, WEIGHTS, progress_bar, render, score,
+    validate, validate_environment_plan,
 )
 
 
@@ -78,6 +79,39 @@ class ProgressTrackerTests(unittest.TestCase):
             "https://example.org/independent-registered-assessment"
         ]
         validate(wrong)
+
+    def test_environment_classification_accounts_for_all_34_articles(self):
+        venue = json.loads(ENV_SOURCE.read_text(encoding="utf-8"))
+        validate_environment_plan(self.data, venue)
+        counts = {key: sum(article["minimum_setting"] == key
+                           for article in venue["articles"])
+                  for key in venue["setting_labels"]}
+        self.assertEqual(counts, {"current_lab": 12, "expanded_lab": 15,
+                                  "independent_partner": 6, "community": 1})
+        self.assertEqual(
+            [article["id"] for article in venue["articles"]
+             if article["minimum_setting"] in venue["social_settings"]],
+            [5, 6, 11, 25, 32, 33, 34])
+
+    def test_environment_changes_do_not_inflate_engineering_progress(self):
+        venue = json.loads(ENV_SOURCE.read_text(encoding="utf-8"))
+        before = [score(article) for article in self.data["articles"]]
+        revised = deepcopy(venue)
+        revised["articles"][1]["minimum_setting"] = "current_lab"
+        validate_environment_plan(self.data, revised)
+        self.assertEqual(
+            [score(article) for article in self.data["articles"]], before)
+        malformed = deepcopy(venue)
+        malformed["articles"][5]["minimum_setting"] = "imaginary_land"
+        with self.assertRaisesRegex(ValueError, "Unrecognized"):
+            validate_environment_plan(self.data, malformed)
+
+    def test_partner_dependence_must_be_explained(self):
+        venue = json.loads(ENV_SOURCE.read_text(encoding="utf-8"))
+        malformed = deepcopy(venue)
+        malformed["articles"][4]["additional_dependency"] = ""
+        with self.assertRaisesRegex(ValueError, "Social Articles"):
+            validate_environment_plan(self.data, malformed)
 
     def test_document_provenance_must_be_explicit(self):
         wrong = deepcopy(self.data)

@@ -20,12 +20,14 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "research" / "articles_34_progress.json"
 OUTPUT = ROOT / "docs" / "experiments" / "ARTICLES_34_PROGRESS.md"
+ENV_SOURCE = ROOT / "research" / "articles_34_environment_plan.json"
 GATES = ("defined", "mechanism", "integrated",
          "causal_controls", "independent_transfer")
 WEIGHTS = {"defined": 10, "mechanism": 25, "integrated": 25,
            "causal_controls": 20, "independent_transfer": 20}
 QUALIFICATIONS = {"Unassessable", "Supported", "Unsupported"}
 BAR_WIDTH = 20
+ENV_TYPES = ("current_lab", "expanded_lab", "independent_partner", "community")
 
 
 def score(item: dict, weights: dict = WEIGHTS) -> int:
@@ -90,12 +92,48 @@ def validate(data: dict) -> None:
             raise ValueError("All work references must resolve to source links")
 
 
+
+def load_environment_plan(data: dict) -> dict:
+    """Keep Article venue requirements independently reviewable from percent gates."""
+    plan = json.loads(ENV_SOURCE.read_text(encoding="utf-8"))
+    validate_environment_plan(data, plan)
+    return plan
+
+
+def validate_environment_plan(data: dict, plan: dict) -> None:
+    if plan.get("schema") != "pretorius.articles34.environment-plan.v1":
+        raise ValueError("Unsupported Article venue plan schema")
+    if set(plan.get("setting_labels", {})) != set(ENV_TYPES):
+        raise ValueError("Venue plan must define exactly four setting labels")
+    if set(plan.get("social_settings", [])) != {"independent_partner", "community"}:
+        raise ValueError("Venue plan must identify independently populated settings")
+    date.fromisoformat(plan["reviewed_on"])
+    records = plan.get("articles")
+    if not isinstance(records, list) or len(records) != 34:
+        raise ValueError("Venue plan needs exactly 34 Articles")
+    for index, (original, venue) in enumerate(zip(data["articles"], records), 1):
+        if venue.get("id") != original["id"] or original["id"] != index:
+            raise ValueError("Venue plan must follow canonical Article numbering")
+        if venue.get("minimum_setting") not in ENV_TYPES:
+            raise ValueError("Unrecognized minimum Article test setting")
+        if not venue.get("lab_probe", "").strip():
+            raise ValueError("Every Article requires a real Laboratory probe")
+        if not isinstance(venue.get("additional_dependency"), str):
+            raise ValueError("Every Article requires an explicit dependency statement")
+        if venue["minimum_setting"] in plan["social_settings"] and not venue["additional_dependency"].strip():
+            raise ValueError("Social Articles require a named independent-entity dependency")
+
+
 def escape_cell(value: object) -> str:
     return str(value).replace("|", r"\|").replace("\n", " ").strip()
 
 
 def render(data: dict) -> str:
     validate(data)
+    env_plan = load_environment_plan(data)
+    locations = {entry["id"]: entry for entry in env_plan["articles"]}
+    counts = {kind: sum(entry["minimum_setting"] == kind for entry in env_plan["articles"])
+              for kind in ENV_TYPES}
     items = data["articles"]
     grades = [score(item, data["gate_weights"]) for item in items]
     average = round(sum(grades) / 34)
@@ -122,6 +160,19 @@ def render(data: dict) -> str:
         "separate full-domain qualification remains Unassessable until its registered",
         "assessment supports a different outcome.",
         "",
+        "### Minimum credible experimental environments",
+        "",
+        f"**Current Laboratory:** {counts['current_lab']} Articles.  ",
+        f"**Expanded Laboratory:** {counts['expanded_lab']} Articles.  ",
+        f"**Independent partner:** {counts['independent_partner']} Articles.  ",
+        f"**Village community:** {counts['community']} Article.",
+        "",
+        "This is a testing-dependency classification, not a progress score:",
+        "an Article requiring other people can still gain meaningful partial",
+        "Laboratory evidence. [Laboratory-first roadmap](PRETORIUS_LAB_FIRST_34_ARTICLE_ROADMAP.md)",
+        "sets the work order, physical fidelity policy, first-person requirement,",
+        "and period-letter correspondence pathway.",
+        "",
         "### Progress gates",
         "",
     ]
@@ -139,14 +190,16 @@ def render(data: dict) -> str:
         "",
         "## Article-by-Article dashboard",
         "",
-        "| # | Article | Engineering progress | Qualification | Next evidence gate | Work |",
-        "| :--: | --- | --- | --- | --- | --- |",
+        "| # | Article | Minimum setting | Engineering progress | Qualification | Next evidence gate | Work |",
+        "| :--: | --- | --- | --- | --- | --- | --- |",
     ])
     for item, points in zip(items, grades):
         refs = ", ".join(f"[{ref}]({data['work_ref_urls'][ref]})"
                          for ref in item["work_refs"])
+        setting = locations[item["id"]]["minimum_setting"]
         lines.append(
             f"| {item['id']:02d} | {escape_cell(item['title'])} "
+            f"| {escape_cell(env_plan['setting_labels'][setting])} "
             f"| {plain_code}{progress_bar(points)}{plain_code} **{points}/100** "
             f"| {item['qualification']} "
             f"| {escape_cell(item['next_step'] or 'All engineering gates complete')} "
@@ -160,6 +213,9 @@ def render(data: dict) -> str:
         " when an Article advances. Update its boolean gate, evidence",
         "references, next step, and review date in the **same commit**. Set an",
         "Article's qualification separately, and only with assessment evidence.",
+        "Update " + plain_code + "research/articles_34_environment_plan.json" + plain_code +
+        " when a minimum test venue or dependency changes; this does not change",
+        "the Article's engineering percentage.",
         "",
         "Regenerate using:",
         "",
