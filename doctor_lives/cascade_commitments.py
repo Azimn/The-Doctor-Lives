@@ -7,6 +7,7 @@ are required. No external action or automatic recovery follows a crash.
 """
 from __future__ import annotations
 
+from contextlib import closing
 import json
 from pathlib import Path
 import re
@@ -39,7 +40,7 @@ def _ledger(host):
 
 
 def _doctor_commitment(host, commitment_id):
-    with host._doctor.brain.store.connect() as db:
+    with closing(host._doctor.brain.store.connect()) as db:
         row = db.execute(
             "SELECT id,status,outcome FROM commitments WHERE id=?", (commitment_id,)
         ).fetchone()
@@ -73,7 +74,7 @@ def accept_lab_commitment(host, port, *, task_id, book_id, expires_ms,
         if host.pending_count() or host._journal.active() is not None:
             raise RuntimeError("Pending subject delivery must be recovered first")
         world = port.verify()
-        with _ledger(host) as db:
+        with closing(_ledger(host)) as db, db:
             old = db.execute("SELECT * FROM executable_commitments WHERE task_id=?",
                              (task_id,)).fetchone()
             if old:
@@ -124,7 +125,7 @@ def service_lab_commitment(host, port, *, task_id, now_ms, authorized=False):
             host._cascade_background.assert_reconciled()
             if host.pending_count() or host._journal.active() is not None:
                 raise RuntimeError("Pending subject delivery blocks the wake")
-            with _ledger(host) as db:
+            with closing(_ledger(host)) as db, db:
                 row = db.execute("SELECT * FROM executable_commitments WHERE task_id=?",
                                  (task_id,)).fetchone()
                 if row is None:
@@ -176,7 +177,7 @@ def service_lab_commitment(host, port, *, task_id, now_ms, authorized=False):
         with operation_lock(host.state_dir):
             host._cascade_background.assert_reconciled()
             if not outcome["success"]:
-                with _ledger(host) as db:
+                with closing(_ledger(host)) as db, db:
                     db.execute("""UPDATE executable_commitments
                         SET status='needs_review',report=? WHERE task_id=?""",
                         (json.dumps(outcome, sort_keys=True), task_id))
@@ -206,7 +207,7 @@ def service_lab_commitment(host, port, *, task_id, now_ms, authorized=False):
                        "actions": outcome["actions_used"],
                        "world_epoch": row["world_epoch"],
                        "engineering_only": True}
-            with _ledger(host) as db:
+            with closing(_ledger(host)) as db, db:
                 db.execute("""UPDATE executable_commitments
                     SET status='completed',report=? WHERE task_id=?""",
                     (json.dumps(receipt, sort_keys=True), task_id))
