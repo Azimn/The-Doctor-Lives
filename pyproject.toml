@@ -19,6 +19,7 @@ self-reference-governor-preview = [
 doctor-lives = "doctor_lives.cli:main"
 doctor-lives-local = "doctor_lives.ipseity_local:main"
 doctor-lives-three-organ-preview = "doctor_lives.three_organ_preview:main"
+doctor-lives-cascade-preview = "doctor_lives.cascade_preview:main"
 
 [tool.setuptools]
 packages = ["doctor_lives"]

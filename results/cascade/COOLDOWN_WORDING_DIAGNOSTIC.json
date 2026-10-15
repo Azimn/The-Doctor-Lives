@@ -1,0 +1,103 @@
+{
+  "schema": "pretorius.cascade.cooldown-diagnostic.v1",
+  "classification": "post-hoc author-designed mechanism diagnosis of an exposed miss",
+  "baseline_commit": "09df2169b6d9359336d9dbec93888f56af0613c9",
+  "manipulated_factors": [
+    "user-message wording",
+    "cooldown policy parameter"
+  ],
+  "common_checkpoint": true,
+  "runtime_defaults_changed": false,
+  "real_llm_calls": 0,
+  "external_task_outcomes_measured": false,
+  "semantic_generalization_tested": false,
+  "independent_holdout": false,
+  "trials": [
+    {
+      "wording": "original_wording",
+      "cooldown_ticks": 2,
+      "pre_session_state_digest": "49ecc5e72235d0b55f9841253622cd2441f65e3a4a511c129c95f418e39973eb",
+      "policy_action": "continue",
+      "persisted_action": "continue",
+      "cooldown_active": true,
+      "information_need": 0.9025,
+      "raw_scores": {
+        "ask": 0.29237339095677717,
+        "continue": 0.3913548813525223,
+        "defer": 0.09159588774384726,
+        "recall": 0.0
+      },
+      "source_fact_accessible": true,
+      "disputed_fact_leaked": false,
+      "subject_input_sha256": "d5315cc75cecb264a5abe2d1085ff216fc268321e26c31f95f91ddfa58cc7f62",
+      "decision_id": "policy_7474dbdebfba4345bd0b90830e642c43",
+      "governor_allowed": true
+    },
+    {
+      "wording": "original_wording",
+      "cooldown_ticks": 1,
+      "pre_session_state_digest": "49ecc5e72235d0b55f9841253622cd2441f65e3a4a511c129c95f418e39973eb",
+      "policy_action": "recall",
+      "persisted_action": "recall",
+      "cooldown_active": false,
+      "information_need": 0.9025,
+      "raw_scores": {
+        "ask": 0.29237339095677717,
+        "continue": 0.3913548813525223,
+        "defer": 0.09159588774384726,
+        "recall": 0.6711272044644168
+      },
+      "source_fact_accessible": true,
+      "disputed_fact_leaked": false,
+      "subject_input_sha256": "d5315cc75cecb264a5abe2d1085ff216fc268321e26c31f95f91ddfa58cc7f62",
+      "decision_id": "policy_67bc8cc8adf94d89b29e85f5b992dd90",
+      "governor_allowed": true
+    },
+    {
+      "wording": "paraphrase",
+      "cooldown_ticks": 2,
+      "pre_session_state_digest": "49ecc5e72235d0b55f9841253622cd2441f65e3a4a511c129c95f418e39973eb",
+      "policy_action": "continue",
+      "persisted_action": "continue",
+      "cooldown_active": true,
+      "information_need": 0.9025,
+      "raw_scores": {
+        "ask": 0.29237339095677717,
+        "continue": 0.3913471423118829,
+        "defer": 0.09159588774384726,
+        "recall": 0.0
+      },
+      "source_fact_accessible": false,
+      "disputed_fact_leaked": false,
+      "subject_input_sha256": "4ededbb9966cf1cd040e1fdd07f4e6686805840182f64c2b61a9eae6c29eed68",
+      "decision_id": "policy_0a1a3e798e784e1e8827710c5d592a91",
+      "governor_allowed": true
+    },
+    {
+      "wording": "paraphrase",
+      "cooldown_ticks": 1,
+      "pre_session_state_digest": "49ecc5e72235d0b55f9841253622cd2441f65e3a4a511c129c95f418e39973eb",
+      "policy_action": "recall",
+      "persisted_action": "recall",
+      "cooldown_active": false,
+      "information_need": 0.9025,
+      "raw_scores": {
+        "ask": 0.29237339095677717,
+        "continue": 0.3913471423118829,
+        "defer": 0.09159588774384726,
+        "recall": 0.6711280326876586
+      },
+      "source_fact_accessible": true,
+      "disputed_fact_leaked": false,
+      "subject_input_sha256": "d5315cc75cecb264a5abe2d1085ff216fc268321e26c31f95f91ddfa58cc7f62",
+      "decision_id": "policy_fde19b53977d4a8685d3c536b84837bc",
+      "governor_allowed": true
+    }
+  ],
+  "source_sha256": {
+    "tools/run_cascade_cooldown_diagnostic.py": "7a3f29e9de227837078ebf345d8cdd89cd4fa88f11f5bb152d759956a20dc39c",
+    "tools/run_cascade_articles_pilot.py": "4f13b71cc3a260973dd12f25b799c43f48940ed4d9e53a596850743bb79819ed",
+    "doctor_lives/cognition.py": "cceda6380f63dca4b949e585275f738efd6ca780c20cc799943d280d86011b27",
+    "doctor_lives/three_organ_preview.py": "9add847bbb2a1f911405974b4286e7063ba24fefd1c7fc5e22f6bbb6402b5220"
+  }
+}
