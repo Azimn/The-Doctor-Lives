@@ -1,6 +1,8 @@
 # CASCADE plus Pretorius, unified experimental host v0.1
 
 **Research status: isolated, unmerged, not production-approved.**
+This v0.1 record is preserved historically. The [v0.2 canonical Articles update](CASCADE_ARTICLES_V3_V02.md)
+adds an actual budgeted heartbeat worker, source-bound evidence contract and paired restart pilot.
 Branch: `experiment/cascade-unified-pretorius-20261014`, stacked on
 `integration/self-reference-governor-pinned-preview` (Doctor PR #60),
 which in turn stacks on three-organ preview PR #59 and endogenous recall

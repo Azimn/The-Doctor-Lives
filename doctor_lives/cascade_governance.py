@@ -62,7 +62,7 @@ def snapshot_doctor(host: object) -> CausalSnapshot:
             "SELECT COUNT(*) FROM concerns WHERE status='open'"
         ).fetchone()[0]
         commitments = db.execute(
-            "SELECT COUNT(*) FROM commitments WHERE status='open'"
+            "SELECT COUNT(*) FROM commitments WHERE status IN ('open','overdue')"
         ).fetchone()[0]
         memories = db.execute(
             "SELECT COUNT(*) FROM memories WHERE active=1"

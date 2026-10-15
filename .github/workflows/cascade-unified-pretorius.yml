@@ -6,7 +6,14 @@ on:
     paths:
       - doctor_lives/cascade_governance.py
       - doctor_lives/cascade_preview.py
+      - doctor_lives/cascade_background.py
+      - doctor_lives/cascade_articles.py
+      - doctor_lives/data/articles_v3_contract.json
       - tests/test_cascade_preview.py
+      - tests/test_cascade_background.py
+      - tests/test_cascade_articles.py
+      - tests/test_cascade_pilot.py
+      - tools/run_cascade_articles_pilot.py
       - .github/workflows/cascade-unified-pretorius.yml
       - pyproject.toml
   workflow_dispatch:
@@ -41,7 +48,8 @@ jobs:
         env:
           PYTHONPATH: ${{ runner.temp }}/Sensus:.
         run: |
-          python -m unittest discover -s tests -p test_cascade_preview.py -v
+          python -m unittest discover -s tests -p 'test_cascade*.py' -v
+          python -m tools.run_cascade_articles_pilot --output results/cascade/CI_ARTICLES_V3_PILOT.json
       - name: Protect existing three-organ behavior
         env:
           PYTHONPATH: ${{ runner.temp }}/Sensus:.
@@ -62,3 +70,9 @@ jobs:
           assert Percept and DurableIpseityHost and CascadePretoriusPreview
           print("Real optional donor imports and experiment host present")
           PY
+      - name: Archive actual case-level engineering outcomes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cascade-articles-v3-py${{ matrix.python-version }}
+          path: results/cascade/CI_ARTICLES_V3_PILOT.json

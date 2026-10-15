@@ -42,10 +42,44 @@ class CascadePretoriusPreview(ThreeOrganPretoriusPreview):
                     "CASCADE governed profile needs the pinned host-bound governor"
                 )
         self._cascade_require_governor = require_governor
-        super().__init__(
-            state_dir, renderer=renderer, enabled=True,
-            neural_config=neural_config,
-        )
+        from .cascade_background import BackgroundLedger, operation_lock
+        path = Path(state_dir)
+        if path.name != "three-organ-preview":
+            raise ValueError("Preview state directory must be named three-organ-preview")
+        path.mkdir(parents=True, exist_ok=True)
+        self._cascade_host_guard = operation_lock(path, "cascade-host.lock")
+        self._cascade_host_guard.__enter__()
+        try:
+            super().__init__(
+                state_dir, renderer=renderer, enabled=True,
+                neural_config=neural_config,
+            )
+            self._cascade_background = BackgroundLedger(self.state_dir)
+        except BaseException:
+            self._cascade_host_guard.__exit__(*sys.exc_info())
+            self._cascade_host_guard = None
+            raise
+
+    def close(self):
+        guard = getattr(self, "_cascade_host_guard", None)
+        if guard is None:
+            return
+        try:
+            super().close()
+        finally:
+            self._cascade_host_guard = None
+            guard.__exit__(None, None, None)
+
+    def issue_background_lease(self, lease, *, authorized=False):
+        from .cascade_background import operation_lock
+        if type(authorized) is not bool or not authorized:
+            raise PermissionError("Explicit host authorization required for background lease")
+        with operation_lock(self.state_dir):
+            self._cascade_background.issue(lease)
+
+    def background_wake(self, **kwargs):
+        from .cascade_background import run_wake
+        return run_wake(self, **kwargs)
 
     def make_host_grant(
         self, *, permissions: frozenset[str], max_percepts: int,
@@ -79,10 +113,17 @@ class CascadePretoriusPreview(ThreeOrganPretoriusPreview):
         # The inherited host still independently authenticates every source,
         # guards scene replay, persists policy, and admits typed first-person
         # experience through durable Synthetic Ipseity.
-        outcome = super().cycle(
-            items, trusted_source_refs=trusted_source_refs, now_ms=now_ms,
-        )
-        trace = verify_host_cycle(self, state_before, outcome)
+        from .cascade_background import operation_lock
+        with operation_lock(self.state_dir):
+            self._cascade_background.assert_reconciled()
+            # Recheck after taking the foreground/background exclusion lock.
+            latest = snapshot_doctor(self)
+            if latest.state_digest != state_before.state_digest:
+                raise PermissionError("CASCADE state changed while acquiring operation lock")
+            outcome = super().cycle(
+                items, trusted_source_refs=trusted_source_refs, now_ms=now_ms,
+            )
+            trace = verify_host_cycle(self, state_before, outcome)
         return {
             **outcome,
             "cascade_schema": trace.schema,
@@ -107,6 +148,12 @@ class CascadePretoriusPreview(ThreeOrganPretoriusPreview):
 
     def graph_probe(self, memory_id: str, *, max_hops: int = 2):
         return read_bounded_memory_paths(self, memory_id, max_hops=max_hops)
+
+    def resume_preview(self, *, now_ms: int) -> str:
+        from .cascade_background import operation_lock
+        with operation_lock(self.state_dir):
+            self._cascade_background.assert_reconciled()
+            return super().resume_preview(now_ms=now_ms)
 
     def chronos_proposal(
         self, *, current_tick: int, last_wake_tick: int,
@@ -133,6 +180,14 @@ def main(argv: list[str] | None = None) -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--say", help="Host-reported User speech")
     mode.add_argument("--resume", action="store_true")
+    mode.add_argument("--background-wake", action="store_true")
+    parser.add_argument("--authorize-background", action="store_true")
+    parser.add_argument("--lease-id")
+    parser.add_argument("--wake-id")
+    parser.add_argument("--lease-expires-ms", type=int)
+    parser.add_argument("--background-total-ticks", type=int, default=12)
+    parser.add_argument("--background-ticks", type=int, default=1)
+    parser.add_argument("--background-interval-ms", type=int, default=60000)
     args = parser.parse_args(argv)
     if not args.enable_experimental_preview:
         parser.error("Explicit --enable-experimental-preview required")
@@ -140,6 +195,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--state must end in a dedicated three-organ-preview directory")
     if not 1 <= args.max_percepts <= 128:
         parser.error("--max-percepts must be 1..128")
+    if args.background_wake and not (
+        args.authorize_background and args.lease_id and args.wake_id
+        and args.lease_expires_ms is not None
+    ):
+        parser.error("Background mode requires authorization, lease/wake IDs and lease expiry")
 
     from .ipseity_local import build_local_renderer
     governed = None
@@ -161,7 +221,18 @@ def main(argv: list[str] | None = None) -> int:
         if governed is not None:
             governed.bind_doctor_host(host, addressee_subject_id="visitor")
         now = int(time.time() * 1000)
-        if args.resume:
+        if args.background_wake:
+            import json
+            from .cascade_background import BackgroundLease
+            lease = BackgroundLease(
+                args.lease_id, args.background_total_ticks, args.background_ticks,
+                args.background_interval_ms, args.lease_expires_ms,
+            )
+            host.issue_background_lease(lease, authorized=True)
+            print(json.dumps(host.background_wake(
+                lease_id=args.lease_id, wake_id=args.wake_id, now_ms=now,
+                ticks=args.background_ticks, authorized=True), sort_keys=True))
+        elif args.resume:
             print(host.resume_preview(now_ms=now))
         else:
             grant = host.make_host_grant(
