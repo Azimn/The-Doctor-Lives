@@ -94,7 +94,18 @@ class BackgroundLedger:
         finally:
             db.close()
 
-    def assert_reconciled(self):
+    def assert_reconciled(self, *, allowed_commitment_task_id=None):
+        commitment_path = self.path.parent / "cascade-commitments.sqlite3"
+        if commitment_path.exists():
+            with sqlite3.connect(commitment_path) as commitments:
+                blocked = commitments.execute(
+                    "SELECT task_id,status FROM executable_commitments "
+                    "WHERE status IN ('preparing','dispatching')"
+                ).fetchall()
+            for task_id, status in blocked:
+                if status == "preparing" or task_id != allowed_commitment_task_id:
+                    raise RuntimeError(
+                        "Unresolved commitment operation requires reconciliation")
         laboratory = self.path.parent / "cascade-laboratory.sqlite3"
         if laboratory.exists():
             with sqlite3.connect(laboratory) as db:
