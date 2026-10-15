@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - research/articles_34_progress.json
+      - research/articles_34_environment_plan.json
+      - docs/experiments/PRETORIUS_LAB_FIRST_34_ARTICLE_ROADMAP.md
       - tools/render_articles_progress.py
       - tests/test_articles_progress_tracker.py
       - docs/experiments/ARTICLES_34_PROGRESS.md
@@ -10,6 +12,8 @@ on:
   pull_request:
     paths:
       - research/articles_34_progress.json
+      - research/articles_34_environment_plan.json
+      - docs/experiments/PRETORIUS_LAB_FIRST_34_ARTICLE_ROADMAP.md
       - tools/render_articles_progress.py
       - tests/test_articles_progress_tracker.py
       - docs/experiments/ARTICLES_34_PROGRESS.md
