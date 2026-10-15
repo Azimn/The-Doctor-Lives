@@ -1,0 +1,31 @@
+{
+  "classification": "author-executed local software regressions",
+  "python": "3.12.14",
+  "full_suite": {
+    "count": 525,
+    "skipped": 0,
+    "outcome": "passed",
+    "seconds": 65.516,
+    "note": "Includes six initial Laboratory tests. Two subsequent Laboratory tests verified in the focused run."
+  },
+  "final_focused_cascade_suite": {
+    "count": 41,
+    "skipped": 0,
+    "outcome": "passed",
+    "seconds": 9.836
+  },
+  "production_entrypoint_gate": "passed",
+  "full_article_qualification": false,
+  "source_sha256": {
+    "doctor_lives/cascade_laboratory.py": "a992ea847b3b9b4683c6769ea2f421de98635359e5d6873dff8498a661aa6a4d",
+    "doctor_lives/cascade_background.py": "fe5f09a4ca48545abac1166363164e4cbd25ac074c1b7f14f7fca7f693beddb7",
+    "doctor_lives/cascade_preview.py": "fce58e51c27631fc207eb1b3957fcbf837993fc7cff7c51afb2733a321f4bf68",
+    "tests/test_cascade_laboratory.py": "b9a6e6363526f6f32df5566dd11047d0cb311f78b60ff78770e1d31dcad24918",
+    "tools/run_cascade_laboratory_pilot.py": "93ef7419ed483586c37fbc7f2bae43e590d7137fc8679e436a8bc22ce29fff08",
+    "results/cascade/LABORATORY_ACTION_PILOT.json": "fcee35e6e8b57b59a6ac1bf0d4f3ae4ad3f536614f2796df654ea28b24d3ca4e"
+  },
+  "laboratory_pin": "290ec97727c84728e61f69265949551e4ce911ec",
+  "command_prefix": "PYTHONPATH=../Pretorius-Laboratory:../Sensus-Communis-Artificialis:.",
+  "full_command": "python -m unittest discover -s tests -v",
+  "focused_command": "python -m unittest discover -s tests -p 'test_cascade*.py' -v"
+}

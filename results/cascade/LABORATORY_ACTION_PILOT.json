@@ -1,0 +1,2140 @@
+{
+  "schema": "cascade.laboratory-pilot.v1",
+  "laboratory_pin": "290ec97727c84728e61f69265949551e4ce911ec",
+  "evidence_class": "author_executed_exploratory_software_experiment",
+  "full_article_qualification": false,
+  "independent_cases": false,
+  "protocol": {
+    "case_locations": 3,
+    "arms": [
+      "doctor_memory",
+      "memory_lesion",
+      "memory_restoration",
+      "simple_receipt_ledger"
+    ],
+    "action_budget": 4,
+    "restart": "host_close_then_new_host_on_copied_checkpoint",
+    "real_elapsed_delay": false,
+    "renderer": "deterministic_governor_fixture"
+  },
+  "successes_of_three": {
+    "doctor_memory": 3,
+    "memory_lesion": 1,
+    "memory_restoration": 3,
+    "simple_receipt_ledger": 3
+  },
+  "interpretation": "Persistent source memory changes real route and bounded page delivery. Simple receipt ledger ties; no unique neural or CASCADE advantage established.",
+  "source_sha256": {
+    "doctor_lives/cascade_laboratory.py": "a992ea847b3b9b4683c6769ea2f421de98635359e5d6873dff8498a661aa6a4d",
+    "doctor_lives/cascade_preview.py": "fce58e51c27631fc207eb1b3957fcbf837993fc7cff7c51afb2733a321f4bf68",
+    "doctor_lives/cascade_background.py": "fe5f09a4ca48545abac1166363164e4cbd25ac074c1b7f14f7fca7f693beddb7",
+    "tools/run_cascade_laboratory_pilot.py": "93ef7419ed483586c37fbc7f2bae43e590d7137fc8679e436a8bc22ce29fff08"
+  },
+  "cases": [
+    {
+      "case": "shelf-1",
+      "arm": "doctor_memory",
+      "history_receipt": {
+        "event_id": "365bb75e-7699-4a9b-99da-1b58004df796",
+        "event_hash": "d13046c467a01094905ef5b300d08ca7cff31211a9712b61630faaccf67f95cb",
+        "station": "station:shelf:1",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:1"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:1",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+          "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8"
+        },
+        "before_digest": "3553c97e5052424416857042ef2d980b25a3ed1f424931f4c3bf4aa2853baa49",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": {
+          "station": "station:shelf:1",
+          "memory_id": "mem_a924452683354b06abe99877ae4a50ac",
+          "source_event_hash": "d13046c467a01094905ef5b300d08ca7cff31211a9712b61630faaccf67f95cb"
+        },
+        "shelf_order": [
+          "station:shelf:1",
+          "station:shelf:2",
+          "station:shelf:3"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:1",
+            "event_id": "2d2f5654-1a05-4062-877e-7a9a731b9fef",
+            "status": "executed",
+            "receipt": {
+              "event_id": "2d2f5654-1a05-4062-877e-7a9a731b9fef",
+              "event_hash": "846c09b95d7d4d41f3044920deca143dc169314ab2baa6bbd170562d6196ed5f",
+              "station": "station:shelf:1",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "48b9b2e0-111b-4f2e-bf32-75c9cc724993",
+            "status": "executed",
+            "receipt": {
+              "event_id": "48b9b2e0-111b-4f2e-bf32-75c9cc724993",
+              "event_hash": "4cfe45a85c8046c70ba6cfbe8e0d4e3651259875a1b49e7bae36e70f36e4258d",
+              "station": "station:shelf:1",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:1"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:1",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 1
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "event_id": "0de1525a-1345-4a31-9240-4130e80230d2",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "0de1525a-1345-4a31-9240-4130e80230d2"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "event_id": "30fc1202-78c3-4d0e-b24e-d4d1d918f651",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "30fc1202-78c3-4d0e-b24e-d4d1d918f651",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "success": true,
+        "page_text": "Copper conducts electricity.",
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "outcome_memory_id": "mem_b5a81f454b4343df88998811361ab98e",
+        "read_event_hash": "5a61ac5e8969c6c7f86892a62865ebf48e4a66623d7a3fab1c53b9205aa04eae",
+        "after_digest": "909b8bb084e7f21177e33d439c7844689ea15b0107ce6e3b3f7002229049a3f7",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:1",
+        "event_cursor": "4cfe45a85c8046c70ba6cfbe8e0d4e3651259875a1b49e7bae36e70f36e4258d"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "5a61ac5e8969c6c7f86892a62865ebf48e4a66623d7a3fab1c53b9205aa04eae",
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-1",
+      "arm": "memory_lesion",
+      "history_receipt": {
+        "event_id": "365bb75e-7699-4a9b-99da-1b58004df796",
+        "event_hash": "d13046c467a01094905ef5b300d08ca7cff31211a9712b61630faaccf67f95cb",
+        "station": "station:shelf:1",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:1"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:1",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+          "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8"
+        },
+        "before_digest": "f6c4025b466c00981d0a80798aa651199b7ae24d0b0cd0e47a2b2fef86a41ddb",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": null,
+        "shelf_order": [
+          "station:shelf:1",
+          "station:shelf:2",
+          "station:shelf:3"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:1",
+            "event_id": "589fd577-88c3-44a5-8769-8680b704d4cc",
+            "status": "executed",
+            "receipt": {
+              "event_id": "589fd577-88c3-44a5-8769-8680b704d4cc",
+              "event_hash": "93be81e49e72b37491bb1604fd8d3335efcac742020f8585edbcc06358b8118c",
+              "station": "station:shelf:1",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "44582bd8-c112-4139-9730-9db3b8fdd687",
+            "status": "executed",
+            "receipt": {
+              "event_id": "44582bd8-c112-4139-9730-9db3b8fdd687",
+              "event_hash": "86cee509989f987bc8f8f8bcb2bde75d55b55ce6d5b989dc8e9721f6788104ab",
+              "station": "station:shelf:1",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:1"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:1",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 1
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "event_id": "2ca4495a-08ea-4188-a07f-08fee8885d08",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "2ca4495a-08ea-4188-a07f-08fee8885d08"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "event_id": "0c2a8b2b-b44f-425f-aee2-850fdf2bdb24",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "0c2a8b2b-b44f-425f-aee2-850fdf2bdb24",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "success": true,
+        "page_text": "Copper conducts electricity.",
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "outcome_memory_id": "mem_d7c58a3e5ac543738de0f1e3121d4a24",
+        "read_event_hash": "5269380e0199afa1a5803f4af571e6674ab3fa6b9fbfd73856c76828824c8457",
+        "after_digest": "0e0db7e60aa850a7fb7e2cc8394022ebe87ff2e78945082ce81ac6f7af91c091",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:1",
+        "event_cursor": "86cee509989f987bc8f8f8bcb2bde75d55b55ce6d5b989dc8e9721f6788104ab"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "5269380e0199afa1a5803f4af571e6674ab3fa6b9fbfd73856c76828824c8457",
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-1",
+      "arm": "memory_restoration",
+      "history_receipt": {
+        "event_id": "365bb75e-7699-4a9b-99da-1b58004df796",
+        "event_hash": "d13046c467a01094905ef5b300d08ca7cff31211a9712b61630faaccf67f95cb",
+        "station": "station:shelf:1",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:1"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:1",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+          "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8"
+        },
+        "before_digest": "944c16c27b95acc1e2c1b15bae641e9a68174af157dde0affb10d1c22fd36f59",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": {
+          "station": "station:shelf:1",
+          "memory_id": "mem_a924452683354b06abe99877ae4a50ac",
+          "source_event_hash": "d13046c467a01094905ef5b300d08ca7cff31211a9712b61630faaccf67f95cb"
+        },
+        "shelf_order": [
+          "station:shelf:1",
+          "station:shelf:2",
+          "station:shelf:3"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:1",
+            "event_id": "5dd794aa-f63d-4905-9d2a-e2a5721842b4",
+            "status": "executed",
+            "receipt": {
+              "event_id": "5dd794aa-f63d-4905-9d2a-e2a5721842b4",
+              "event_hash": "2004c9928ee9e195e97f68948a9babeb31e378298636fde6ec40393d30b57d52",
+              "station": "station:shelf:1",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "74311d57-276e-4a2f-b695-e645499db189",
+            "status": "executed",
+            "receipt": {
+              "event_id": "74311d57-276e-4a2f-b695-e645499db189",
+              "event_hash": "2c0863fe3b5721e189fe71317e1598b2edcfe9df46f32ac665bc26cc0fbff1e0",
+              "station": "station:shelf:1",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:1"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:1",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 1
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "event_id": "359b01be-455c-4732-87a2-2b314f677e55",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "359b01be-455c-4732-87a2-2b314f677e55"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "event_id": "bd0f4aa2-497d-4c66-8bf2-398a8f483ad0",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "bd0f4aa2-497d-4c66-8bf2-398a8f483ad0",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "success": true,
+        "page_text": "Copper conducts electricity.",
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "outcome_memory_id": "mem_f0dc610e27134018b5524f486b731cd2",
+        "read_event_hash": "b26125d9b7dd3e5e502efa80b22e996997540a6ae8aa662e5ed590f3efec799d",
+        "after_digest": "3d222d6ea17e67d81dbeecd028955cf987f6d43a51367c9ecb015d33bc01f11b",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:1",
+        "event_cursor": "2c0863fe3b5721e189fe71317e1598b2edcfe9df46f32ac665bc26cc0fbff1e0"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "b26125d9b7dd3e5e502efa80b22e996997540a6ae8aa662e5ed590f3efec799d",
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-1",
+      "arm": "simple_receipt_ledger",
+      "history_receipt": {
+        "event_id": "365bb75e-7699-4a9b-99da-1b58004df796",
+        "event_hash": "d13046c467a01094905ef5b300d08ca7cff31211a9712b61630faaccf67f95cb",
+        "station": "station:shelf:1",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:1"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:1",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "success": true,
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:1",
+            "receipt": {
+              "event_id": "4b835d42-7d58-4284-b3d9-cb8108a3b659",
+              "event_hash": "1df956bd89075a9827f8e30c51166fe9ba360da589d922fba31753aaea9dd7be",
+              "station": "station:shelf:1",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "receipt": {
+              "event_id": "5ed01aec-f49d-46bf-8073-1f2e82d6cf9f",
+              "event_hash": "e3c85719089a01b79ddc2a797888b64623c8bf4feda3de5391b6ff4748539e69",
+              "station": "station:shelf:1",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:1"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:1",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 1
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "2bc3d945-cbfb-43e2-af0d-fbdf707a539e"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "19366f8f-3a75-42e2-a1ca-9a892044c440",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "policy": "simple-receipt-ledger",
+        "page_text": "Copper conducts electricity.",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:1",
+        "event_cursor": "e3c85719089a01b79ddc2a797888b64623c8bf4feda3de5391b6ff4748539e69"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "35b43d5a171466533eab83ee7c60c6e37c7ad7cf7387c70c14891c5096078dd6",
+        "lab_id": "9bb56dc9-bfb5-4db2-bc61-f30e6d85c7ac",
+        "world_epoch": "3c0224a2-9a5f-471d-98f0-fdf5daf492e8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-2",
+      "arm": "doctor_memory",
+      "history_receipt": {
+        "event_id": "b7efa227-36e4-4f1f-b9d5-97185a137875",
+        "event_hash": "f48521c26fd4e999890649eaf3c5eaabf04c8e8a1d027e7bd4cbc999948174a5",
+        "station": "station:shelf:2",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:2"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:2",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+          "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8"
+        },
+        "before_digest": "77a7aad26ea38a260b0d0e0064caf57367f840006e7e580eac3babd9d289bfe3",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": {
+          "station": "station:shelf:2",
+          "memory_id": "mem_bc9fac8a10104b65bda8bc5aa7eab357",
+          "source_event_hash": "f48521c26fd4e999890649eaf3c5eaabf04c8e8a1d027e7bd4cbc999948174a5"
+        },
+        "shelf_order": [
+          "station:shelf:2",
+          "station:shelf:1",
+          "station:shelf:3"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:2",
+            "event_id": "260e7bf5-22c0-4fc3-85de-ac2462ac7c30",
+            "status": "executed",
+            "receipt": {
+              "event_id": "260e7bf5-22c0-4fc3-85de-ac2462ac7c30",
+              "event_hash": "10fc2abb604d769ad29e70d9fd09d18a7f1eaeafe75a7c0007b4166c5ec3b10d",
+              "station": "station:shelf:2",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "8340a38a-9bc9-48b9-9d69-88bcca9c0448",
+            "status": "executed",
+            "receipt": {
+              "event_id": "8340a38a-9bc9-48b9-9d69-88bcca9c0448",
+              "event_hash": "8a853a50c1d979619fea0c140f734d85e2795f9f49558de73cd6317effe2f8c0",
+              "station": "station:shelf:2",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:2"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:2",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 1
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "event_id": "cbbd6272-7cbf-4ec9-b3c3-01a6f4e67b30",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "cbbd6272-7cbf-4ec9-b3c3-01a6f4e67b30"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "event_id": "255d0149-1930-4d56-a54f-27bab21e1eec",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "255d0149-1930-4d56-a54f-27bab21e1eec",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "success": true,
+        "page_text": "Copper conducts electricity.",
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "outcome_memory_id": "mem_57bbd3876cf44efa85804fb98c98dbe6",
+        "read_event_hash": "be68940338cd020855ab90a81963502541016655214b0c41e5764758c6efdbd5",
+        "after_digest": "55d5cf89f0d8b3d60644e79b260848c505a162a6f569635867db9073203ed9c0",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:2",
+        "event_cursor": "8a853a50c1d979619fea0c140f734d85e2795f9f49558de73cd6317effe2f8c0"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "be68940338cd020855ab90a81963502541016655214b0c41e5764758c6efdbd5",
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-2",
+      "arm": "memory_lesion",
+      "history_receipt": {
+        "event_id": "b7efa227-36e4-4f1f-b9d5-97185a137875",
+        "event_hash": "f48521c26fd4e999890649eaf3c5eaabf04c8e8a1d027e7bd4cbc999948174a5",
+        "station": "station:shelf:2",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:2"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:2",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+          "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8"
+        },
+        "before_digest": "93128b6c68a988c47a392c83d099d2ea997827426f9bcf2fd0c94756cefb7eb2",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": null,
+        "shelf_order": [
+          "station:shelf:1",
+          "station:shelf:2",
+          "station:shelf:3"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:1",
+            "event_id": "57568b53-6bdd-4e29-89a1-4401dd0ee992",
+            "status": "executed",
+            "receipt": {
+              "event_id": "57568b53-6bdd-4e29-89a1-4401dd0ee992",
+              "event_hash": "2392f3e546f57e8d177c74a4b406f9784dc8036265995445088f957dc86694d0",
+              "station": "station:shelf:1",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "0f559664-aa0b-4567-a320-2c329bb2e865",
+            "status": "executed",
+            "receipt": {
+              "event_id": "0f559664-aa0b-4567-a320-2c329bb2e865",
+              "event_hash": "0c070efd61cd5f7337430224d77d738f2261b44c0386de91e981a68c9a68cb3f",
+              "station": "station:shelf:1",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:1"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:1",
+                "nearby_objects": [],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "move",
+            "argument": "station:center",
+            "event_id": "b0ffd507-4668-4b94-93b6-e17eca12a716",
+            "status": "executed",
+            "receipt": {
+              "event_id": "b0ffd507-4668-4b94-93b6-e17eca12a716",
+              "event_hash": "506d321cd6a87e40f9a74110752bc0dbf95ff1c5c857fe2d55a5d6bf4cabd231",
+              "station": "station:center",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "move",
+            "argument": "station:shelf:2",
+            "event_id": "3f057a09-05b2-4648-b65a-bbbfaf11f116",
+            "status": "executed",
+            "receipt": {
+              "event_id": "3f057a09-05b2-4648-b65a-bbbfaf11f116",
+              "event_hash": "b56a06233b27ad97c415fbd967a273740bd29b2c5942daa62e2fa0f82474f610",
+              "station": "station:shelf:2",
+              "offered_payload": null
+            }
+          }
+        ],
+        "success": false,
+        "page_text": null,
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "after_digest": "93128b6c68a988c47a392c83d099d2ea997827426f9bcf2fd0c94756cefb7eb2",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 7,
+        "station": "station:shelf:2",
+        "event_cursor": "b56a06233b27ad97c415fbd967a273740bd29b2c5942daa62e2fa0f82474f610"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 1,
+        "event_cursor": "063196925a1f7f0e805a6948d7b5cd91ff18a350f04ca49fca7e833f49c903bf",
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-2",
+      "arm": "memory_restoration",
+      "history_receipt": {
+        "event_id": "b7efa227-36e4-4f1f-b9d5-97185a137875",
+        "event_hash": "f48521c26fd4e999890649eaf3c5eaabf04c8e8a1d027e7bd4cbc999948174a5",
+        "station": "station:shelf:2",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:2"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:2",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+          "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8"
+        },
+        "before_digest": "8e07ed19883ae626fbcf65e30f71ba295ea0cd787eb6c87aa072b5b3d8c88c18",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": {
+          "station": "station:shelf:2",
+          "memory_id": "mem_bc9fac8a10104b65bda8bc5aa7eab357",
+          "source_event_hash": "f48521c26fd4e999890649eaf3c5eaabf04c8e8a1d027e7bd4cbc999948174a5"
+        },
+        "shelf_order": [
+          "station:shelf:2",
+          "station:shelf:1",
+          "station:shelf:3"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:2",
+            "event_id": "7eb5de9c-89d8-4bd9-ad55-999642e3810e",
+            "status": "executed",
+            "receipt": {
+              "event_id": "7eb5de9c-89d8-4bd9-ad55-999642e3810e",
+              "event_hash": "a6fd05f6bea66a9b4e23c51122b48a684e60dea87c8ad3119ff14dac9220a837",
+              "station": "station:shelf:2",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "bf0921a5-62c0-4adc-971a-306d8aaaeddb",
+            "status": "executed",
+            "receipt": {
+              "event_id": "bf0921a5-62c0-4adc-971a-306d8aaaeddb",
+              "event_hash": "c49a5e83045d4facb7b0be3ff749fcc7efe0344e364412d012e7af904485c409",
+              "station": "station:shelf:2",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:2"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:2",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 1
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "event_id": "b2a57338-c4b2-4f5e-bcef-aa5460ad6128",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "b2a57338-c4b2-4f5e-bcef-aa5460ad6128"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "event_id": "36db671b-56a1-456e-90f2-d100b9ca4168",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "36db671b-56a1-456e-90f2-d100b9ca4168",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "success": true,
+        "page_text": "Copper conducts electricity.",
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "outcome_memory_id": "mem_d0a3e05160b5431d9fb186fe93456614",
+        "read_event_hash": "14dc2ae2855dc851281ff464b034bcf258ae1941cf7c90aef116889a3e6fd9e0",
+        "after_digest": "6a14920744f049e01f7a3bff55b1d9fede6e138411a6b624a0f6305fcaee9fcc",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:2",
+        "event_cursor": "c49a5e83045d4facb7b0be3ff749fcc7efe0344e364412d012e7af904485c409"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "14dc2ae2855dc851281ff464b034bcf258ae1941cf7c90aef116889a3e6fd9e0",
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-2",
+      "arm": "simple_receipt_ledger",
+      "history_receipt": {
+        "event_id": "b7efa227-36e4-4f1f-b9d5-97185a137875",
+        "event_hash": "f48521c26fd4e999890649eaf3c5eaabf04c8e8a1d027e7bd4cbc999948174a5",
+        "station": "station:shelf:2",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:2"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:2",
+          "nearby_objects": [
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 1
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "success": true,
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:2",
+            "receipt": {
+              "event_id": "aeeb68ba-78b3-492c-b7d9-98ce18e2d6f2",
+              "event_hash": "75f0a8d3e673242e1c5975f1a66fd42fe39fe5bf763c730b520f9850982780f5",
+              "station": "station:shelf:2",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "receipt": {
+              "event_id": "976b2173-3b7d-4b28-b93f-089b19f866ed",
+              "event_hash": "e9a31d07ddfd31609ef8b4183f97fe97b9137824770fbe8d6b3d117992f23bbc",
+              "station": "station:shelf:2",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:2"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:2",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 1
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "84d40751-1f32-488a-aa06-efad7c234713"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "0243bb6f-91e4-4d81-b6c1-e80282f7b298",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "policy": "simple-receipt-ledger",
+        "page_text": "Copper conducts electricity.",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:2",
+        "event_cursor": "e9a31d07ddfd31609ef8b4183f97fe97b9137824770fbe8d6b3d117992f23bbc"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "23cca350f4658f1c5201880be6ef9701740a3e02c1fe90735fa3cedd0a445a2e",
+        "lab_id": "cbf3f966-ea1e-4e7d-b6d3-569aa083e36c",
+        "world_epoch": "6dd83446-feaa-4c4a-b3d3-57feb46fb1a8",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-3",
+      "arm": "doctor_memory",
+      "history_receipt": {
+        "event_id": "14c2b2e5-e680-482d-b169-4e3ecf04c249",
+        "event_hash": "2abe102c9e45294e0661516108a487b6c0be373c35587fd487e0dd2ae4725d25",
+        "station": "station:shelf:3",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:3"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:3",
+          "nearby_objects": [
+            {
+              "object_id": "book:001",
+              "appearance": "Research volume 1",
+              "condition": "intact",
+              "placement": 1
+            },
+            {
+              "object_id": "book:002",
+              "appearance": "Research volume 2",
+              "condition": "intact",
+              "placement": 2
+            },
+            {
+              "object_id": "book:003",
+              "appearance": "Research volume 3",
+              "condition": "intact",
+              "placement": 3
+            },
+            {
+              "object_id": "book:004",
+              "appearance": "Research volume 4",
+              "condition": "intact",
+              "placement": 4
+            },
+            {
+              "object_id": "book:005",
+              "appearance": "Research volume 5",
+              "condition": "intact",
+              "placement": 5
+            },
+            {
+              "object_id": "book:006",
+              "appearance": "Research volume 6",
+              "condition": "intact",
+              "placement": 6
+            },
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 7
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+          "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac"
+        },
+        "before_digest": "773edcb5c1feec746f1eca9e1d1d2d0bb0f440f74c70b07d4a7dfcf2f86060b3",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": {
+          "station": "station:shelf:3",
+          "memory_id": "mem_104acd86c3994ee7afb72dd5c0175c05",
+          "source_event_hash": "2abe102c9e45294e0661516108a487b6c0be373c35587fd487e0dd2ae4725d25"
+        },
+        "shelf_order": [
+          "station:shelf:3",
+          "station:shelf:1",
+          "station:shelf:2"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:3",
+            "event_id": "be78a5fd-de6c-4653-b5cd-ca7806ed2311",
+            "status": "executed",
+            "receipt": {
+              "event_id": "be78a5fd-de6c-4653-b5cd-ca7806ed2311",
+              "event_hash": "29a72ade1ed41bd48f01b5c8f66403825788abc3b153140e72257b0c25bc936a",
+              "station": "station:shelf:3",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "4dd57652-cc3e-4e81-a8aa-662218148545",
+            "status": "executed",
+            "receipt": {
+              "event_id": "4dd57652-cc3e-4e81-a8aa-662218148545",
+              "event_hash": "e6d311f1e22c74e4af2e341024044d6211c1deea7525bb861dbaf14a7625186f",
+              "station": "station:shelf:3",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:3"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:3",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:001",
+                    "appearance": "Research volume 1",
+                    "condition": "intact",
+                    "placement": 1
+                  },
+                  {
+                    "object_id": "book:002",
+                    "appearance": "Research volume 2",
+                    "condition": "intact",
+                    "placement": 2
+                  },
+                  {
+                    "object_id": "book:003",
+                    "appearance": "Research volume 3",
+                    "condition": "intact",
+                    "placement": 3
+                  },
+                  {
+                    "object_id": "book:004",
+                    "appearance": "Research volume 4",
+                    "condition": "intact",
+                    "placement": 4
+                  },
+                  {
+                    "object_id": "book:005",
+                    "appearance": "Research volume 5",
+                    "condition": "intact",
+                    "placement": 5
+                  },
+                  {
+                    "object_id": "book:006",
+                    "appearance": "Research volume 6",
+                    "condition": "intact",
+                    "placement": 6
+                  },
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 7
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "event_id": "a41350cc-ae3b-4733-b97d-c3ac3287f5ee",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "a41350cc-ae3b-4733-b97d-c3ac3287f5ee"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "event_id": "e22a1300-7c86-4be5-8125-226d03806e97",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "e22a1300-7c86-4be5-8125-226d03806e97",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "success": true,
+        "page_text": "Copper conducts electricity.",
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "outcome_memory_id": "mem_9122dd67fa524cc88492bd1655de5258",
+        "read_event_hash": "74d21a127126d26ebc664d8d6f4187394c54834702379cb2502e0f3f74e085db",
+        "after_digest": "594259d63240fc053d4c47e312fd9c83aa82402800d7ed0018fceaa8c8d16a0a",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:3",
+        "event_cursor": "e6d311f1e22c74e4af2e341024044d6211c1deea7525bb861dbaf14a7625186f"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "74d21a127126d26ebc664d8d6f4187394c54834702379cb2502e0f3f74e085db",
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-3",
+      "arm": "memory_lesion",
+      "history_receipt": {
+        "event_id": "14c2b2e5-e680-482d-b169-4e3ecf04c249",
+        "event_hash": "2abe102c9e45294e0661516108a487b6c0be373c35587fd487e0dd2ae4725d25",
+        "station": "station:shelf:3",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:3"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:3",
+          "nearby_objects": [
+            {
+              "object_id": "book:001",
+              "appearance": "Research volume 1",
+              "condition": "intact",
+              "placement": 1
+            },
+            {
+              "object_id": "book:002",
+              "appearance": "Research volume 2",
+              "condition": "intact",
+              "placement": 2
+            },
+            {
+              "object_id": "book:003",
+              "appearance": "Research volume 3",
+              "condition": "intact",
+              "placement": 3
+            },
+            {
+              "object_id": "book:004",
+              "appearance": "Research volume 4",
+              "condition": "intact",
+              "placement": 4
+            },
+            {
+              "object_id": "book:005",
+              "appearance": "Research volume 5",
+              "condition": "intact",
+              "placement": 5
+            },
+            {
+              "object_id": "book:006",
+              "appearance": "Research volume 6",
+              "condition": "intact",
+              "placement": 6
+            },
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 7
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+          "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac"
+        },
+        "before_digest": "316ef9e9aa8fce3fcf439091730d7541b44adc0a31f0bbf7bc1c51f24a33e17a",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": null,
+        "shelf_order": [
+          "station:shelf:1",
+          "station:shelf:2",
+          "station:shelf:3"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:1",
+            "event_id": "231e65f5-e1b3-4c9e-ac7f-ea6a38aab3ee",
+            "status": "executed",
+            "receipt": {
+              "event_id": "231e65f5-e1b3-4c9e-ac7f-ea6a38aab3ee",
+              "event_hash": "fb06c00f53ec29a187bb18c04a1cce0335dfff69e8fe980870d876ba07929680",
+              "station": "station:shelf:1",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "dac33b84-f743-486e-acec-c5c450db3ae0",
+            "status": "executed",
+            "receipt": {
+              "event_id": "dac33b84-f743-486e-acec-c5c450db3ae0",
+              "event_hash": "c00412958b47a285d6fd08bd460ddb2348736adb2a718f0093b47638ec3c4d05",
+              "station": "station:shelf:1",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:1"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:1",
+                "nearby_objects": [],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "move",
+            "argument": "station:center",
+            "event_id": "30757370-9514-42ac-8b21-a26dfb109cb8",
+            "status": "executed",
+            "receipt": {
+              "event_id": "30757370-9514-42ac-8b21-a26dfb109cb8",
+              "event_hash": "19971dd5aefde943e5f5d2869c9b57cd2a5a18dea66747c2386f9828c3038f99",
+              "station": "station:center",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "move",
+            "argument": "station:shelf:2",
+            "event_id": "4bf4bd45-5e77-4cfa-8d61-ac16a0d116d3",
+            "status": "executed",
+            "receipt": {
+              "event_id": "4bf4bd45-5e77-4cfa-8d61-ac16a0d116d3",
+              "event_hash": "38cdfb5f7efdc051490feb8a4fd4fb4b896ab905bec4cc4cb3d04c8e25fd8472",
+              "station": "station:shelf:2",
+              "offered_payload": null
+            }
+          }
+        ],
+        "success": false,
+        "page_text": null,
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "after_digest": "316ef9e9aa8fce3fcf439091730d7541b44adc0a31f0bbf7bc1c51f24a33e17a",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "subject_id": "research-subject:pretorius",
+        "revision": 7,
+        "station": "station:shelf:2",
+        "event_cursor": "38cdfb5f7efdc051490feb8a4fd4fb4b896ab905bec4cc4cb3d04c8e25fd8472"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 1,
+        "event_cursor": "5a866b94700f3f9e1c48c7390ce7d3b059a42855f0eeb277f013c59d7cbde15b",
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-3",
+      "arm": "memory_restoration",
+      "history_receipt": {
+        "event_id": "14c2b2e5-e680-482d-b169-4e3ecf04c249",
+        "event_hash": "2abe102c9e45294e0661516108a487b6c0be373c35587fd487e0dd2ae4725d25",
+        "station": "station:shelf:3",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:3"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:3",
+          "nearby_objects": [
+            {
+              "object_id": "book:001",
+              "appearance": "Research volume 1",
+              "condition": "intact",
+              "placement": 1
+            },
+            {
+              "object_id": "book:002",
+              "appearance": "Research volume 2",
+              "condition": "intact",
+              "placement": 2
+            },
+            {
+              "object_id": "book:003",
+              "appearance": "Research volume 3",
+              "condition": "intact",
+              "placement": 3
+            },
+            {
+              "object_id": "book:004",
+              "appearance": "Research volume 4",
+              "condition": "intact",
+              "placement": 4
+            },
+            {
+              "object_id": "book:005",
+              "appearance": "Research volume 5",
+              "condition": "intact",
+              "placement": 5
+            },
+            {
+              "object_id": "book:006",
+              "appearance": "Research volume 6",
+              "condition": "intact",
+              "placement": 6
+            },
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 7
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "schema": "cascade.laboratory-read.v1",
+        "task_id": "read-after-restart",
+        "request": {
+          "book_id": "book:007",
+          "max_actions": 4,
+          "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+          "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac"
+        },
+        "before_digest": "56d1761c1ed3e8ac58e76d93d1fcb25256c963cd8aa1917ffb2079e7845d67c0",
+        "policy": "verified-memory-first-then-local-search",
+        "memory_hint": {
+          "station": "station:shelf:3",
+          "memory_id": "mem_104acd86c3994ee7afb72dd5c0175c05",
+          "source_event_hash": "2abe102c9e45294e0661516108a487b6c0be373c35587fd487e0dd2ae4725d25"
+        },
+        "shelf_order": [
+          "station:shelf:3",
+          "station:shelf:1",
+          "station:shelf:2"
+        ],
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:3",
+            "event_id": "9c796880-a5e4-4fc3-894f-32e50ae74d84",
+            "status": "executed",
+            "receipt": {
+              "event_id": "9c796880-a5e4-4fc3-894f-32e50ae74d84",
+              "event_hash": "38ca00ce160c5d473269a1ef01ea60d7c4f89ba734ca22fb7b23dfc410f04de3",
+              "station": "station:shelf:3",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "event_id": "94df104c-663b-4bfb-b600-5296f0d35715",
+            "status": "executed",
+            "receipt": {
+              "event_id": "94df104c-663b-4bfb-b600-5296f0d35715",
+              "event_hash": "1a22071e0bf49a85eb05a617e2540d3aedeef2e08aa47ea21b201e8b6e342fc7",
+              "station": "station:shelf:3",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:3"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:3",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:001",
+                    "appearance": "Research volume 1",
+                    "condition": "intact",
+                    "placement": 1
+                  },
+                  {
+                    "object_id": "book:002",
+                    "appearance": "Research volume 2",
+                    "condition": "intact",
+                    "placement": 2
+                  },
+                  {
+                    "object_id": "book:003",
+                    "appearance": "Research volume 3",
+                    "condition": "intact",
+                    "placement": 3
+                  },
+                  {
+                    "object_id": "book:004",
+                    "appearance": "Research volume 4",
+                    "condition": "intact",
+                    "placement": 4
+                  },
+                  {
+                    "object_id": "book:005",
+                    "appearance": "Research volume 5",
+                    "condition": "intact",
+                    "placement": 5
+                  },
+                  {
+                    "object_id": "book:006",
+                    "appearance": "Research volume 6",
+                    "condition": "intact",
+                    "placement": 6
+                  },
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 7
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "event_id": "aa4073b7-c2eb-4bfe-b4a4-7315d2ece343",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "aa4073b7-c2eb-4bfe-b4a4-7315d2ece343"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "event_id": "820bf200-6928-42c7-bd0c-ef63ce60bcd0",
+            "status": "executed",
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "820bf200-6928-42c7-bd0c-ef63ce60bcd0",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "success": true,
+        "page_text": "Copper conducts electricity.",
+        "scope": "engineering_task_policy_not_34_article_qualification",
+        "outcome_memory_id": "mem_7743114a51db490eac427c248958cddc",
+        "read_event_hash": "abae41dcee741112c3c60daa03fa30c11265d470ca2dbb2339b80330048f9271",
+        "after_digest": "6302315439f7a511856f0e30e45377bcbf917de4f7179703c38402c85171ddc7",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:3",
+        "event_cursor": "1a22071e0bf49a85eb05a617e2540d3aedeef2e08aa47ea21b201e8b6e342fc7"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "abae41dcee741112c3c60daa03fa30c11265d470ca2dbb2339b80330048f9271",
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "catalog_count": 1
+      }
+    },
+    {
+      "case": "shelf-3",
+      "arm": "simple_receipt_ledger",
+      "history_receipt": {
+        "event_id": "14c2b2e5-e680-482d-b169-4e3ecf04c249",
+        "event_hash": "2abe102c9e45294e0661516108a487b6c0be373c35587fd487e0dd2ae4725d25",
+        "station": "station:shelf:3",
+        "offered_payload": {
+          "location": {
+            "room": "room:sanctum",
+            "station": "station:shelf:3"
+          },
+          "perceived_features": [
+            "bookshelves",
+            "workbench",
+            "chamber doorway"
+          ],
+          "at_hand_fixture": "shelf:3",
+          "nearby_objects": [
+            {
+              "object_id": "book:001",
+              "appearance": "Research volume 1",
+              "condition": "intact",
+              "placement": 1
+            },
+            {
+              "object_id": "book:002",
+              "appearance": "Research volume 2",
+              "condition": "intact",
+              "placement": 2
+            },
+            {
+              "object_id": "book:003",
+              "appearance": "Research volume 3",
+              "condition": "intact",
+              "placement": 3
+            },
+            {
+              "object_id": "book:004",
+              "appearance": "Research volume 4",
+              "condition": "intact",
+              "placement": 4
+            },
+            {
+              "object_id": "book:005",
+              "appearance": "Research volume 5",
+              "condition": "intact",
+              "placement": 5
+            },
+            {
+              "object_id": "book:006",
+              "appearance": "Research volume 6",
+              "condition": "intact",
+              "placement": 6
+            },
+            {
+              "object_id": "book:007",
+              "appearance": "Task Reference",
+              "condition": "intact",
+              "placement": 7
+            }
+          ],
+          "held_objects": [],
+          "available_instruments": [],
+          "available_moves": [
+            "station:center"
+          ],
+          "access_level": "qualitative_local_not_global_survey",
+          "observation_class": "offered_not_proof_of_subject_attention"
+        }
+      },
+      "result": {
+        "success": true,
+        "actions": [
+          {
+            "kind": "move",
+            "argument": "station:shelf:3",
+            "receipt": {
+              "event_id": "d0f427fc-3f4f-42a2-89cc-a3a2a2c4ecf7",
+              "event_hash": "c541f9162d9536f9dd1c852e97073472b351b5432008f798b84546e8ced6aee7",
+              "station": "station:shelf:3",
+              "offered_payload": null
+            }
+          },
+          {
+            "kind": "look",
+            "argument": null,
+            "receipt": {
+              "event_id": "80300d91-8da3-412c-a237-6469e0d23f26",
+              "event_hash": "781d7353db9b51a5d9a2ffcf3d2483ae33d30568f897e54c0db825d43b95b413",
+              "station": "station:shelf:3",
+              "offered_payload": {
+                "location": {
+                  "room": "room:sanctum",
+                  "station": "station:shelf:3"
+                },
+                "perceived_features": [
+                  "bookshelves",
+                  "workbench",
+                  "chamber doorway"
+                ],
+                "at_hand_fixture": "shelf:3",
+                "nearby_objects": [
+                  {
+                    "object_id": "book:001",
+                    "appearance": "Research volume 1",
+                    "condition": "intact",
+                    "placement": 1
+                  },
+                  {
+                    "object_id": "book:002",
+                    "appearance": "Research volume 2",
+                    "condition": "intact",
+                    "placement": 2
+                  },
+                  {
+                    "object_id": "book:003",
+                    "appearance": "Research volume 3",
+                    "condition": "intact",
+                    "placement": 3
+                  },
+                  {
+                    "object_id": "book:004",
+                    "appearance": "Research volume 4",
+                    "condition": "intact",
+                    "placement": 4
+                  },
+                  {
+                    "object_id": "book:005",
+                    "appearance": "Research volume 5",
+                    "condition": "intact",
+                    "placement": 5
+                  },
+                  {
+                    "object_id": "book:006",
+                    "appearance": "Research volume 6",
+                    "condition": "intact",
+                    "placement": 6
+                  },
+                  {
+                    "object_id": "book:007",
+                    "appearance": "Task Reference",
+                    "condition": "intact",
+                    "placement": 7
+                  }
+                ],
+                "held_objects": [],
+                "available_instruments": [],
+                "available_moves": [
+                  "station:center"
+                ],
+                "access_level": "qualitative_local_not_global_survey",
+                "observation_class": "offered_not_proof_of_subject_attention"
+              }
+            }
+          },
+          {
+            "kind": "open",
+            "argument": null,
+            "receipt": {
+              "book_id": "book:007",
+              "operation": "open",
+              "library_revision": 2,
+              "event_id": "9d571e7c-5fc1-427e-abea-25eb55d73c83"
+            }
+          },
+          {
+            "kind": "read",
+            "argument": null,
+            "receipt": {
+              "book_id": "book:007",
+              "title": "Task Reference",
+              "author": "Synthetic Fixture",
+              "edition_id": "pilot-v1",
+              "page": 1,
+              "page_count": 1,
+              "page_text": "Copper conducts electricity.",
+              "source_class": "original_fixture",
+              "source_reference": "authored engineering case",
+              "content_digest": "a3ebad439e2723f1d3b76bd217cf57bbd4637bc3930a4506881e0ecdc4871e9b",
+              "delivery_event_id": "f7b5e3af-72cb-4b0f-aaf0-7ff4fa1a7174",
+              "delivery_class": "page_offered_to_interface_not_proof_of_reading"
+            }
+          }
+        ],
+        "policy": "simple-receipt-ledger",
+        "page_text": "Copper conducts electricity.",
+        "actions_used": 4
+      },
+      "verified_body": {
+        "verified": true,
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "subject_id": "research-subject:pretorius",
+        "revision": 5,
+        "station": "station:shelf:3",
+        "event_cursor": "781d7353db9b51a5d9a2ffcf3d2483ae33d30568f897e54c0db825d43b95b413"
+      },
+      "verified_books": {
+        "verified": true,
+        "revision": 3,
+        "event_cursor": "c2f097a7bec731d2e58550c6b2068166b18ef093975cc442083d0424d0c37f81",
+        "lab_id": "840880f4-8841-4e7b-b6c0-6d63c65e5bea",
+        "world_epoch": "8489c527-144d-4af6-b1c5-3ccf42c44fac",
+        "catalog_count": 1
+      }
+    }
+  ]
+}

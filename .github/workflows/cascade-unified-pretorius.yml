@@ -6,6 +6,9 @@ on:
     paths:
       - doctor_lives/cascade_governance.py
       - doctor_lives/cascade_preview.py
+      - doctor_lives/cascade_laboratory.py
+      - tools/run_cascade_laboratory_pilot.py
+      - tests/test_cascade_laboratory.py
       - doctor_lives/cascade_background.py
       - doctor_lives/cascade_articles.py
       - doctor_lives/data/articles_v3_contract.json
@@ -43,6 +46,12 @@ jobs:
           git clone -q https://github.com/Azimn/Sensus-Communis-Artificialis.git "$RUNNER_TEMP/Sensus"
           git -C "$RUNNER_TEMP/Sensus" checkout --detach 802e459ee68950414347d5fa324484c034f57b81
           test "$(git -C "$RUNNER_TEMP/Sensus" rev-parse HEAD)" = 802e459ee68950414347d5fa324484c034f57b81
+      - name: Checkout frozen Laboratory world
+        run: |
+          git clone -q https://github.com/Azimn/Pretorius-Laboratory.git "$RUNNER_TEMP/Laboratory"
+          git -C "$RUNNER_TEMP/Laboratory" checkout --detach 290ec97727c84728e61f69265949551e4ce911ec
+          test "$(git -C "$RUNNER_TEMP/Laboratory" rev-parse HEAD)" = 290ec97727c84728e61f69265949551e4ce911ec
+          python -m pip install -e "$RUNNER_TEMP/Laboratory"
       - name: Install canonical host and pinned optional governor
         run: |
           python -m pip install -e ".[self-reference-governor-preview]"
@@ -53,6 +62,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_cascade*.py' -v
           python -m tools.run_cascade_articles_pilot --output results/cascade/CI_ARTICLES_V3_PILOT.json
           python -m tools.run_cascade_cooldown_diagnostic --output results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
+          python -m tools.run_cascade_laboratory_pilot --output results/cascade/CI_LABORATORY_ACTION_PILOT.json
       - name: Protect existing three-organ behavior
         env:
           PYTHONPATH: ${{ runner.temp }}/Sensus:.
@@ -70,7 +80,8 @@ jobs:
           from sensus_artificialis import Percept
           from synthetic_ipseity import DurableIpseityHost
           from doctor_lives.cascade_preview import CascadePretoriusPreview
-          assert Percept and DurableIpseityHost and CascadePretoriusPreview
+          from pretorius_lab.embodied_access import EmbodiedAccess
+          assert Percept and DurableIpseityHost and CascadePretoriusPreview and EmbodiedAccess
           print("Real optional donor imports and experiment host present")
           PY
       - name: Archive actual case-level engineering outcomes
@@ -81,3 +92,4 @@ jobs:
           path: |
             results/cascade/CI_ARTICLES_V3_PILOT.json
             results/cascade/CI_COOLDOWN_DIAGNOSTIC.json
+            results/cascade/CI_LABORATORY_ACTION_PILOT.json

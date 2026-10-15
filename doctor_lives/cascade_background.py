@@ -95,6 +95,11 @@ class BackgroundLedger:
             db.close()
 
     def assert_reconciled(self):
+        laboratory = self.path.parent / "cascade-laboratory.sqlite3"
+        if laboratory.exists():
+            with sqlite3.connect(laboratory) as db:
+                if db.execute("SELECT 1 FROM tasks WHERE status!='complete'").fetchone():
+                    raise RuntimeError("Interrupted Laboratory action requires manual reconciliation")
         with self.connect() as db:
             pending = db.execute("SELECT id FROM wakes WHERE status!='completed' LIMIT 1").fetchone()
             if pending:
