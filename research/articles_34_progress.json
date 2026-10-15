@@ -1,0 +1,644 @@
+{
+  "schema": "pretorius.articles34.engineering-progress.v1",
+  "reviewed_on": "2026-10-15",
+  "source_document_sha256": "0a8d52c58c404e602c78abb492fbdb92b337733624346e3318f2e4ca4fcffc60",
+  "summary": "Engineering progress is a gated project-management estimate, not a measure of consciousness or an Article-level qualification result.",
+  "gate_weights": {
+    "defined": 10,
+    "mechanism": 25,
+    "integrated": 25,
+    "causal_controls": 20,
+    "independent_transfer": 20
+  },
+  "gate_labels": {
+    "defined": "Article scope and acceptance test specified",
+    "mechanism": "Relevant mechanism implemented, at least as a prototype",
+    "integrated": "Mechanism exercised inside the real experimental Pretorius runtime",
+    "causal_controls": "Discriminating causal intervention and controls recorded",
+    "independent_transfer": "Independent held-out transfer and interruption/robustness evidence"
+  },
+  "work_ref_urls": {
+    "#61": "https://github.com/Azimn/The-Doctor-Lives/pull/61",
+    "#63": "https://github.com/Azimn/The-Doctor-Lives/pull/63"
+  },
+  "articles": [
+    {
+      "id": 1,
+      "title": "Self and Introspection",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor self-model and causal audit",
+      "next_step": "Independent advance prediction with input-only controls",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Spontaneous Thought",
+      "baseline_readiness": "Partial",
+      "mechanism": "CASCADE background worker and Doctor heartbeat",
+      "next_step": "History-specific task progress and independent autonomous recurrence",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Temporal Continuity",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor durable commitments and preview restart",
+      "next_step": "Real elapsed-time and interruption validation",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61",
+        "#63"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Memory Artificiality",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor recollection and typed source history",
+      "next_step": "Extend new Laboratory lesion/restoration effect to independent task families",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": true,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61",
+        "#63"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Relationship Artificiality",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor relationship state and bridge",
+      "next_step": "Partner-specific reliability repair and coordination controls",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Social Cognition",
+      "baseline_readiness": "Missing",
+      "mechanism": "No dedicated partner-belief visibility ledger",
+      "next_step": "Fallible per-partner knowledge and false-belief tasks",
+      "gates": {
+        "defined": true,
+        "mechanism": false,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Motivation",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor needs commitments and bounded policy",
+      "next_step": "Matched real resource trade-off tasks",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Habits and Procedural Continuity",
+      "baseline_readiness": "Missing",
+      "mechanism": "No acquired procedural macro compiler",
+      "next_step": "Cue-conditioned practice cost reduction and interruption",
+      "gates": {
+        "defined": true,
+        "mechanism": false,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Unconscious and Preconscious Carryover",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor concerns and spreading activation",
+      "next_step": "Cross-session priming without textual cue or instruction carryover",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Affect and Emotion",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor felt-needs bridge",
+      "next_step": "Appraisal intervention changing neutral-tone task behavior",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Embodiment",
+      "baseline_readiness": "Partial",
+      "mechanism": "Host permission constraints and canonical identity",
+      "next_step": "Real telemetry coupling and external recognition history",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Attention",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor salience and bounded view",
+      "next_step": "Dual-task workspace allocation with salience intervention",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Cognitive Rhythm",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor cognition warrant and heartbeat",
+      "next_step": "Adaptive measured deliberation depth beyond output length",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Decision Making",
+      "baseline_readiness": "Partial",
+      "mechanism": "Persisted Doctor policy decisions",
+      "next_step": "Consequential choice and counterfactual rationale validation",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Learning",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor reinforcement replay and action values",
+      "next_step": "Held-out transfer advantage under equal information",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Personality",
+      "baseline_readiness": "Partial",
+      "mechanism": "Canonical personality constraints and policy",
+      "next_step": "Cross-context dispositions under tone and prompt controls",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Goal Structure",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor commitment lifecycle",
+      "next_step": "Environment-triggered permitted resumption and completion controls",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": true,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61",
+        "#63"
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Prospection",
+      "baseline_readiness": "Partial",
+      "mechanism": "Due commitments and authorized clock worker",
+      "next_step": "Preparation before deadline rather than only overdue response",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61",
+        "#63"
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Agency",
+      "baseline_readiness": "Partial",
+      "mechanism": "Authorized internal cognition worker",
+      "next_step": "Authorized Laboratory action now exists; autonomous initiation and longitudinal consequences remain",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61",
+        "#63"
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Environmental Coupling",
+      "baseline_readiness": "Missing",
+      "mechanism": "No empirical affordance learner in CASCADE",
+      "next_step": "Context-specific tool reliability and adaptation",
+      "gates": {
+        "defined": true,
+        "mechanism": false,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Error and Imperfection",
+      "baseline_readiness": "Partial",
+      "mechanism": "Durable failure receipts and source checks",
+      "next_step": "Natural error attribution and correction of responsible component",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Internal Causality",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor causal audit and policy receipts",
+      "next_step": "Replicate new Laboratory route-and-delivery lesion/restoration outside authored shelf tasks",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": true,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61",
+        "#63"
+      ]
+    },
+    {
+      "id": 23,
+      "title": "LLM Leakage",
+      "baseline_readiness": "Partial",
+      "mechanism": "SubjectFrame Ipseity and syntactic governor",
+      "next_step": "Semantic unsupported-claim tests and history-specific reflection",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Excessive Coherence",
+      "baseline_readiness": "Partial",
+      "mechanism": "Durable unresolved concerns",
+      "next_step": "Narrative-pressure probes preserving actual unresolved constraints",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Excessive Responsiveness",
+      "baseline_readiness": "Partial",
+      "mechanism": "Single-host locks and explicit wake budgets",
+      "next_step": "Conversational resource allocation under competing work",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 26,
+      "title": "State Reset Artifacts",
+      "baseline_readiness": "Partial",
+      "mechanism": "Doctor and Ipseity persistence and preview journals",
+      "next_step": "Real renderer rollover compression and consent-reset qualification",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 27,
+      "title": "Lack of Developmental History",
+      "baseline_readiness": "Partial",
+      "mechanism": "Canonical versus lived provenance and learning logs",
+      "next_step": "Extended practice trajectories with developmental consequences",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Lack of Path Dependence",
+      "baseline_readiness": "Partial",
+      "mechanism": "Ordered event history and recurrent state",
+      "next_step": "Matched-total task-relevant sequence counterfactuals",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 29,
+      "title": "Lack of Idiosyncrasy",
+      "baseline_readiness": "Partial",
+      "mechanism": "History-sensitive policy machinery",
+      "next_step": "Stable acquired strategy differences beyond vocabulary",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 30,
+      "title": "Lack of Friction",
+      "baseline_readiness": "Partial",
+      "mechanism": "Actual worker elapsed time and finite tick quota",
+      "next_step": "Actual model token/call costs and capacity-sensitive allocation",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 31,
+      "title": "Vulnerability and Stakes",
+      "baseline_readiness": "Missing",
+      "mechanism": "No consequence-contingent future operating lease",
+      "next_step": "Reversible stakes with independently scored future options",
+      "gates": {
+        "defined": true,
+        "mechanism": false,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 32,
+      "title": "Opacity and Cognitive Privacy",
+      "baseline_readiness": "Partial",
+      "mechanism": "Subject/audit separation and host-bound source admission",
+      "next_step": "Controlled reveal and withhold calibration across actual access tiers",
+      "gates": {
+        "defined": true,
+        "mechanism": true,
+        "integrated": true,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 33,
+      "title": "Humor",
+      "baseline_readiness": "Missing",
+      "mechanism": "No shared-history comic callback selector",
+      "next_step": "Partner-specific salience and timing preserved across renderers",
+      "gates": {
+        "defined": true,
+        "mechanism": false,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    },
+    {
+      "id": 34,
+      "title": "Cultural Situatedness",
+      "baseline_readiness": "Missing",
+      "mechanism": "No learned local pragmatic norm graph",
+      "next_step": "Different benign local histories changing ambiguous interpretation",
+      "gates": {
+        "defined": true,
+        "mechanism": false,
+        "integrated": false,
+        "causal_controls": false,
+        "independent_transfer": false
+      },
+      "qualification": "Unassessable",
+      "work_refs": [
+        "#61"
+      ]
+    }
+  ]
+}
