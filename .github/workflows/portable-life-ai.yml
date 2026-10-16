@@ -25,6 +25,8 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install Doctor package
         run: python -m pip install -e .
+      - name: Recompute independent synthetic engineering proxy report
+        run: python tools/portable_life_grade.py
       - name: Run portable policy and adapter unit tests
         run: |
           python -W error::ResourceWarning -m unittest discover -s tests -p 'test_portable_life_policy.py' -v
