@@ -1,0 +1,44 @@
+name: Article 07 isolated Laboratory Motivation causal controls
+on:
+  push:
+    branches:
+      - experiment/home-motivation-causal-controls-20261016
+  pull_request:
+    paths:
+      - doctor_lives/home_motivation_causal.py
+      - tests/test_home_motivation_causal.py
+      - tools/run_home_motivation_causal.py
+      - docs/experiments/ARTICLE_07_MOTIVATION_CAUSAL_PROTOCOL_20261016.md
+      - .github/workflows/article-07-motivation-controls.yml
+  workflow_dispatch:
+jobs:
+  source-backed-motive-causes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: pinned-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install real Doctor code
+        run: python -m pip install -e .
+      - name: Test preregistered isolated interventions and actual physical outcomes
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_home_motivation_causal.py -v
+      - name: Generate full case-pair report
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: |
+          python -m tools.run_home_motivation_causal --output results/article07-motivation-isolated.json
+      - name: Archive complete Article 07 physical source ledger and contrasts
+        uses: actions/upload-artifact@v4
+        with:
+          name: article-07-causal-home-controls
+          path: results/article07-motivation-isolated.json
