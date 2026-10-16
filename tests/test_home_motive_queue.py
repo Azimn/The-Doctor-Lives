@@ -29,6 +29,7 @@ def state():
     }
 
 
+@unittest.skipUnless(HAS_LAB, "Pinned Laboratory required for objective affordance scoring")
 class MotiveUtilityTests(unittest.TestCase):
     def test_normal_needs_keep_scientific_work_salient(self):
         self.assertEqual(motive_scores(state())["task"], "experiment")
