@@ -35,7 +35,7 @@ class PortablePolicyTests(unittest.TestCase):
     def learn(self, suffix, action='prepare', cue='unfinished_project', success=True):
         return self.ai.record_outcome(source_receipt=f'world-{suffix}', action_key=f'lab:{action}',
                                       cue=cue, strategy=action, succeeded=success,
-                                      verify_receipt=lambda receipt, key: receipt.startswith('world-') and key == f'lab:{action}')
+                                      verify_receipt=lambda receipt, key, actual: receipt.startswith('world-') and key == f'lab:{action}' and actual is success)
 
     def test_any_domain_with_same_cognitive_goal(self):
         for domain in ('laboratory', 'correspondence', 'village', 'library'):
@@ -114,6 +114,15 @@ class PortablePolicyTests(unittest.TestCase):
             names = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             self.assertEqual(names, {'procedures', 'receipts', 'continuity'})
             self.assertEqual(db.execute('SELECT COUNT(*) FROM receipts').fetchone()[0], 0)
+
+    def test_previous_strategy_does_not_bias_unrelated_new_goal(self):
+        first = frame(goals=['finish_project'], cue='work')
+        self.ai.choose(first, [Opportunity('a', 'lab', 'investigate', {'curiosity': 1.0})], commit=True)
+        other = frame(goals=['write_letter'], cue='conversation')
+        chosen = self.ai.choose(other, [
+            Opportunity('a', 'letter', 'assist', {'obligation': 1.0}),
+            Opportunity('z', 'letter', 'investigate', {'obligation': 1.0})])
+        self.assertEqual(chosen.strategy, 'assist')
 
     def test_counterfactual_lesions_expose_distinct_components(self):
         self.ai.choose(frame(goals=['finish_project']), options(), commit=True)
