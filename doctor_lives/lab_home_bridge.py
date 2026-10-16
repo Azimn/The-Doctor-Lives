@@ -122,7 +122,7 @@ class DoctorHomeBridge:
     def _physical_stamp(db):
         result = {}
         for domain, keys in {
-            "spatial_meta": ("head_hash", "state"),
+            "meta": ("head_hash", "state"),
             "domestic_meta": ("state",),
             "rhythm_meta": ("state",),
             "books_meta": ("books",),
@@ -162,6 +162,37 @@ class DoctorHomeBridge:
         })
         return self._admit(frame, source, kind="observation")
 
+    @staticmethod
+    def _check_action_proof(op, args, event):
+        """Prevent a retry from binding an old receipt to a different request."""
+        if op == "walk":
+            if event.get("kind") != "move" or event.get("after_station") != args.get("station"):
+                raise RuntimeError("Mismatched embodied movement receipt")
+        elif op == "book":
+            action = event.get("action", {})
+            expected = {"op": args.get("operation"), "book_id": args.get("book_id")}
+            for key in ("direction", "bookmark_id"):
+                if key in args:
+                    expected[key] = args[key]
+            if action != expected:
+                raise RuntimeError("Mismatched book operation receipt")
+        elif op in ("take_book", "put_book"):
+            action = event.get("action", {})
+            expected = "take" if op == "take_book" else "put"
+            if (action.get("op") != expected or
+                    action.get("book_id") != args.get("book_id") or
+                    (op == "put_book" and action.get("anchor_id") != args.get("anchor_id"))):
+                raise RuntimeError("Mismatched custody receipt")
+        elif op == "measure":
+            if any(event.get(k) != v for k, v in {
+                "instrument": args.get("instrument"),
+                "object_id": args.get("object_id"),
+                "quantity": args.get("quantity"),
+            }.items()):
+                raise RuntimeError("Mismatched instrument receipt")
+        elif event.get("op") != op or event.get("args") != args:
+            raise RuntimeError("Mismatched domestic/rhythm receipt")
+
     def act(self, op: str, *, event_id: str, **args):
         """Bounded physical action plus deduplicated first-person Doctor ingress."""
         if op not in _ACTION_DOMAINS:
@@ -177,7 +208,10 @@ class DoctorHomeBridge:
                 " WHERE event_id=?", (event_id,),
             ).fetchone()
         if known is not None:
-            cursor = known[1]
+            prior, cursor = json.loads(known[0]), known[1]
+            if _hash(prior) != cursor:
+                raise RuntimeError("Tampered action replay receipt")
+            self._check_action_proof(op, args, prior)
             existing = [m for m in self.doctor.brain.store.memories(False)
                         if m["source"] == "laboratory-home:action:" + cursor]
             if existing:
@@ -202,21 +236,7 @@ class DoctorHomeBridge:
         # independently persisted before this Doctor memory admission.
         with self.world._open() as db:
             e, cursor = _row(db, _ACTION_DOMAINS[op], event_id)
-            if op == "book":
-                if e["action"]["op"] != args.get("operation"):
-                    raise RuntimeError("Mismatched book operation receipt")
-            elif op == "walk":
-                if e["kind"] != "move" or e["after_station"] != args.get("station"):
-                    raise RuntimeError("Mismatched embodied movement receipt")
-            elif op in {"take_book", "put_book"}:
-                expected = "take" if op == "take_book" else "put"
-                if e["action"]["op"] != expected:
-                    raise RuntimeError("Mismatched custody receipt")
-            elif op == "measure":
-                if e["instrument"] != args.get("instrument"):
-                    raise RuntimeError("Mismatched instrument receipt")
-            elif e["op"] != op:
-                raise RuntimeError("Mismatched domestic/rhythm receipt")
+            self._check_action_proof(op, args, e)
         source = "laboratory-home:action:" + cursor
         return self._admit(result, source, kind="observation")
 
