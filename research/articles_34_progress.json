@@ -24,7 +24,8 @@
     "Lab-daily-v0.1": "https://github.com/Azimn/Pretorius-Laboratory/pull/23",
     "Lab-firstperson-v0.1": "https://github.com/Azimn/Pretorius-Laboratory/pull/24",
     "Lab-Doctor-ingress": "https://github.com/Azimn/The-Doctor-Lives/pull/69",
-    "Home-choice-1of4": "https://github.com/Azimn/The-Doctor-Lives/pull/70"
+    "Home-choice-1of4": "https://github.com/Azimn/The-Doctor-Lives/pull/70",
+    "Home-motives-3of4": "https://github.com/Azimn/The-Doctor-Lives/pull/72"
   },
   "articles": [
     {
@@ -157,7 +158,8 @@
       "work_refs": [
         "#61",
         "Lab-daily-v0.1",
-        "Home-choice-1of4"
+        "Home-choice-1of4",
+        "Home-motives-3of4"
       ]
     },
     {
@@ -257,7 +259,8 @@
       "work_refs": [
         "#61",
         "Lab-firstperson-v0.1",
-        "Home-choice-1of4"
+        "Home-choice-1of4",
+        "Home-motives-3of4"
       ]
     },
     {
@@ -295,7 +298,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "Home-choice-1of4"
+        "Home-choice-1of4",
+        "Home-motives-3of4"
       ]
     },
     {
@@ -389,7 +393,8 @@
       "work_refs": [
         "#61",
         "#63",
-        "Home-choice-1of4"
+        "Home-choice-1of4",
+        "Home-motives-3of4"
       ]
     },
     {
@@ -411,7 +416,8 @@
         "Lab-home-v0.1",
         "Lab-daily-v0.1",
         "Lab-firstperson-v0.1",
-        "Home-choice-1of4"
+        "Home-choice-1of4",
+        "Home-motives-3of4"
       ]
     },
     {
@@ -543,7 +549,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "Lab-home-v0.1"
+        "Lab-home-v0.1",
+        "Home-motives-3of4"
       ]
     },
     {
@@ -600,7 +607,8 @@
         "#61",
         "Lab-home-v0.1",
         "Lab-daily-v0.1",
-        "Home-choice-1of4"
+        "Home-choice-1of4",
+        "Home-motives-3of4"
       ]
     },
     {
@@ -620,7 +628,8 @@
       "work_refs": [
         "#61",
         "Lab-daily-v0.1",
-        "Home-choice-1of4"
+        "Home-choice-1of4",
+        "Home-motives-3of4"
       ]
     },
     {
