@@ -94,6 +94,61 @@ mechanical success and failure, bad or infeasible proposals, the bodily
 lesion, matched perception and physical action budget. No hidden
 post-hoc adjustment of coefficients to make all outcomes look good.
 
+## First observed outcome — CI run 38848432762
+
+**Source:** [complete 16-condition machine report](../../results/cascade/DOCTOR_HOME_MOTIVE_QUEUE_PILOT_20261015.json) and [GitHub Actions CI](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38848432762).
+
+| Real-world intervention arm | Intended tasks completed (of four) |
+| --- | ---: |
+| Actual Doctor native recurrent policy + frozen household mapping | **1/4** |
+| Actual Doctor recurrent policy + bounded household motive regulation | **3/4** |
+| Same action/affordance controller with bodily motive pressure disabled | **2/4** |
+| Current-frame literal first-person rule controller | **4/4** |
+
+All sixteen experiments used replayable and materially equivalent **initial**
+Laboratory conditions per scenario. Each paired arm received the exact
+same first-person scene frame. Physical action budgets and source-backed
+success verification were enforced. In the unmodified neural arm, the
+native policy again selected `explore → experiment` for all four cases.
+
+The new motive controller proposed `experiment` for normal conditions,
+`rest` for the worn-equipment case, `rest` for the exhausted case and
+`tea` for the thirsty case. All four proposed activities produced actual
+physical world changes and durable receipts, but the worn-equipment
+scenario's authored scoring rule specifically demanded **repair**, so
+the new arm earns only 3/4.
+
+That error is scientifically interesting and **should not be silently
+corrected by tuning coefficients against this case**. Two prior
+experiments had also raised fatigue to the strong need threshold.
+The actual situation was *equipment worn and Doctor exhausted*, not
+a clean single-variable machinery intervention. The rule controller
+ignored that competition and repaired anyway; the motive system
+prioritized sleep. Neither is categorically irrational. We have added
+a deterministic regression requiring an exhausted/broken state to
+prioritize rest, and then permitting repair to become salient after
+fatigue decreases. That regression proves the implemented scoring
+rule—not the Doctor's independently learned judgment.
+
+The motive-lesion arm still respects physical affordance vetoes.
+It cannot invent reagents or bypass exhaustion gates. Consequently,
+this ablation is **not the same as native recurrent policy alone**;
+different baseline rates must be reported, not conflated. This
+16-condition pilot is authored, unblinded, single-seed, 128-neuron,
+and uses host-supplied pathfinding. The hybrid mechanism exploits
+engineer-available numeric simulation state under a bounded action
+controller, whereas the subject receives first-person descriptions,
+so this is *not yet matched informational parity inside the policy*.
+
+**Conclusion:** The simple host-based ecological mechanism produces a
+credible change in physical priorities and works better than the
+unmodified neural policy on three of four authored tasks, while
+falling short of the competent literal rule. It does **not**
+establish learned motivation or warrant any full Article score
+promotion. Follow up with separately isolated wear-only and
+fatigue-only trials, a mixed-need recovery trajectory, and unseen
+opportunity costs.
+
 ## Reliability boundaries
 
 Normal interruption and program restart are restart-safe. The queue refuses
