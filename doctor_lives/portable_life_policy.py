@@ -118,7 +118,11 @@ class PortableLifePolicy:
         names: set[str] = set()
         with self._db() as db:
             row = db.execute("SELECT value FROM continuity WHERE slot='last_strategy'").fetchone()
-            last = row[0] if row else None
+            previous = json.loads(row[0]) if row else None
+            # Inertia is local to an ongoing concern, not a global personality trait.
+            last = (previous["strategy"] if previous and
+                    (previous["cue"] == frame.cue or
+                     set(previous["goal_ids"]).intersection(frame.goal_ids)) else None)
         scored: list[tuple[str, str, float]] = []
         for option in options:
             if not isinstance(option, Opportunity):
@@ -138,7 +142,7 @@ class PortableLifePolicy:
                 continue  # no hidden-object omniscience
             value = sum(frame.motives.get(key, 0.0) * effect
                         for key, effect in option.effects.items())
-            value += .55 * len(frame.goal_ids.intersection(option.goal_ids))
+            value += .55 * min(2, len(frame.goal_ids.intersection(option.goal_ids)))
             value -= .23 * option.effort + .30 * option.risk
             if native_enabled:
                 value += .12 * frame.native_strategy_scores.get(option.strategy, 0.0)
@@ -158,13 +162,14 @@ class PortableLifePolicy:
             # Reference-only continuity; existing Doctor owns life goals.
             with self._db() as db:
                 db.execute("INSERT OR REPLACE INTO continuity(slot,value) VALUES('last_strategy',?)",
-                           (winner[1],))
+                           (json.dumps({"strategy": winner[1], "cue": frame.cue,
+                                        "goal_ids": sorted(frame.goal_ids)}),))
         return Decision(winner[0], winner[1], winner[2],
                         tuple((key, score) for key, _, score in scored))
 
     def record_outcome(self, *, source_receipt: str, action_key: str, cue: str,
                        strategy: str, succeeded: bool,
-                       verify_receipt: Callable[[str, str], bool]) -> bool:
+                       verify_receipt: Callable[[str, str, bool], bool]) -> bool:
         """Apply exactly one actual outcome after independent world verification.
 
         verify_receipt MUST validate trusted source provenance + action binding.
@@ -175,7 +180,7 @@ class PortableLifePolicy:
             _identifier(value, label)
         if type(succeeded) is not bool or not callable(verify_receipt):
             raise TypeError("Boolean outcome and trusted verifier required")
-        if verify_receipt(source_receipt, action_key) is not True:
+        if verify_receipt(source_receipt, action_key, succeeded) is not True:
             raise PermissionError("Unverified outcome cannot train a procedure")
         payload = json.dumps([action_key, cue, strategy, succeeded], separators=(",", ":"))
         with self._db() as db:
