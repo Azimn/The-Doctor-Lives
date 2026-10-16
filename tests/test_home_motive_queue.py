@@ -179,6 +179,24 @@ class PersistentHomeActivities(unittest.TestCase):
         self.assertEqual(replacement["status"], "active")
         self.assertEqual(self.queue.verify("revised")["source_receipts"], 0)
 
+    def test_post_world_pre_queue_crash_gap_fails_closed_without_repeat(self):
+        plan = self.queue.start("crash-gap")
+        first = plan["steps"][0]
+        self.assertEqual(first["op"], "walk")
+        # An already authorized physical action completes, then its queue
+        # cursor write is lost in a simulated host crash.
+        self.bridge.act(first["op"], event_id="motive-crash-gap-1",
+                        **first["args"])
+        position = self.bridge.subject.embodied.verify()["station"]
+        outcome = self.queue.step("crash-gap")
+        self.assertEqual(outcome["status"], "paused")
+        self.assertEqual(outcome["reason"], "world_interrupted")
+        self.assertEqual(self.bridge.subject.embodied.verify()["station"],
+                         position)
+        self.assertEqual(self.queue.verify("crash-gap")["source_receipts"], 0)
+        with self.assertRaises(RuntimeError):
+            self.queue.resume("crash-gap")
+
     def test_duplicate_plan_id_does_not_retrigger_neural_decision(self):
         x = self.queue.start("once")
         old = self.bridge.doctor.brain.store.tick
