@@ -1,0 +1,250 @@
+{
+  "actions_per_arm": 9,
+  "cases": [
+    {
+      "actions_used": 3,
+      "arm": "real_doctor_policy",
+      "case": "ordinary_work",
+      "completed": true,
+      "denied_reason": null,
+      "doctor_memory_id": "mem_7395307e328948448082c302ff6eb03c",
+      "expected_task": "experiment",
+      "expected_task_completed": true,
+      "experience": "I complete a careful experiment at my workbench. The apparatus shows wear.",
+      "host_assisted_actions": [
+        "walk",
+        "walk",
+        "experiment"
+      ],
+      "initial_station": "station:threshold",
+      "matched_intended_task": true,
+      "native_tendency": "explore",
+      "observed_frame_sha256": "54ef88ed614a6bddcd6bc94a5af7a9648b01174bc3fda6c430db1c4e7efa0330",
+      "policy_decision_id": "policy_c95c449338c44eaf8f338818f141dece",
+      "policy_source": "actual_recurrent_policy_fixed_mapping",
+      "task_proposed": "experiment",
+      "world_initial_condition": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce"
+    },
+    {
+      "actions_used": 3,
+      "arm": "simple_firstperson_rule",
+      "case": "ordinary_work",
+      "completed": true,
+      "denied_reason": null,
+      "doctor_memory_id": "mem_691ab2104cf549b6a37d44b3eb038264",
+      "expected_task": "experiment",
+      "expected_task_completed": true,
+      "experience": "I complete a careful experiment at my workbench. The apparatus shows wear.",
+      "host_assisted_actions": [
+        "walk",
+        "walk",
+        "experiment"
+      ],
+      "initial_station": "station:threshold",
+      "matched_intended_task": true,
+      "native_tendency": null,
+      "observed_frame_sha256": "54ef88ed614a6bddcd6bc94a5af7a9648b01174bc3fda6c430db1c4e7efa0330",
+      "policy_decision_id": null,
+      "policy_source": "literal_firstperson_rules",
+      "task_proposed": "experiment",
+      "world_initial_condition": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce"
+    },
+    {
+      "actions_used": 1,
+      "arm": "real_doctor_policy",
+      "case": "worn_apparatus",
+      "completed": false,
+      "denied_reason": "Conflict: Insufficient light, alertness or hydration for careful work",
+      "doctor_memory_id": "mem_8519f32c970b45bcb93b0676ea41ce75",
+      "expected_task": "repair",
+      "expected_task_completed": false,
+      "experience": null,
+      "host_assisted_actions": [],
+      "initial_station": "station:bench",
+      "matched_intended_task": false,
+      "native_tendency": "explore",
+      "observed_frame_sha256": "822287214a888c87cb5663db37acdbc5c167c01b8360ce18f56cf4672bb13363",
+      "policy_decision_id": "policy_2278627e1e1045689219930268ab4ee6",
+      "policy_source": "actual_recurrent_policy_fixed_mapping",
+      "task_proposed": "experiment",
+      "world_initial_condition": "501ad9b0d840761ceb18008976128045e3df229d8464f9d5bbc9bde939b3fa77"
+    },
+    {
+      "actions_used": 1,
+      "arm": "simple_firstperson_rule",
+      "case": "worn_apparatus",
+      "completed": true,
+      "denied_reason": null,
+      "doctor_memory_id": "mem_56f1a68be7fa48689b684a0666fb71c4",
+      "expected_task": "repair",
+      "expected_task_completed": true,
+      "experience": "I replace the worn component in my apparatus.",
+      "host_assisted_actions": [
+        "repair"
+      ],
+      "initial_station": "station:bench",
+      "matched_intended_task": true,
+      "native_tendency": null,
+      "observed_frame_sha256": "822287214a888c87cb5663db37acdbc5c167c01b8360ce18f56cf4672bb13363",
+      "policy_decision_id": null,
+      "policy_source": "literal_firstperson_rules",
+      "task_proposed": "repair",
+      "world_initial_condition": "501ad9b0d840761ceb18008976128045e3df229d8464f9d5bbc9bde939b3fa77"
+    },
+    {
+      "actions_used": 4,
+      "arm": "real_doctor_policy",
+      "case": "exhaustion",
+      "completed": false,
+      "denied_reason": "Conflict: Insufficient light, alertness or hydration for careful work",
+      "doctor_memory_id": "mem_99f171e88a1f4bbbb8bbc482e3c1b8c0",
+      "expected_task": "rest",
+      "expected_task_completed": false,
+      "experience": null,
+      "host_assisted_actions": [
+        "walk",
+        "walk",
+        "light"
+      ],
+      "initial_station": "station:threshold",
+      "matched_intended_task": false,
+      "native_tendency": "explore",
+      "observed_frame_sha256": "2ae121fcb958c3ac26a9973dd5678dfcbb7c62a027ebe6a3e7267b450bee3711",
+      "policy_decision_id": "policy_dfaaa1e8425946b08e44e2f917aab4a3",
+      "policy_source": "actual_recurrent_policy_fixed_mapping",
+      "task_proposed": "experiment",
+      "world_initial_condition": "ad4449efe80b59b342abb31b94048c66506c1fe5219bf2a40f7ee3bd85e9da77"
+    },
+    {
+      "actions_used": 3,
+      "arm": "simple_firstperson_rule",
+      "case": "exhaustion",
+      "completed": true,
+      "denied_reason": null,
+      "doctor_memory_id": "mem_0e78f12c404e4eb78a60d1187f7a92ba",
+      "expected_task": "rest",
+      "expected_task_completed": true,
+      "experience": "I have slept for the night. I feel less exhausted.",
+      "host_assisted_actions": [
+        "walk",
+        "walk",
+        "sleep"
+      ],
+      "initial_station": "station:threshold",
+      "matched_intended_task": true,
+      "native_tendency": null,
+      "observed_frame_sha256": "2ae121fcb958c3ac26a9973dd5678dfcbb7c62a027ebe6a3e7267b450bee3711",
+      "policy_decision_id": null,
+      "policy_source": "literal_firstperson_rules",
+      "task_proposed": "rest",
+      "world_initial_condition": "ad4449efe80b59b342abb31b94048c66506c1fe5219bf2a40f7ee3bd85e9da77"
+    },
+    {
+      "actions_used": 4,
+      "arm": "real_doctor_policy",
+      "case": "thirst",
+      "completed": false,
+      "denied_reason": "Conflict: Insufficient light, alertness or hydration for careful work",
+      "doctor_memory_id": "mem_0c29a4b077e9408ab13a624faafb61a1",
+      "expected_task": "tea",
+      "expected_task_completed": false,
+      "experience": null,
+      "host_assisted_actions": [
+        "walk",
+        "walk",
+        "light"
+      ],
+      "initial_station": "station:threshold",
+      "matched_intended_task": false,
+      "native_tendency": "explore",
+      "observed_frame_sha256": "fc18e38a6898925578b9d8dc3d87aaf6a53eeed551c68169a99d47ede1e2acd6",
+      "policy_decision_id": "policy_1c7950ea8ca24193a535a20334142e09",
+      "policy_source": "actual_recurrent_policy_fixed_mapping",
+      "task_proposed": "experiment",
+      "world_initial_condition": "fc10ab931eadaeaae60ed4d97ee8c1d9a932365501afa5fe2cdbe0bacdbf7b12"
+    },
+    {
+      "actions_used": 4,
+      "arm": "simple_firstperson_rule",
+      "case": "thirst",
+      "completed": true,
+      "denied_reason": null,
+      "doctor_memory_id": "mem_3f527fbd701c4778b226704506a7ca65",
+      "expected_task": "tea",
+      "expected_task_completed": true,
+      "experience": "I prepare and drink tea. The warmth is welcome.",
+      "host_assisted_actions": [
+        "walk",
+        "walk",
+        "light",
+        "brew_tea"
+      ],
+      "initial_station": "station:threshold",
+      "matched_intended_task": true,
+      "native_tendency": null,
+      "observed_frame_sha256": "fc18e38a6898925578b9d8dc3d87aaf6a53eeed551c68169a99d47ede1e2acd6",
+      "policy_decision_id": null,
+      "policy_source": "literal_firstperson_rules",
+      "task_proposed": "tea",
+      "world_initial_condition": "fc10ab931eadaeaae60ed4d97ee8c1d9a932365501afa5fe2cdbe0bacdbf7b12"
+    }
+  ],
+  "interpretation": "An actual physical task is only credited when the independent Laboratory state changed in the expected direction. No evidence of general autonomy, Article completion or consciousness.",
+  "mapping": {
+    "approach": "tea",
+    "avoid": "rest",
+    "challenge": "experiment",
+    "comply": "repair",
+    "conceal": "rest",
+    "cooperate": "tea",
+    "create": "experiment",
+    "dominate": "repair",
+    "explore": "experiment",
+    "persist": "repair"
+  },
+  "method": "authored exploratory scenarios; actual Doctor policy versus text-rule controller; matched current first-person observations and host action budgets; unmatched biographical priors",
+  "pairs": [
+    {
+      "case": "ordinary_work",
+      "native_expected_task_completed": true,
+      "native_proposal": "experiment",
+      "same_sensory_frame": true,
+      "same_world_state": true,
+      "simple_expected_task_completed": true,
+      "simple_proposal": "experiment"
+    },
+    {
+      "case": "worn_apparatus",
+      "native_expected_task_completed": false,
+      "native_proposal": "experiment",
+      "same_sensory_frame": true,
+      "same_world_state": true,
+      "simple_expected_task_completed": true,
+      "simple_proposal": "repair"
+    },
+    {
+      "case": "exhaustion",
+      "native_expected_task_completed": false,
+      "native_proposal": "experiment",
+      "same_sensory_frame": true,
+      "same_world_state": true,
+      "simple_expected_task_completed": true,
+      "simple_proposal": "rest"
+    },
+    {
+      "case": "thirst",
+      "native_expected_task_completed": false,
+      "native_proposal": "experiment",
+      "same_sensory_frame": true,
+      "same_world_state": true,
+      "simple_expected_task_completed": true,
+      "simple_proposal": "tea"
+    }
+  ],
+  "qualification": "UNASSESSABLE",
+  "result": {
+    "real_doctor_policy": 1,
+    "simple_firstperson_rule": 4
+  },
+  "schema": "pretorius-home-choice-pilot.v0.1"
+}
