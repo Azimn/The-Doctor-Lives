@@ -92,6 +92,55 @@ must still use independent held-out transfer with separately registered
 assessment criteria. Do not count repeated test invocations as
 independent conditions.
 
+## Outcome recorded after preregistration — 2026-10-16
+
+The originally locked protocol and five environment conditions were exercised
+by [CI run 38863482189](https://github.com/Azimn/The-Doctor-Lives/actions/runs/38863482189).
+The real Doctor, fresh controlled Laboratory states, physical permissions,
+authenticated first-person ingress and authoritatively persisted actions
+passed the 25-trial causal checks. Four original CI workflows passed, including
+real Doctor brain regression, fresh installation, causal audit and this new
+pinned cross-repository comparison.
+
+[Complete machine-readable evidence](../../results/cascade/ARTICLE_07_ISOLATED_MOTIVATION_CAUSAL_20261016.json)
+retains **every trial** and physical receipt summary.
+
+| Controller | Complete expected physical sequences /5 |
+| --- | ---: |
+| Original neural policy with frozen task map | **1/5** |
+| Neural tendencies + bodily motive arbitration | **5/5** |
+| Physical affordances with bodily motive pressure disabled | **4/5** |
+| Cheap current-frame first-person rules | **4/5** |
+| Equal-engineering-information numerical rules | **5/5** |
+
+All five conditions had identical starting world states and source-grounded
+first-person observations across controller arms. The controlled changes to
+wear, thirst and fatigue were verified as the *only* differences from
+the canonical initial fixture. The combined condition's motive arm completed
+**rest → repair** with eight real Laboratory actions, finishing with a
+serviceable apparatus and reduced fatigue. The numerical simple-rule
+controller **also completed 5/5**, a tie demonstrating that this is a
+straightforward useful engineered motive mechanism rather than evidence
+that a larger emergent neural cognition is required.
+
+**Causal identification:** removing bodily priority reduced success from
+5/5 to 4/5 (principally the thirst-specific comparison), while physical
+affordances and neural opportunity remained. We can therefore credit
+causal controls for the **external motivated action-priority subsystem**
+in this real Doctor+home experimental runtime. Other cases, including
+rest-then-repair, also succeeded under the bodily-motive lesion because
+physical feasibility can already constrain actions. The test does not
+justify attributing all successes to bodily motive regulation.
+
+**Tracker adjudication:** Article 7 **Motivation** now has
+`causal_controls=true`, moving that single Article from **60/100 to
+80/100 engineering progress**. The remaining `independent_transfer`
+gate is **false**; Article qualification remains **Unassessable**.
+The aggregate dashboard stays **46/100** after rounding the mean of 34
+Articles; the underlying aggregate mean increases from approximately
+45.59 to 46.18, a genuine 20-point gain on the single Article without
+a misleading claim of broader completion.
+
 ## Known limits
 
 The motive controller is an **external deterministic ecological
