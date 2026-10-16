@@ -45,6 +45,22 @@ class MotiveUtilityTests(unittest.TestCase):
                 self.assertEqual(motive_scores(s)["task"], expected)
                 self.assertEqual(motive_scores(s, {"explore": 1.0})["task"], expected)
 
+    def test_combined_exhaustion_and_worn_apparatus_compete_without_scripted_answer(self):
+        s = state()
+        s["apparatus"] = 0
+        s["fatigue"] = 7
+        # The observed worn-equipment pilot was not a pure repair test:
+        # two preceding experiments also generated sufficient exhaustion
+        # to make rest a defensible first priority.
+        first = motive_scores(s, {"explore": 1.0})
+        self.assertEqual(first["task"], "rest")
+        self.assertTrue(first["eligible"]["repair"])
+        # After bodily recovery, the *same* broken equipment should
+        # regain motivational priority, without a case-name override.
+        s["fatigue"] = 2
+        second = motive_scores(s, {"explore": 1.0})
+        self.assertEqual(second["task"], "repair")
+
     def test_unavailable_supplies_and_exhaustion_remain_real_vetoes(self):
         s = state()
         s["thirst"] = 9
