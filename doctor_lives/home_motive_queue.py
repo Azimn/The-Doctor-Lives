@@ -305,10 +305,13 @@ class HomeActivityQueue:
                        (plan_id,))
 
     def verify(self, plan_id: str):
-        """Replay receipt trail and verify source continuity, not agent skill."""
+        """Replay receipt trail against fully verified Laboratory event history."""
+        world = self.bridge.subject.verify()
         p = self.inspect(plan_id)
         if p is None:
             raise KeyError(plan_id)
+        if world["world_epoch"] != p["world_epoch"]:
+            raise RuntimeError("Plan event history belongs to a different world")
         if p["next_index"] != len(p["receipts"]) or not (
                 0 <= p["next_index"] <= len(p["steps"])):
             raise RuntimeError("Activity cursor and world receipts disagree")
