@@ -37,6 +37,42 @@ class ProgressTrackerTests(unittest.TestCase):
         self.assertEqual(OUTPUT.read_text(encoding="utf-8"), expected)
         self.assertEqual(expected.count("| Unassessable |"), 34)
 
+    def test_article7_causal_controls_are_tied_to_complete_physical_receipts(self):
+        motive = self.data["articles"][6]
+        self.assertEqual(motive["id"], 7)
+        self.assertTrue(motive["gates"]["causal_controls"])
+        self.assertFalse(motive["gates"]["independent_transfer"])
+        self.assertEqual(score(motive), 80)
+        self.assertEqual(motive["qualification"], "Unassessable")
+        self.assertIn("Article07-isolated25", motive["work_refs"])
+        source = SOURCE.parents[1] / "results" / "cascade" / (
+            "ARTICLE_07_ISOLATED_MOTIVATION_CAUSAL_20261016.json")
+        report = json.loads(source.read_text(encoding="utf-8"))
+        self.assertEqual(report["schema"],
+                         "articles34-motivation-isolated-interventions.v1")
+        self.assertEqual(report["article"], 7)
+        self.assertEqual(report["qualification"], "UNASSESSABLE")
+        self.assertEqual(len(report["trials"]), 25)
+        self.assertGreater(report["totals"]["native_plus_motives"],
+                           report["totals"]["body_motive_lesion"])
+        self.assertEqual(report["totals"]["native_plus_motives"], 5)
+        self.assertEqual(report["totals"]["numeric_state_rules"], 5)
+        for name in report["case_definitions"]:
+            arms = [x for x in report["trials"] if x["case"] == name]
+            self.assertEqual(len(arms), 5)
+            self.assertEqual(len(set(x["engineered_initial_fixture_sha256"]
+                                     for x in arms)), 1)
+            self.assertEqual(len(set(
+                x["episodes"][0]["first_person_frame_sha256"] for x in arms
+            )), 1)
+            self.assertTrue(all(x["world_verification"] for x in arms))
+        dual = next(x for x in report["trials"]
+                    if x["case"] == "wear_and_fatigue" and
+                    x["arm"] == "native_plus_motives")
+        self.assertTrue(dual["completed_scored_sequence"])
+        self.assertEqual(dual["actual_sequence"], ["rest", "repair"])
+        self.assertLessEqual(dual["total_physical_actions"], 12)
+
     def test_minimum_and_maximum_require_correct_gates(self):
         trial = deepcopy(self.data["articles"][0])
         trial["gates"] = {key: False for key in GATES}
