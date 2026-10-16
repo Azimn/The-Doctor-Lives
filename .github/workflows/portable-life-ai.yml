@@ -1,0 +1,49 @@
+name: Portable life AI, game simulation counterfactuals
+on:
+  pull_request:
+    paths:
+      - doctor_lives/portable_life_policy.py
+      - doctor_lives/portable_doctor_adapter.py
+      - tests/test_portable_*.py
+      - .github/workflows/portable-life-ai.yml
+  push:
+    branches:
+      - experiment/portable-life-ai-20261016
+  workflow_dispatch:
+jobs:
+  pure-policy:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Doctor package
+        run: python -m pip install -e .
+      - name: Run portable policy and adapter unit tests
+        run: |
+          python -W error::ResourceWarning -m unittest discover -s tests -p 'test_portable_life_policy.py' -v
+          python -W error::ResourceWarning -m unittest discover -s tests -p 'test_portable_doctor_adapter.py' -v
+  real-laboratory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: pinned-lab
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - name: Real Pretorius policy with source-verified physical consequence
+        env:
+          PYTHONPATH: pinned-lab
+        run: python -W error::ResourceWarning -m unittest discover -s tests -p 'test_portable_real_doctor.py' -v
