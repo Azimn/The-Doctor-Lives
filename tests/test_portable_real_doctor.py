@@ -50,13 +50,14 @@ class RealDoctorPhysicalTransfer(unittest.TestCase):
                 bridge.act('walk', event_id=f'portable-walk-{n}', station=stop)
             bridge.act('experiment', event_id='portable-work-1')
             self.assertEqual(rhythm.audit_state()['experiments'], before+1)
-            def verify_receipt(receipt, action_key):
+            def verify_receipt(receipt, action_key, succeeded):
                 bridge.subject.verify()  # verify complete authoritative world chain
                 with world._open() as db:
                     row = db.execute("SELECT event_hash FROM rhythm_events WHERE event_id=?",
                                      ('portable-work-1',)).fetchone()
                     return bool(row and receipt == row[0] and
-                                action_key == 'laboratory:experiment')
+                                action_key == 'laboratory:experiment' and
+                                succeeded == (rhythm.audit_state()['experiments'] > before))
             with world._open() as db:
                 receipt = db.execute("SELECT event_hash FROM rhythm_events WHERE event_id=?",
                                      ('portable-work-1',)).fetchone()[0]
