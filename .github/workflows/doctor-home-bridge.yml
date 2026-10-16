@@ -1,0 +1,37 @@
+name: Actual Doctor + home first-person bridge pilot
+on:
+  push:
+    branches:
+      - experiment/doctor-home-firstperson-bridge-20261015
+  pull_request:
+    paths:
+      - doctor_lives/lab_home_bridge.py
+      - tests/test_lab_home_bridge.py
+      - .github/workflows/doctor-home-bridge.yml
+  workflow_dispatch:
+jobs:
+  paired-real-doctor-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install real Doctor dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Exercise real Doctor brain and pinned Lab with all first-person safeguards
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_lab_home_bridge.py -v
+      - name: Ensure original Doctor core regression still passes
+        run: |
+          python -m unittest discover -s tests -p test_cognition.py -v
