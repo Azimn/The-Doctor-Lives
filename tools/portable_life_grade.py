@@ -42,7 +42,7 @@ def grade(seed: int = 20261016, cases: int = 240) -> dict:
         for idx in range(8):
             ai.record_outcome(source_receipt=f'fixture-{idx}', action_key='lab:prepare',
                               cue='unsettled_task', strategy='prepare', succeeded=True,
-                              verify_receipt=lambda receipt, action: receipt.startswith('fixture-') and action == 'lab:prepare')
+                              verify_receipt=lambda receipt, action, succeeded: receipt.startswith('fixture-') and action == 'lab:prepare' and succeeded is True)
         moved = ai.choose(obs, [Opportunity('letter:prepare', 'correspondence',
                                              'prepare', {'duty': .7}),
                                 Opportunity('letter:ignore', 'correspondence',
