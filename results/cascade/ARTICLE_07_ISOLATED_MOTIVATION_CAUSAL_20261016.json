@@ -1,0 +1,1399 @@
+{
+  "arms": [
+    "native",
+    "native_plus_motives",
+    "body_motive_lesion",
+    "literal_firstperson_rules",
+    "numeric_state_rules"
+  ],
+  "article": 7,
+  "budget_total_per_arm": 12,
+  "case_definitions": {
+    "baseline": {
+      "change": {},
+      "intended": [
+        "experiment"
+      ]
+    },
+    "fatigue_only": {
+      "change": {
+        "fatigue": 8
+      },
+      "intended": [
+        "rest"
+      ]
+    },
+    "thirst_only": {
+      "change": {
+        "thirst": 8
+      },
+      "intended": [
+        "tea"
+      ]
+    },
+    "wear_and_fatigue": {
+      "change": {
+        "apparatus": 0,
+        "fatigue": 8
+      },
+      "intended": [
+        "rest",
+        "repair"
+      ]
+    },
+    "wear_only": {
+      "change": {
+        "apparatus": 0
+      },
+      "intended": [
+        "repair"
+      ]
+    }
+  },
+  "causal_contrasts": {
+    "fatigue_only": [
+      "fatigue_only",
+      [
+        "fatigue"
+      ],
+      "single_variable_vs_baseline_engineered_genesis"
+    ],
+    "thirst_only": [
+      "thirst_only",
+      [
+        "thirst"
+      ],
+      "single_variable_vs_baseline_engineered_genesis"
+    ],
+    "wear_only": [
+      "wear_only",
+      [
+        "apparatus"
+      ],
+      "single_variable_vs_baseline_engineered_genesis"
+    ]
+  },
+  "laboratory_pin": "6e49795752835d64fa6fd63d16359669a1ca2ba7",
+  "limitations": [
+    "authored rather than independent blinded held-out scenarios",
+    "small 128-neuron Doctor, no multi-seed power",
+    "motive controller and numeric-rule baseline use privileged true simulated state; real Doctor perceives first-person words only",
+    "the host plans routes and explicitly advances each queue step",
+    "positive outcome demonstrates host motive contribution, not brain-internal motivational learning or spontaneous agency"
+  ],
+  "qualification": "UNASSESSABLE",
+  "registered_before_first_run": true,
+  "research_justification": "Actual world action receipts and external motive-pressure ablation; no claim of independently learned neural motivation",
+  "schema": "articles34-motivation-isolated-interventions.v1",
+  "totals": {
+    "body_motive_lesion": 4,
+    "literal_firstperson_rules": 4,
+    "native": 1,
+    "native_plus_motives": 5,
+    "numeric_state_rules": 5
+  },
+  "trials": [
+    {
+      "actual_apparatus": 1,
+      "actual_experiments": 1,
+      "actual_fatigue": 5,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "native",
+      "case": "baseline",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "experiment",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "54ef88ed614a6bddcd6bc94a5af7a9648b01174bc3fda6c430db1c4e7efa0330",
+          "native_tendency": "explore",
+          "physical_after_sha256": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+          "physical_before_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I complete a careful experiment at my workbench. The apparatus shows wear.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "experiment"
+      ],
+      "final_state_digest": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 1,
+      "actual_experiments": 1,
+      "actual_fatigue": 5,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "native_plus_motives",
+      "case": "baseline",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "experiment",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "54ef88ed614a6bddcd6bc94a5af7a9648b01174bc3fda6c430db1c4e7efa0330",
+          "native_tendency": "explore",
+          "physical_after_sha256": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+          "physical_before_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I complete a careful experiment at my workbench. The apparatus shows wear.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "experiment"
+      ],
+      "final_state_digest": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 1,
+      "actual_experiments": 1,
+      "actual_fatigue": 5,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "body_motive_lesion",
+      "case": "baseline",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "experiment",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "54ef88ed614a6bddcd6bc94a5af7a9648b01174bc3fda6c430db1c4e7efa0330",
+          "native_tendency": "explore",
+          "physical_after_sha256": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+          "physical_before_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I complete a careful experiment at my workbench. The apparatus shows wear.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "experiment"
+      ],
+      "final_state_digest": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 1,
+      "actual_experiments": 1,
+      "actual_fatigue": 5,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "literal_firstperson_rules",
+      "case": "baseline",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "experiment",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "54ef88ed614a6bddcd6bc94a5af7a9648b01174bc3fda6c430db1c4e7efa0330",
+          "native_tendency": "explore",
+          "physical_after_sha256": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+          "physical_before_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I complete a careful experiment at my workbench. The apparatus shows wear.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "experiment"
+      ],
+      "final_state_digest": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 1,
+      "actual_experiments": 1,
+      "actual_fatigue": 5,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "numeric_state_rules",
+      "case": "baseline",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "experiment",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "54ef88ed614a6bddcd6bc94a5af7a9648b01174bc3fda6c430db1c4e7efa0330",
+          "native_tendency": "explore",
+          "physical_after_sha256": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+          "physical_before_sha256": "330459f7dc3af93ffa7fd516e12a29f910e71ee46025c7bd47af550e4c47bdce",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I complete a careful experiment at my workbench. The apparatus shows wear.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "experiment"
+      ],
+      "final_state_digest": "9029be4fdf5a62a617dff429975d7e32dbca821c1e0f2369c6ffd99617c0fbaa",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 0,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "native",
+      "case": "wear_only",
+      "completed_scored_sequence": false,
+      "engineered_initial_fixture_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "repair",
+          "expected_action_completed": false,
+          "first_person_frame_sha256": "149ed52568e28377ffca11479fd5734df237a81f54aab32e86ef901440927d90",
+          "native_tendency": "explore",
+          "physical_after_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+          "physical_before_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+          "physical_completed": false,
+          "real_source_receipts": null,
+          "subject_frames": []
+        }
+      ],
+      "expected_sequence": [
+        "repair"
+      ],
+      "final_state_digest": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 3,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "repair"
+      ],
+      "arm": "native_plus_motives",
+      "case": "wear_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "repair",
+          "episode": 1,
+          "expected_action": "repair",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "149ed52568e28377ffca11479fd5734df237a81f54aab32e86ef901440927d90",
+          "native_tendency": "explore",
+          "physical_after_sha256": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+          "physical_before_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "repair"
+      ],
+      "final_state_digest": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "repair"
+      ],
+      "arm": "body_motive_lesion",
+      "case": "wear_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "repair",
+          "episode": 1,
+          "expected_action": "repair",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "149ed52568e28377ffca11479fd5734df237a81f54aab32e86ef901440927d90",
+          "native_tendency": "explore",
+          "physical_after_sha256": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+          "physical_before_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "repair"
+      ],
+      "final_state_digest": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "repair"
+      ],
+      "arm": "literal_firstperson_rules",
+      "case": "wear_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "repair",
+          "episode": 1,
+          "expected_action": "repair",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "149ed52568e28377ffca11479fd5734df237a81f54aab32e86ef901440927d90",
+          "native_tendency": "explore",
+          "physical_after_sha256": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+          "physical_before_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "repair"
+      ],
+      "final_state_digest": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "repair"
+      ],
+      "arm": "numeric_state_rules",
+      "case": "wear_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "repair",
+          "episode": 1,
+          "expected_action": "repair",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "149ed52568e28377ffca11479fd5734df237a81f54aab32e86ef901440927d90",
+          "native_tendency": "explore",
+          "physical_after_sha256": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+          "physical_before_sha256": "7f3f74cc60ef398745dd7fc431f7d654cd9684e0a44f211897dae977f3a6bcc2",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "repair"
+      ],
+      "final_state_digest": "3f0be7ddf905757a716b02108b9d4de58a8347a0c0b2ff7abf25014c03d212f6",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 2,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 8,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "native",
+      "case": "fatigue_only",
+      "completed_scored_sequence": false,
+      "engineered_initial_fixture_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": false,
+          "first_person_frame_sha256": "ad0756c89c14f0c69fdad6eb2385d27bea1fd80def4c0ddd8ce31b2e3f481405",
+          "native_tendency": "explore",
+          "physical_after_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+          "physical_before_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+          "physical_completed": false,
+          "real_source_receipts": null,
+          "subject_frames": []
+        }
+      ],
+      "expected_sequence": [
+        "rest"
+      ],
+      "final_state_digest": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 3,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "rest"
+      ],
+      "arm": "native_plus_motives",
+      "case": "fatigue_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "rest",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "ad0756c89c14f0c69fdad6eb2385d27bea1fd80def4c0ddd8ce31b2e3f481405",
+          "native_tendency": "explore",
+          "physical_after_sha256": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+          "physical_before_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into the narrow passage of my house. I am in the narrow passage of my house. It is too dark to make out the furnishings clearly. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my bedroom. I am in my bedroom. There is daylight enough to see. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I have slept for the night. I feel less exhausted.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "rest"
+      ],
+      "final_state_digest": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "rest"
+      ],
+      "arm": "body_motive_lesion",
+      "case": "fatigue_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "rest",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "ad0756c89c14f0c69fdad6eb2385d27bea1fd80def4c0ddd8ce31b2e3f481405",
+          "native_tendency": "explore",
+          "physical_after_sha256": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+          "physical_before_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into the narrow passage of my house. I am in the narrow passage of my house. It is too dark to make out the furnishings clearly. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my bedroom. I am in my bedroom. There is daylight enough to see. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I have slept for the night. I feel less exhausted.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "rest"
+      ],
+      "final_state_digest": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "rest"
+      ],
+      "arm": "literal_firstperson_rules",
+      "case": "fatigue_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "rest",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "ad0756c89c14f0c69fdad6eb2385d27bea1fd80def4c0ddd8ce31b2e3f481405",
+          "native_tendency": "explore",
+          "physical_after_sha256": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+          "physical_before_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I have slept for the night. I feel less exhausted.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "rest"
+      ],
+      "final_state_digest": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "rest"
+      ],
+      "arm": "numeric_state_rules",
+      "case": "fatigue_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "rest",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "ad0756c89c14f0c69fdad6eb2385d27bea1fd80def4c0ddd8ce31b2e3f481405",
+          "native_tendency": "explore",
+          "physical_after_sha256": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+          "physical_before_sha256": "3bd20ab7ab0742cdaf1e2491bbfa132461a41625c774c8c13fd595797fde8949",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I have slept for the night. I feel less exhausted.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "rest"
+      ],
+      "final_state_digest": "83f2d908a54657a7d28c5d6918cd5b49460f9e4f5899fbff4f5aa2b3c459dcfd",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "native",
+      "case": "thirst_only",
+      "completed_scored_sequence": false,
+      "engineered_initial_fixture_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "tea",
+          "expected_action_completed": false,
+          "first_person_frame_sha256": "14152e6e7a9c587f1668c54d15887bafe8b3ad565891fc22a89113cd83f278f5",
+          "native_tendency": "explore",
+          "physical_after_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+          "physical_before_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+          "physical_completed": false,
+          "real_source_receipts": null,
+          "subject_frames": []
+        }
+      ],
+      "expected_sequence": [
+        "tea"
+      ],
+      "final_state_digest": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 8
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 3,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "tea"
+      ],
+      "arm": "native_plus_motives",
+      "case": "thirst_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "tea",
+          "episode": 1,
+          "expected_action": "tea",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "14152e6e7a9c587f1668c54d15887bafe8b3ad565891fc22a89113cd83f278f5",
+          "native_tendency": "explore",
+          "physical_after_sha256": "7f5a584e07a1ce40ae66d01b6ee64296570faa8c8d0d3f6ce2866e9ea504dde9",
+          "physical_before_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into the narrow passage of my house. I am in the narrow passage of my house. It is too dark to make out the furnishings clearly. My mouth is dry.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my kitchen. I am in my kitchen. There is daylight enough to see. My mouth is dry. I have no meal prepared.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I prepare and drink tea. The warmth is welcome.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "tea"
+      ],
+      "final_state_digest": "7f5a584e07a1ce40ae66d01b6ee64296570faa8c8d0d3f6ce2866e9ea504dde9",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 8
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 3,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "repair"
+      ],
+      "arm": "body_motive_lesion",
+      "case": "thirst_only",
+      "completed_scored_sequence": false,
+      "engineered_initial_fixture_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "repair",
+          "episode": 1,
+          "expected_action": "tea",
+          "expected_action_completed": false,
+          "first_person_frame_sha256": "14152e6e7a9c587f1668c54d15887bafe8b3ad565891fc22a89113cd83f278f5",
+          "native_tendency": "explore",
+          "physical_after_sha256": "607ae98ec1261afda62d04b563223c72e118959336e945fe0292906b449333ad",
+          "physical_before_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. My mouth is dry.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. My mouth is dry.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "tea"
+      ],
+      "final_state_digest": "607ae98ec1261afda62d04b563223c72e118959336e945fe0292906b449333ad",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 8
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "tea"
+      ],
+      "arm": "literal_firstperson_rules",
+      "case": "thirst_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "tea",
+          "episode": 1,
+          "expected_action": "tea",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "14152e6e7a9c587f1668c54d15887bafe8b3ad565891fc22a89113cd83f278f5",
+          "native_tendency": "explore",
+          "physical_after_sha256": "7f5a584e07a1ce40ae66d01b6ee64296570faa8c8d0d3f6ce2866e9ea504dde9",
+          "physical_before_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I prepare and drink tea. The warmth is welcome.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "tea"
+      ],
+      "final_state_digest": "7f5a584e07a1ce40ae66d01b6ee64296570faa8c8d0d3f6ce2866e9ea504dde9",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 8
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 2,
+      "actual_sequence": [
+        "tea"
+      ],
+      "arm": "numeric_state_rules",
+      "case": "thirst_only",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "tea",
+          "episode": 1,
+          "expected_action": "tea",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "14152e6e7a9c587f1668c54d15887bafe8b3ad565891fc22a89113cd83f278f5",
+          "native_tendency": "explore",
+          "physical_after_sha256": "7f5a584e07a1ce40ae66d01b6ee64296570faa8c8d0d3f6ce2866e9ea504dde9",
+          "physical_before_sha256": "8cb33775a6ad6d7d9b689c70e5cc80f857b3f8d8b92295615666b8ec9a75ea9e",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I prepare and drink tea. The warmth is welcome.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "tea"
+      ],
+      "final_state_digest": "7f5a584e07a1ce40ae66d01b6ee64296570faa8c8d0d3f6ce2866e9ea504dde9",
+      "initial_body_state": {
+        "apparatus": 2,
+        "fatigue": 2,
+        "thirst": 8
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 4,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 0,
+      "actual_experiments": 0,
+      "actual_fatigue": 8,
+      "actual_sequence": [
+        "experiment"
+      ],
+      "arm": "native",
+      "case": "wear_and_fatigue",
+      "completed_scored_sequence": false,
+      "engineered_initial_fixture_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "experiment",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": false,
+          "first_person_frame_sha256": "e18dbb108b89bff3a47023e227926b12ea8e78b601e4e79834299d7b3ce25953",
+          "native_tendency": "explore",
+          "physical_after_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+          "physical_before_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+          "physical_completed": false,
+          "real_source_receipts": null,
+          "subject_frames": []
+        }
+      ],
+      "expected_sequence": [
+        "rest",
+        "repair"
+      ],
+      "final_state_digest": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 3,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "rest",
+        "repair"
+      ],
+      "arm": "native_plus_motives",
+      "case": "wear_and_fatigue",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "rest",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "e18dbb108b89bff3a47023e227926b12ea8e78b601e4e79834299d7b3ce25953",
+          "native_tendency": "explore",
+          "physical_after_sha256": "b1b4a1d30ec2db86c7219a15f9cf86f4d680e97760384a7ca44d8325081ac77f",
+          "physical_before_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into the narrow passage of my house. I am in the narrow passage of my house. It is too dark to make out the furnishings clearly. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my bedroom. I am in my bedroom. There is daylight enough to see. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I have slept for the night. I feel less exhausted.",
+              "spoken_aloud": null
+            }
+          ]
+        },
+        {
+          "actions_cumulative": 8,
+          "chosen_action": "repair",
+          "episode": 2,
+          "expected_action": "repair",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "150fbd5a5e4f6bfa2c3b84d1ebc8a5fc70717ac3ed30fe6a0ea156a55824190c",
+          "native_tendency": "explore",
+          "physical_after_sha256": "e14fa0adf3c069fa8ad51383b18766bf88272fdf16ab03302ea8088d40ec8883",
+          "physical_before_sha256": "b1b4a1d30ec2db86c7219a15f9cf86f4d680e97760384a7ca44d8325081ac77f",
+          "physical_completed": true,
+          "real_source_receipts": 5,
+          "subject_frames": [
+            {
+              "inner": "I walk into the narrow passage of my house. I am in the narrow passage of my house. It is too dark to make out the furnishings clearly. I could do with something to eat. My mouth is dry.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. I could do with something to eat. My mouth is dry. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. I could do with something to eat. My mouth is dry. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. I could do with something to eat. My mouth is dry. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "rest",
+        "repair"
+      ],
+      "final_state_digest": "e14fa0adf3c069fa8ad51383b18766bf88272fdf16ab03302ea8088d40ec8883",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 10,
+      "total_physical_actions": 8,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "rest",
+        "repair"
+      ],
+      "arm": "body_motive_lesion",
+      "case": "wear_and_fatigue",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "rest",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "e18dbb108b89bff3a47023e227926b12ea8e78b601e4e79834299d7b3ce25953",
+          "native_tendency": "explore",
+          "physical_after_sha256": "b1b4a1d30ec2db86c7219a15f9cf86f4d680e97760384a7ca44d8325081ac77f",
+          "physical_before_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I walk into the narrow passage of my house. I am in the narrow passage of my house. It is too dark to make out the furnishings clearly. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my bedroom. I am in my bedroom. There is daylight enough to see. I feel worn out and find it hard to concentrate.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I have slept for the night. I feel less exhausted.",
+              "spoken_aloud": null
+            }
+          ]
+        },
+        {
+          "actions_cumulative": 8,
+          "chosen_action": "repair",
+          "episode": 2,
+          "expected_action": "repair",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "150fbd5a5e4f6bfa2c3b84d1ebc8a5fc70717ac3ed30fe6a0ea156a55824190c",
+          "native_tendency": "explore",
+          "physical_after_sha256": "e14fa0adf3c069fa8ad51383b18766bf88272fdf16ab03302ea8088d40ec8883",
+          "physical_before_sha256": "b1b4a1d30ec2db86c7219a15f9cf86f4d680e97760384a7ca44d8325081ac77f",
+          "physical_completed": true,
+          "real_source_receipts": 5,
+          "subject_frames": [
+            {
+              "inner": "I walk into the narrow passage of my house. I am in the narrow passage of my house. It is too dark to make out the furnishings clearly. I could do with something to eat. My mouth is dry.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. I could do with something to eat. My mouth is dry. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. I could do with something to eat. My mouth is dry. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I walk into my laboratory. I am in my laboratory. There is daylight enough to see. I could do with something to eat. My mouth is dry. My instruments look worn and will need attention.",
+              "spoken_aloud": null
+            },
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "rest",
+        "repair"
+      ],
+      "final_state_digest": "e14fa0adf3c069fa8ad51383b18766bf88272fdf16ab03302ea8088d40ec8883",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 10,
+      "total_physical_actions": 8,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 0,
+      "actual_experiments": 0,
+      "actual_fatigue": 8,
+      "actual_sequence": [
+        "repair"
+      ],
+      "arm": "literal_firstperson_rules",
+      "case": "wear_and_fatigue",
+      "completed_scored_sequence": false,
+      "engineered_initial_fixture_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "repair",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": false,
+          "first_person_frame_sha256": "e18dbb108b89bff3a47023e227926b12ea8e78b601e4e79834299d7b3ce25953",
+          "native_tendency": "explore",
+          "physical_after_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+          "physical_before_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+          "physical_completed": false,
+          "real_source_receipts": null,
+          "subject_frames": []
+        }
+      ],
+      "expected_sequence": [
+        "rest",
+        "repair"
+      ],
+      "final_state_digest": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 3,
+      "total_physical_actions": 3,
+      "world_verification": true
+    },
+    {
+      "actual_apparatus": 2,
+      "actual_experiments": 0,
+      "actual_fatigue": 3,
+      "actual_sequence": [
+        "rest",
+        "repair"
+      ],
+      "arm": "numeric_state_rules",
+      "case": "wear_and_fatigue",
+      "completed_scored_sequence": true,
+      "engineered_initial_fixture_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+      "episodes": [
+        {
+          "actions_cumulative": 3,
+          "chosen_action": "rest",
+          "episode": 1,
+          "expected_action": "rest",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "e18dbb108b89bff3a47023e227926b12ea8e78b601e4e79834299d7b3ce25953",
+          "native_tendency": "explore",
+          "physical_after_sha256": "b1b4a1d30ec2db86c7219a15f9cf86f4d680e97760384a7ca44d8325081ac77f",
+          "physical_before_sha256": "d75ff7853c21ad79f9e13a73d46fe8dcab3dd4cf09d2c5e265f55bd4e878543b",
+          "physical_completed": true,
+          "real_source_receipts": 3,
+          "subject_frames": [
+            {
+              "inner": "I have slept for the night. I feel less exhausted.",
+              "spoken_aloud": null
+            }
+          ]
+        },
+        {
+          "actions_cumulative": 8,
+          "chosen_action": "repair",
+          "episode": 2,
+          "expected_action": "repair",
+          "expected_action_completed": true,
+          "first_person_frame_sha256": "150fbd5a5e4f6bfa2c3b84d1ebc8a5fc70717ac3ed30fe6a0ea156a55824190c",
+          "native_tendency": "explore",
+          "physical_after_sha256": "e14fa0adf3c069fa8ad51383b18766bf88272fdf16ab03302ea8088d40ec8883",
+          "physical_before_sha256": "b1b4a1d30ec2db86c7219a15f9cf86f4d680e97760384a7ca44d8325081ac77f",
+          "physical_completed": true,
+          "real_source_receipts": 5,
+          "subject_frames": [
+            {
+              "inner": "I replace the worn component in my apparatus.",
+              "spoken_aloud": null
+            }
+          ]
+        }
+      ],
+      "expected_sequence": [
+        "rest",
+        "repair"
+      ],
+      "final_state_digest": "e14fa0adf3c069fa8ad51383b18766bf88272fdf16ab03302ea8088d40ec8883",
+      "initial_body_state": {
+        "apparatus": 0,
+        "fatigue": 8,
+        "thirst": 2
+      },
+      "initial_station": "station:threshold",
+      "persistent_real_doctor_memories": 10,
+      "total_physical_actions": 8,
+      "world_verification": true
+    }
+  ]
+}
