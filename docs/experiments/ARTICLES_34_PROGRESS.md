@@ -1,6 +1,6 @@
 # Articles of Artificiality: 34-Article progress tracker
 
-**Reviewed:** 2026-10-15  
+**Reviewed:** 2026-10-16  
 **Scope:** Pretorius, including documented experimental work in unmerged PRs #61 and #63.
 
 ## Overall engineering progress
@@ -55,7 +55,7 @@ not an automatically inferred property of the code.
 | 04 | Memory Artificiality | Current Laboratory | `████████████████░░░░` **80/100** | Unassessable | Extend new Laboratory lesion/restoration effect to independent task families | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [#63](https://github.com/Azimn/The-Doctor-Lives/pull/63), [Lab-firstperson-v0.1](https://github.com/Azimn/Pretorius-Laboratory/pull/24), [Lab-Doctor-ingress](https://github.com/Azimn/The-Doctor-Lives/pull/69) |
 | 05 | Relationship Artificiality | Independent partner | `████████████░░░░░░░░` **60/100** | Unassessable | Partner-specific reliability repair and coordination controls | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
 | 06 | Social Cognition | Independent partner | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Fallible per-partner knowledge and false-belief tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61) |
-| 07 | Motivation | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Matched real resource trade-off tasks | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [Lab-daily-v0.1](https://github.com/Azimn/Pretorius-Laboratory/pull/23), [Home-choice-1of4](https://github.com/Azimn/The-Doctor-Lives/pull/70), [Home-motives-3of4](https://github.com/Azimn/The-Doctor-Lives/pull/72) |
+| 07 | Motivation | Expanded Laboratory | `████████████████░░░░` **80/100** | Unassessable | Preregister independent unseen resource conflicts and multi-seed longitudinal interruption transfer | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [Lab-daily-v0.1](https://github.com/Azimn/Pretorius-Laboratory/pull/23), [Home-choice-1of4](https://github.com/Azimn/The-Doctor-Lives/pull/70), [Home-motives-3of4](https://github.com/Azimn/The-Doctor-Lives/pull/72), [Article07-isolated25](https://github.com/Azimn/The-Doctor-Lives/blob/main/results/cascade/ARTICLE_07_ISOLATED_MOTIVATION_CAUSAL_20261016.json) |
 | 08 | Habits and Procedural Continuity | Expanded Laboratory | `██░░░░░░░░░░░░░░░░░░` **10/100** | Unassessable | Cue-conditioned practice cost reduction and interruption | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [Lab-home-v0.1](https://github.com/Azimn/Pretorius-Laboratory/pull/22) |
 | 09 | Unconscious and Preconscious Carryover | Current Laboratory | `███████░░░░░░░░░░░░░` **35/100** | Unassessable | Cross-session priming without textual cue or instruction carryover | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [Lab-firstperson-v0.1](https://github.com/Azimn/Pretorius-Laboratory/pull/24) |
 | 10 | Affect and Emotion | Expanded Laboratory | `████████████░░░░░░░░` **60/100** | Unassessable | Appraisal intervention changing neutral-tone task behavior | [#61](https://github.com/Azimn/The-Doctor-Lives/pull/61), [Lab-home-v0.1](https://github.com/Azimn/Pretorius-Laboratory/pull/22), [Lab-daily-v0.1](https://github.com/Azimn/Pretorius-Laboratory/pull/23) |
