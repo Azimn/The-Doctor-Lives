@@ -1,6 +1,6 @@
 {
   "schema": "pretorius.articles34.engineering-progress.v1",
-  "reviewed_on": "2026-10-15",
+  "reviewed_on": "2026-10-16",
   "source_document_sha256": "0a8d52c58c404e602c78abb492fbdb92b337733624346e3318f2e4ca4fcffc60",
   "summary": "Engineering progress is a gated project-management estimate, not a measure of consciousness or an Article-level qualification result.",
   "gate_weights": {
@@ -25,7 +25,8 @@
     "Lab-firstperson-v0.1": "https://github.com/Azimn/Pretorius-Laboratory/pull/24",
     "Lab-Doctor-ingress": "https://github.com/Azimn/The-Doctor-Lives/pull/69",
     "Home-choice-1of4": "https://github.com/Azimn/The-Doctor-Lives/pull/70",
-    "Home-motives-3of4": "https://github.com/Azimn/The-Doctor-Lives/pull/72"
+    "Home-motives-3of4": "https://github.com/Azimn/The-Doctor-Lives/pull/72",
+    "Article07-isolated25": "https://github.com/Azimn/The-Doctor-Lives/blob/main/results/cascade/ARTICLE_07_ISOLATED_MOTIVATION_CAUSAL_20261016.json"
   },
   "articles": [
     {
@@ -146,12 +147,12 @@
       "title": "Motivation",
       "baseline_readiness": "Partial",
       "mechanism": "Doctor needs commitments and bounded policy",
-      "next_step": "Matched real resource trade-off tasks",
+      "next_step": "Preregister independent unseen resource conflicts and multi-seed longitudinal interruption transfer",
       "gates": {
         "defined": true,
         "mechanism": true,
         "integrated": true,
-        "causal_controls": false,
+        "causal_controls": true,
         "independent_transfer": false
       },
       "qualification": "Unassessable",
@@ -159,7 +160,8 @@
         "#61",
         "Lab-daily-v0.1",
         "Home-choice-1of4",
-        "Home-motives-3of4"
+        "Home-motives-3of4",
+        "Article07-isolated25"
       ]
     },
     {
