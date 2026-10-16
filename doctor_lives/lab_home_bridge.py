@@ -118,24 +118,47 @@ class DoctorHomeBridge:
         return {"status": "admitted", "memory_id": outcome["memory_id"],
                 "subject": frame}
 
+    @staticmethod
+    def _physical_stamp(db):
+        result = {}
+        for domain, keys in {
+            "spatial_meta": ("head_hash", "state"),
+            "domestic_meta": ("state",),
+            "rhythm_meta": ("state",),
+            "books_meta": ("books",),
+            "custody_meta": ("items",),
+        }.items():
+            present = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (domain,),
+            ).fetchone() is not None
+            if present:
+                records = {k: json.loads(v) for k, v in db.execute(
+                    "SELECT key,value FROM " + domain)}
+                result[domain] = {k: records[k] for k in keys if k in records}
+        return _hash(result)
+
     def observe(self):
         """Coherent local world perception, not a prompted account of being at home."""
         before = self.subject.verify()
+        initial_station = self.subject.embodied.verify()["station"]
+        with self.world._open() as db:
+            before_state = self._physical_stamp(db)
         frame = self.subject.observe()
         after = self.subject.verify()
-        # The LOOK actions advance local receipt revisions, but cannot alter
-        # position, daily time, or the material physical state.
-        if (before["world_epoch"], before["body_revision"],
-                before["home_revision"], before["minute"]) != (
-                after["world_epoch"], after["body_revision"],
-                after["home_revision"], after["minute"]):
+        final_station = self.subject.embodied.verify()["station"]
+        with self.world._open() as db:
+            after_state = self._physical_stamp(db)
+        # Receipt-only LOOK operations advance journal revisions but must
+        # neither change physical conditions nor alter subject location.
+        if (before["world_epoch"], before["minute"],
+                initial_station, before_state) != (
+                after["world_epoch"], after["minute"],
+                final_station, after_state):
             raise RuntimeError("World changed while Doctor perceived the room")
-        # The text and material state are included; repeated identical looks
-        # deduplicate rather than fabricating distinct autobiographical events.
         source = "laboratory-home:observe:" + _hash({
-            "epoch": after["world_epoch"], "body": after["body_revision"],
-            "home": after["home_revision"], "minute": after["minute"],
-            "text": frame["inner"],
+            "epoch": after["world_epoch"], "station": final_station,
+            "state": after_state, "text": frame["inner"],
         })
         return self._admit(frame, source, kind="observation")
 
@@ -145,6 +168,35 @@ class DoctorHomeBridge:
             raise PermissionError("Action unavailable through Doctor's subject port")
         if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
             raise ValueError("Stable bounded action identity required")
+        # Return old *admitted* experiences on a retry even when daily time
+        # has changed since the original action. Never regenerate a subjective
+        # result from the new world state for an old source receipt.
+        with self.world._open() as db:
+            known = db.execute(
+                "SELECT envelope,event_hash FROM " + _ACTION_DOMAINS[op] +
+                " WHERE event_id=?", (event_id,),
+            ).fetchone()
+        if known is not None:
+            cursor = known[1]
+            existing = [m for m in self.doctor.brain.store.memories(False)
+                        if m["source"] == "laboratory-home:action:" + cursor]
+            if existing:
+                if len(existing) != 1:
+                    raise RuntimeError("Duplicate source admission in Doctor store")
+                # For replays return the earlier first-person trace. The
+                # recorded out-loud impulse belongs to that historical event.
+                spoken = None
+                if op == "walk":
+                    with self.world._open() as db:
+                        row = db.execute(
+                            "SELECT envelope FROM domestic_events WHERE event_id=?",
+                            ("motion:" + cursor[:32],),
+                        ).fetchone()
+                    if row:
+                        spoken = json.loads(row[0])["subject"]["spoken_aloud"]
+                return {"status": "already_admitted", "memory_id": existing[0]["id"],
+                        "subject": {"inner": existing[0]["text"],
+                                    "spoken_aloud": spoken}}
         result = self.subject.act(op, event_id=event_id, **args)
         # The low-level domain receipt is the evidence authority. It is
         # independently persisted before this Doctor memory admission.
