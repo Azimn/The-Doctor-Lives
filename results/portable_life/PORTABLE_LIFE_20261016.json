@@ -1,0 +1,19 @@
+{
+  "actual_real_doctor_physical_proof": "separately tested by pinned-lab CI",
+  "article_qualifications": "UNCHANGED_0_OF_34",
+  "canonical_article_progress": "UNCHANGED_46_OF_100_ENGINEERING",
+  "cross_environment_relabel_invariance": {"passes": 240, "total": 240},
+  "forged_receipt_rejected": true,
+  "grade_type": "SYNTHETIC_ENGINEERING_PROXY_NOT_ARTICLE_OR_BELIEVABILITY",
+  "held_out_real_world_transfer": "NOT_TESTED",
+  "independent_social_believability": "NOT_TESTED",
+  "interpretation": "A domain-neutral selector responds to portable inputs and remembers procedural outcomes. Shared semantic labels, synthetic rewards, and scripted scenarios make this an engineering check only.",
+  "longitudinal_life_likeness": "NOT_TESTED",
+  "need_pressure_counterfactual_reversal": {"passes": 240, "total": 240},
+  "procedure_survives_restart": true,
+  "schema": "pretorius.portable-life.behavioral-proxies.v0.1",
+  "seed": 20261016,
+  "study_date": "2026-10-16",
+  "trained_preference_transferred_between_labels": true,
+  "unperceived_action_hidden": true
+}
