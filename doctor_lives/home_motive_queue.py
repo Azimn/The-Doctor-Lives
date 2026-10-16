@@ -223,8 +223,10 @@ class HomeActivityQueue:
     def step(self, plan_id: str):
         """One bounded physical action; movement or speech can interrupt it.
 
-        On a crash between Laboratory and queue commit the stable event ID
-        replays the *same* original world receipt and Doctor memory.
+        Any crash after a physical write but before queue advancement
+        fails closed on restart because the world stamp changed. A future
+        reconciliation mechanism may safely resume that same event ID only
+        after proving no intervening unrelated world events.
         """
         with _open(self.path) as db:
             db.execute("BEGIN IMMEDIATE")
