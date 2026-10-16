@@ -22,7 +22,9 @@
     "#63": "https://github.com/Azimn/The-Doctor-Lives/pull/63",
     "Lab-home-v0.1": "https://github.com/Azimn/Pretorius-Laboratory/pull/22",
     "Lab-daily-v0.1": "https://github.com/Azimn/Pretorius-Laboratory/pull/23",
-    "Lab-firstperson-v0.1": "https://github.com/Azimn/Pretorius-Laboratory/pull/24"
+    "Lab-firstperson-v0.1": "https://github.com/Azimn/Pretorius-Laboratory/pull/24",
+    "Lab-Doctor-ingress": "https://github.com/Azimn/The-Doctor-Lives/pull/69",
+    "Home-choice-1of4": "https://github.com/Azimn/The-Doctor-Lives/pull/70"
   },
   "articles": [
     {
@@ -77,7 +79,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "#63"
+        "#63",
+        "Lab-Doctor-ingress"
       ]
     },
     {
@@ -97,7 +100,8 @@
       "work_refs": [
         "#61",
         "#63",
-        "Lab-firstperson-v0.1"
+        "Lab-firstperson-v0.1",
+        "Lab-Doctor-ingress"
       ]
     },
     {
@@ -152,7 +156,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "Lab-daily-v0.1"
+        "Lab-daily-v0.1",
+        "Home-choice-1of4"
       ]
     },
     {
@@ -231,7 +236,8 @@
         "#61",
         "Lab-home-v0.1",
         "Lab-daily-v0.1",
-        "Lab-firstperson-v0.1"
+        "Lab-firstperson-v0.1",
+        "Lab-Doctor-ingress"
       ]
     },
     {
@@ -250,7 +256,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "Lab-firstperson-v0.1"
+        "Lab-firstperson-v0.1",
+        "Home-choice-1of4"
       ]
     },
     {
@@ -287,7 +294,8 @@
       },
       "qualification": "Unassessable",
       "work_refs": [
-        "#61"
+        "#61",
+        "Home-choice-1of4"
       ]
     },
     {
@@ -380,7 +388,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "#63"
+        "#63",
+        "Home-choice-1of4"
       ]
     },
     {
@@ -401,7 +410,8 @@
         "#61",
         "Lab-home-v0.1",
         "Lab-daily-v0.1",
-        "Lab-firstperson-v0.1"
+        "Lab-firstperson-v0.1",
+        "Home-choice-1of4"
       ]
     },
     {
@@ -438,7 +448,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "#63"
+        "#63",
+        "Lab-Doctor-ingress"
       ]
     },
     {
@@ -512,7 +523,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "Lab-firstperson-v0.1"
+        "Lab-firstperson-v0.1",
+        "Lab-Doctor-ingress"
       ]
     },
     {
@@ -587,7 +599,8 @@
       "work_refs": [
         "#61",
         "Lab-home-v0.1",
-        "Lab-daily-v0.1"
+        "Lab-daily-v0.1",
+        "Home-choice-1of4"
       ]
     },
     {
@@ -606,7 +619,8 @@
       "qualification": "Unassessable",
       "work_refs": [
         "#61",
-        "Lab-daily-v0.1"
+        "Lab-daily-v0.1",
+        "Home-choice-1of4"
       ]
     },
     {
