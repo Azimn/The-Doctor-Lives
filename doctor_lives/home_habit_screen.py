@@ -75,8 +75,14 @@ def _motive_baseline(state):
     """Original formula, choosing among the two domain actions only."""
     scores = motive_scores(state)["scores"]
     eligibility = motive_scores(state)["eligible"]
-    options = [task for task in OPS if eligibility[task]]
-    return max(options, key=lambda name: (scores[name], -tuple(OPS).index(name))) if options else None
+    # Existing home motive policy calls this activity "clean"; this
+    # experiment uses the ordinary-household synonym "tidy". Translation
+    # only: no policy thresholds, scores or feasibility values are changed.
+    original_name = {"tea": "tea", "tidy": "clean"}
+    options = [task for task in OPS if eligibility[original_name[task]]]
+    return (max(options, key=lambda name: (
+        scores[original_name[name]], -tuple(OPS).index(name)))
+            if options else None)
 
 
 def _experience(bridge, prefix):
