@@ -27,6 +27,15 @@ _ACTION_DOMAINS = {
     "repair": "rhythm_events", "book": "books_events",
     "measure": "instrument_events", "take_book": "custody_events",
     "put_book": "custody_events",
+    "discard_meal": "rhythm_events", "write_paper": "rhythm_events",
+    "read_paper": "rhythm_events",
+    "arrange:move": "arrangement_events",
+    "arrange:turn": "arrangement_events",
+    "material:take": "botanical_events", "material:put": "botanical_events",
+    "material:start_press": "botanical_events",
+    "material:finish_press": "botanical_events",
+    "material:mount": "botanical_events",
+    "material:label": "botanical_events",
 }
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,80}\Z")
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
@@ -127,6 +136,9 @@ class DoctorHomeBridge:
             "rhythm_meta": ("state",),
             "books_meta": ("books",),
             "custody_meta": ("items",),
+            "embodied_meta": ("station",),
+            "botanical_meta": ("state",),
+            "arrangement_meta": ("state",),
         }.items():
             present = db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
@@ -190,8 +202,9 @@ class DoctorHomeBridge:
                 "quantity": args.get("quantity"),
             }.items()):
                 raise RuntimeError("Mismatched instrument receipt")
-        elif event.get("op") != op or event.get("args") != args:
-            raise RuntimeError("Mismatched domestic/rhythm receipt")
+        elif event.get("op") != (op.partition(":")[2] if op.startswith(
+                ("arrange:", "material:")) else op) or event.get("args") != args:
+            raise RuntimeError("Mismatched physical source receipt")
 
     def act(self, op: str, *, event_id: str, **args):
         """Bounded physical action plus deduplicated first-person Doctor ingress."""
@@ -239,6 +252,59 @@ class DoctorHomeBridge:
             self._check_action_proof(op, args, e)
         source = "laboratory-home:action:" + cursor
         return self._admit(result, source, kind="observation")
+
+    def observe_opportunities(self):
+        """Admit *only* authenticated first-person voluntary possibilities.
+
+        Offer IDs, source-domain names and hidden material state stay in the
+        trusted host response; none are injected into Doctor perception.
+        Not evidence that the Doctor has chosen any activity.
+        """
+        from pretorius_lab.unified_home_actions import UnifiedHomeActions
+        port = UnifiedHomeActions(self.world)
+        with self.world._open() as db:
+            before = self._physical_stamp(db)
+        choices = port.discover()
+        with self.world._open() as db:
+            after = self._physical_stamp(db)
+        if before != after:
+            raise RuntimeError("House changed while Doctor inspected options")
+        source = "laboratory-home:offers:" + _hash({
+            "stamp": choices["world_stamp"],
+            "text": choices["subject_frame"]["inner"],
+        })
+        experience = self._admit(
+            choices["subject_frame"], source, kind="observation")
+        return {
+            "subject": experience["subject"],
+            "memory_id": experience["memory_id"],
+            "status": experience["status"],
+            "offers": choices["offers"],  # host-only capability list
+            "world_stamp": choices["world_stamp"],
+        }
+
+    def act_offer(self, offer_id: str, *, event_id: str, text=None):
+        """Act on one fresh verified offered action, then admit its real receipt.
+
+        The same original `act(command,event_id,**args)` can be used for a
+        receipt retry after a crash if an offer is no longer live. Never
+        impersonate Doctor initiative: the caller selects the offer here.
+        """
+        from pretorius_lab.unified_home_actions import UnifiedHomeActions
+        choices = UnifiedHomeActions(self.world).discover()
+        chosen = next(
+            (item for item in choices["offers"] if item["offer_id"] == offer_id),
+            None)
+        if chosen is None:
+            raise RuntimeError("The previous physical offer is stale or invented")
+        args = dict(chosen["args"])
+        if chosen["requires_my_own_words"]:
+            if type(text) is not str:
+                raise ValueError("The actual author must provide their text")
+            args["text"] = text
+        elif text is not None:
+            raise ValueError("No host-supplied text for a nonwriting action")
+        return self.act(chosen["command"], event_id=event_id, **args)
 
     def request_cognition(self, *, trigger="laboratory_home"):
         """Actual Doctor cognition is available, not a scripted second policy.
