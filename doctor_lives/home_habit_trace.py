@@ -135,6 +135,12 @@ class VerifiedHouseholdHabit:
         # Validate every claimed reinforcement against the real replayed
         # source events before any learned preference can influence action.
         self.verify()
+        # Even the caller's proposed perception context must come from
+        # the currently authenticated physical world. No fake "morning"
+        # label or stale hidden numeric snapshot may steer this policy.
+        if (state != self.bridge.subject.rhythm.audit_state() or
+                station != self.bridge.subject.embodied.verify()["station"]):
+            raise ValueError("Habit cue does not match the live physical source")
         cue = kitchen_cue(state, station)
         counts = {task: 0 for task in OPS}
         with _db(self.path) as db:
