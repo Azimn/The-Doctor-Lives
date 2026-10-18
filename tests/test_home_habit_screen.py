@@ -64,9 +64,15 @@ class RealDoctorHabitScreenTests(unittest.TestCase):
             second = habit.learn(event_id="real-tea", before=before)
             self.assertEqual(second["status"], "already_learned")
             self.assertEqual(habit.verify()["verified_practices"], 1)
+            real_state = bridge.subject.rhythm.audit_state()
             self.assertIsNone(
-                habit.advise(state=bridge.subject.rhythm.audit_state(),
+                habit.advise(state=real_state,
                              station="station:kitchen")["advice"])
+            forged = {**real_state, "minute": 15 * 60}
+            with self.assertRaises(ValueError):
+                habit.advise(state=forged, station="station:kitchen")
+            with self.assertRaises(ValueError):
+                habit.advise(state=real_state, station="station:parlor")
             with self.assertRaises(TypeError):
                 habit.learn(event_id="real-tea", before=before, reward=9999)
 
