@@ -38,6 +38,7 @@ class RegisteredHabitSpecTests(unittest.TestCase):
 @unittest.skipUnless(HAS_LAB, "Needs pinned original full physical Laboratory")
 class RealDoctorHabitScreenTests(unittest.TestCase):
     def test_no_fabricated_reward_duplicate_receipt_or_wrong_prior_world(self):
+        import sqlite3
         from pretorius_lab.habitat_v2 import SpatialHabitat
         from pretorius_lab.home_life import HomeLife
         from pretorius_lab.daily_rhythm import DailyRhythm
@@ -84,7 +85,6 @@ class RealDoctorHabitScreenTests(unittest.TestCase):
 
             # Destroy trace trust without changing the immutable Laboratory
             # receipt; the verifier must detect source hash spoofing.
-            import sqlite3
             with sqlite3.connect(path / "habits.sqlite3") as con:
                 con.execute("UPDATE practiced_actions SET source_hash=?",
                             ("0" * 64,))
