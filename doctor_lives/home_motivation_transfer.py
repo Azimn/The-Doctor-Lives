@@ -131,6 +131,10 @@ def _run_trial(root: Path, case_id: str, arm: str, seed: int):
                 chosen = plan["task"]
                 tendency = plan["choices"]["native_selected"]
                 observation_sha = plan["choices"]["frame_sha256"]
+                if (participant_steps + len(plan["steps"]) >
+                        MAX_PARTICIPANT_ACTIONS):
+                    queue.cancel(plan_id)
+                    raise RuntimeError("Queued task exceeds the remaining action budget")
                 # A real durable interruption at every participant plan. No
                 # world mutation is slipped between pause and queue resume.
                 paused = queue.pause(plan_id)
@@ -171,6 +175,21 @@ def _run_trial(root: Path, case_id: str, arm: str, seed: int):
                     chosen = simple_choice(frame)
                 else:
                     chosen = numeric_rule(before)
+                # The frozen original _execute has its own nine-step limit.
+                # Check the physical route first so it cannot overrun our
+                # tighter remaining whole-trajectory controller budget.
+                from .home_choice_probe import TARGET_STATIONS, _shortest_route
+                from pretorius_lab.daily_rhythm import _can_see
+                from pretorius_lab.embodied_access import STATIONS as PHYSICAL_STATIONS
+                target = TARGET_STATIONS[chosen]
+                route = _shortest_route(
+                    bridge.subject.embodied.verify()["station"], target)
+                destination = PHYSICAL_STATIONS[target][0]
+                light_step = bool(
+                    chosen != "rest" and not _can_see(before, destination))
+                minimum = len(route) + int(light_step) + 1
+                if participant_steps + minimum > MAX_PARTICIPANT_ACTIONS:
+                    raise RuntimeError("Not enough remaining world action budget")
                 attempt = _execute(
                     bridge, chosen,
                     prefix=f"transfer-{index}-{arm[:8]}",
