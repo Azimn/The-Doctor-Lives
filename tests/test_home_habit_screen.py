@@ -69,6 +69,19 @@ class RealDoctorHabitScreenTests(unittest.TestCase):
             with self.assertRaises(TypeError):
                 habit.learn(event_id="real-tea", before=before, reward=9999)
 
+            # Even a real world receipt cannot be relabeled as having
+            # happened in a different familiar time-of-day context.
+            with sqlite3.connect(path / "habits.sqlite3") as con:
+                con.execute("UPDATE practiced_actions SET cue=?",
+                            ("kitchen:afternoon",))
+            with self.assertRaises(ValueError):
+                habit.advise(state=bridge.subject.rhythm.audit_state(),
+                             station="station:kitchen")
+            with sqlite3.connect(path / "habits.sqlite3") as con:
+                con.execute("UPDATE practiced_actions SET cue=?",
+                            ("kitchen:morning",))
+            self.assertEqual(habit.verify()["verified_practices"], 1)
+
             # Destroy trace trust without changing the immutable Laboratory
             # receipt; the verifier must detect source hash spoofing.
             import sqlite3
