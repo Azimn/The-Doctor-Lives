@@ -117,6 +117,8 @@ def execute(bridge: DoctorHomeBridge, decision: dict, *, prefix: str):
                 bridge.subject.rhythm.audit_state())
             or decision["station"] != bridge.subject.embodied.verify()["station"]):
         raise RuntimeError("World changed; reobserve and choose again")
+    if decision.get("arm") not in ARMS:
+        raise ValueError("Unknown physical household controller")
     task = decision["selected_task"]
     if task is None:
         return {"completed": False, "abstained": True,
@@ -129,6 +131,7 @@ def execute(bridge: DoctorHomeBridge, decision: dict, *, prefix: str):
             raise RuntimeError("Proposed household action is no longer feasible")
     initial = bridge.subject.rhythm.audit_state()
     receipts = []
+    from pretorius_lab.physics import Conflict, LabError
     try:
         for n, step in enumerate(decision["steps"], 1):
             eid = f"{prefix}{n}"
@@ -137,7 +140,9 @@ def execute(bridge: DoctorHomeBridge, decision: dict, *, prefix: str):
                 raise RuntimeError("Physical action did not reach Doctor as experience")
             receipts.append({"op": step["op"], "event_id": eid,
                              "subject": action["subject"]["inner"]})
-    except Exception as exc:
+    except (Conflict, LabError) as exc:
+        # Only genuine physical denials are ordinary negative outcomes.
+        # Do NOT conceal source-integrity, ledger or cognition failures.
         # World may have partially changed after a prior valid move; never
         # roll it back or claim the plan completed.
         bridge.subject.verify()
