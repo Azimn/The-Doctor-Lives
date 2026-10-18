@@ -37,6 +37,47 @@ class RegisteredHabitSpecTests(unittest.TestCase):
 
 @unittest.skipUnless(HAS_LAB, "Needs pinned original full physical Laboratory")
 class RealDoctorHabitScreenTests(unittest.TestCase):
+    def test_no_fabricated_reward_duplicate_receipt_or_wrong_prior_world(self):
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.home_life import HomeLife
+        from pretorius_lab.daily_rhythm import DailyRhythm
+        from doctor_lives.home_habit_screen import _reopen, _act
+        from doctor_lives.lab_home_bridge import _hash
+
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp)
+            world = SpatialHabitat.create(path / "lab.sqlite3")
+            HomeLife(world).initialize()
+            DailyRhythm(world).initialize()
+            bridge, habit = _reopen(path)
+            _act(bridge, "walk", "enter-test-hall", station="station:hall")
+            _act(bridge, "walk", "enter-test-kitchen", station="station:kitchen")
+            before = bridge.subject.rhythm.audit_state()
+            with self.assertRaises(ValueError):
+                habit.learn(event_id="not-a-world-receipt", before=before)
+            _act(bridge, "brew_tea", "real-tea")
+            with self.assertRaises(ValueError):
+                habit.learn(event_id="real-tea", before={**before, "minute": 440})
+            first = habit.learn(event_id="real-tea", before=before)
+            self.assertEqual(first["status"], "learned")
+            second = habit.learn(event_id="real-tea", before=before)
+            self.assertEqual(second["status"], "already_learned")
+            self.assertEqual(habit.verify()["verified_practices"], 1)
+            self.assertIsNone(
+                habit.advise(state=bridge.subject.rhythm.audit_state(),
+                             station="station:kitchen")["advice"])
+            with self.assertRaises(TypeError):
+                habit.learn(event_id="real-tea", before=before, reward=9999)
+
+            # Destroy trace trust without changing the immutable Laboratory
+            # receipt; the verifier must detect source hash spoofing.
+            import sqlite3
+            with sqlite3.connect(path / "habits.sqlite3") as con:
+                con.execute("UPDATE practiced_actions SET source_hash=?",
+                            ("0" * 64,))
+            with self.assertRaises(ValueError):
+                habit.verify()
+
     def test_two_reversed_daily_training_worlds_with_real_memory_and_outcomes(self):
         report = run_habit_screen()
         self.assertEqual(report["article_08_engineering_score_before_and_after"], 10)
