@@ -1,0 +1,45 @@
+name: Article 07 multi-seed compound motive transfer and durable interruption
+on:
+  push:
+    branches:
+      - experiment/article07-transfer-interruptions-20261018
+  pull_request:
+    paths:
+      - doctor_lives/home_motivation_transfer.py
+      - tests/test_home_motivation_transfer.py
+      - tools/run_home_motivation_transfer.py
+      - docs/experiments/ARTICLE_07_TRANSFER_INTERRUPTIONS_PREREG_20261018.md
+      - .github/workflows/article-07-transfer.yml
+  workflow_dispatch:
+jobs:
+  transfer-with-original-controls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: pinned-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual Doctor neural runtime and existing bridge
+        run: python -m pip install -e .
+      - name: Freeze checks, five-arm real Doctor smoke and 48-hour physical receipts
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m unittest discover -s tests -p 'test_home_motivation_transfer.py' -v
+      - name: Execute all 75 cases with three RNG seeds and all five frozen controllers
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: |
+          python -m tools.run_home_motivation_transfer --output results/article07_compound_transfer_20261018.json
+      - name: Archive full trial evidence including losing arms
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: article07-compound-transfer-75-trials
+          path: results/article07_compound_transfer_20261018.json
+          if-no-files-found: warn
