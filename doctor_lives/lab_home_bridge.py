@@ -66,9 +66,12 @@ def _first_person_frame(value: dict) -> str:
 
 def _row(db, table, event_id):
     # Table is selected only from hard-coded trusted operation mapping.
+    # Books preserve their historical event JSON in `payload`; all other
+    # Laboratory ledgers use `envelope`. Both are verified source receipts.
+    payload_field = "payload" if table == "books_events" else "envelope"
     result = db.execute(
-        "SELECT envelope,event_hash FROM " + table + " WHERE event_id=?",
-        (event_id,),
+        "SELECT " + payload_field + ",event_hash FROM " + table +
+        " WHERE event_id=?", (event_id,),
     ).fetchone()
     if not result:
         raise RuntimeError("An offered Laboratory action has no durable world receipt")
@@ -216,9 +219,12 @@ class DoctorHomeBridge:
         # has changed since the original action. Never regenerate a subjective
         # result from the new world state for an old source receipt.
         with self.world._open() as db:
+            receipt_table = _ACTION_DOMAINS[op]
+            payload_field = ("payload" if receipt_table == "books_events"
+                             else "envelope")
             known = db.execute(
-                "SELECT envelope,event_hash FROM " + _ACTION_DOMAINS[op] +
-                " WHERE event_id=?", (event_id,),
+                "SELECT " + payload_field + ",event_hash FROM " +
+                receipt_table + " WHERE event_id=?", (event_id,),
             ).fetchone()
         if known is not None:
             prior, cursor = json.loads(known[0]), known[1]
