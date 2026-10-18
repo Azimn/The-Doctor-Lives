@@ -1,0 +1,35 @@
+name: Doctor Unified Home Experience
+on:
+  push:
+    branches:
+      - experiment/doctor-unified-home-bridge-20261018
+  pull_request:
+    paths:
+      - doctor_lives/lab_home_bridge.py
+      - tests/test_doctor_unified_home.py
+      - .github/workflows/doctor-unified-home.yml
+  workflow_dispatch:
+jobs:
+  unified-real-doctor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 116311e42783a09d9e2806b988998c7548710f72
+          path: pinned-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual Doctor runtime
+        run: python -m pip install -e .
+      - name: Doctor real first-person offered book and object actions
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m unittest discover -s tests -p test_doctor_unified_home.py -v
+      - name: Full Doctor existing brain and causal control regression suite
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m unittest discover -s tests -v
