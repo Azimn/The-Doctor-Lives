@@ -131,6 +131,10 @@ class VerifiedHouseholdHabit:
         return {"status": "learned", "cue": cue, "task": task}
 
     def advise(self, *, state: dict, station: str):
+        # Advisory reads must not accept a manipulated local count cache.
+        # Validate every claimed reinforcement against the real replayed
+        # source events before any learned preference can influence action.
+        self.verify()
         cue = kitchen_cue(state, station)
         counts = {task: 0 for task in OPS}
         with _db(self.path) as db:
@@ -148,32 +152,63 @@ class VerifiedHouseholdHabit:
                 "practices": counts, "abstained": chosen is None}
 
     def verify(self):
-        """No free-standing fabricated successes; rebind to full physical chain."""
+        """Reconstruct historical context and result for every habit claim.
+
+        Checking only the event hash is insufficient: it proves that an
+        action took place but cannot prove a mutable trace's claimed cue.
+        Replay every real rhythm transition and require that the claimed
+        daypart, physical success and actual Doctor source match.
+        """
+        from pretorius_lab.daily_rhythm import transition
         proof = self.bridge.subject.verify()
-        verified = 0
         with _db(self.path) as db:
-            rows = db.execute(
+            entries = db.execute(
                 "SELECT world_epoch,source_hash,event_id,cue,task,before_sha,after_sha "
                 "FROM practiced_actions ORDER BY id").fetchall()
+        claims = {}
+        for entry in entries:
+            if entry[2] in claims:
+                raise ValueError("An action cannot be claimed twice")
+            claims[entry[2]] = entry
+
         with self.bridge.world._open() as world:
-            for epoch, h, event_id, cue, task, prior, after in rows:
-                row = world.execute(
-                    "SELECT envelope,event_hash FROM rhythm_events WHERE event_id=?",
-                    (event_id,)).fetchone()
-                if row is None or row[1] != h:
-                    raise ValueError("Habit evidence has no real world event")
-                event = json.loads(row[0])
-                if (epoch != proof["world_epoch"] or _hash(event) != h
-                        or event.get("op") != OPS.get(task)
-                        or event.get("args") != {}
-                        or event.get("station") != "station:kitchen"
-                        or event.get("before_digest") != prior
-                        or event.get("after_digest") != after
-                        or cue not in CUES):
-                    raise ValueError("Persisted habit does not match actual source receipt")
-                # Real Doctor must have accepted the same actual experience.
-                if not any(m["source"] == "laboratory-home:action:" + h
-                           for m in self.bridge.doctor.brain.store.memories(False)):
-                    raise ValueError("Habit has no corresponding Doctor lived observation")
-                verified += 1
-        return {"rules": RULES, "verified": True, "verified_practices": verified}
+            data = {
+                k: json.loads(v) for k, v in world.execute(
+                    "SELECT key,value FROM rhythm_meta")
+            }
+            old = data["genesis"]
+            inspected = {}
+            for (envelope,) in world.execute(
+                "SELECT envelope FROM rhythm_events ORDER BY revision"):
+                event = json.loads(envelope)
+                after, subject = transition(
+                    old, event["op"], event["args"], event["station"])
+                if (event["before_digest"] != _hash(old)
+                        or event["after_digest"] != _hash(after)
+                        or event["subject"] != subject):
+                    raise ValueError("Independent historical world replay diverged")
+                entry = claims.get(event["event_id"])
+                if entry:
+                    epoch, h, event_id, cue, task, prior_sha, after_sha = entry
+                    if (epoch != proof["world_epoch"]
+                            or _hash(event) != h
+                            or event["op"] != OPS.get(task)
+                            or event["args"] != {}
+                            or event["station"] != "station:kitchen"
+                            or prior_sha != _hash(old)
+                            or after_sha != _hash(after)
+                            or kitchen_cue(old, event["station"]) != cue
+                            or not _material_gain(task, old, after)):
+                        raise ValueError("Learned trace fabricates a cue or physical outcome")
+                    inspected[event_id] = h
+                old = after
+            if len(inspected) != len(entries):
+                raise ValueError("Claimed habit event is missing from source world")
+        doctor_sources = {
+            m["source"] for m in self.bridge.doctor.brain.store.memories(False)
+        }
+        for source_hash in inspected.values():
+            if "laboratory-home:action:" + source_hash not in doctor_sources:
+                raise ValueError("Doctor did not receive the observed outcome")
+        return {"rules": RULES, "verified": True,
+                "verified_practices": len(inspected)}
