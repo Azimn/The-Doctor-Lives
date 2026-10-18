@@ -850,6 +850,11 @@ class PretoriusBrain:
         }
         total = sum(pre_normalization.values())
         adjusted = {action: pre_normalization[action] / total for action in ACTIONS}
+        # A lesion of the state bridge must be a true identity transformation:
+        # renormalizing already-normalized recurrent values changes 0.1 into
+        # 0.10000000000000002 and violates the actual ablation control.
+        if not bridge_enabled:
+            adjusted = dict(base)
         audit = {
             "version": str(cfg.get("version", "state-policy-bridge-v0.4")),
             "config": cfg,
@@ -868,7 +873,8 @@ class PretoriusBrain:
             "combined": combined,
             "clipping": {"family": [-family_cap, family_cap], "aggregate": [-total_cap, total_cap]},
             "normalization": {
-                "method": "positive_floor_then_sum_to_one",
+                "method": ("positive_floor_then_sum_to_one"
+                           if bridge_enabled else "disabled_identity"),
                 "positive_floor": 1e-9,
                 "pre_normalization": pre_normalization,
                 "denominator": total,
