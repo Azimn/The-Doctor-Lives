@@ -97,8 +97,15 @@ class DoctorUnifiedHomeIntegration(unittest.TestCase):
         page1 = self.do("book", "read-first", book_id="book:007", operation="read")
         self.assertIn("first authentic page", page1["subject"]["inner"])
         self.do("book", "page-next", book_id="book:007", operation="turn", direction=1)
-        self.do("book", "place-page-flag", book_id="book:007",
-                operation="mark", bookmark_id="page-flag-1")
+        placed = self.do("book", "place-page-flag", book_id="book:007",
+                         operation="mark", bookmark_id="page-flag-1")
+        # Retry same accepted world receipt after the page has changed;
+        # never create a second memory or a second physical bookmark.
+        retry = self.bridge.act("book", event_id="place-page-flag",
+                                book_id="book:007", operation="mark",
+                                bookmark_id="page-flag-1")
+        self.assertEqual(retry["memory_id"], placed["memory_id"])
+        self.assertEqual(retry["status"], "already_admitted")
         self.do("book", "close-for-tomorrow",
                 book_id="book:007", operation="close")
         self.assertEqual(
