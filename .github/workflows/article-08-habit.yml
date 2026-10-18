@@ -1,0 +1,45 @@
+name: Article 08 authenticated household habit acquisition
+on:
+  push:
+    branches:
+      - experiment/article08-household-habit-learning-20261018
+  pull_request:
+    paths:
+      - doctor_lives/home_habit_trace.py
+      - doctor_lives/home_habit_screen.py
+      - tools/run_home_habit_screen.py
+      - tests/test_home_habit_screen.py
+      - docs/experiments/ARTICLE_08_HOUSEHOLD_HABIT_PREREG_20261018.md
+      - .github/workflows/article-08-habit.yml
+  workflow_dispatch:
+jobs:
+  household-habit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: pinned-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install real Doctor runtime
+        run: python -m pip install -e .
+      - name: Test reverse context learning and true source receipts
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m unittest discover -s tests -p 'test_home_habit_screen.py' -v
+      - name: Run frozen habit acquisition and independent baseline comparison
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m tools.run_home_habit_screen --output results/article08_habit_reversals.json
+      - name: Preserve full Article 8 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: article08-physical-habit-reversals
+          path: results/article08_habit_reversals.json
+          if-no-files-found: warn
