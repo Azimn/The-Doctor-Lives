@@ -50,13 +50,18 @@ CASES = {
 
 
 def seeded_fixture(change):
-    from pretorius_lab.daily_rhythm import _validate, initial_state
-    s = initial_state()
-    if set(change) - {"fatigue", "thirst", "apparatus", "water"}:
+    # Validate malformed research input BEFORE importing the optional real
+    # Laboratory package. The full Doctor regression job intentionally
+    # runs without that integration, so negative-path tests must still work.
+    if type(change) is not dict or set(change) - {
+            "fatigue", "thirst", "apparatus", "water"}:
         raise ValueError("Unregistered environment intervention")
     for key, value in change.items():
         if type(value) is not int:
             raise ValueError("Physical state must have integer counts")
+    from pretorius_lab.daily_rhythm import _validate, initial_state
+    s = initial_state()
+    for key, value in change.items():
         if key == "water":
             s["supplies"]["water"] = value
         else:
