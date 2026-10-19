@@ -321,7 +321,9 @@ class DoctorHomeBridge:
             raise RuntimeError("The previous physical offer is stale or invented")
         if chosen["command"] in {"sleep", "rest", "advance"}:
             safety = self.care_review()
-            if safety["pause_unattended_time"]:
+            if safety["pause_unattended_time"] and not (
+                    chosen["command"] == "rest"
+                    and safety["recovery_rest_needed"]):
                 raise RuntimeError(
                     "Welfare hold: resolve basic needs before further unattended time")
         args = dict(chosen["args"])
