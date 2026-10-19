@@ -22,6 +22,10 @@ _ACTION_DOMAINS = {
     "advance": "rhythm_events", "light": "rhythm_events",
     "extinguish": "rhythm_events", "prepare_meal": "rhythm_events",
     "eat": "rhythm_events", "brew_tea": "rhythm_events",
+    "drink_water": "rhythm_events",
+    "draw_water": "rhythm_events",
+    "accept_delivery": "rhythm_events",
+    "use_washroom": "rhythm_events",
     "sleep": "rhythm_events", "rest": "rhythm_events",
     "clean": "rhythm_events", "experiment": "rhythm_events",
     "repair": "rhythm_events", "book": "books_events",
@@ -298,6 +302,11 @@ class DoctorHomeBridge:
             "world_stamp": choices["world_stamp"],
         }
 
+    def care_review(self):
+        """Engineer-only safety status; never inject numeric needs as thoughts."""
+        from pretorius_lab.care_safety import assess
+        return assess(self.world)
+
     def act_offer(self, offer_id: str, *, event_id: str, text=None):
         """Act on one fresh verified offered action, then admit its real receipt.
 
@@ -312,6 +321,13 @@ class DoctorHomeBridge:
             None)
         if chosen is None:
             raise RuntimeError("The previous physical offer is stale or invented")
+        if chosen["command"] in {"sleep", "rest", "advance"}:
+            safety = self.care_review()
+            if safety["pause_unattended_time"] and not (
+                    chosen["command"] == "rest"
+                    and safety["recovery_rest_needed"]):
+                raise RuntimeError(
+                    "Welfare hold: resolve basic needs before further unattended time")
         args = dict(chosen["args"])
         if chosen["requires_my_own_words"]:
             if type(text) is not str:

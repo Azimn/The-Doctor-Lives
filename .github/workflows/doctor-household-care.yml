@@ -1,0 +1,38 @@
+name: Doctor Household Care Closed Loop
+on:
+  push:
+    branches: [experiment/doctor-household-care-20261019]
+  pull_request:
+    paths:
+      - doctor_lives/lab_home_bridge.py
+      - tests/test_doctor_care.py
+      - .github/workflows/doctor-household-care.yml
+  workflow_dispatch:
+jobs:
+  doctor-care:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: f7cfb38cebd62316c00d42317f8e4ec01590eac0
+          path: pinned-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install existing Doctor without substituting his identity
+        run: python -m pip install -e .
+      - name: Run actual Doctor care and finite inventory memory tests
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m unittest discover -s tests -p test_doctor_care.py -v
+      - name: Run existing physical project and bookmark integration
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m unittest discover -s tests -p test_doctor_projects.py -v
+      - name: Run complete Doctor brain and lab integration suite
+        env:
+          PYTHONPATH: pinned-laboratory
+        run: python -m unittest discover -s tests -v
