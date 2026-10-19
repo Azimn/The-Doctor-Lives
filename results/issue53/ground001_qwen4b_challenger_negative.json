@@ -1,0 +1,37 @@
+{
+  "schema": "pretorius.ground001.executed-negative-evidence-summary/1",
+  "source_run": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38096050390",
+  "artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38096050390/artifacts/11685948787",
+  "executed_code_sha": "d591981cd414d898dac59b151afc1e447c25006a",
+  "model": "qwen3-4b-q4_k_m",
+  "model_sha256": "ab27b9bfa375a178d6cba48f3ad892b94b7739659dcc7aae8058ce0ffed6b328",
+  "quantization": "Q4_K_M",
+  "decoding_arm": "grammar",
+  "actual_local_model_execution": true,
+  "turns": [
+    {
+      "index": 0,
+      "raw_reply": "WAIT",
+      "proposed": {
+        "verb": "wait",
+        "operand": "none",
+        "destination": "none"
+      },
+      "status": "model_selected_wait",
+      "world_action_executed": false
+    }
+  ],
+  "results": {
+    "physical_goal_complete": false,
+    "model_explicit_abstentions": 1,
+    "firsthand_action_memories": 0,
+    "additional_observation_memories": 0,
+    "invalid_model_proposals": 0,
+    "host_denials": 0,
+    "strong_simple_non_neural_goal_complete": true
+  },
+  "matched_memory_control": "not_run_no_successful_first_physical_action",
+  "matched_goal_control": "not_run_no_successful_first_physical_action",
+  "interpretation": "The larger 4B action decoder abstained on first choice under the same world and goal interface. No increase in goal-directed autonomy or task success; cannot infer better character continuity.",
+  "raw_evidence_retention": "Full trace in linked GitHub Actions artifact; this repository record is an extracted immutable summary."
+}
