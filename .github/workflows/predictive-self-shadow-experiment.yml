@@ -1,0 +1,44 @@
+name: predictive-self-shadow-experiment
+on:
+  push:
+    branches:
+      - research/predictive-self-loop-20261009
+    paths:
+      - research_prototypes/predictive_self/**
+      - tests/test_predictive_self_loop.py
+      - .github/workflows/predictive-self-shadow-experiment.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  predictive-self:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Regression tests for shadow model and native adapter
+        run: python -m unittest discover -s tests -p 'test_predictive_self_loop.py' -v
+      - name: Execute synthetic and source-grounded native shadow smoke tests
+        run: |
+          mkdir -p results/predictive_self
+          python -m research_prototypes.predictive_self.run_shadow_demo > results/predictive_self/shadow_demo.json
+          python -m json.tool results/predictive_self/shadow_demo.json
+          python - <<'PY'
+          import json
+          p = json.load(open("results/predictive_self/shadow_demo.json", encoding="utf-8"))
+          assert p["native_shadow"]["store_unchanged_by_shadow_observer"]
+          assert not p["native_shadow"]["world_result_verified"]
+          assert p["native_shadow"]["n_scored"] == 1
+          assert p["synthetic"]["n_scored"] == 3
+          assert p["synthetic"]["semantic_before"] != p["synthetic"]["semantic_after"]
+          PY
+      - name: Preserve evidence in workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: predictive-self-shadow-v01
+          path: results/predictive_self/
+          retention-days: 90
