@@ -1,0 +1,49 @@
+name: PHASE PersonaForge research isolation
+on:
+  push:
+    branches: [research/phase-personaforge-ablation-20261009]
+    paths:
+      - research_prototypes/character_state/**
+      - tests/test_phase_personaforge_research.py
+      - .github/workflows/phase-personaforge-research.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-gates-and-native-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Run original model-independent research tests on real Pretorius
+        run: python -m unittest discover -s tests -p 'test_phase_personaforge_research.py' -v
+      - name: Demonstrate native session evolution and preserve machine-readable result
+        run: |
+          mkdir -p results/character_state
+          python -m research_prototypes.character_state.run_native_session_tracking > results/character_state/native_session_tracking.json
+          python - <<'PY'
+          import json
+          x=json.load(open('results/character_state/native_session_tracking.json'))
+          assert x['after_add_has_commitment'] and not x['after_resolve_has_open_commitment']
+          assert x['persona_unchanged'] and x['no_new_autobiography']
+          assert not x['world_outcome_independently_verified']
+          print(json.dumps(x, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase-native-session-tracking-v01
+          path: results/character_state/native_session_tracking.json
+          retention-days: 90
+      - name: Ensure no production module imports research branch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          targets = Path('doctor_lives').rglob('*.py')
+          offenders = [str(f) for f in targets if 'research_prototypes' in f.read_text(encoding='utf-8')]
+          assert not offenders, offenders
+          print('PASS: production module tree remains independent')
+          PY
