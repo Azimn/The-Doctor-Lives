@@ -84,6 +84,20 @@ class DoctorCareIntegrationTests(unittest.TestCase):
         self.assertEqual(again["memory_id"], returned["memory_id"])
         self.assertEqual(again["status"], "already_admitted")
 
+    def test_period_washroom_is_a_voluntary_first_person_event_not_new_distress(self):
+        self.bridge.act("walk", event_id="washroom-hall", station="station:hall")
+        self.bridge.act("walk", event_id="washroom-bedroom", station="station:bedroom")
+        before = self.clock.audit_state()
+        used = self.do("use_washroom", "doctor-ordinary-sanitation")
+        self.assertIn("I step into the small private washroom", used["subject"]["inner"])
+        after = self.clock.audit_state()
+        self.assertEqual(after["minute"] - before["minute"], 10)
+        self.assertNotIn("bladder", after)
+        replay = self.bridge.act("use_washroom",
+                                 event_id="doctor-ordinary-sanitation")
+        self.assertEqual(replay["memory_id"], used["memory_id"])
+        self.assertTrue(self.clock.verify()["verified"])
+
     def test_no_forced_suffering_clock_after_severe_unmet_needs(self):
         self.bridge.act("walk", event_id="go-bedroom-hall", station="station:hall")
         self.bridge.act("walk", event_id="go-bedroom", station="station:bedroom")
