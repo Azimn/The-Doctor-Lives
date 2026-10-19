@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Azimn/Pretorius-Laboratory
-          ref: a7cbb50b82ce66807e13d46e541bdc5684064349
+          ref: 527deb9597190c1ff9e711b24ef9ab8fba082ad0
           path: pinned-laboratory
       - uses: actions/setup-python@v5
         with:
