@@ -23,6 +23,7 @@ _ACTION_DOMAINS = {
     "extinguish": "rhythm_events", "prepare_meal": "rhythm_events",
     "eat": "rhythm_events", "brew_tea": "rhythm_events",
     "drink_water": "rhythm_events",
+    "draw_water": "rhythm_events",
     "accept_delivery": "rhythm_events",
     "use_washroom": "rhythm_events",
     "sleep": "rhythm_events", "rest": "rhythm_events",
