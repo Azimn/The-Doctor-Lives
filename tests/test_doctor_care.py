@@ -20,6 +20,7 @@ class DoctorCareIntegrationTests(unittest.TestCase):
         from pretorius_lab.home_arrangement import HomeArrangements
         from pretorius_lab.material_objects import MaterialObjects
         from pretorius_lab.personal_projects import PersonalProjects
+        from pretorius_lab.care_contract import HouseholdCareContract
 
         workspace = tempfile.TemporaryDirectory()
         self.addCleanup(workspace.cleanup)
@@ -33,6 +34,7 @@ class DoctorCareIntegrationTests(unittest.TestCase):
         MaterialObjects(self.lab).initialize()
         HomeArrangements(self.lab).initialize()
         PersonalProjects(self.lab).initialize()
+        HouseholdCareContract(self.lab).initialize()
         self.bridge, _ = _agent(self.root, 1842)
 
     def offer(self, command, **args):
