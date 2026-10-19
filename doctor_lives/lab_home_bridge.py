@@ -36,6 +36,14 @@ _ACTION_DOMAINS = {
     "material:finish_press": "botanical_events",
     "material:mount": "botanical_events",
     "material:label": "botanical_events",
+    "project:start": "project_events",
+    "project:review": "project_events",
+    "project:reflect": "project_events",
+    "project:pause": "project_events",
+    "project:resume": "project_events",
+    "project:abandon": "project_events",
+    "project:finish": "project_events",
+    "project:associate": "project_events",
 }
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,80}\Z")
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
@@ -142,6 +150,7 @@ class DoctorHomeBridge:
             "embodied_meta": ("station",),
             "botanical_meta": ("state",),
             "arrangement_meta": ("state",),
+            "project_meta": ("state",),
         }.items():
             present = db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
@@ -206,7 +215,7 @@ class DoctorHomeBridge:
             }.items()):
                 raise RuntimeError("Mismatched instrument receipt")
         elif event.get("op") != (op.partition(":")[2] if op.startswith(
-                ("arrange:", "material:")) else op) or event.get("args") != args:
+                ("arrange:", "material:", "project:")) else op) or event.get("args") != args:
             raise RuntimeError("Mismatched physical source receipt")
 
     def act(self, op: str, *, event_id: str, **args):
@@ -311,6 +320,29 @@ class DoctorHomeBridge:
         elif text is not None:
             raise ValueError("No host-supplied text for a nonwriting action")
         return self.act(chosen["command"], event_id=event_id, **args)
+
+    def associate_project_evidence(self, project_id: str, receipt: dict, *,
+                                   event_id: str):
+        """Opt-in linking of one *actual* completed source event to a project.
+
+        The caller (not a hard-coded scheduler) must explicitly select this
+        relationship. Never infer achievement from the project's prose.
+        """
+        if not isinstance(receipt, dict) or not all(
+                key in receipt for key in (
+                    "source_table", "source_event_id", "source_event_hash")):
+            raise ValueError("Association requires a genuine source-event receipt")
+        if receipt["source_table"] not in {
+                "domestic_events", "rhythm_events", "botanical_events",
+                "arrangement_events", "books_events", "custody_events",
+                "embodied_events"}:
+            raise ValueError("Project link references an unsupported material authority")
+        return self.act(
+            "project:associate", event_id=event_id,
+            project_id=project_id,
+            source_table=receipt["source_table"],
+            source_event_id=receipt["source_event_id"],
+            source_event_hash=receipt["source_event_hash"])
 
     def request_cognition(self, *, trigger="laboratory_home"):
         """Actual Doctor cognition is available, not a scripted second policy.
