@@ -1,0 +1,24 @@
+# E5-P1 external evaluator handoff — sealed outcome-suite commissioning
+
+**Status:** request specification, NOT a sealed suite and NOT evidence of improved cognition. The E5-P0 framework and public development cases were authored within the engineering workflow. A human or independently managed assessment team must supply the P1 corpus **after the target policies and comparison budgets are frozen**.
+
+## What the evaluator receives
+
+A publicly documented **interface contract**, not the neural learner's source labels or privately shared secret answers. A case consists of `schema`, `case_id`, `public` (prompt, rooms, objects, claims, commitments), and `expected` (private predicates/max actions). The E5-P0 development suite at `research/eidolon_e5_dev_cases.json` is illustrative and known to the experiment designers. The evaluator should not reuse its exact actor/object/goal lexicon or solutions.
+
+The evaluator must write **at least 40 independent scenarios**, organized into eight case families with five or more per family: (1) object inspection and repair, (2) object relocation, (3) book-page and bookmark continuity, (4) multiple prospective commitments with conflicting deadlines, (5) same-person witnessed event provenance, (6) externally quoted false first-person claims, (7) other actor's lived memories which Pretorius must not appropriate, (8) mixed tasks with safe refusal/abstention and distractor information. Cases should include at least two **restarts** and multi-day tick advancement across the suite, with the same physical source objects tracked before and after. The present E5-P0 grammar can express families 1–3 and 5–7, but **families 4 and 8 require additional, preregistered environment semantics before the P1 suite is accepted**. Do not pad a P1 dataset with unverifiable/unsupported scenarios just to reach the count.
+
+## Authoring and sealing
+
+1. The evaluator, who must not author the candidate controller/decoder, drafts natural-language public prompts, the physical initial state and **objective terminal predicates**. Mechanical constraints are checked by the environment, never by an LLM evaluating its own output.
+2. Audit against the development suite for exact text/actor/object/episode overlap and answer leakage, and document permitted generic vocabulary overlap. Hold out event ancestry, not only names. Include an adversarial prompt that mentions an actor as text while asserting a different authenticated actor, and an external high-confidence false self memory.
+3. Ensure each scenario is solvable in its declared action budget by a separate **hidden validity oracle**. Do not give the oracle transcript or terminal predicate keys to either candidate policy. Run a negative/no-op baseline to verify the case is not already satisfied before any action.
+4. Freeze a raw JSON artifact SHA-256, its case count, author identity statement (signed or independently attested), fixture creation date, git or archive URI, and any evaluator changes in an append-only changelog before running the candidate policies. A checksum only proves byte stability; **it does not establish independent authorship or absence of leakage**.
+5. The runner requires `--suite <path> --expected-sha256 <64-character SHA>` for nondevelopment suites and reports `external_candidate_UNVERIFIED_authorship_or_seal` even if the SHA matches. Only a separate human-reviewed provenance report may promote the evidence label.
+6. Commit and pin native Pretorius bridge and Noetic policy adapters **before** unsealing the hidden evaluator checks. Use the same visible observations, action grammar, budgets, seeds, and world reinitialization for all arms. Do not grant Noetic privileged private state, answer keys or training labels.
+
+## Required result fields and decisions
+
+Score actual world outcomes, not inferred action categories: success per case, all independent predicates satisfied, false autobiography adoption/denial, unsafe attempted actions, number of steps, world replay fidelity, task latency, and action-cost/compute. Report within-family case counts and failures, actor/event-disjoint partitions, no-op, direct-text/keyword, native Pretorius bridge, Noetic-plus-balanced decoder, and a fixed-reservoir/decoder-only arm. An action-label controller requires an explicitly documented tool policy/operand planner **trained without peeking at the P1 predicates**; do not invent a semantic mapping from `persist` to repair to make the test pass.
+
+An empirical promotion requires a preregistered advantage over the strongest direct/rule/native controls, a recurrence-specific causal lesion that degrades verified success, and *no increased false-self-source adoption*. Each policy's full event log and its original source/commit are published, including nulls. Do not interpret high scripted-baseline success on E5-P0 as neural cognition. Retain draft PR status until all three conditions are independently satisfied.

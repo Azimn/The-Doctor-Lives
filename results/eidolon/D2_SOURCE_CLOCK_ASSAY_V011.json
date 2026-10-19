@@ -1,0 +1,79 @@
+{
+  "epistemic_status": "hand-authored rule-based construction, no learned policy advantage",
+  "evaluations": {
+    "henry_current_without_temporal": {
+      "baseline": 0.28,
+      "evidence_support": 0.5271,
+      "priority": 0.517195,
+      "projected_clock": false,
+      "source_event_count": 1,
+      "source_memory_count": 1,
+      "urgency": 0.25
+    },
+    "henry_lived_current": {
+      "baseline": 0.252,
+      "evidence_support": 0.5271,
+      "priority": 0.489195,
+      "projected_clock": false,
+      "source_event_count": 1,
+      "source_memory_count": 1,
+      "urgency": 0.2
+    },
+    "henry_projected_due_tick": {
+      "baseline": 0.7,
+      "evidence_support": 0.5271,
+      "priority": 0.937195,
+      "projected_clock": true,
+      "source_event_count": 1,
+      "source_memory_count": 1,
+      "urgency": 1
+    },
+    "henry_projected_due_tick_without_temporal": {
+      "baseline": 0.28,
+      "evidence_support": 0.5271,
+      "priority": 0.517195,
+      "projected_clock": true,
+      "source_event_count": 1,
+      "source_memory_count": 1,
+      "urgency": 0.25
+    },
+    "henry_without_history": {
+      "baseline": 0.252,
+      "evidence_support": 0,
+      "priority": 0.252,
+      "projected_clock": false,
+      "source_event_count": 0,
+      "source_memory_count": 0,
+      "urgency": 0.2
+    },
+    "only_external_testimony": {
+      "baseline": 0.252,
+      "evidence_support": 0,
+      "priority": 0.252,
+      "projected_clock": false,
+      "source_event_count": 0,
+      "source_memory_count": 0,
+      "urgency": 0.2
+    },
+    "same_description_wrong_actor": {
+      "baseline": 0.252,
+      "evidence_support": 0,
+      "priority": 0.252,
+      "projected_clock": false,
+      "source_event_count": 0,
+      "source_memory_count": 0,
+      "urgency": 0.2
+    }
+  },
+  "external_claim_excluded": true,
+  "github_sha": "de4e3624edef12b0755ffdc3c676141e8b5fb94d",
+  "lived_event_included": true,
+  "original_brain_tick": 0,
+  "protocol": "docs/EIDOLON_D2_MNEMOSYNE_CHRONOS_PROTOCOL.md",
+  "real_pretorius_neurons": 128,
+  "repeated_read_exactly_equal": true,
+  "resolved_commitment_excluded": true,
+  "schema": "eidolon-d2-mnemosyne-chronos-construction-v0.1",
+  "shadow_left_production_state_unchanged": true,
+  "source_evidence_total": 1
+}

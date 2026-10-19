@@ -1,0 +1,198 @@
+{
+  "schema": "eidolon-construction-assay-archived-v0.1",
+  "provenance": {
+    "original_workflow_run": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38022357708",
+    "original_artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38022357708/artifacts/11658488576",
+    "original_zip_sha256": "a3f5b424d82ff8221eb88ab7a65373a2eb38f54e60dae7b10a16fb1aaf56bbcc",
+    "pr_head_sha": "7e557b99a832ee7c5652c950bee270fcce4bc1ea",
+    "ci_environment_sha": "1140486505b765f61b97548e4e1452e2e079551e",
+    "archival_status": "per-case results transcribed from run artifact JSON; see artifact for original exact file"
+  },
+  "conditions": {
+    "intact": {
+      "n": 4,
+      "mean_target_probability": 0.337230488,
+      "correct_top1": 4,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "create",
+          "correct": true,
+          "target_probability": 0.326331244,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "challenge",
+          "correct": true,
+          "target_probability": 0.374363549,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "cooperate",
+          "correct": true,
+          "target_probability": 0.326331244,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "persist",
+          "correct": true,
+          "target_probability": 0.321895916,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "no_learning": {
+      "n": 4,
+      "mean_target_probability": 0.1,
+      "correct_top1": 0,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "binding_lesion": {
+      "n": 4,
+      "mean_target_probability": 0.1,
+      "correct_top1": 0,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "explore",
+          "correct": false,
+          "target_probability": 0.1,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "recurrence_lesion": {
+      "n": 4,
+      "mean_target_probability": 0.122401955,
+      "correct_top1": 4,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "create",
+          "correct": true,
+          "target_probability": 0.122943601,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "challenge",
+          "correct": true,
+          "target_probability": 0.122943601,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "cooperate",
+          "correct": true,
+          "target_probability": 0.122943601,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "persist",
+          "correct": true,
+          "target_probability": 0.120777016,
+          "base_target_probability": 0.1
+        }
+      ]
+    },
+    "label_shuffle": {
+      "n": 4,
+      "mean_target_probability": 0.073641057,
+      "correct_top1": 0,
+      "per_case": [
+        {
+          "target": "create",
+          "predicted": "challenge",
+          "correct": false,
+          "target_probability": 0.074852084,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "challenge",
+          "predicted": "cooperate",
+          "correct": false,
+          "target_probability": 0.069515161,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "cooperate",
+          "predicted": "persist",
+          "correct": false,
+          "target_probability": 0.074852084,
+          "base_target_probability": 0.1
+        },
+        {
+          "target": "persist",
+          "predicted": "create",
+          "correct": false,
+          "target_probability": 0.075344898,
+          "base_target_probability": 0.1
+        }
+      ]
+    }
+  },
+  "real_pretorius_shadow": {
+    "create_probability_from_brain": 0.10536566,
+    "create_probability_in_shadow": 0.416057682,
+    "delayed_shadow_create_probability": 0.462066035,
+    "pretorius_memory_was_ingested": true,
+    "production_digest_unchanged_by_shadow": true,
+    "production_recurrent_tick_unchanged_by_shadow": true,
+    "source_neural_policy_actions": 10
+  },
+  "interpretation": "construction tests only; actor/word hashed feature collisions create residual activation under recurrence lesion, so 4/4 intact and 4/4 recurrence-lesioned top-1 do not show recurrence-dependent top-1 advantage"
+}

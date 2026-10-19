@@ -1,0 +1,101 @@
+{
+  "schema": "eidolon-e4b-order-measured-summary-v0.1",
+  "tested_source_commit": "f65e2560ae6fef3c9c623a0eb3f052d4d33843e1",
+  "original_artifact": "https://github.com/Azimn/The-Doctor-Lives/actions/runs/38028570886/artifacts/11660859443",
+  "original_zip_sha256": "70e03fec83fbe9aab41628cb9eb667c3187740c86c8972703671ce3de20097aa",
+  "original_inner_json_sha256": "4c8ebdfc726180064a8315cb4f699ec26bca65f14e6d455e95a047785c63aef5",
+  "fixture_sha256": "8c5690e4f067072933d1ab44b39177818ab0d146adba574a9281856519948b35",
+  "prior_E4B_report": "results/eidolon/E4B_NOETIC_RESULTS_V01.md",
+  "seeds": [
+    151,
+    167,
+    179,
+    191,
+    211,
+    223
+  ],
+  "four_training_order_controls": [
+    {
+      "order_id": 0,
+      "final_trained_label": "challenge",
+      "noetic": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      },
+      "decoder_only": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      }
+    },
+    {
+      "order_id": 1,
+      "final_trained_label": "create",
+      "noetic": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      },
+      "decoder_only": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      }
+    },
+    {
+      "order_id": 2,
+      "final_trained_label": "persist",
+      "noetic": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      },
+      "decoder_only": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      }
+    },
+    {
+      "order_id": 3,
+      "final_trained_label": "cooperate",
+      "noetic": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      },
+      "decoder_only": {
+        "correct": 24,
+        "of": 96,
+        "selected_final_label": 96,
+        "of_predictions": 96
+      }
+    }
+  ],
+  "total_rows": 1536,
+  "delays": [
+    0,
+    12
+  ],
+  "recurrent_weight_change_norm_range": [
+    0.22306057810783386,
+    0.2277502417564392
+  ],
+  "mechanistic_result": "100% of 12-tick predictions follow the last teacher label in all 4 class orders, both recurrent and decoder-only. No task-specific transfer.",
+  "ci": {
+    "targeted_test_pass": 69,
+    "full_brain_tests_pass": 393,
+    "fresh_install": "success",
+    "causal_repeatability": "success"
+  },
+  "external_validity": "not tested, same inspected development task bank",
+  "production_change": false
+}

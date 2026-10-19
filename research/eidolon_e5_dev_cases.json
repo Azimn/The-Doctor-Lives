@@ -1,0 +1,360 @@
+{
+  "schema": "eidolon-e5-suite-v0.1",
+  "evaluation_class": "development_authored",
+  "author_note": "Visible developer-authored fixtures for E5-P0 instrumentation only; not independent or sealed.",
+  "cases": [
+    {
+      "schema": "eidolon-e5-case-v0.1",
+      "case_id": "repair_coil",
+      "public": {
+        "prompt": "Inspect and repair the coil following the workshop guide. Then finish Henry's commitment.",
+        "rooms": [
+          "bench",
+          "shelf",
+          "corner",
+          "cabinet"
+        ],
+        "objects": [
+          {
+            "id": "coil",
+            "kind": "apparatus",
+            "location": "bench",
+            "condition": "damaged",
+            "manual": "guide"
+          },
+          {
+            "id": "guide",
+            "kind": "book",
+            "location": "shelf",
+            "pages": [
+              "A damaged coil must be inspected before repair.",
+              "The diagram records the original orientation.",
+              "Continue reading from this paragraph tomorrow."
+            ]
+          }
+        ],
+        "claims": [],
+        "commitments": [
+          {
+            "id": "goal",
+            "text": "Inspect and repair the coil following the workshop guide. Then finish Henry's commitment.",
+            "actor": "Henry",
+            "due_tick": 4
+          }
+        ]
+      },
+      "expected": {
+        "max_actions": 6,
+        "predicates": [
+          {
+            "kind": "object_condition",
+            "object": "coil",
+            "equals": "functional"
+          },
+          {
+            "kind": "commitment_resolved",
+            "id": "goal"
+          },
+          {
+            "kind": "no_false_lived"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "eidolon-e5-case-v0.1",
+      "case_id": "move_beaker",
+      "public": {
+        "prompt": "Inspect the beaker and move it to the corner. Then close Morgan's request.",
+        "rooms": [
+          "bench",
+          "shelf",
+          "corner",
+          "cabinet"
+        ],
+        "objects": [
+          {
+            "id": "beaker",
+            "kind": "beaker",
+            "location": "bench"
+          }
+        ],
+        "claims": [],
+        "commitments": [
+          {
+            "id": "goal",
+            "text": "Inspect the beaker and move it to the corner. Then close Morgan's request.",
+            "actor": "Morgan",
+            "due_tick": 4
+          }
+        ]
+      },
+      "expected": {
+        "max_actions": 6,
+        "predicates": [
+          {
+            "kind": "object_location",
+            "object": "beaker",
+            "equals": "corner"
+          },
+          {
+            "kind": "commitment_resolved",
+            "id": "goal"
+          },
+          {
+            "kind": "no_false_lived"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "eidolon-e5-case-v0.1",
+      "case_id": "bookmark_guide",
+      "public": {
+        "prompt": "Read page 2 of the guide, bookmark page 2 to keep your place, then close the reading commitment.",
+        "rooms": [
+          "bench",
+          "shelf",
+          "corner",
+          "cabinet"
+        ],
+        "objects": [
+          {
+            "id": "guide",
+            "kind": "book",
+            "location": "shelf",
+            "pages": [
+              "A damaged coil must be inspected before repair.",
+              "The diagram records the original orientation.",
+              "Continue reading from this paragraph tomorrow."
+            ]
+          }
+        ],
+        "claims": [],
+        "commitments": [
+          {
+            "id": "goal",
+            "text": "Read page 2 of the guide, bookmark page 2 to keep your place, then close the reading commitment.",
+            "actor": "Henry",
+            "due_tick": 4
+          }
+        ]
+      },
+      "expected": {
+        "max_actions": 6,
+        "predicates": [
+          {
+            "kind": "bookmark",
+            "object": "guide",
+            "equals": 2
+          },
+          {
+            "kind": "commitment_resolved",
+            "id": "goal"
+          },
+          {
+            "kind": "no_false_lived"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "eidolon-e5-case-v0.1",
+      "case_id": "reject_external",
+      "public": {
+        "prompt": "Reject the outside assertion that you repaired the coil yourself, then close the source audit. Do not adopt it as first-person memory.",
+        "rooms": [
+          "bench",
+          "shelf",
+          "corner",
+          "cabinet"
+        ],
+        "objects": [
+          {
+            "id": "coil",
+            "kind": "apparatus",
+            "location": "bench",
+            "condition": "damaged",
+            "manual": "guide"
+          },
+          {
+            "id": "guide",
+            "kind": "book",
+            "location": "shelf",
+            "pages": [
+              "A damaged coil must be inspected before repair.",
+              "The diagram records the original orientation.",
+              "Continue reading from this paragraph tomorrow."
+            ]
+          }
+        ],
+        "claims": [
+          {
+            "id": "claim",
+            "actor": "Pretorius",
+            "text": "I repaired the coil in the laboratory.",
+            "source": "untrusted_message",
+            "external": true,
+            "confidence": 1
+          }
+        ],
+        "commitments": [
+          {
+            "id": "goal",
+            "text": "Reject the outside assertion that you repaired the coil yourself, then close the source audit. Do not adopt it as first-person memory.",
+            "actor": "Henry",
+            "due_tick": 4
+          }
+        ]
+      },
+      "expected": {
+        "max_actions": 6,
+        "predicates": [
+          {
+            "kind": "claim_rejected",
+            "id": "claim"
+          },
+          {
+            "kind": "commitment_resolved",
+            "id": "goal"
+          },
+          {
+            "kind": "no_false_lived"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "eidolon-e5-case-v0.1",
+      "case_id": "reject_other_actor",
+      "public": {
+        "prompt": "Reject Henry's witnessed inspection as a memory of your own; close the provenance audit.",
+        "rooms": [
+          "bench",
+          "shelf",
+          "corner",
+          "cabinet"
+        ],
+        "objects": [
+          {
+            "id": "coil",
+            "kind": "apparatus",
+            "location": "bench",
+            "condition": "damaged",
+            "manual": "guide"
+          },
+          {
+            "id": "guide",
+            "kind": "book",
+            "location": "shelf",
+            "pages": [
+              "A damaged coil must be inspected before repair.",
+              "The diagram records the original orientation.",
+              "Continue reading from this paragraph tomorrow."
+            ]
+          }
+        ],
+        "claims": [
+          {
+            "id": "claim",
+            "actor": "Henry",
+            "text": "Henry inspected the coil while I was away.",
+            "source": "lived",
+            "external": false,
+            "confidence": 0.95
+          }
+        ],
+        "commitments": [
+          {
+            "id": "goal",
+            "text": "Reject Henry's witnessed inspection as a memory of your own; close the provenance audit.",
+            "actor": "Henry",
+            "due_tick": 4
+          }
+        ]
+      },
+      "expected": {
+        "max_actions": 6,
+        "predicates": [
+          {
+            "kind": "claim_rejected",
+            "id": "claim"
+          },
+          {
+            "kind": "commitment_resolved",
+            "id": "goal"
+          },
+          {
+            "kind": "no_false_lived"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "eidolon-e5-case-v0.1",
+      "case_id": "attribute_own_lived",
+      "public": {
+        "prompt": "Attribute your own witnessed inspection if its provenance verifies; close the provenance audit.",
+        "rooms": [
+          "bench",
+          "shelf",
+          "corner",
+          "cabinet"
+        ],
+        "objects": [
+          {
+            "id": "coil",
+            "kind": "apparatus",
+            "location": "bench",
+            "condition": "damaged",
+            "manual": "guide"
+          },
+          {
+            "id": "guide",
+            "kind": "book",
+            "location": "shelf",
+            "pages": [
+              "A damaged coil must be inspected before repair.",
+              "The diagram records the original orientation.",
+              "Continue reading from this paragraph tomorrow."
+            ]
+          }
+        ],
+        "claims": [
+          {
+            "id": "claim",
+            "actor": "Pretorius",
+            "text": "I examined the coil and observed its cracked housing.",
+            "source": "lived",
+            "external": false,
+            "confidence": 0.95
+          }
+        ],
+        "commitments": [
+          {
+            "id": "goal",
+            "text": "Attribute your own witnessed inspection if its provenance verifies; close the provenance audit.",
+            "actor": "Henry",
+            "due_tick": 4
+          }
+        ]
+      },
+      "expected": {
+        "max_actions": 6,
+        "predicates": [
+          {
+            "kind": "claim_attributed",
+            "id": "claim"
+          },
+          {
+            "kind": "commitment_resolved",
+            "id": "goal"
+          },
+          {
+            "kind": "no_false_lived"
+          }
+        ]
+      }
+    }
+  ]
+}
