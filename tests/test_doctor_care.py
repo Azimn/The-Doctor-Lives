@@ -64,6 +64,24 @@ class DoctorCareIntegrationTests(unittest.TestCase):
         self.assertEqual(repeated["memory_id"], done["memory_id"])
         self.assertEqual(repeated["status"], "already_admitted")
 
+    def test_drinking_water_source_is_a_voluntary_human_scale_kitchen_action(self):
+        self.bridge.act("walk", event_id="draw-hall", station="station:hall")
+        self.bridge.act("walk", event_id="draw-kitchen", station="station:kitchen")
+        self.bridge.act("open", event_id="draw-cupboard",
+                        container="cupboard:kitchen")
+        before = self.clock.audit_state()
+        selected = self.offer("draw_water")
+        self.assertIsNotNone(selected)
+        drawn = self.bridge.act_offer(selected["offer_id"],
+                                      event_id="doctor-draws-water")
+        self.assertIn("I turn the kitchen water tap", drawn["subject"]["inner"])
+        self.assertEqual(self.clock.audit_state()["supplies"]["water"],
+                         before["supplies"]["water"] + 6)
+        self.assertEqual(self.clock.audit_state()["thirst"], before["thirst"])
+        drink = self.do("drink_water", "doctor-drinks-what-he-chose")
+        self.assertIn("drink a cup", drink["subject"]["inner"])
+        self.assertTrue(self.clock.verify()["verified"])
+
     def test_doctor_collects_day_bound_real_delivery_then_remembers_it(self):
         self.bridge.act("walk", event_id="go-hall", station="station:hall")
         self.next_day()
