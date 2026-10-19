@@ -9,7 +9,9 @@ from doctor_lives.home_native_practice import _agent
 # Earlier Doctor-bridge workflows deliberately pin older Laboratory revisions.
 # Skip this *new* protocol there; the dedicated project workflow pins the
 # required source commit and must run the tests without skipping.
-HAS_LAB = importlib.util.find_spec("pretorius_lab.personal_projects") is not None
+HAS_LAB = (importlib.util.find_spec("pretorius_lab") is not None)
+if HAS_LAB:
+    HAS_LAB = importlib.util.find_spec("pretorius_lab.personal_projects") is not None
 
 
 @unittest.skipUnless(HAS_LAB, "Requires pinned opt-in Laboratory")
