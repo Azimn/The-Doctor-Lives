@@ -970,6 +970,171 @@ class PretoriusBrain:
             raise RuntimeError("Subject recollection unexpectedly changed durable state")
         return frame
 
+    def research_endogenous_recall(
+        self,
+        *,
+        enabled: bool = False,
+        persist: bool = False,
+        recall_cost: float = 0.12,
+        cooldown_ticks: int = 2,
+    ) -> dict[str, Any]:
+        """Opt-in synthetic-replica deliberation, NOT production cognition.
+
+        A candidate self-question is derived exclusively from a synthetic
+        internal concern, never from a caller-provided question or external
+        message. The ten-action recurrent substrate is unchanged. A selected
+        'recall' is an intention, NOT a memory lookup, retrieval entitlement,
+        autonomously authored model thought, or proof of useful behavior.
+
+        This deliberately refuses every normal Pretorius identity. Synthetic
+        fixtures may write versioned research policy decisions to the existing
+        audit table. No memory, neural or physical action is changed.
+        """
+        from .subject_inquiry import SubjectInquiryError, validate_subject_inquiry
+
+        if not enabled or tuple(self.identity) != ("SYNTHETIC_REPLICA_RESEARCH_ONLY",):
+            raise RuntimeError("Endogenous recall v0.1 requires an opt-in synthetic replica")
+        if type(persist) is not bool:
+            raise TypeError("persist must be a boolean")
+        if not isinstance(recall_cost, (int, float)) or isinstance(recall_cost, bool):
+            raise TypeError("recall_cost must be a finite number")
+        if not math.isfinite(float(recall_cost)) or not 0.0 <= recall_cost <= 1.0:
+            raise ValueError("recall_cost outside [0, 1]")
+        if type(cooldown_ticks) is not int or not 1 <= cooldown_ticks <= 100:
+            raise ValueError("cooldown_ticks must be an integer in [1, 100]")
+
+        # The existing state-to-policy bridge still supplies the motive signal.
+        # No extra recurrent action, new identity state or alternative executive.
+        base, adjusted, bridge = self._state_policy_scores(
+            [], decision_text=None, bridge_enabled=True
+        )
+        with closing(self.store.connect()) as conn:
+            needs = {
+                str(row["key"]): float(row["felt"])
+                for row in conn.execute("SELECT key,felt FROM needs")
+            }
+            last_recall = conn.execute(
+                """SELECT id,tick FROM policy_decisions
+                WHERE trigger='research_endogenous_recall_v01'
+                  AND selected_action='recall'
+                ORDER BY rowid DESC LIMIT 1"""
+            ).fetchone()
+
+        def bounded(value: float) -> float:
+            return max(0.0, min(1.0, float(value)))
+
+        curiosity = bounded((needs.get("curiosity", 0.5) - 0.5) / 0.45)
+        fatigue = bounded((needs.get("fatigue", 0.5) - 0.5) / 0.45)
+        candidates: list[dict[str, Any]] = []
+        for concern in self.store.open_concerns():
+            if (
+                concern["source"] != "synthetic_epistemic_probe"
+                or concern["actor"] != "SYNTHETIC_REPLICA"
+            ):
+                continue
+            description = " ".join(str(concern["description"]).split()).rstrip(".?")
+            if not description:
+                continue
+            # Fail closed on instructions, identifiers, or an unbounded cue.
+            question = f"What do I remember of {description}?"
+            try:
+                validate_subject_inquiry(question)
+            except SubjectInquiryError:
+                continue
+            uncertainty = bounded(float(concern["uncertainty"]))
+            relevance = bounded(float(concern["importance"]))
+            candidates.append({
+                "id": str(concern["id"]),
+                "question": question,
+                "need": uncertainty * relevance,
+                "uncertainty": uncertainty,
+                "relevance": relevance,
+            })
+        candidates.sort(key=lambda x: (-x["need"], x["id"]))
+        best = candidates[0] if candidates else None
+        information_need = best["need"] if best else 0.0
+        in_cooldown = (
+            last_recall is not None
+            and 0 <= self.store.tick - int(last_recall["tick"]) < cooldown_ticks
+        )
+
+        # The epistemic need is a bounded additive deliberative family, not a
+        # replacement for the v0.4 ten-action neural policy. No oracle provides
+        # whether a useful memory exists: all scores use only current needs.
+        raw = {
+            "recall": max(
+                0.0,
+                0.12 + 0.72 * information_need + 0.12 * curiosity
+                + 0.10 * adjusted["explore"] - float(recall_cost) - 0.50 * fatigue,
+            ) if best and not in_cooldown else 0.0,
+            "continue": 0.35 + 0.35 * adjusted["persist"],
+            "ask": 0.16 + 0.20 * information_need * (1.0 - curiosity),
+            "defer": 0.07 + 0.50 * fatigue,
+        }
+        total = sum(raw.values())
+        scores = {key: value / total for key, value in raw.items()}
+        # Favor no retrieval if scores tie; recall must strictly win.
+        order = ("continue", "ask", "defer", "recall")
+        chosen = max(order, key=lambda k: raw[k])
+        gap_id = best["id"] if chosen == "recall" else None
+        question = best["question"] if gap_id else None
+        selected_ids = [gap_id] if gap_id else []
+        audit = {
+            "schema": "the-doctor-lives.endogenous-recall-research.v0.1",
+            "policy_version": "research-epistemic-deliberation-v0.1",
+            "origin": "synthetic_internal_gap_fixture",
+            "autonomous_model_authorship_proven": False,
+            "memory_retrieval_performed": False,
+            "information_need_family": {
+                "recall_pressure": information_need,
+                "curiosity": curiosity,
+                "fatigue": fatigue,
+                "recollection_cost": float(recall_cost),
+                "cooldown_active": bool(in_cooldown),
+            },
+            "candidate_gap_ids": [c["id"] for c in candidates],
+            "selected_gap_ids": selected_ids,
+            "question_sha256": (
+                hashlib.sha256(question.encode("utf-8")).hexdigest()
+                if question else None
+            ),
+            "deliberative_raw_scores": raw,
+            "state_policy_bridge": bridge,
+        }
+        decision_id = None
+        if persist:
+            decision_id = new_id("policy")
+            with self.store.transaction() as conn:
+                conn.execute(
+                    """INSERT INTO policy_decisions
+                    (id,tick,created_at,trigger,selected_action,base_action_scores_json,
+                     state_pressure_json,action_scores_json,candidate_record_ids_json,
+                     selected_record_ids_json,neural_tick,neural_checkpoint_sha256,
+                     policy_version)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        decision_id, self.store.tick, utc_now(),
+                        "research_endogenous_recall_v01", chosen,
+                        json.dumps(base, sort_keys=True),
+                        json.dumps(audit, sort_keys=True),
+                        json.dumps(scores, sort_keys=True),
+                        json.dumps(audit["candidate_gap_ids"]),
+                        json.dumps(selected_ids), int(self.neural.tick),
+                        self._neural_checkpoint_sha256(),
+                        audit["policy_version"],
+                    ),
+                )
+                self.store.bump_state_version(conn)
+        return {
+            "schema": audit["schema"],
+            "selected_action": chosen,
+            "question": question,
+            "source_gap_id": gap_id,
+            "decision_id": decision_id,
+            "scores": scores,
+            "audit": audit,
+        }
+
     def think(
         self,
         trigger: str = "voluntary",
