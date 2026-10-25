@@ -66,6 +66,43 @@ class FocusProjectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             focus_subject_frame("My mind is quiet."*5000)
 
+    def test_long_reported_question_cannot_disappear(self):
+        question = "I read a message from User: “" + ("Q" * 910) + "”"
+        frame = question + "\nI feel uncertain about the question."
+        with self.assertRaisesRegex(ValueError, "Essential"):
+            focus_subject_frame(frame)
+
+    def test_long_observation_cannot_disappear(self):
+        frame = (
+            'I read a message from User: “What did you observe?”\n'
+            + "I notice: The instrument appears to show " + ("a" * 910) + "."
+        )
+        with self.assertRaisesRegex(ValueError, "Essential"):
+            focus_subject_frame(frame)
+
+    def test_context_limit_cannot_drop_correlated_episode(self):
+        message = 'I read a message from User: “' + ("Q" * 790) + '”'
+        episode = (
+            "I remember two later observations of the apparatus agreeing at "
+            + ("451" * 125)
+            + ". Earlier readings disagreed."
+        )
+        self.assertLess(len(message), 900)
+        self.assertLess(len(episode), 900)
+        self.assertGreater(len(message) + len(episode), 1250)
+        with self.assertRaisesRegex(ValueError, "Essential"):
+            focus_subject_frame(message + "\n" + episode)
+
+    def test_irrelevant_oversize_context_may_be_omitted(self):
+        frame = (
+            'I read a message from User: “Good morning.”\n'
+            + "I recognize this as part of the description I was built from: "
+            + "history " * 140
+            + "\nI feel curious."
+        )
+        self.assertIn("Good morning", focus_subject_frame(frame))
+        self.assertIn("I feel curious.", focus_subject_frame(frame))
+
     @unittest.skipUnless(HAVE_DONORS, "Optional reviewed cognitive donors required")
     def test_study_pair_balance_no_network(self):
         from pretorius_speech_focus_ab import study, MODELS
