@@ -69,9 +69,15 @@ def focused_subject_subset(full_frame: str, *, max_characters: int = 1050) -> st
     selected = []
     total = 0
     for line in sorted(unique, key=category):
-        if category(line) == 9:
+        priority = category(line)
+        if priority == 9:
             continue  # repeated descriptive provenance boilerplate
         if len(line) + total + (len(selected) > 0) > max_characters:
+            if priority in (0, 1, 2):
+                raise ValueError(
+                    "Essential question or observed episode cannot fit "
+                    "the focused SubjectFrame budget"
+                )
             continue
         selected.append(line)
         total += len(line) + 1
