@@ -7,6 +7,8 @@ on:
       - doctor_lives/cascade_governance.py
       - doctor_lives/cascade_preview.py
       - doctor_lives/cascade_laboratory.py
+      - doctor_lives/three_organ_preview.py
+      - tests/test_three_organ_preview.py
       - tools/run_cascade_laboratory_pilot.py
       - tests/test_cascade_laboratory.py
       - tests/test_cascade_authority.py
