@@ -9,6 +9,7 @@ on:
       - doctor_lives/cascade_laboratory.py
       - tools/run_cascade_laboratory_pilot.py
       - tests/test_cascade_laboratory.py
+      - tests/test_cascade_authority.py
       - doctor_lives/cascade_background.py
       - doctor_lives/cascade_articles.py
       - doctor_lives/data/articles_v3_contract.json
