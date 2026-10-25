@@ -97,6 +97,13 @@ class EpistemicAuthorityContracts(unittest.TestCase):
         self.assertEqual(self.lab.locate("book:007"), physical_book)
         self.assertTrue(first["scene_object_ids"])
         self.assertTrue(second["scene_object_ids"])
+        self.assertEqual(
+            first["scene_object_ids"], second["scene_object_ids"],
+            "This fixture must actually exercise Sensus' false visual re-identification",
+        )
+        texts = [m["text"] for m in self.sensed_memories()]
+        self.assertTrue(any("shelf three" in t for t in texts))
+        self.assertTrue(any("shelf one" in t for t in texts))
         self.assert_subject_observed_not_verified(self.sensed_memories())
 
     def test_admitted_allowlisted_inventory_claim_cannot_create_inventory(self):
@@ -123,6 +130,44 @@ class EpistemicAuthorityContracts(unittest.TestCase):
             m["kind"] == "world_record_verified" and "six" in m["text"]
             for m in self.host._doctor.brain.store.memories()
         ))
+
+
+    def test_correlated_error_stays_unverified_in_recollected_episode(self):
+        import json
+        stable = self.lab.verify()
+        first = self.cycle(
+            self.observed("clash-vision", "research volume count", "two"),
+            self.observed("clash-meter", "research volume count", "four",
+                          channel="instrument"),
+        )
+        self.assertEqual(len(first["new_epistemic_gap_ids"]), 1)
+        concern_id = first["new_epistemic_gap_ids"][0]
+        second = self.cycle(
+            self.observed("agreed-vision", "research volume count", "six"),
+            self.observed("agreed-meter", "research volume count", "six",
+                          channel="instrument"),
+        )
+        self.assertEqual(second["resolved_epistemic_gap_ids"], [concern_id])
+        with self.host._doctor.brain.store.connect() as db:
+            resolved = db.execute(
+                "SELECT resolution FROM concerns WHERE id=?", (concern_id,),
+            ).fetchone()
+        receipt = json.loads(resolved["resolution"])
+        self.assertEqual(
+            receipt["epistemic_status"], "corroborated_observation_unverified"
+        )
+        self.assertIs(receipt["world_record_verified"], False)
+        episodes = self.host._verified_episode_events(
+            query="I remember research volume count",
+            scene_resolved_ids=frozenset({concern_id}),
+        )
+        self.assertTrue(episodes)
+        self.assertTrue(all(
+            event.objective_provenance.evidence_class
+            == "corroborated_sensory_episode_unverified"
+            for event in episodes
+        ))
+        self.assertEqual(self.lab.verify(), stable)
 
 
 if __name__ == "__main__":
