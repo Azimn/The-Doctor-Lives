@@ -65,6 +65,11 @@ def focus_subject_frame(subject_text: str) -> str:
         if not line:
             continue
         if len(line) > 900:
+            if line.startswith(("I read a message from User:",) + _RECOLLECT):
+                raise ValueError(
+                    "Essential reported question or sensory episode exceeds "
+                    "the speech-focus per-line budget"
+                )
             continue
         m = _USER.fullmatch(line)
         if m:
@@ -95,6 +100,10 @@ def focus_subject_frame(subject_text: str) -> str:
     total = 0
     for item in selected:
         if total + len(item) + 1 > MAX_OUTPUT:
+            if item in messages[:1] or item in episodes[:2]:
+                raise ValueError(
+                    "Essential question or episode cannot fit the speech-focus budget"
+                )
             continue
         if not item.startswith(("I ", "My ")):
             raise AssertionError("Renderer projection lost first-person stance")
