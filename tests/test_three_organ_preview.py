@@ -168,7 +168,7 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             # Doctor's lived-runtime record is of hearing a message; the
             # reported proposition is never promoted to a world observation.
             self.assertFalse(any(
-                m["source"].startswith("preview-verified-world:")
+                m["source"].startswith("preview-sensus-observed:")
                 for m in host._doctor.brain.store.memories()
             ))
             self.assertIn("I read a message from User", self.frames[0])
@@ -992,7 +992,7 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             with host._doctor.brain.store.connect() as conn:
                 committed_before = conn.execute(
                     "SELECT COUNT(*) FROM events WHERE source=?",
-                    ("preview-verified-world:trusted:neural-write-fails:neural-write-fails",),
+                    ("preview-sensus-observed:trusted:neural-write-fails:neural-write-fails",),
                 ).fetchone()[0]
             self.assertEqual(committed_before, 1)
         with self.host() as recovered:
@@ -1001,7 +1001,7 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             with recovered._doctor.brain.store.connect() as conn:
                 committed_after = conn.execute(
                     "SELECT COUNT(*) FROM events WHERE source=?",
-                    ("preview-verified-world:trusted:neural-write-fails:neural-write-fails",),
+                    ("preview-sensus-observed:trusted:neural-write-fails:neural-write-fails",),
                 ).fetchone()[0]
                 policy_count = conn.execute(
                     "SELECT COUNT(*) FROM policy_decisions "
@@ -1093,7 +1093,7 @@ class ThreeOrganPretoriusPreviewTests(unittest.TestCase):
             with recovered._doctor.brain.store.connect() as conn:
                 admitted = conn.execute(
                     "SELECT COUNT(*) FROM events WHERE source=?",
-                    ("preview-verified-world:trusted:tamper-ingress-receipt:tamper-ingress-receipt",),
+                    ("preview-sensus-observed:trusted:tamper-ingress-receipt:tamper-ingress-receipt",),
                 ).fetchone()[0]
             self.assertEqual(admitted, 1)
             self.assertEqual(recovered.pending_count(), 0)
