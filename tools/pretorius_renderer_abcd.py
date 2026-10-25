@@ -22,8 +22,6 @@ import time
 from pathlib import Path
 from urllib import request
 
-from synthetic_ipseity.local_ollama import LocalOllamaRenderer
-from pretorius_stage4_ollama import choose
 from pretorius_eval_score import read_jsonl
 
 ENDPOINT = "http://127.0.0.1:11434/api/generate"
@@ -213,6 +211,9 @@ def realize(arm: str, frame: str, model: str, raw_renderer) -> dict:
 
 
 def run(packets_path: Path, output_dir: Path, model: str, per_scene: int):
+    # The actual model-only arm needs the optional donor; pure contracts do not.
+    from synthetic_ipseity.local_ollama import LocalOllamaRenderer
+    from pretorius_stage4_ollama import choose
     chosen = choose(read_jsonl(packets_path), per_scene)
     output_dir.mkdir(parents=True, exist_ok=True)
     # A remains byte-for-byte compatible with prior reviewed adapter.
