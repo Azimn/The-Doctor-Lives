@@ -43,6 +43,35 @@ class RendererProjectionTests(unittest.TestCase):
             self.assertIn(line,frame.splitlines())
             self.assertTrue(line.startswith("I "))
 
+    def test_overbudget_question_must_not_be_silently_discarded(self):
+        frame = (
+            'I read a message from User: “' + ("Q" * 1060) + '”\n'
+            + "I feel concerned about the question."
+        )
+        with self.assertRaisesRegex(ValueError, "Essential"):
+            self.mod.focused_subject_subset(frame)
+
+    def test_overbudget_episode_must_not_be_silently_discarded(self):
+        frame = (
+            'I read a message from User: “What did you measure?”\n'
+            + "I remember two later observations of the apparatus agreeing at "
+            + ("451" * 335) + ". Earlier readings disagreed."
+        )
+        with self.assertRaisesRegex(ValueError, "Essential"):
+            self.mod.focused_subject_subset(frame)
+
+    def test_combined_budget_preserves_question_and_episode_or_fails(self):
+        message = 'I read a message from User: “' + ("Q" * 750) + '”'
+        episode = (
+            "I remember two later observations agreeing at "
+            + ("451" * 130) + ". Earlier readings disagreed."
+        )
+        self.assertLess(len(message), 1050)
+        self.assertLess(len(episode), 1050)
+        self.assertGreater(len(message) + len(episode), 1050)
+        with self.assertRaisesRegex(ValueError, "Essential"):
+            self.mod.focused_subject_subset(message + "\n" + episode)
+
     def test_removes_repetitive_identity_without_fabricating_new_lines(self):
         frame="\n".join((
             "I recognize this as part of the description I was built from, "
