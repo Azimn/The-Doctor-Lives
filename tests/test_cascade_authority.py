@@ -81,20 +81,31 @@ class EpistemicAuthorityContracts(unittest.TestCase):
             )
 
     def test_similar_object_false_identity_changes_belief_not_world_ids(self):
-        before = self.lab.verify()
-        physical_book = self.lab.locate("book:007")
+        # The first visual impression concerns physical book:007.
         first = self.cycle(self.observed(
             "visual-a", "volume location", "shelf three",
             features=(("shape", "rectangular"), ("binding", "brown")),
         ))
+        # Physically replace it at the same shelf position with book:006.
+        # Both physical IDs remain in Laboratory. Sensus is deliberately
+        # supplied a confusing second impression with matching visual cues.
+        self.lab.commit({"op": "place", "object_id": "book:007",
+                         "anchor_id": "shelf:1/slot:1"})
+        self.lab.commit({"op": "place", "object_id": "book:006",
+                         "anchor_id": "shelf:3/slot:7"})
+        after_replacement = self.lab.verify()
+        old_location = self.lab.locate("book:007")
+        new_location = self.lab.locate("book:006")
+        self.assertNotEqual(old_location, new_location)
         second = self.cycle(self.observed(
             "visual-b", "volume location", "shelf one",
             hint="different-camera-hint",
             features=(("shape", "rectangular"), ("binding", "brown")),
         ))
-        # An ambiguous/similar visual association is not an identity authority.
-        self.assertEqual(self.lab.verify(), before)
-        self.assertEqual(self.lab.locate("book:007"), physical_book)
+        # Perceptual aliasing may change Doctor belief, never world custody.
+        self.assertEqual(self.lab.verify(), after_replacement)
+        self.assertEqual(self.lab.locate("book:007"), old_location)
+        self.assertEqual(self.lab.locate("book:006"), new_location)
         self.assertTrue(first["scene_object_ids"])
         self.assertTrue(second["scene_object_ids"])
         self.assertEqual(
