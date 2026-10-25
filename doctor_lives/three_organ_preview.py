@@ -257,6 +257,8 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                 "reason": "two_independent_later_observations_agree",
                 "original_evidence": evidence,
                 "resolution": claims,
+                "epistemic_status": "corroborated_observation_unverified",
+                "world_record_verified": False,
                 "downstream_effect": "remove_gap_from_future_policy_candidates",
             }
             self._doctor.brain.close_concern(
@@ -321,9 +323,9 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
             for claim in items:
                 if claim.evidence not in (Evidence.OBSERVED, Evidence.REPORTED):
                     continue
-                channel = "world" if claim.evidence is Evidence.OBSERVED else "user"
                 source = (
-                    "preview-verified-" + channel + ":"
+                    ("preview-sensus-observed:" if claim.evidence is Evidence.OBSERVED
+                     else "preview-verified-user:")
                     + claim.source_ref + ":" + claim.event_id
                 )
                 if conn.execute(
@@ -372,9 +374,11 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                     operations.append({
                         "kind": "ingest",
                         "event": {"channel": "world",
-                                  "text": f"The {claim.attribute} is {claim.value}.",
-                                  "source": "preview-verified-world:"
+                                  "text": f"The {claim.attribute} appears to be {claim.value}.",
+                                  "source": "preview-sensus-observed:"
                                     + claim.source_ref + ":" + claim.event_id,
+                                  "kind": "sensory_observation_unverified",
+                                  "confidence": claim.confidence,
                                   "novelty": 0.35},
                     })
                     admitted += 1
@@ -654,7 +658,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                     # it verified status or convert a reported message.
                     for c in claims:
                         source = (
-                            "preview-verified-world:" + c["source_ref"]
+                            "preview-sensus-observed:" + c["source_ref"]
                             + ":" + c["event_id"]
                         )
                         admitted_rows = db.execute(
@@ -663,7 +667,7 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                             (source,),
                         ).fetchall()
                         expected_text = (
-                            "I notice: The " + attribute + " is " + c["value"] + "."
+                            "I notice: The " + attribute + " appears to be " + c["value"] + "."
                         )
                         if len(admitted_rows) != 1:
                             break
@@ -720,10 +724,10 @@ class ThreeOrganPretoriusPreview(DoctorSyntheticIpseitySession):
                 awareness=AwarenessLevel.FOCAL,
                 canonical_first_person=text,
                 privacy=PrivacyState.PRIVATE,
-                projection_rule_version="preview-doctor-verified-episode-v0.1",
+                projection_rule_version="preview-doctor-epistemic-episode-v0.2",
                 source_state_digest=brain.store.digest(),
                 objective_provenance=ObjectiveProvenance(
-                    evidence_class="verified_observation_episode",
+                    evidence_class="corroborated_sensory_episode_unverified",
                     source="preview_verified_observation_resolution",
                     record_ids=(concern_id,),
                 ),
