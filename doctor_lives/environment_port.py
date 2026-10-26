@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from .chassis import PretoriusBrainPort
 from .ingress import control_instruction_markers, implementation_leaks
@@ -29,6 +29,7 @@ class EnvironmentFeedback:
     source_kind: str
 
 
+@runtime_checkable
 class EnvironmentPort(Protocol):
     """Same observational and authorization signatures across environments."""
 
