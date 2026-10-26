@@ -18,9 +18,10 @@ from contextlib import closing
 import hashlib
 import json
 import math
+import re
 
 from .chassis import PretoriusBrainPort
-from .models import SubjectFrame
+from .models import SubjectFrame, SubjectRendererCapability
 from .store import new_id, utc_now
 from .subject_inquiry import SubjectInquiryError, validate_subject_inquiry
 
@@ -42,6 +43,29 @@ class EndogenousRecallDecision:
     initiated_by: str = "host_scheduled_internal_policy"
 
 
+@dataclass(frozen=True, slots=True)
+class PrivateRecollectionEffect:
+    """Engineer-only evidence of original brain policy after subject recall."""
+    recall_decision_id: str
+    next_policy_decision_id: str | None
+    next_tendency: str | None
+    relevant_lines: int
+    cue_sha256: str | None
+
+
+_STOPWORDS = frozenset({"what", "remember", "recall", "about", "with",
+                         "from", "that", "this", "their", "there", "have",
+                         "been", "would", "could", "should", "were",
+                         "when", "where", "into", "mine", "something"})
+
+
+def _cue_terms(value: str) -> frozenset[str]:
+    return frozenset(
+        term for term in re.findall(r"[a-z]{4,}", value.lower())
+        if term not in _STOPWORDS
+    )
+
+
 class MnemosyneEndogenousPilot:
     def __init__(self, port: PretoriusBrainPort, *, enabled: bool = False):
         if not isinstance(port, PretoriusBrainPort):
@@ -50,6 +74,7 @@ class MnemosyneEndogenousPilot:
             raise PermissionError("Explicit experimental Mnemosyne opt-in required")
         self._port = port
         self._pending_question: str | None = None
+        self._pending_decision_id: str | None = None
         self._controller = port.bind_recollection_controller(self._internal_question)
 
     def _internal_question(self) -> str:
@@ -179,6 +204,7 @@ class MnemosyneEndogenousPilot:
             brain.store.bump_state_version(conn)
         if question is not None:
             self._pending_question = question
+            self._pending_decision_id = decision_id
         return EndogenousRecallDecision(
             decision_id=decision_id, action=chosen,
             selected_gap_id=gap_id, recall_pressure=pressure,
@@ -192,3 +218,38 @@ class MnemosyneEndogenousPilot:
             return self._controller.recollect_frame()
         finally:
             self._pending_question = None
+            self._pending_decision_id = None
+
+    def reflect_selected_recollection(self) -> PrivateRecollectionEffect:
+        """Recollection influences cognition only via a factory-created subject frame.
+
+        Existing policy and BrainStore retain all decision/write authority;
+        neither engineer audit nor unobserved facts enter private cognition.
+        No retrieved relevant first-person content means NO invented thought.
+        """
+        question, recall_id = self._pending_question, self._pending_decision_id
+        if question is None or recall_id is None:
+            raise PermissionError("No selected recollection awaiting reflection")
+        frame = self.recollect()  # consumes the original state-bound one-use grant
+        if type(frame) is not SubjectFrame:
+            raise TypeError("Recollection returned noncanonical subject frame")
+        terms = _cue_terms(question)
+        ranked = sorted(
+            ((len(_cue_terms(line) & terms), line)
+             for line in SubjectRendererCapability.read(frame)
+             if line.startswith(("I ", "My ", "Mine ", "Me "))),
+            key=lambda row: (-row[0], row[1]),
+        )
+        matches = [row for row in ranked if row[0] > 0]
+        if not matches:
+            return PrivateRecollectionEffect(recall_id, None, None, 0, None)
+        cue = matches[0][1]
+        thought = self._port.brain.think(
+            "mnemosyne_private_reflection", decision_text=cue
+        )
+        return PrivateRecollectionEffect(
+            recall_id, str(thought["policy_decision_id"]),
+            str(thought["selected_action"]), len(matches),
+            hashlib.sha256(cue.encode("utf-8")).hexdigest(),
+        )
+
