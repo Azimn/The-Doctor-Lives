@@ -349,6 +349,18 @@ class SixOrganRuntime:
             self._port, subject_port, authorized=authorized
         )
 
+    def bind_causal_laboratory(self, subject_port, *, authorized: bool = False):
+        """Experimental Noesis-choice / host-authorized Corpus action handoff.
+
+        Reuses the same verified DoctorHomeBridge, original neural selector,
+        source-attested world consequences and original BrainStore.
+        A selected abstract tendency alone NEVER permits physical action.
+        """
+        from .noesis_corpus_pilot import NoesisCorpusLaboratoryPilot
+        return NoesisCorpusLaboratoryPilot(
+            self, subject_port, authorized=authorized
+        )
+
     def checkpoint(self) -> dict[str, Any]:
         """Persist the SAME canonical neural checkpoint and brain state.
 
