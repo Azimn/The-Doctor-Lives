@@ -78,7 +78,20 @@ class PinnedSixOrganSensusPilotTests(unittest.TestCase):
         self.assertEqual(result.admitted, ())
         self.assertEqual(result.vetoed_attributes, ("vessel color",))
         self.assertEqual(set(result.withheld_claim_ids), {"a", "b"})
-        self.assertEqual(before, self.runtime._port.brain.store.digest())
+        self.assertNotEqual(before, self.runtime._port.brain.store.digest())
+        self.assertEqual(len(result.epistemic_gap_ids), 1)
+        with self.runtime._port.brain.store.connect() as db:
+            concerns = db.execute(
+                "SELECT id,source,actor FROM concerns WHERE source=?",
+                ("preview_sensus_conflict",),
+            ).fetchall()
+            incoming = db.execute(
+                "SELECT count(*) FROM memories WHERE source LIKE 'sensus-pilot-verified:%'"
+            ).fetchone()[0]
+        self.assertEqual(len(concerns), 1)
+        self.assertEqual(concerns[0]["id"], result.epistemic_gap_ids[0])
+        self.assertEqual(concerns[0]["actor"], "PREVIEW_HOST")
+        self.assertEqual(incoming, 0)
 
     def test_conflict_lesion_changes_subsequent_memory_with_same_input(self):
         """Actual matched causal effect on autobiographical content, not IQ gain."""
@@ -130,6 +143,55 @@ class PinnedSixOrganSensusPilotTests(unittest.TestCase):
         self.assertFalse(outcome.admitted)
         self.assertEqual(before, self.runtime._port.brain.store.digest())
         self.assertCountEqual(outcome.withheld_claim_ids, ("a", "b"))
+
+    def test_sensus_conflict_triggers_endogenous_mnemosyne_without_host_question(self):
+        """Connected mechanism, not an injected concern or scripted recollection."""
+        claims = (
+            self.percept("a", "vision", "red"),
+            self.percept("b", "instrument", "blue"),
+        )
+        control = SixOrganRuntime.open(
+            self.root / "no-conflict", neural_config=config()
+        )
+        outcome = self.pilot.acquire(
+            1, claims, trusted_refs=frozenset({"lab:a", "lab:b"}),
+            verified_world_refs=frozenset({"lab:a", "lab:b"}),
+        )
+        self.assertEqual(outcome.admitted, ())
+        self.assertEqual(len(outcome.epistemic_gap_ids), 1)
+        control_mnemosyne = control.mnemosyne.opt_in_endogenous_recollection()
+        treatment_mnemosyne = (
+            self.runtime.mnemosyne.opt_in_endogenous_recollection()
+        )
+        a = control_mnemosyne.deliberate(recall_cost=0.0)
+        b = treatment_mnemosyne.deliberate(recall_cost=0.0)
+        self.assertNotEqual(a.action, "recall")
+        self.assertEqual(b.action, "recall")
+        self.assertEqual(b.selected_gap_id, outcome.epistemic_gap_ids[0])
+        before = self.runtime._port.brain.store.digest()
+        recollection = treatment_mnemosyne.recollect()
+        from doctor_lives.models import SubjectFrame, SubjectRendererCapability
+        self.assertIsInstance(recollection, SubjectFrame)
+        self.assertTrue(SubjectRendererCapability.read(recollection))
+        self.assertEqual(before, self.runtime._port.brain.store.digest())
+        with self.runtime._port.brain.store.connect() as db:
+            lived = db.execute(
+                "SELECT count(*) FROM memories WHERE source LIKE 'sensus-pilot-verified:%'"
+            ).fetchone()[0]
+        self.assertEqual(lived, 0)
+
+    def test_single_channel_conflict_does_not_create_a_cross_channel_memory_cue(self):
+        claims = (
+            self.percept("a", "vision", "red"),
+            self.percept("b", "vision", "blue"),
+        )
+        outcome = self.pilot.acquire(
+            1, claims, trusted_refs=frozenset({"lab:a", "lab:b"}),
+            verified_world_refs=frozenset({"lab:a", "lab:b"}),
+        )
+        self.assertTrue(outcome.vetoed_attributes)
+        self.assertFalse(outcome.epistemic_gap_ids)
+        self.assertFalse(outcome.admitted)
 
     def test_missing_source_and_unbounded_observation_reject_without_writes(self):
         before = self.runtime._port.brain.store.digest()
