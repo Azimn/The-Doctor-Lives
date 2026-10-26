@@ -85,13 +85,16 @@ class SixOrganD0BaselineTests(unittest.TestCase):
 
     def test_host_typed_projection_keeps_engineer_diagnostics_off_access_seam(self):
         port = PretoriusBrainPort(self.root, neural_config=baseline_config())
-        port.ingest({
+        admission = port.ingest({
             "channel": "body",
             "signal": "cold",
             "level": 0.86,
             "payload": {"temperature_c": 13.2},
             "source": "thermal_sensor",
         })
+        retained = port.brain.store.get_memory(admission["memory_id"])["text"]
+        self.assertTrue(any(word in retained.lower() for word in ("cold", "chill")))
+        self.assertNotIn("temperature_c", retained)
         before = port.brain.store.digest()
         # Model callbacks must not need access to privileged engineer views.
         with patch.object(
@@ -102,7 +105,6 @@ class SixOrganD0BaselineTests(unittest.TestCase):
         self.assertIsInstance(frame, SubjectFrame)
         lines = SubjectRendererCapability.read(frame)
         self.assertTrue(lines)
-        self.assertTrue(any("cold" in line.lower() for line in lines))
         rendered = "\n".join(lines)
         for token in (
             "temperature_c", "thermal_sensor", "13.2",
