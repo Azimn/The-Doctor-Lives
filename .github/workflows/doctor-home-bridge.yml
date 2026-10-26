@@ -8,6 +8,7 @@ on:
       - doctor_lives/lab_home_bridge.py
       - tests/test_lab_home_bridge.py
       - tests/test_six_organ_lab_comparison.py
+      - tools/six_organ_laboratory_parity_witness.py
       - .github/workflows/doctor-home-bridge.yml
   workflow_dispatch:
 jobs:
@@ -21,6 +22,11 @@ jobs:
           repository: Azimn/Pretorius-Laboratory
           ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
           path: donor-laboratory
+      - uses: actions/checkout@v4
+        with:
+          # Historical unmodified production implementation, separate process.
+          ref: 784cff39d58a7fe46bb5e4ffc16e0284e6663c78
+          path: baseline-doctor
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -39,6 +45,11 @@ jobs:
         run: |
           python -c "from pretorius_lab.subject_port import SubjectPort; print('Pinned Laboratory import confirmed')"
           python -m unittest discover -s tests -p test_six_organ_lab_comparison.py -v
+      - name: Compare frozen production Doctor against six-organ Laboratory behavior
+        run: |
+          EXPECTED_DOCTOR_ROOT=baseline-doctor PYTHONPATH=baseline-doctor:donor-laboratory python tools/six_organ_laboratory_parity_witness.py --mode classic --output "$RUNNER_TEMP/classic.json"
+          EXPECTED_DOCTOR_ROOT=. PYTHONPATH=.:donor-laboratory python tools/six_organ_laboratory_parity_witness.py --mode six --output "$RUNNER_TEMP/six.json"
+          diff -u "$RUNNER_TEMP/classic.json" "$RUNNER_TEMP/six.json"
       - name: Ensure original Doctor core regression still passes
         run: |
           python -m unittest discover -s tests -p test_cognition.py -v
