@@ -180,6 +180,64 @@ class PinnedSixOrganSensusPilotTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(lived, 0)
 
+    def test_actual_sensus_conflict_can_drive_prior_memory_into_original_policy(self):
+        """End-to-end opt-in Sensus -> Mnemosyne -> single Noesis policy."""
+        # This is an independently admitted, earlier first-person experience.
+        # The subsequently disputed values are NOT written as observations.
+        prior = self.runtime.sensus.acquire_existing_percept(
+            {
+                "channel": "world", "source": "earlier-attested-vessel",
+                "percept": "I saw that the vessel color was red yesterday.",
+            },
+            host_authorized=True,
+        )
+        outcome = self.pilot.acquire(
+            1, (
+                self.percept("a", "vision", "red"),
+                self.percept("b", "instrument", "blue"),
+            ),
+            trusted_refs=frozenset({"lab:a", "lab:b"}),
+            verified_world_refs=frozenset({"lab:a", "lab:b"}),
+        )
+        self.assertEqual(len(outcome.epistemic_gap_ids), 1)
+        self.assertEqual(outcome.admitted, ())
+        recall = self.runtime.mnemosyne.opt_in_endogenous_recollection()
+        self.assertEqual(recall.deliberate(recall_cost=0).action, "recall")
+        result = recall.reflect_selected_recollection()
+        self.assertIsNotNone(result.next_policy_decision_id)
+        self.assertTrue(result.cue_sha256)
+        with self.runtime._port.brain.store.connect() as db:
+            row = db.execute(
+                "SELECT * FROM policy_decisions WHERE id=?",
+                (result.next_policy_decision_id,),
+            ).fetchone()
+            disputed_memories = db.execute(
+                "SELECT count(*) FROM memories WHERE source LIKE 'sensus-pilot-verified:%'"
+            ).fetchone()[0]
+            thoughts = db.execute(
+                "SELECT count(*) FROM thoughts WHERE trigger='mnemosyne_private_reflection'"
+            ).fetchone()[0]
+        import json
+        audit = json.loads(row["state_pressure_json"])
+        self.assertEqual(audit["decision_text_sha256"], result.cue_sha256)
+        self.assertEqual(disputed_memories, 0)
+        self.assertEqual(thoughts, 1)
+        self.assertIn(
+            "vessel color", self.runtime._port.brain.store.get_memory(prior.memory_id)["text"]
+        )
+        self.runtime.checkpoint()
+        from doctor_lives.organs import SixOrganRuntime
+        reopened = SixOrganRuntime.open(self.root / "pretorius")
+        with reopened._port.brain.store.connect() as db:
+            persisted = db.execute(
+                "SELECT count(*) FROM policy_decisions WHERE id=?",
+                (result.next_policy_decision_id,),
+            ).fetchone()[0]
+        self.assertEqual(persisted, 1)
+        new_recall = reopened.mnemosyne.opt_in_endogenous_recollection()
+        with self.assertRaises(PermissionError):
+            new_recall.reflect_selected_recollection()
+
     def test_single_channel_conflict_does_not_create_a_cross_channel_memory_cue(self):
         claims = (
             self.percept("a", "vision", "red"),
