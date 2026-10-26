@@ -275,6 +275,23 @@ class SyntheticIpseityOrgan:
         """Typed, subject-only frame, prior to an authorized admission/outbox."""
         return self._port.subject_frame(user_input)
 
+    def open_durable_delivery(self, *, renderer: Callable[[str], str],
+                              epoch_id: str = "pretorius-lifetime-v1"):
+        """Opt-in authoritative output route using this SAME brain port.
+
+        Reuse the reviewed Synthetic Ipseity v0.9.11 host. Its durable outbox
+        tracks delivery only, never autobiographical state or identity. This
+        path does NOT install a global no-bypass production sandbox.
+        """
+        from .ipseity_integration import DoctorSyntheticIpseitySession
+
+        return DoctorSyntheticIpseitySession(
+            self._port.brain.state_dir,
+            renderer=renderer,
+            epoch_id=epoch_id,
+            brain_port=self._port,
+        )
+
 
 class CorpusOrgan:
     def __init__(self, port: PretoriusBrainPort):
