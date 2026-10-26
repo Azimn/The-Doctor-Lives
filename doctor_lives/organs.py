@@ -101,6 +101,28 @@ class CognitiveProposal:
 
 
 @dataclass(frozen=True, slots=True)
+class CognitivePulse:
+    """Engineer-only record of a HOST-SCHEDULED existing brain heartbeat."""
+
+    ticks: int
+    store_tick: int
+    thought_count: int
+    selected_tendencies: tuple[str, ...]
+    initiated_by: str = "host"
+
+
+@dataclass(frozen=True, slots=True)
+class SleepReplayReport:
+    """Engineer-only record of existing mnemonic replay without waking time."""
+
+    requested_ticks: int
+    fragments: int
+    store_tick: int
+    neural_tick_after: int
+    initiated_by: str = "host"
+
+
+@dataclass(frozen=True, slots=True)
 class AffectiveInfluence:
     """Engineer-only read of EXISTING need-mediated selection influence."""
 
@@ -128,6 +150,28 @@ class NoesisOrgan:
         )
 
 
+    def pulse(self, ticks: int = 1) -> CognitivePulse:
+        """Advance existing homeostatic time and conditional neural cognition.
+
+        A heartbeat may produce ZERO thoughts; the host's pulse is an
+        opportunity, not fabricated evidence of autonomous initiative.
+        Never returns raw need state, source IDs, policy scores or thoughts
+        to a subject renderer. No world action is attempted.
+        """
+        if type(ticks) is not int or not 1 <= ticks <= 24:
+            raise ValueError("Noesis pulse must be 1 to 24 bounded host ticks")
+        report = self._port.heartbeat(ticks)
+        thoughts = report["thoughts"]
+        return CognitivePulse(
+            ticks=int(report["ticks"]),
+            store_tick=int(report["tick"]),
+            thought_count=len(thoughts),
+            selected_tendencies=tuple(
+                str(thought["selected_action"]) for thought in thoughts
+            ),
+        )
+
+
 class MnemosyneOrgan:
     def __init__(self, port: PretoriusBrainPort):
         self._port = port
@@ -146,6 +190,24 @@ class MnemosyneOrgan:
         ):
             raise PermissionError("Recollection controller belongs to another brain")
         return controller.recollect_frame()
+
+
+    def replay_sleep(self, ticks: int = 12) -> SleepReplayReport:
+        """Run the existing neural/memory sleep path without world-time advance.
+
+        No extra dreaming system, state store, or subjective memory admission.
+        Generated fragments remain engineering records unless separately
+        acquired by the canonical first-person boundary.
+        """
+        if type(ticks) is not int or not 1 <= ticks <= 24:
+            raise ValueError("Mnemosyne replay must be 1 to 24 bounded ticks")
+        report = self._port.sleep(ticks)
+        return SleepReplayReport(
+            requested_ticks=int(report["ticks"]),
+            fragments=int(report["fragments"]),
+            store_tick=int(report["store_tick"]),
+            neural_tick_after=int(self._port.brain.neural.tick),
+        )
 
 
 class AffectusOrgan:
@@ -238,6 +300,14 @@ class SixOrganRuntime:
     @property
     def organ_registry(self) -> tuple[OrganDescriptor, ...]:
         return ORGAN_REGISTRY
+
+    def checkpoint(self) -> dict[str, Any]:
+        """Persist the SAME canonical neural checkpoint and brain state.
+
+        Existing PretoriusBrainPort.save controls format and persistence.
+        This does not create a six-organ checkpoint or migration format.
+        """
+        return self._port.save()
 
     def status(self) -> dict[str, Any]:
         """Engineer-only inventory, deliberately separate from subject access."""

@@ -177,6 +177,10 @@ class PretoriusBrainPort:
             "subject_frame": list(frame.renderer_context()),
         }
 
+    def heartbeat(self, ticks: int = 1) -> dict[str, Any]:
+        """Host-scheduled aging and endogenous thought via the existing brain."""
+        return self.brain.heartbeat(ticks)
+
     def sleep(self, ticks: int = 12) -> dict[str, Any]:
         return self.brain.sleep(ticks)
 

@@ -11,7 +11,7 @@ As of 2026-10-26. Official production `main` remains untouched while this review
 | D4 Mnemosyne | **Not promoted** | Acquisition, recollection and protected-truth separation tests required |
 | D5 environment/Corpus port | **Not implemented** | Lab parity + mock alternate provider contract and identity continuity |
 | D6 Corpus/Affectus/Noesis | **Not calibrated** | Physical feasibility, affect and control tests |
-| D7 closed loop | **Not qualified** | Gate 3/5/5A integration and independent initiative controls |
+| D7 closed loop | **Host-scheduled heartbeat and mnemonic replay now mapped; full closed loop not qualified** | `NoesisOrgan.pulse` and `MnemosyneOrgan.replay_sleep` delegate to unchanged brain with comparative fixture tests; world action, own goal initiative, Gate 3/5/5A and consequence return unqualified |
 | D8 Sensus donor | **Not adopted** | Optional conditional comparator and source-boundary tests |
 | D9 learning | **Not characterized** | Mechanism-specific lesion and transfer controls |
 | D10 mock robot | **Not implemented** | Fake provider, no actuation or authority leakage |

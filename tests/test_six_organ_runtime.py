@@ -2,8 +2,11 @@
 
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
+
+import numpy as np
 
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.models import SubjectFrame, SubjectRendererCapability
@@ -12,6 +15,8 @@ from doctor_lives.organs import (
     AcquisitionReceipt,
     AffectiveInfluence,
     CognitiveProposal,
+    CognitivePulse,
+    SleepReplayReport,
     ORGAN_REGISTRY,
     SixOrganRuntime,
 )
@@ -274,6 +279,147 @@ class SixOrganRuntimeTests(unittest.TestCase):
         self.assertFalse((self.root / "sensus.sqlite3").exists())
         self.assertFalse((self.root / "affectus.sqlite3").exists())
         self.assertFalse((self.root / "corpus.sqlite3").exists())
+
+class SixOrganOriginalBrainParityTests(unittest.TestCase):
+    """One seed, two copies: original brain path versus six-organ port.
+
+    Note: UUID and wall-time audit IDs are nondeterministic. Compare semantic
+    decisions, original neural state, persistence and subject-facing content,
+    not incidental event identifiers or entire raw SQLite file digests.
+    """
+
+    def test_legacy_heartbeat_and_sleep_match_on_identical_preserved_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            seed = PretoriusBrainPort(root / "seed", neural_config=small_config())
+            # First write real cognition, not a fabricated state dictionary.
+            seed.ingest({
+                "channel": "world",
+                "source": "lab-simulation-parity-fixture",
+                "percept": (
+                    "I hear a glass vessel break in the other room. "
+                    "I cannot see what actually broke."
+                ),
+                "novelty": 0.88,
+                "threat": 0.88,
+                "arousal": 0.84,
+            })
+            seed.save()
+            source_digest = seed.brain.store.digest()
+            shutil.copytree(root / "seed", root / "classic")
+            shutil.copytree(root / "seed", root / "organs")
+            classic = PretoriusBrainPort(
+                root / "classic", neural_config=small_config()
+            )
+            six = SixOrganRuntime.open(
+                root / "organs", neural_config=small_config()
+            )
+            self.assertEqual(source_digest, classic.brain.store.digest())
+            self.assertEqual(source_digest, six._port.brain.store.digest())
+
+            # Preserve exactly the existing subject-access semantics.
+            query = "What do I remember about the broken glass?"
+            classic_frame = classic.subject_frame(query)
+            organ_frame = six.synthetic_ipseity.project_subject_frame(query)
+            self.assertEqual(
+                SubjectRendererCapability.read(classic_frame),
+                SubjectRendererCapability.read(organ_frame),
+            )
+
+            first = classic.heartbeat(2)
+            second = six.noesis.pulse(2)
+            self.assertIsInstance(second, CognitivePulse)
+            self.assertEqual(first["ticks"], second.ticks)
+            self.assertEqual(first["tick"], second.store_tick)
+            self.assertEqual(len(first["thoughts"]), second.thought_count)
+            self.assertEqual(
+                tuple(thought["selected_action"] for thought in first["thoughts"]),
+                second.selected_tendencies,
+            )
+            self.assertEqual(classic.brain.neural.tick, six._port.brain.neural.tick)
+            self.assertEqual(
+                classic.brain._felt_state(), six._port.brain._felt_state()
+            )
+            for key in ("fatigue", "affiliation", "competence", "autonomy",
+                        "curiosity", "continuity"):
+                with classic.brain.store.connect() as a, \
+                        six._port.brain.store.connect() as b:
+                    x = a.execute(
+                        "SELECT actual,felt,last_tick FROM needs WHERE key=?", (key,)
+                    ).fetchone()
+                    y = b.execute(
+                        "SELECT actual,felt,last_tick FROM needs WHERE key=?", (key,)
+                    ).fetchone()
+                    self.assertEqual(tuple(x), tuple(y))
+
+            sleep_classic = classic.sleep(3)
+            sleep_organs = six.mnemosyne.replay_sleep(3)
+            self.assertIsInstance(sleep_organs, SleepReplayReport)
+            self.assertEqual(sleep_classic["ticks"], sleep_organs.requested_ticks)
+            self.assertEqual(sleep_classic["fragments"], sleep_organs.fragments)
+            self.assertEqual(sleep_classic["store_tick"], sleep_organs.store_tick)
+            self.assertEqual(classic.brain.store.tick, six._port.brain.store.tick)
+            self.assertEqual(
+                classic.brain.neural.tick, sleep_organs.neural_tick_after
+            )
+            np.testing.assert_array_equal(
+                classic.brain.neural.rate, six._port.brain.neural.rate
+            )
+            np.testing.assert_array_equal(
+                classic.brain.neural.W.data, six._port.brain.neural.W.data
+            )
+            np.testing.assert_array_equal(
+                classic.brain.neural.eligibility, six._port.brain.neural.eligibility
+            )
+            baseline = classic.save()
+            organ_checkpoint = six.checkpoint()
+            self.assertEqual(baseline["tick"], organ_checkpoint["tick"])
+            self.assertEqual(
+                baseline["state_version"], organ_checkpoint["state_version"]
+            )
+            reopened = SixOrganRuntime.open(
+                root / "organs", neural_config=small_config()
+            )
+            self.assertEqual(
+                organ_checkpoint["state_digest"],
+                reopened._port.brain.store.digest(),
+            )
+            self.assertEqual(
+                reopened._port.brain.neural.tick,
+                sleep_organs.neural_tick_after,
+            )
+
+    def test_bounded_idle_and_sleep_fail_before_mutating_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            organ = SixOrganRuntime.open(td, neural_config=small_config())
+            before = organ._port.brain.store.digest()
+            neural = organ._port.brain.neural.tick
+            for invalid in (0, -1, 25, True, 1.5, "12"):
+                with self.subTest(invalid=invalid):
+                    with self.assertRaises(ValueError):
+                        organ.noesis.pulse(invalid)
+                    with self.assertRaises(ValueError):
+                        organ.mnemosyne.replay_sleep(invalid)
+            self.assertEqual(before, organ._port.brain.store.digest())
+            self.assertEqual(neural, organ._port.brain.neural.tick)
+
+    def test_quiet_period_does_not_invent_a_thought_or_memory(self):
+        with tempfile.TemporaryDirectory() as td:
+            organ = SixOrganRuntime.open(td, neural_config=small_config())
+            with organ._port.brain.store.transaction() as conn:
+                conn.execute("DELETE FROM concerns")
+                conn.execute("DELETE FROM commitments")
+                organ._port.brain.store.bump_state_version(conn)
+            before = organ._port.brain.store.tick
+            before_thoughts = len(organ._port.brain.store.thoughts(100000))
+            pulse = organ.noesis.pulse(2)
+            self.assertEqual(pulse.store_tick, before + 2)
+            self.assertEqual(pulse.thought_count, 0)
+            self.assertEqual(
+                before_thoughts,
+                len(organ._port.brain.store.thoughts(100000))
+            )
+            self.assertEqual(pulse.initiated_by, "host")
 
 
 if __name__ == "__main__":
