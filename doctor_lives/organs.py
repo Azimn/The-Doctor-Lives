@@ -248,6 +248,15 @@ class SensusOrgan:
             raise ValueError("Sensus receives only world/tool percepts")
         return AcquisitionReceipt.from_brain(self._port.ingest(raw))
 
+    def opt_in_multichannel_pilot(self):
+        """Use the reviewed Sensus binder only in an explicitly tested host.
+
+        Import and donor integrity verification occur on demand; the default
+        single-stream Sensus path and canonical brain remain unchanged.
+        """
+        from .sensus_pilot import SensusCandidatePilot
+        return SensusCandidatePilot(self)
+
 
 class SyntheticIpseityOrgan:
     def __init__(self, port: PretoriusBrainPort):
