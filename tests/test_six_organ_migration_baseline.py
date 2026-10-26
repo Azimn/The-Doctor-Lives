@@ -98,12 +98,12 @@ class SixOrganD0BaselineTests(unittest.TestCase):
             port.brain, "render_audit_envelope",
             side_effect=AssertionError("engineer path invoked"),
         ):
-            frame = port.subject_frame("How am I feeling?")
+            frame = port.subject_frame("What did I notice when I felt cold?")
         self.assertIsInstance(frame, SubjectFrame)
         lines = SubjectRendererCapability.read(frame)
         self.assertTrue(lines)
         self.assertTrue(any("cold" in line.lower() for line in lines))
-        rendered = "\\n".join(lines)
+        rendered = "\n".join(lines)
         for token in (
             "temperature_c", "thermal_sensor", "13.2",
             "state_version", "action_scores", "source_record_ids",
