@@ -234,9 +234,23 @@ class MnemosyneEndogenousPilot:
         if type(frame) is not SubjectFrame:
             raise TypeError("Recollection returned noncanonical subject frame")
         terms = _cue_terms(question)
+        # The canonical SubjectFrame contains recollections FIRST, followed
+        # by present needs, impulses, relationships and unresolved concerns.
+        # Restrict the private-cognition cue to actual memory projections:
+        # treating a projected *concern* as a remembered fact would fabricate
+        # autobiographical knowledge. The memory count is host-only and never
+        # passed to the thought/renderer.
+        brain = self._port.brain
+        before = (brain.store.digest(), brain.neural.tick)
+        memory_count = len(
+            brain.cognitive_view(query=question, audit=False).experiences
+        )
+        if (brain.store.digest(), brain.neural.tick) != before:
+            raise RuntimeError("Subject recollection changed while selecting cue")
+        lines = SubjectRendererCapability.read(frame)[:memory_count]
         ranked = sorted(
             ((len(_cue_terms(line) & terms), line)
-             for line in SubjectRendererCapability.read(frame)
+             for line in lines
              if line.startswith(("I ", "My ", "Mine ", "Me "))),
             key=lambda row: (-row[0], row[1]),
         )
