@@ -349,6 +349,18 @@ class SixOrganRuntime:
             self._port, subject_port, authorized=authorized
         )
 
+    def bind_source_verified_book_search(self, embodied_port, *,
+                                         authorized: bool = False):
+        """Opt-in PR #61 source-memory/physical-task experiment.
+
+        The verified Laboratory owns its book/world receipts, this same
+        PretoriusBrainPort owns all first-person memory and policy. The task
+        reservation journal is engineering execution state, not another brain.
+        Host authors the task: no autonomous initiative or superiority claim.
+        """
+        from .six_organ_book_task import VerifiedBookSearch
+        return VerifiedBookSearch(self, embodied_port, authorized=authorized)
+
     def bind_causal_laboratory(self, subject_port, *, authorized: bool = False):
         """Experimental Noesis-choice / host-authorized Corpus action handoff.
 
