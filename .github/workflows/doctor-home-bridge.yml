@@ -9,6 +9,8 @@ on:
       - tests/test_lab_home_bridge.py
       - tests/test_six_organ_lab_comparison.py
       - tests/test_six_organ_environment_port.py
+      - tests/test_six_organ_virtual_world_port.py
+      - doctor_lives/virtual_world_port.py
       - doctor_lives/environment_port.py
       - tools/six_organ_laboratory_parity_witness.py
       - .github/workflows/doctor-home-bridge.yml
@@ -58,6 +60,10 @@ jobs:
         run: |
           python -c "from pretorius_lab.subject_port import SubjectPort; print('Real Lab provider loaded')"
           python -m unittest discover -s tests -p test_six_organ_environment_port.py -v
+      - name: Verify Lab-to-independent-virtual-world transfer, action and return
+        env:
+          PYTHONPATH: donor-laboratory
+        run: python -m unittest discover -s tests -p test_six_organ_virtual_world_port.py -v
       - name: Ensure original Doctor core regression still passes
         run: |
           python -m unittest discover -s tests -p test_cognition.py -v
