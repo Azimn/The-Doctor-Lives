@@ -161,6 +161,7 @@ class NoesisCorpusLaboratoryPilot:
         brain = self._runtime._port.brain
         memory = brain.store.get_memory(consequence.memory_id)
         if (memory is None
+                or not memory["active"]
                 or memory["text"] != consequence.first_person
                 or memory["evidence_class"] != "lived_runtime_memory"
                 or not memory["source"].startswith("laboratory-home:action:")):
