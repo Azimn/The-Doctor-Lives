@@ -35,7 +35,7 @@ class PinnedSixOrganSensusPilotTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.runtime = SixOrganRuntime.open(self.root / "pretorius", neural_config=config())
-        self.pilot = SensusCandidatePilot(self.runtime.sensus)
+        self.pilot = self.runtime.sensus.opt_in_multichannel_pilot()
 
     def percept(self, event_id, channel, value, *, evidence=None, source=None,
                 attr="vessel color", tick=1, object_hint="vessel"):
