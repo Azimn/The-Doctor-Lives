@@ -389,6 +389,60 @@ class SixOrganOriginalBrainParityTests(unittest.TestCase):
                 sleep_organs.neural_tick_after,
             )
 
+    def test_same_saved_brain_direct_and_organ_paths_ingest_and_deliberate(self):
+        """Differential test of real canonical ingress and cognitive selector."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            seed = PretoriusBrainPort(root / "seed", neural_config=small_config())
+            seed.save()
+            shutil.copytree(root / "seed", root / "classic")
+            shutil.copytree(root / "seed", root / "organs")
+            classic = PretoriusBrainPort(root / "classic", neural_config=small_config())
+            organ = SixOrganRuntime.open(root / "organs", neural_config=small_config())
+            event = {
+                "channel": "world",
+                "source": "lab-parity-source",
+                "percept": "I hear a clock strike. I cannot see the clock.",
+                "novelty": 0.8,
+                "threat": 0.25,
+            }
+            a = classic.ingest(event)
+            b = organ.sensus.acquire_existing_percept(event, host_authorized=True)
+            self.assertEqual(a["ingress"]["subject_text"], b.first_person)
+            self.assertEqual(
+                classic.brain.store.get_memory(a["memory_id"])["text"],
+                organ._port.brain.store.get_memory(b.memory_id)["text"],
+            )
+            self.assertEqual(
+                classic.brain._felt_state(), organ._port.brain._felt_state()
+            )
+            direct = classic.cognition("parity-fixture")
+            through = organ.noesis.deliberate(host_trigger="parity-fixture")
+            self.assertEqual(direct["selected_action"], through.selected_tendency)
+            self.assertEqual(classic.brain.neural.tick, organ._port.brain.neural.tick)
+            np.testing.assert_array_equal(
+                classic.brain.neural.rate, organ._port.brain.neural.rate
+            )
+            np.testing.assert_array_equal(
+                classic.brain.neural.W.data, organ._port.brain.neural.W.data
+            )
+            classic.save()
+            organ.checkpoint()
+            classic_reopened = PretoriusBrainPort(
+                root / "classic", neural_config=small_config()
+            )
+            organ_reopened = SixOrganRuntime.open(
+                root / "organs", neural_config=small_config()
+            )
+            self.assertEqual(
+                classic_reopened.brain.neural.tick,
+                organ_reopened._port.brain.neural.tick,
+            )
+            np.testing.assert_array_equal(
+                classic_reopened.brain.neural.rate,
+                organ_reopened._port.brain.neural.rate,
+            )
+
     def test_bounded_idle_and_sleep_fail_before_mutating_state(self):
         with tempfile.TemporaryDirectory() as td:
             organ = SixOrganRuntime.open(td, neural_config=small_config())
