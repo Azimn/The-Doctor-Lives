@@ -172,9 +172,9 @@ class NoesisCorpusLaboratoryPilot:
                 "SELECT envelope,event_hash FROM embodied_events WHERE event_id=?",
                 (eid,),
             ).fetchone()
-        if not world_row or memory["source"] != "laboratory-home:action:" + world_row["event_hash"]:
+        if not world_row or memory["source"] != "laboratory-home:action:" + world_row[1]:
             raise PermissionError("Missing or mismatched authenticated world consequence")
-        from .lab_home_bridge import _hash, _row
+        from .lab_home_bridge import _row
         with self._bridge.world._open() as db:
             _row(db, "embodied_events", eid)
         trigger = self._feedback_trigger(eid)
