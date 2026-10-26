@@ -50,7 +50,7 @@ class RealBookTaskBenchmark(unittest.TestCase):
         port = EmbodiedAccess(lab)
         port.initialize(station="station:center")
         runtime = SixOrganRuntime.open(root / "brain", neural_config=config())
-        pilot = VerifiedBookSearch(runtime, port, authorized=True)
+        pilot = runtime.bind_source_verified_book_search(port, authorized=True)
         return runtime, lab, port, pilot
 
     def sighting(self, port, pilot, *, admit=True):
@@ -118,8 +118,8 @@ class RealBookTaskBenchmark(unittest.TestCase):
             self.assertEqual(port.verify()["revision"], before)
             runtime.checkpoint()
             reopened = SixOrganRuntime.open(self.root / name / "brain")
-            replay = VerifiedBookSearch(
-                reopened, port, authorized=True
+            replay = reopened.bind_source_verified_book_search(
+                port, authorized=True
             ).run(
                 task_id="read-007", book_id="book:007",
                 max_actions=4, authorized=True,
