@@ -14,11 +14,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import json
 from pathlib import Path
 import re
 from typing import Iterable
 
 from .organs import AcquisitionReceipt, SensusOrgan
+from .store import new_id, utc_now
+from .subject_inquiry import validate_subject_inquiry
 
 _PINNED_COMMIT = "802e459ee68950414347d5fa324484c034f57b81"
 _PINNED_CORE_BLOB = "507cd9f75af04353b5e42d67fb60c147acff5ffb"
@@ -77,6 +80,7 @@ class SensusCandidateOutcome:
     vetoed_attributes: tuple[str, ...]
     withheld_claim_ids: tuple[str, ...]
     candidate_count: int
+    epistemic_gap_ids: tuple[str, ...] = ()
     # No world-state promotion and no false claim of organ qualification.
 
 
@@ -95,6 +99,87 @@ class SensusCandidatePilot:
         self._organ = organ
         self._donor = _load_verified_donor()
         self._binder = self._donor.Sensus()
+
+    def _persist_verified_conflict(self, scene_tick, conflict, claims) -> str | None:
+        """Materialize a verified sensory disagreement as an epistemic concern.
+
+        Adapted from the reviewed PR #59 _record_conflict_as_epistemic_concern.
+        No disputed value is admitted as lived observation, and the concern is
+        not evidence that a disputed physical fact is true.
+        """
+        if (conflict.status != "vetoed"
+                or not _PHRASE.fullmatch(conflict.attribute)):
+            return None
+        question = "What do I remember of the " + conflict.attribute + "?"
+        validate_subject_inquiry(question)
+        evidence = {
+            "schema": "pretorius.sensus.conflict-evidence.v1",
+            "scene_tick": scene_tick,
+            "attribute": conflict.attribute,
+            "object_id": conflict.object_id,
+            "claims": sorted(
+                (
+                    {
+                        "event_id": p.event_id,
+                        "source_ref": p.source_ref,
+                        "channel": p.channel,
+                        "value": p.value,
+                        "evidence": p.evidence.value,
+                    }
+                    for p in claims
+                ),
+                key=lambda p: (p["source_ref"], p["event_id"]),
+            ),
+            "resolution": None,
+            "downstream_effect": "open_epistemic_pressure",
+        }
+        digest = hashlib.sha256(
+            json.dumps(evidence["claims"], sort_keys=True).encode("utf-8")
+        ).hexdigest()[:32]
+        identifier = "sensus-gap-" + digest
+        # Single canonical BrainStore: atomic conflict receipt + concern.
+        brain = self._organ._port.brain
+        with brain.store.transaction() as conn:
+            existing = conn.execute(
+                "SELECT source,actor,description FROM concerns WHERE id=?",
+                (identifier,),
+            ).fetchone()
+            if existing:
+                receipt = conn.execute(
+                    """SELECT outcome FROM concern_events
+                    WHERE concern_id=? AND source='preview_sensus_conflict'
+                    AND transition='opened'""",
+                    (identifier,),
+                ).fetchone()
+                if (existing["source"] != "preview_sensus_conflict"
+                        or existing["actor"] != "PREVIEW_HOST"
+                        or not receipt
+                        or json.loads(receipt["outcome"])["claims"] != evidence["claims"]):
+                    raise RuntimeError("Conflicting epistemic concern replay")
+                return identifier
+            conn.execute(
+                """INSERT INTO concerns
+                (id,created_tick,updated_tick,description,status,importance,
+                 uncertainty,actor,source)
+                VALUES(?,?,?,?,'open',?,?,?,?)""",
+                (
+                    identifier, brain.store.tick, brain.store.tick,
+                    "the " + conflict.attribute, 0.95, 0.95,
+                    "PREVIEW_HOST", "preview_sensus_conflict",
+                ),
+            )
+            conn.execute(
+                """INSERT INTO concern_events
+                (id,concern_id,tick,created_at,transition,outcome,actor,source)
+                VALUES(?,?,?,?,?,?,?,?)""",
+                (
+                    new_id("concern_event"), identifier, brain.store.tick,
+                    utc_now(), "opened", json.dumps(evidence, sort_keys=True),
+                    "PREVIEW_HOST", "preview_sensus_conflict",
+                ),
+            )
+            brain.store.bump_state_version(conn)
+        return identifier
 
     def acquire(
         self,
@@ -143,10 +228,30 @@ class SensusCandidatePilot:
 
         scene = self._binder.step(tick, items)
         vetoed = []
+        gaps = []
         admitted = []
         withheld = []
         for object_view in scene.objects:
             contested = set(object_view.contested_attributes)
+            # Treat only two separately source-verified OBSERVED channels as
+            # eligible evidence for an internally relevant epistemic gap.
+            for conflict in scene.conflicts:
+                if (conflict.object_id != object_view.object_id
+                        or conflict.status != "vetoed"):
+                    continue
+                observed = [
+                    p for p in object_view.claims
+                    if p.attribute == conflict.attribute
+                    and p.evidence is self._donor.Evidence.OBSERVED
+                    and p.source_ref in verified_world_refs
+                ]
+                if (len({p.value for p in observed}) < 2
+                        or len({p.source_ref for p in observed}) < 2
+                        or len({p.channel for p in observed}) < 2):
+                    continue
+                gap = self._persist_verified_conflict(tick, conflict, observed)
+                if gap:
+                    gaps.append(gap)
             for claim in object_view.claims:
                 if (claim.evidence is not self._donor.Evidence.OBSERVED
                         or claim.attribute in contested
@@ -174,4 +279,5 @@ class SensusCandidatePilot:
             vetoed_attributes=tuple(sorted(set(vetoed))),
             withheld_claim_ids=tuple(sorted(withheld)),
             candidate_count=len(items),
+            epistemic_gap_ids=tuple(sorted(set(gaps))),
         )
