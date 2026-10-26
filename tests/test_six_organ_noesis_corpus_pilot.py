@@ -40,8 +40,8 @@ def setup_lab(root: Path):
     DailyRhythm(world).initialize()
     runtime = SixOrganRuntime.open(root / "brain", neural_config=config())
     subject = SubjectPort(world)
-    return runtime, subject, NoesisCorpusLaboratoryPilot(
-        runtime, subject, authorized=True
+    return runtime, subject, runtime.bind_causal_laboratory(
+        subject, authorized=True
     )
 
 
