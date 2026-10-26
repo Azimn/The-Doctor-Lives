@@ -153,6 +153,57 @@ class SixOrganDurableSubjectDeliveryTests(unittest.TestCase):
             self.assertIsNone(gate.deliver_next(now_ms=40))
             self.assertEqual(len(attempts), 2)
 
+    def test_memory_reflection_and_noesis_publish_only_through_durable_gate(self):
+        """Sensus -> Mnemosyne -> canonical Noesis -> Ipseity, one brain."""
+        observation = self.runtime.sensus.acquire_existing_percept(
+            {
+                "channel": "world", "source": "authorized-earlier-pendulum",
+                "percept": "I saw a silver pendulum beside the cabinet.",
+            },
+            host_authorized=True,
+        )
+        brain = self.runtime._port.brain
+        with brain.store.transaction() as conn:
+            conn.execute(
+                """INSERT INTO concerns
+                (id,created_tick,updated_tick,description,status,importance,
+                 uncertainty,actor,source) VALUES(?,?,?,?,'open',?,?,?,?)""",
+                (
+                    "six-organ-ip-gap", brain.store.tick, brain.store.tick,
+                    "the silver pendulum", 0.99, 0.99,
+                    "PREVIEW_HOST", "preview_sensus_conflict",
+                ),
+            )
+            brain.store.bump_state_version(conn)
+        mechanism = self.runtime.mnemosyne.opt_in_endogenous_recollection()
+        choice = mechanism.deliberate(recall_cost=0)
+        self.assertEqual(choice.action, "recall")
+        effect = mechanism.reflect_selected_recollection()
+        self.assertIsNotNone(effect.next_policy_decision_id)
+        self.assertEqual(self.received, [])
+        with self.runtime.synthetic_ipseity.open_durable_delivery(
+            renderer=self.renderer
+        ) as gate:
+            self.assertIs(gate._doctor, self.runtime._port)
+            before = brain.store.digest()
+            self.assertEqual(gate.pending_count(), 0)
+            gate.publish_current()
+            self.assertEqual(gate.pending_count(), 1)
+            self.assertEqual(brain.store.digest(), before)
+            self.assertEqual(self.received, [])
+            gate.deliver_next(now_ms=1000)
+            self.assertEqual(len(self.received), 1)
+            content = self.received[0]
+            self.assertIn("pendulum", content.lower())
+            for forbidden in (
+                "six-organ-ip-gap", "PREVIEW_HOST", "preview_sensus_conflict",
+                "policy_decision_id", "neural_checkpoint_sha256",
+                effect.next_policy_decision_id, observation.memory_id,
+            ):
+                self.assertNotIn(forbidden, content)
+            self.assertEqual(gate.pending_count(), 0)
+            self.assertEqual(brain.store.digest(), before)
+
     def test_noesis_changes_original_brain_without_renderer_taking_over(self):
         with self.runtime.synthetic_ipseity.open_durable_delivery(
             renderer=self.renderer
