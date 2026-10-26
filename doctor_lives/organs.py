@@ -301,6 +301,19 @@ class SixOrganRuntime:
     def organ_registry(self) -> tuple[OrganDescriptor, ...]:
         return ORGAN_REGISTRY
 
+    def bind_laboratory(self, subject_port, *, authorized: bool = False):
+        """Attach the existing source-verified Laboratory bridge to this brain.
+
+        No second Laboratory, simulated world, or action planner is created.
+        The world retains receipt authority; the brain retains memory authority.
+        A host must separately authorize each world action.
+        """
+        from .lab_home_bridge import DoctorHomeBridge
+
+        return DoctorHomeBridge(
+            self._port, subject_port, authorized=authorized
+        )
+
     def checkpoint(self) -> dict[str, Any]:
         """Persist the SAME canonical neural checkpoint and brain state.
 
