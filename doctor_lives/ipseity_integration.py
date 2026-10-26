@@ -92,7 +92,7 @@ class DoctorSyntheticIpseitySession:
 
     def publish_current(self, user_input: str | None = None):
         """Commit real Doctor subject experience into the durable Ipseity gate."""
-        source = self._doctor.brain.render_request(user_input).subject_frame
+        source = self._doctor.subject_frame(user_input)
         return self._publish_typed_subject_frame(source)
 
     def bind_recollection_controller(

@@ -4,6 +4,7 @@ These tests exercise the existing canonical runtime. They do NOT demonstrate
 that Sensus, Affectus, Corpus or global Ipseity are production-integrated.
 """
 from pathlib import Path
+from unittest.mock import patch
 import tempfile
 import unittest
 
@@ -12,6 +13,7 @@ from doctor_lives.cognition import PretoriusBrain
 from doctor_lives.models import (
     EngineerAuditCapability,
     Experience,
+    SubjectFrame,
     SubjectRendererCapability,
 )
 from doctor_lives.neural import DEFAULT_CONFIG
@@ -80,6 +82,35 @@ class SixOrganD0BaselineTests(unittest.TestCase):
             EngineerAuditCapability.read(request.subject_frame)
         self.assertIn("private_state_version",
                       EngineerAuditCapability.read(audit))
+
+    def test_host_typed_projection_keeps_engineer_diagnostics_off_access_seam(self):
+        port = PretoriusBrainPort(self.root, neural_config=baseline_config())
+        port.ingest({
+            "channel": "body",
+            "signal": "cold",
+            "level": 0.86,
+            "payload": {"temperature_c": 13.2},
+            "source": "thermal_sensor",
+        })
+        before = port.brain.store.digest()
+        # Model callbacks must not need access to privileged engineer views.
+        with patch.object(
+            port.brain, "render_audit_envelope",
+            side_effect=AssertionError("engineer path invoked"),
+        ):
+            frame = port.subject_frame("How am I feeling?")
+        self.assertIsInstance(frame, SubjectFrame)
+        lines = SubjectRendererCapability.read(frame)
+        self.assertTrue(lines)
+        self.assertTrue(any("cold" in line.lower() for line in lines))
+        rendered = "\\n".join(lines)
+        for token in (
+            "temperature_c", "thermal_sensor", "13.2",
+            "state_version", "action_scores", "source_record_ids",
+        ):
+            self.assertNotIn(token, rendered)
+        self.assertEqual(before, port.brain.store.digest())
+        self.assertNotIsInstance(frame, dict)
 
     def test_external_testimony_is_not_reclassified_as_lived_fact(self):
         brain = PretoriusBrain(self.root, neural_config=baseline_config())

@@ -6,6 +6,7 @@ from typing import Any, Callable, Mapping
 
 from .cognition import PretoriusBrain
 from .ingress import project_raw_ingress
+from .models import SubjectFrame
 from .projection import ProjectionContext
 from .subject_inquiry import (
     SubjectInquiryAuthorizationError,
@@ -82,6 +83,16 @@ class PretoriusBrainPort:
 
     def view(self) -> dict[str, Any]:
         return asdict(self.brain.cognitive_view())
+
+    def subject_frame(self, user_input: str | None = None) -> SubjectFrame:
+        """Host-only typed subject projection for the single Ipseity admission seam.
+
+        The returned SubjectFrame is factory-produced by the existing Doctor
+        projector. This method does NOT hand out an engineer audit or certify
+        durable awareness admission. A conforming production host must still
+        route the result through its chosen one authoritative access gate.
+        """
+        return self.brain.render_request(user_input).subject_frame
 
     def render_request(self, user_input: str | None = None) -> dict[str, Any]:
         return self.brain.render_request(user_input).to_dict()
