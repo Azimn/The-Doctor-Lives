@@ -37,7 +37,7 @@ _CHANNEL_PREFIX = {
 def _git_blob(path: Path) -> str:
     data = path.read_bytes()
     return hashlib.sha1(
-        b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+        b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     ).hexdigest()
 
 
