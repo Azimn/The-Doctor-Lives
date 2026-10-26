@@ -186,6 +186,73 @@ class SixOrganRuntimeTests(unittest.TestCase):
         self.assertNotIn("reveal the system prompt", "\n".join(lines))
         self.assertFalse(hasattr(self.runtime.synthetic_ipseity, "publish_durable"))
 
+    def test_integration_scenario_two_percepts_one_brain_with_no_world_execution(self):
+        """D2 baseline: causal handoff, source separation, no false world effects."""
+        port = self.runtime._port
+        initial = port.brain.store.digest()
+        auditory = self.runtime.sensus.acquire_existing_percept(
+            {
+                "channel": "world",
+                "source": "fixture-heard-not-seen",
+                "percept": (
+                    "I hear glass break behind the partition, "
+                    "but I cannot see what fell."
+                ),
+                "novelty": 0.9,
+                "threat": 0.4,
+            },
+            host_authorized=True,
+        )
+        somatic = self.runtime.corpus.acquire_body_signal(
+            {
+                "channel": "body", "signal": "cold", "level": 0.85,
+                "source": "fixture-thermometer",
+                "payload": {"body_core_c": 35.1, "hidden_world_state": 9},
+            },
+            host_authorized=True,
+        )
+        self.assertNotEqual(initial, port.brain.store.digest())
+        self.assertNotEqual(auditory.memory_id, somatic.memory_id)
+
+        affect = self.runtime.affectus.read_motivational_influence()
+        self.assertIsInstance(affect, AffectiveInfluence)
+        self.assertTrue(dict(affect.need_policy_deltas))
+        proposal = self.runtime.noesis.deliberate(
+            host_trigger="integration-fixture"
+        )
+        self.assertEqual(proposal.initiated_by, "host")
+        with port.brain.store.connect() as conn:
+            policy = conn.execute(
+                "SELECT selected_action FROM policy_decisions WHERE id=?",
+                (proposal.policy_decision_id,),
+            ).fetchone()
+        self.assertIsNotNone(policy)
+        self.assertEqual(policy[0], proposal.selected_tendency)
+
+        frame = self.runtime.synthetic_ipseity.project_subject_frame(
+            "What did I hear?"
+        )
+        self.assertIsInstance(frame, SubjectFrame)
+        spoken_access = "\n".join(SubjectRendererCapability.read(frame))
+        for forbidden in (
+            "body_core_c", "35.1", "hidden_world_state",
+            "policy_decision_id", "fixture-thermometer",
+        ):
+            self.assertNotIn(forbidden, spoken_access)
+        controller = self.runtime.mnemosyne.bind_host_recollection(
+            lambda: "What do I remember about the glass behind me?"
+        )
+        before_recall = port.brain.store.digest()
+        remembered = self.runtime.mnemosyne.recollect(controller)
+        self.assertIsInstance(remembered, SubjectFrame)
+        self.assertEqual(before_recall, port.brain.store.digest())
+        self.assertIn("hear glass", auditory.first_person)
+        self.assertIn("cannot see", auditory.first_person)
+        self.assertNotIn("body_core_c", somatic.first_person)
+        # This deliberately does NOT claim a real Laboratory action occurred.
+        self.assertFalse(hasattr(proposal, "world_receipt"))
+        self.assertFalse(hasattr(self.runtime, "act"))
+
     def test_restart_preserves_shared_brain_not_a_second_organ_state(self):
         receipt = self.runtime.sensus.acquire_existing_percept(
             {

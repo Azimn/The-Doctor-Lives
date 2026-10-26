@@ -6,7 +6,7 @@ As of 2026-10-26. Official production `main` remains untouched while this review
 |---|---|---|
 | D0 baseline | **Started, blocked** | Exact refs, backup, defaults and CI definition recorded in `BASELINE_2026-10-26.md`; test run/fixtures/review still missing |
 | D1 registry and decisions | **Proposed for review** | This registry, topology, 40-row classification and 9 provisional ADRs; do not label official until approved |
-| D2 interfaces/writers | **Preliminary audit only** | Initial state/write map in `SIX_ORGAN_WRITE_OWNERSHIP_AUDIT.md`; dynamic verification pending |
+| D2 interfaces/writers | **Opt-in adapter implementation and partial tests; incomplete** | Six executable seams in `doctor_lives/organs.py`, contracts in `D2_SIX_ORGAN_RUNTIME_SEAMS.md`, baseline and scenario tests; source-level writer audit done but dynamic single-writer authority proof pending |
 | D3 Ipseity | **Not promoted** | Global no-bypass, private cognition and causal admission tests required |
 | D4 Mnemosyne | **Not promoted** | Acquisition, recollection and protected-truth separation tests required |
 | D5 environment/Corpus port | **Not implemented** | Lab parity + mock alternate provider contract and identity continuity |
