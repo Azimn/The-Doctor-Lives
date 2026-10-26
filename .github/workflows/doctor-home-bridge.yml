@@ -8,6 +8,8 @@ on:
       - doctor_lives/lab_home_bridge.py
       - tests/test_lab_home_bridge.py
       - tests/test_six_organ_lab_comparison.py
+      - tests/test_six_organ_environment_port.py
+      - doctor_lives/environment_port.py
       - tools/six_organ_laboratory_parity_witness.py
       - .github/workflows/doctor-home-bridge.yml
   workflow_dispatch:
@@ -50,6 +52,12 @@ jobs:
           EXPECTED_DOCTOR_ROOT=baseline-doctor PYTHONPATH=baseline-doctor:donor-laboratory python tools/six_organ_laboratory_parity_witness.py --mode classic --output "$RUNNER_TEMP/classic.json"
           EXPECTED_DOCTOR_ROOT=. PYTHONPATH=.:donor-laboratory python tools/six_organ_laboratory_parity_witness.py --mode six --output "$RUNNER_TEMP/six.json"
           diff -u "$RUNNER_TEMP/classic.json" "$RUNNER_TEMP/six.json"
+      - name: Test environment substitution with pinned real Laboratory and no-actuation mock
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.subject_port import SubjectPort; print('Real Lab provider loaded')"
+          python -m unittest discover -s tests -p test_six_organ_environment_port.py -v
       - name: Ensure original Doctor core regression still passes
         run: |
           python -m unittest discover -s tests -p test_cognition.py -v
