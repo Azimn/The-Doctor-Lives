@@ -222,6 +222,78 @@ class NoesisCorpusLaboratoryActionTests(unittest.TestCase):
                 authorized=True,
             )
 
+    def test_matched_collision_memory_lesion_reports_risk_direction_without_faking_success(self):
+        """Same physical consequences; memory-access intervention only.
+
+        Report the change in the next native 'avoid' preference. A higher
+        score is a useful *candidate* risk signal, not proof the Doctor
+        actually chooses a better subsequent route or wins a task.
+        """
+        treated, ta, api = self.fresh("collision-treated")
+        control, ca, control_api = self.fresh("collision-control")
+        outcomes = []
+        for runtime, pilot in ((treated, api), (control, control_api)):
+            to_hall = runtime.noesis.deliberate(host_trigger="risk-hall")
+            hall = pilot.act(
+                to_hall,
+                HostCorpusOffer(to_hall.selected_tendency, "walk", "station:hall"),
+                authorized=True,
+            )
+            self.assertEqual(hall.status, "admitted")
+            at_stool = runtime.noesis.deliberate(host_trigger="risk-stool")
+            bump = pilot.act(
+                at_stool,
+                HostCorpusOffer(
+                    at_stool.selected_tendency, "walk", "station:shop:private"
+                ),
+                authorized=True,
+            )
+            self.assertEqual(bump.spoken_aloud, "Ow! My foot!")
+            outcomes.append(bump)
+        self.assertEqual(outcomes[0].first_person, outcomes[1].first_person)
+        self.assertEqual(ta.embodied.verify()["station"], ca.embodied.verify()["station"])
+        self.assertEqual(ta.home.audit_state()["body"], ca.home.audit_state()["body"])
+        # A selective archival lesion removes ONLY access to the bodily
+        # consequence, without rewinding the physical world or neural weights.
+        brain = control._port.brain
+        with brain.store.transaction() as db:
+            brain.store.archive_memory(
+                db, outcomes[1].memory_id, brain.store.tick,
+                "controlled no-recall comparator",
+            )
+            brain.store.bump_state_version(db)
+        with self.assertRaises(PermissionError):
+            control_api.reflect(outcomes[1], authorized=True)
+        treatment = api.reflect(outcomes[0], authorized=True)
+        without = control._port.brain.think(
+            "nc_feedback_control", decision_text=None
+        )
+        a = scores(treated, treatment.policy_decision_id)
+        b = scores(control, without["policy_decision_id"])
+        self.assertNotEqual(a["decision_sha"], b["decision_sha"])
+        self.assertTrue(
+            a["action_scores"] != b["action_scores"]
+            or a["records"] != b["records"],
+            "Bodily consequence failed to influence downstream policy",
+        )
+        risk_comparison = {
+            "schema": "pretorius.noesis-corpus-risk-probe.v1",
+            "same_physical_body_state": True,
+            "real_collision_reproduced_in_both_arms": True,
+            "treatment_avoid_score": a["action_scores"]["avoid"],
+            "lesion_avoid_score": b["action_scores"]["avoid"],
+            "avoid_score_delta": (
+                a["action_scores"]["avoid"] - b["action_scores"]["avoid"]
+            ),
+            "selected_tendency_with_memory": a["action"],
+            "selected_tendency_memory_archived": b["action"],
+            "objective_task_success_proven": False,
+            "simple_receipt_ledger_superiority_proven": False,
+        }
+        print("NOESIS_CORPUS_RISK_ABLATION=" + json.dumps(
+            risk_comparison, sort_keys=True
+        ))
+
     def test_paired_action_feedback_versus_no_feedback_measures_future_policy(self):
         treated, subject, pilot = self.fresh("treated")
         control, _, _ = self.fresh("control")
