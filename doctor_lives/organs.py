@@ -1,0 +1,258 @@
+"""Explicit six-organ FUNCTIONAL PORTS around the one canonical Pretorius brain.
+
+This is a D2 interface milestone, not six independent agents, new minds, or
+proof that all proposed mechanisms have been adopted. Every port delegates to
+the EXISTING brain, ingress, and host boundaries. No new databases, clocks,
+world authority or selectors are created.
+
+Most importantly:
+* Sensus is an existing single-stream percept adapter here. It is NOT the
+  standalone multichannel Sensus donor.
+* Synthetic Ipseity provides typed Doctor projection here. Durable admission
+  belongs to the separately reviewed optional Synthetic Ipseity session.
+* Corpus observes body-supplied signals; it cannot command a body or assert
+  physical effects.
+* Affectus reads existing affective/needs influences. It is not a second
+  emotion engine or neural/action policy.
+
+This is an in-process developer/host interface, NOT a security sandbox.
+An authorized host must still enforce real source attestation and no-bypass
+access at its model/tool edges before D3 can be called complete.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import re
+from pathlib import Path
+from typing import Any, Callable, Mapping
+
+from .chassis import HostRecollectionController, PretoriusBrainPort
+from .models import SubjectFrame
+
+
+@dataclass(frozen=True, slots=True)
+class OrganDescriptor:
+    name: str
+    state: str
+    implementation: str
+    limitation: str
+
+
+# A truthful state inventory, not six auto-promoted "implemented" labels.
+ORGAN_REGISTRY: tuple[OrganDescriptor, ...] = (
+    OrganDescriptor(
+        "Noesis", "adapter-backed", "PretoriusBrainPort.cognition + recurrent selector",
+        "Host invocation is not autonomous planning or world action.",
+    ),
+    OrganDescriptor(
+        "Mnemosyne", "adapter-backed",
+        "BrainStore memory + host-granted first-person recollection",
+        "Experimental P4-P6D recollection is not the default.",
+    ),
+    OrganDescriptor(
+        "Affectus", "mapped", "Existing needs and state-to-policy pressure",
+        "No separate qualified affect engine or distinct state writer.",
+    ),
+    OrganDescriptor(
+        "Sensus", "mapped", "Existing first-person world/tool ingress",
+        "No standalone Sensus multichannel binding donor has been adopted.",
+    ),
+    OrganDescriptor(
+        "Synthetic Ipseity", "adapter-backed",
+        "Doctor SubjectFrame projection; optional durable donor adapter",
+        "Typed projection alone is not universal durable admission.",
+    ),
+    OrganDescriptor(
+        "Corpus", "mapped", "Existing bodily ingress and interoception",
+        "Environment owns physical state; there is no motor authority here.",
+    ),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class AcquisitionReceipt:
+    """Host-only confirmation of a single admitted first-person acquisition."""
+
+    tick: int
+    event_id: str
+    memory_id: str
+    first_person: str
+
+    @classmethod
+    def from_brain(cls, result: Mapping[str, Any]) -> "AcquisitionReceipt":
+        # Never accidentally expose the brain's neural/action diagnostics.
+        return cls(
+            tick=int(result["tick"]),
+            event_id=str(result["event_id"]),
+            memory_id=str(result["memory_id"]),
+            first_person=str(result["ingress"]["subject_text"]),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CognitiveProposal:
+    """An existing Noesis tendency, NOT physical-world action authorization."""
+
+    policy_decision_id: str
+    thought_id: str
+    selected_tendency: str
+    initiated_by: str = "host"
+
+
+@dataclass(frozen=True, slots=True)
+class AffectiveInfluence:
+    """Engineer-only read of EXISTING need-mediated selection influence."""
+
+    state_version: int
+    felt_bands: tuple[tuple[str, str], ...]
+    need_policy_deltas: tuple[tuple[str, float], ...]
+
+
+class NoesisOrgan:
+    def __init__(self, port: PretoriusBrainPort):
+        self._port = port
+
+    def deliberate(self, *, host_trigger: str = "six-organ-host") -> CognitiveProposal:
+        """Advance the one existing neural selection path, never execute action."""
+        if (
+            type(host_trigger) is not str
+            or not re.fullmatch(r"[a-z][a-z0-9_-]{1,63}", host_trigger)
+        ):
+            raise ValueError("Noesis needs a bounded, host-authored trigger label")
+        decision = self._port.cognition(host_trigger)
+        return CognitiveProposal(
+            policy_decision_id=str(decision["policy_decision_id"]),
+            thought_id=str(decision["id"]),
+            selected_tendency=str(decision["selected_action"]),
+        )
+
+
+class MnemosyneOrgan:
+    def __init__(self, port: PretoriusBrainPort):
+        self._port = port
+
+    def bind_host_recollection(
+        self, choose_internal_question: Callable[[], str]
+    ) -> HostRecollectionController:
+        """The host verifies authorship; this does NOT assert autonomous recall."""
+        return self._port.bind_recollection_controller(choose_internal_question)
+
+    def recollect(self, controller: HostRecollectionController) -> SubjectFrame:
+        """Use the original one-use question/state-bound grant and typed frame."""
+        if (
+            not isinstance(controller, HostRecollectionController)
+            or controller._port is not self._port
+        ):
+            raise PermissionError("Recollection controller belongs to another brain")
+        return controller.recollect_frame()
+
+
+class AffectusOrgan:
+    def __init__(self, port: PretoriusBrainPort):
+        self._port = port
+
+    def read_motivational_influence(self) -> AffectiveInfluence:
+        """Read existing need influence; do not introduce a second decision rule.
+
+        This result is for developer-side causal inspection, never the model
+        or first-person renderer. Felt words require Ipseity projection.
+        """
+        brain = self._port.brain
+        _, _, audit = brain._state_policy_scores([])
+        needs = audit["families"]["needs"]
+        return AffectiveInfluence(
+            state_version=brain.store.state_version,
+            felt_bands=tuple(sorted(brain._felt_state().items())),
+            need_policy_deltas=tuple(sorted((k, float(v)) for k, v in needs.items())),
+        )
+
+
+class SensusOrgan:
+    def __init__(self, port: PretoriusBrainPort):
+        self._port = port
+
+    def acquire_existing_percept(
+        self, raw: Mapping[str, Any], *, host_authorized: bool = False
+    ) -> AcquisitionReceipt:
+        """Use approved world/tool single-stream projection, NOT donor fusion.
+
+        The opt-in indicates the caller has checked provider authority. It
+        is not itself an attestation token or proof of world facts.
+        """
+        if host_authorized is not True:
+            raise PermissionError("Host must explicitly authorize percept ingress")
+        if not isinstance(raw, Mapping) or raw.get("channel") not in ("world", "tool"):
+            raise ValueError("Sensus receives only world/tool percepts")
+        return AcquisitionReceipt.from_brain(self._port.ingest(raw))
+
+
+class SyntheticIpseityOrgan:
+    def __init__(self, port: PretoriusBrainPort):
+        self._port = port
+
+    def project_subject_frame(self, user_input: str | None = None) -> SubjectFrame:
+        """Typed, subject-only frame, prior to an authorized admission/outbox."""
+        return self._port.subject_frame(user_input)
+
+
+class CorpusOrgan:
+    def __init__(self, port: PretoriusBrainPort):
+        self._port = port
+
+    def acquire_body_signal(
+        self, raw: Mapping[str, Any], *, host_authorized: bool = False
+    ) -> AcquisitionReceipt:
+        """Project a provider's bounded bodily reading, never act on hardware."""
+        if host_authorized is not True:
+            raise PermissionError("Host must explicitly authorize body ingress")
+        if not isinstance(raw, Mapping) or raw.get("channel") != "body":
+            raise ValueError("Corpus requires an explicit body-channel reading")
+        return AcquisitionReceipt.from_brain(self._port.ingest(raw))
+
+
+class SixOrganRuntime:
+    """One brain with six in-process typed functional seams.
+
+    Does not replace the default host until separate D3-D11 acceptance gates.
+    No organ owns independent state or has direct world/robot authorization.
+    """
+
+    def __init__(self, port: PretoriusBrainPort):
+        if not isinstance(port, PretoriusBrainPort):
+            raise TypeError("SixOrganRuntime requires the canonical Pretorius brain port")
+        self._port = port
+        self.noesis = NoesisOrgan(port)
+        self.mnemosyne = MnemosyneOrgan(port)
+        self.affectus = AffectusOrgan(port)
+        self.sensus = SensusOrgan(port)
+        self.synthetic_ipseity = SyntheticIpseityOrgan(port)
+        self.corpus = CorpusOrgan(port)
+
+    @classmethod
+    def open(
+        cls, state_dir: str | Path, *, neural_config: dict[str, Any] | None = None
+    ) -> "SixOrganRuntime":
+        return cls(PretoriusBrainPort(state_dir, neural_config=neural_config))
+
+    @property
+    def organ_registry(self) -> tuple[OrganDescriptor, ...]:
+        return ORGAN_REGISTRY
+
+    def status(self) -> dict[str, Any]:
+        """Engineer-only inventory, deliberately separate from subject access."""
+        return {
+            "architecture": "pretorius-six-organ-target.v1",
+            "qualification": "D2 opt-in adapter prototype; NOT six-organ production",
+            "brain_schema": self._port.SCHEMA,
+            "organs": [
+                {
+                    "name": organ.name,
+                    "state": organ.state,
+                    "implementation": organ.implementation,
+                    "limitation": organ.limitation,
+                }
+                for organ in ORGAN_REGISTRY
+            ],
+            "canonical_state_digest": self._port.brain.store.digest(),
+        }
