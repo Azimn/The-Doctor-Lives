@@ -176,6 +176,15 @@ class MnemosyneOrgan:
     def __init__(self, port: PretoriusBrainPort):
         self._port = port
 
+    def opt_in_endogenous_recollection(self):
+        """Opt-in PR #59 mechanism, one policy/store and host capability.
+
+        An internal concern, not a caller-supplied question, is required.
+        This does not declare production autonomy or renderer admission.
+        """
+        from .mnemosyne_pilot import MnemosyneEndogenousPilot
+        return MnemosyneEndogenousPilot(self._port, enabled=True)
+
     def bind_host_recollection(
         self, choose_internal_question: Callable[[], str]
     ) -> HostRecollectionController:
