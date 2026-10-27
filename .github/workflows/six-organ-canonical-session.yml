@@ -5,6 +5,8 @@ on:
       - doctor_lives/canonical_affectus_weather.py
       - tests/test_six_organ_canonical_weather.py
       - doctor_lives/lab_six_organ_session.py
+      - doctor_lives/lab_endogenous_book_task.py
+      - tests/test_six_organ_endogenous_book_task.py
       - tests/test_six_organ_sustained_lab.py
       - .github/workflows/six-organ-canonical-session.yml
       - docs/experiments/SIX_ORGAN_SUSTAINED_LAB_PREREG_2026-10-26.md
@@ -78,3 +80,9 @@ jobs:
           PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
         run: |
           python -m unittest discover -s tests -p test_six_organ_sustained_lab.py -v
+      - name: Run real-world neural-originated book goal / restart / refusal battery
+        env:
+          PYTHONPATH: donor-laboratory:donor-sensus
+          PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_endogenous_book_task.py -v
