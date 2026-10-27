@@ -8,6 +8,7 @@ on:
       - doctor_lives/lab_home_bridge.py
       - tests/test_lab_home_bridge.py
       - tests/test_six_organ_lab_comparison.py
+      - tests/test_six_organ_lab_readiness.py
       - tests/test_six_organ_environment_port.py
       - tests/test_six_organ_virtual_world_port.py
       - tests/test_six_organ_noesis_corpus_pilot.py
@@ -48,6 +49,12 @@ jobs:
           PYTHONPATH: donor-laboratory
         run: |
           python -m unittest discover -s tests -p test_lab_home_bridge.py -v
+      - name: Test one actual-Laboratory session through all six shared organs
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.subject_port import SubjectPort; print('Source-pinned actual Lab present')"
+          python -m unittest discover -s tests -p test_six_organ_lab_readiness.py -v
       - name: Compare classic and six-organ behavior on pinned real Laboratory
         env:
           PYTHONPATH: donor-laboratory
