@@ -6,8 +6,8 @@ Selective adaptation from draft PR #61 at
 This is explicitly a HOST-authored bounded search task. Real Laboratory
 EmbodiedAccess owns all movement, observation, and book-access receipts.
 Doctor BrainStore owns all autobiographical observations. The optional task
-SQLite is an engineer-only execution reservation journal (never an organ,
-identity, memory, world truth or competing policy). Interrupted tasks fail
+reservations are in an engineer-only table of the EXISTING BrainStore
+SQLite (never an extra database, organ identity, memory, world truth or competing policy). Interrupted tasks fail
 closed; the caller reconciles externally. This adapter neither manufactures
 endogenous goals nor establishes advantage over an equal-information ledger.
 """
@@ -60,10 +60,12 @@ class VerifiedBookSearch:
         embodied_port.verify()
         self._runtime = runtime
         self._port = embodied_port
-        self._journal_path = runtime._port.brain.state_dir / "research_book_tasks.sqlite3"
-        self._journal_path.parent.mkdir(parents=True, exist_ok=True)
+        # The only durable database is the EXISTING canonical BrainStore.
+        # This non-cognitive host reservation table is excluded from brain
+        # content digests and never appears in subject-accessible views.
+        self._journal_path = runtime._port.brain.store.path
         with closing(sqlite3.connect(self._journal_path)) as conn:
-            conn.execute("""CREATE TABLE IF NOT EXISTS tasks (
+            conn.execute("""CREATE TABLE IF NOT EXISTS host_task_reservations (
                 task_id TEXT PRIMARY KEY, request_json TEXT NOT NULL,
                 status TEXT NOT NULL, report_json TEXT NOT NULL
             )""")
@@ -191,7 +193,7 @@ class VerifiedBookSearch:
         )) as db:
             db.execute("BEGIN IMMEDIATE")
             existing = db.execute(
-                "SELECT request_json,status,report_json FROM tasks WHERE task_id=?",
+                "SELECT request_json,status,report_json FROM host_task_reservations WHERE task_id=?",
                 (task_id,),
             ).fetchone()
             if existing:
@@ -200,7 +202,7 @@ class VerifiedBookSearch:
                 if existing[1] != "complete":
                     raise RuntimeError("Interrupted task requires human reconciliation")
                 return json.loads(existing[2])
-            if db.execute("SELECT 1 FROM tasks WHERE status!='complete'").fetchone():
+            if db.execute("SELECT 1 FROM host_task_reservations WHERE status!='complete'").fetchone():
                 raise RuntimeError("An interrupted task blocks new task execution")
             # In the experimental baseline arm the ledger provides a prior
             # location to the very same host execution policy.
@@ -218,12 +220,12 @@ class VerifiedBookSearch:
             }
             def save(state="running"):
                 db.execute(
-                    "UPDATE tasks SET status=?,report_json=? WHERE task_id=?",
+                    "UPDATE host_task_reservations SET status=?,report_json=? WHERE task_id=?",
                     (state, json.dumps(result, sort_keys=True), task_id),
                 )
                 db.commit()
             db.execute(
-                "INSERT INTO tasks VALUES (?,?,?,?)",
+                "INSERT INTO host_task_reservations VALUES (?,?,?,?)",
                 (task_id, json.dumps(request, sort_keys=True), "running",
                  json.dumps(result, sort_keys=True)),
             )
