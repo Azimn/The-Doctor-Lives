@@ -6,6 +6,8 @@ on:
       - .github/workflows/six-organ-affectus-weather-causal.yml
       - docs/experiments/AFFECTUS_WEATHER_CAUSAL_PREREG_2026-10-26.md
       - docs/experiments/AFFECTUS_WEATHER_CAUSAL_RESULT_2026-10-26.md
+      - docs/experiments/AFFECTUS_HISTORY_DEPENDENCE_PREREG_2026-10-26.md
+      - docs/experiments/AFFECTUS_HISTORY_DEPENDENCE_RESULT_2026-10-26.md
   workflow_dispatch:
 permissions:
   contents: read
