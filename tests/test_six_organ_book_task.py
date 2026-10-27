@@ -126,6 +126,16 @@ class RealBookTaskBenchmark(unittest.TestCase):
                 ledger_hint=("station:shelf:3" if name == "ledger" else None),
             )
             self.assertEqual(report, replay)
+            self.assertFalse(
+                (self.root / name / "brain" / "research_book_tasks.sqlite3").exists()
+            )
+            with reopened._port.brain.store.connect() as db:
+                self.assertEqual(
+                    db.execute(
+                        "SELECT count(*) FROM host_task_reservations "
+                        "WHERE task_id='read-007'"
+                    ).fetchone()[0], 1,
+                )
         self.assertTrue(reports["memory"]["success"])
         self.assertFalse(reports["lesion"]["success"])
         self.assertTrue(reports["restored"]["success"])
