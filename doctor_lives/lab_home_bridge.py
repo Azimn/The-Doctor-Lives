@@ -28,6 +28,7 @@ _ACTION_DOMAINS = {
     "measure": "instrument_events", "take_book": "custody_events",
     "put_book": "custody_events",
 }
+_EVENT_PAYLOAD_COLUMNS = {"books_events": "payload", "custody_events": "payload"}
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,80}\Z")
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -56,9 +57,11 @@ def _first_person_frame(value: dict) -> str:
 
 
 def _row(db, table, event_id):
-    # Table is selected only from hard-coded trusted operation mapping.
+    # Only the hard-coded trusted domain mapping selects these tables.
+    # Source books/custody store "payload"; physical/rhythm "envelope".
+    column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
     result = db.execute(
-        "SELECT envelope,event_hash FROM " + table + " WHERE event_id=?",
+        "SELECT " + column + ",event_hash FROM " + table + " WHERE event_id=?",
         (event_id,),
     ).fetchone()
     if not result:
@@ -203,8 +206,10 @@ class DoctorHomeBridge:
         # has changed since the original action. Never regenerate a subjective
         # result from the new world state for an old source receipt.
         with self.world._open() as db:
+            table = _ACTION_DOMAINS[op]
+            column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
             known = db.execute(
-                "SELECT envelope,event_hash FROM " + _ACTION_DOMAINS[op] +
+                "SELECT " + column + ",event_hash FROM " + table +
                 " WHERE event_id=?", (event_id,),
             ).fetchone()
         if known is not None:
