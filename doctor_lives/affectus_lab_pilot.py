@@ -92,7 +92,16 @@ class VerifiedLaboratoryAffectPilot:
             "location": domestic.get("station") == "station:shop:private",
             "epoch": domestic.get("world_epoch") == physical.get("world_epoch"),
             "reflex": subject.get("spoken_aloud") == "Ow! My foot!",
-            "lived_text": subject.get("inner") == consequence.first_person,
+            # The source-backed SubjectPort adds its separate rhythm
+            # impression AFTER the domestic collision text. Requiring
+            # complete equality would reject authentic first-person frames.
+            "lived_text": (
+                type(subject.get("inner")) is str
+                and (consequence.first_person == subject["inner"]
+                     or consequence.first_person.startswith(
+                         subject["inner"] + " "
+                     ))
+            ),
             "reported_reflex": consequence.spoken_aloud == "Ow! My foot!",
         }
         invalid = tuple(k for k, valid in checks.items() if not valid)
@@ -101,7 +110,14 @@ class VerifiedLaboratoryAffectPilot:
             raise PermissionError("Unverified impact source fields: "
                                   + ", ".join(invalid))
 
-        source = "laboratory-body:impact:" + domestic_hash
+        # An event may only be admitted once, in ONE experimental arm.
+        # Protect both the exact physical event and the intervention choice
+        # against silent replays that alter the appraisal.
+        base = "laboratory-body:impact:" + domestic_hash
+        source = base + (":appraisal" if appraisal_enabled else ":lesion")
+        other = base + (":lesion" if appraisal_enabled else ":appraisal")
+        if any(m["source"] == other for m in brain.store.memories(False)):
+            raise PermissionError("Cannot switch appraisal arm on a lived event")
         prior = [
             m for m in brain.store.memories(False) if m["source"] == source
         ]
