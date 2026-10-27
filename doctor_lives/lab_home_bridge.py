@@ -94,8 +94,18 @@ class DoctorHomeBridge:
         self.world = subject_port.habitat
         self.subject.verify()
 
-    def _admit(self, frame, source, *, kind):
+    def _admit(self, frame, source, *, kind, source_book_page=False):
         text = _first_person_frame(frame)
+        if source_book_page:
+            # The Laboratory stores the ORIGINAL verified source bytes with
+            # print-style newlines in its book ledger. Doctor's existing
+            # world ingress intentionally normalizes all whitespace. For
+            # a verified BOOK READ only, normalize that same whitespace
+            # *before* the canonical admission equality check, so a real
+            # book's content is neither rejected nor silently rewritten.
+            # Keep original full source and independent receipt unchanged.
+            text = " ".join(text.split())
+            frame = {"inner": text, "spoken_aloud": frame["spoken_aloud"]}
         if not source.startswith("laboratory-home:"):
             raise PermissionError("Unapproved lived Laboratory source")
         if len(source) > 225:
@@ -243,7 +253,10 @@ class DoctorHomeBridge:
             e, cursor = _row(db, _ACTION_DOMAINS[op], event_id)
             self._check_action_proof(op, args, e)
         source = "laboratory-home:action:" + cursor
-        return self._admit(result, source, kind="observation")
+        return self._admit(
+            result, source, kind="observation",
+            source_book_page=(op == "book" and args.get("operation") == "read"),
+        )
 
     def request_cognition(self, *, trigger="laboratory_home"):
         """Actual Doctor cognition is available, not a scripted second policy.
