@@ -317,13 +317,16 @@ class SixOrganLaboratoryCycle:
         kind = "rest_density"
         magnitude = 0.0
         src = "host-opportunity:" + str(tick)
-        if previous is not None:
+        consumed = None
+        if (previous is not None
+                and previous["source"] != self.weather.last_consumed_world_source()):
             kind = "goal_impediment" if "foot" in previous["text"].lower() else "goal_progress"
             magnitude = 1.0
             src = previous["source"]
+            consumed = src
         self.weather.step(
             tick, (self.weather.driver(kind, magnitude, src),),
-            authorized=True,
+            authorized=True, consumed_world_source=consumed,
         )
 
         # MNEMOSYNE: policy selects own question from a canonical concern,
