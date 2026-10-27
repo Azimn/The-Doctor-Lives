@@ -228,11 +228,21 @@ class EndogenousBookPursuit:
                     event_id="eb_" + state["id"] + "_look_" + station[-1]
                 )
                 self.books.admit_sighting(scan)
+                # The host may reject objects lacking a real installed text
+                # edition. This is physical feasibility, NEVER advance
+                # knowledge of an unseen book or a subject-facing catalog.
+                from pretorius_lab.book_library import BookLibrary
+                from pretorius_lab.physics import LabError
+                try:
+                    installed = set(BookLibrary(self.subject.habitat).catalog())
+                except LabError:
+                    installed = set()
                 candidates = sorted(
                     x["object_id"]
                     for x in scan["offered_payload"]["nearby_objects"]
                     if type(x.get("object_id")) is str and
                     _BOOK_ID.fullmatch(x["object_id"])
+                    and x["object_id"] in installed
                     and self.books.memory_hint(x["object_id"]) is not None
                     and self.books.memory_hint(x["object_id"])["station"] == station
                 )
