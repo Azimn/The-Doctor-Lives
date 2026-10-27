@@ -64,6 +64,9 @@ jobs:
           from pathlib import Path
           report = json.loads((Path(os.environ["RUNNER_TEMP"]) / "full-text-17" / "acceptance.json").read_text())
           assert report["total_full_text_books"] == 17
+          assert report["pristine_unread_world_available"] is True
+          assert report["pristine_book_count"] == 17
+          assert report["pristine_prior_world_moves"] == 0
           assert report["physical_shelves_verified"] == 17
           assert report["actual_host_authorized_book_reads"] == 17
           assert report["distinct_lived_read_memories"] == 17
@@ -79,6 +82,7 @@ jobs:
         with:
           name: pretorius-six-organ-17-fulltext-lab-fixture
           path: |
+            ${{ runner.temp }}/full-text-17/unread-17-full-text-lab.sqlite3
             ${{ runner.temp }}/full-text-17/verified-17-full-text-backup.sqlite3
             ${{ runner.temp }}/full-text-17/seven-import.json
             ${{ runner.temp }}/full-text-17/ten-import.json
