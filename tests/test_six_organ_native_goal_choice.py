@@ -229,10 +229,21 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             self.assertEqual(first.status, "goal_created")
             self.assertEqual(first.selected_tendency, "explore")
             # Permission gating is independent of the original policy.
-            before_permission = self.subject.embodied.verify()["revision"]
+            before_permission = self.subject.embodied.verify()["station"]
+            with self.world._open() as db:
+                before_moves = sum(
+                    json.loads(row[0])["kind"] == "move"
+                    for row in db.execute("SELECT envelope FROM embodied_events")
+                )
             self.assertEqual(chooser.step().status, "authorization_required")
-            self.assertEqual(self.subject.embodied.verify()["revision"],
+            self.assertEqual(self.subject.embodied.verify()["station"],
                              before_permission)
+            with self.world._open() as db:
+                after_moves = sum(
+                    json.loads(row[0])["kind"] == "move"
+                    for row in db.execute("SELECT envelope FROM embodied_events")
+                )
+            self.assertEqual(after_moves, before_moves)
             for n in range(24):
                 read = chooser.step(authorized_world_action=True)
                 if read.status == "completed":
