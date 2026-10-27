@@ -273,6 +273,148 @@ class NoesisCorpusLaboratoryActionTests(unittest.TestCase):
             "adaptively_better_decisions_established": False,
         }, sort_keys=True))
 
+    def test_verified_impact_bodily_projection_changes_original_needs_and_policy(self):
+        """Same signed collision and pain frame; only impact appraisal differs.
+
+        This validates a proposed *bounded body coupling*, NOT adoption of
+        the independent Spinoza donor nor improved physical safety.
+        """
+        treated, subject_a, physical_a = self.fresh("body-appraisal")
+        control, subject_b, physical_b = self.fresh("body-ablation")
+        receipts = []
+        before = []
+        for runtime, subject, pilot in (
+            (treated, subject_a, physical_a),
+            (control, subject_b, physical_b),
+        ):
+            hall = runtime.noesis.deliberate(host_trigger="body-evidence-hall")
+            pilot.act(
+                hall,
+                HostCorpusOffer(hall.selected_tendency, "walk", "station:hall"),
+                authorized=True,
+            )
+            shop = runtime.noesis.deliberate(host_trigger="body-evidence-shop")
+            impact = pilot.act(
+                shop,
+                HostCorpusOffer(
+                    shop.selected_tendency, "walk", "station:shop:private",
+                ),
+                authorized=True,
+            )
+            self.assertEqual(impact.spoken_aloud, "Ow! My foot!")
+            receipts.append(impact)
+            before.append(runtime.affectus.read_motivational_influence())
+        self.assertEqual(receipts[0].first_person, receipts[1].first_person)
+        self.assertEqual(before[0].need_policy_deltas, before[1].need_policy_deltas)
+        self.assertEqual(subject_a.home.audit_state()["body"],
+                         subject_b.home.audit_state()["body"])
+
+        attached_a = treated.affectus.opt_in_laboratory_body_evidence(
+            treated, subject_a, authorized=True,
+        )
+        attached_b = control.affectus.opt_in_laboratory_body_evidence(
+            control, subject_b, authorized=True,
+        )
+        with self.assertRaises(PermissionError):
+            attached_a.admit_impact(receipts[0])
+        pain_a = attached_a.admit_impact(
+            receipts[0], authorized=True, appraisal_enabled=True,
+        )
+        pain_b = attached_b.admit_impact(
+            receipts[1], authorized=True, appraisal_enabled=False,
+        )
+        self.assertEqual(pain_a.status, "admitted")
+        self.assertEqual(pain_b.status, "admitted")
+        self.assertEqual(pain_a.first_person, pain_b.first_person)
+        self.assertIn("pain", pain_a.first_person.lower())
+        for runtime, record in ((treated, pain_a), (control, pain_b)):
+            original = runtime._port.brain.store.get_memory(record.body_memory_id)
+            self.assertEqual(original["text"], record.first_person)
+            self.assertEqual(original["evidence_class"], "lived_runtime_memory")
+            for privileged in ("foot_soreness", "threat", "domestic_events",
+                               record.source_domestic_event_hash):
+                self.assertNotIn(privileged, record.first_person)
+        effect_a = dict(treated.affectus.read_motivational_influence().need_policy_deltas)
+        effect_b = dict(control.affectus.read_motivational_influence().need_policy_deltas)
+        self.assertNotEqual(effect_a, effect_b)
+        self.assertGreater(
+            effect_a["persist"], effect_b["persist"],
+            "Impact appraisal should increase original need-mediated persistence",
+        )
+        proposal_a = treated.noesis.deliberate(host_trigger="body-after-affect")
+        proposal_b = control.noesis.deliberate(host_trigger="body-after-affect")
+        altered = (
+            scores(treated, proposal_a.policy_decision_id)["action_scores"]
+            != scores(control, proposal_b.policy_decision_id)["action_scores"]
+        )
+        self.assertTrue(altered)
+        print("VERIFIED_AFFECTUS_BODY_CAUSAL=" + json.dumps({
+            "same_actual_collision": True,
+            "same_subject_pain_memory": True,
+            "continuity_to_persist_delta":
+                effect_a["persist"] - effect_b["persist"],
+            "original_policy_changed": altered,
+            "spinoza_donor_adopted": False,
+            "better_task_success_proven": False,
+        }, sort_keys=True))
+
+    def test_verified_body_pain_rejects_forged_or_benign_action_and_replays(self):
+        """Without signed physical impact no new pain claim may be admitted."""
+        from dataclasses import replace
+
+        runtime, subject, corpus = self.fresh("body-source-guards")
+        affect = runtime.affectus.opt_in_laboratory_body_evidence(
+            runtime, subject, authorized=True,
+        )
+        hall = runtime.noesis.deliberate(host_trigger="body-guards-hall")
+        safe = corpus.act(
+            hall,
+            HostCorpusOffer(hall.selected_tendency, "walk", "station:hall"),
+            authorized=True,
+        )
+        with self.assertRaises(PermissionError):
+            affect.admit_impact(safe, authorized=True)
+        with self.assertRaises(PermissionError):
+            affect.admit_impact(
+                replace(safe, spoken_aloud="Ow! My foot!"), authorized=True,
+            )
+        self.assertFalse(any(
+            m["source"].startswith("laboratory-body:impact:")
+            for m in runtime._port.brain.store.memories(False)
+        ))
+        impacted = runtime.noesis.deliberate(
+            host_trigger="body-guards-impact"
+        )
+        consequence = corpus.act(
+            impacted,
+            HostCorpusOffer(
+                impacted.selected_tendency, "walk", "station:shop:private"
+            ),
+            authorized=True,
+        )
+        with self.assertRaises(PermissionError):
+            affect.admit_impact(
+                replace(consequence, memory_id="memory-forged"),
+                authorized=True,
+            )
+        one = affect.admit_impact(consequence, authorized=True)
+        tick = runtime._port.brain.store.tick
+        replay = affect.admit_impact(consequence, authorized=True)
+        self.assertEqual(replay.status, "already_admitted")
+        self.assertEqual(one.body_memory_id, replay.body_memory_id)
+        self.assertEqual(runtime._port.brain.store.tick, tick)
+        runtime.checkpoint()
+        reopened = SixOrganRuntime.open(
+            self.root / "body-source-guards" / "brain"
+        )
+        gate = reopened.affectus.opt_in_laboratory_body_evidence(
+            reopened, subject, authorized=True,
+        )
+        again = gate.admit_impact(consequence, authorized=True)
+        self.assertEqual(again.status, "already_admitted")
+        self.assertEqual(again.body_memory_id, one.body_memory_id)
+        self.assertEqual(reopened._port.brain.store.tick, tick)
+
     def test_crash_after_world_action_before_memory_reconciles_once_after_restart(self):
         """Physical source commits first; recovering Doctor must not move twice.
 
