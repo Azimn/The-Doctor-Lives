@@ -12,6 +12,7 @@ on:
       - tests/test_six_organ_virtual_world_port.py
       - tests/test_six_organ_noesis_corpus_pilot.py
       - doctor_lives/noesis_corpus_pilot.py
+      - doctor_lives/affectus_lab_pilot.py
       - doctor_lives/six_organ_book_task.py
       - tests/test_six_organ_book_task.py
       - doctor_lives/virtual_world_port.py
