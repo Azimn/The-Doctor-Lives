@@ -132,6 +132,68 @@ class TwelveCycleActualSixOrganLaboratory(unittest.TestCase):
                               "world_epoch", "opponent_levels", "checkpoint_sha256"):
                 self.assertNotIn(forbidden, line)
 
+    def test_crash_between_physical_commit_and_lived_admission_recovers_once(self):
+        """No duplicate movement, one admitted memory and one reflection."""
+        from unittest.mock import patch
+
+        rt = SixOrganRuntime.open(self.root / "brain-crash", neural_config=self.config)
+        with self.host(rt) as session:
+            proposal = rt.noesis.deliberate(
+                host_trigger="six_organ_crash_boundary"
+            )
+            before = len([
+                m for m in rt._port.brain.store.memories(False)
+                if m["source"].startswith("laboratory-home:action:")
+            ])
+            with patch.object(
+                session.corpus._bridge, "_admit",
+                side_effect=RuntimeError("crash after world commit"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "crash after world commit"):
+                    session._execute_movement(proposal, "station:hall")
+            revision = self.subject.embodied.verify()["revision"]
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:hall")
+            self.assertIsNotNone(session._pending())
+            self.assertEqual(len([
+                m for m in rt._port.brain.store.memories(False)
+                if m["source"].startswith("laboratory-home:action:")
+            ]), before)
+        # No manual checkpoint here. The host precommits original neural
+        # state and pending world request before calling the actual Lab.
+        reopened = SixOrganRuntime.open(self.root / "brain-crash")
+        with self.host(reopened) as gate:
+            self.assertIsNone(gate._pending())
+            self.assertEqual(self.subject.embodied.verify()["revision"], revision)
+            observed = [
+                m for m in reopened._port.brain.store.memories(False)
+                if m["source"].startswith("laboratory-home:action:")
+            ]
+            self.assertEqual(len(observed), before + 1)
+            with reopened._port.brain.store.connect() as db:
+                rows = db.execute(
+                    "SELECT id FROM policy_decisions WHERE trigger LIKE "
+                    "'nc_feedback_%'"
+                ).fetchall()
+            self.assertEqual(len(rows), 1)
+            # A new host is allowed to run a next full cycle only after
+            # the source-world action has been durably reconciled.
+            next_cycle = gate.cycle(authorized_world_action=False)
+            self.assertEqual(len(next_cycle.ports_used), 6)
+            self.assertIsNone(gate._pending())
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:hall")
+        again = SixOrganRuntime.open(self.root / "brain-crash")
+        with self.host(again) as gate:
+            self.assertIsNone(gate._pending())
+            with again._port.brain.store.connect() as db:
+                self.assertEqual(
+                    db.execute(
+                        "SELECT count(*) FROM policy_decisions "
+                        "WHERE trigger LIKE 'nc_feedback_%'"
+                    ).fetchone()[0], 1,
+                )
+            self.assertEqual(self.subject.embodied.verify()["revision"], revision)
+
     def test_host_denial_all_six_still_run_without_world_move(self):
         rt = SixOrganRuntime.open(self.root / "denied", neural_config=self.config)
         before = self.subject.embodied.verify()["revision"]
