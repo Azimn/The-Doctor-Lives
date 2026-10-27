@@ -6,6 +6,7 @@ or an autonomous Noesis intention.
 """
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
@@ -15,9 +16,7 @@ from doctor_lives.neural import DEFAULT_CONFIG
 from doctor_lives.organs import SixOrganRuntime
 from doctor_lives.six_organ_book_task import VerifiedBookSearch
 
-from pretorius_lab.habitat_v2 import SpatialHabitat
-from pretorius_lab.book_library import BookLibrary
-from pretorius_lab.embodied_access import EmbodiedAccess
+LAB_AVAILABLE = importlib.util.find_spec("pretorius_lab") is not None
 
 
 def config():
@@ -29,6 +28,7 @@ def config():
     return c
 
 
+@unittest.skipUnless(LAB_AVAILABLE, "Pinned real Laboratory required")
 class RealBookTaskBenchmark(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -36,6 +36,10 @@ class RealBookTaskBenchmark(unittest.TestCase):
         self.root = Path(self.tmp.name)
 
     def world(self, label: str):
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.book_library import BookLibrary
+        from pretorius_lab.embodied_access import EmbodiedAccess
+
         root = self.root / label
         root.mkdir()
         lab = SpatialHabitat.create(root / "world.sqlite3")
