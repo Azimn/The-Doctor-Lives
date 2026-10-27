@@ -187,8 +187,15 @@ def run(lab_root: Path, output_root: Path, affectus_root: Path) -> dict:
             )
             if opened["status"] != "admitted" or reading["status"] != "admitted":
                 raise RuntimeError("Reading did not admit a new real-world receipt")
-            if expected_segments[ident][0] not in reading["subject"]["inner"]:
-                raise RuntimeError("Pretorius did not receive real text for " + ident)
+            expected_subject = (
+                "I read a page of " + record[ident]["title"]
+                + ". The words before me read: "
+                + " ".join(expected_segments[ident][0].split())
+            )
+            if reading["subject"]["inner"] != expected_subject:
+                raise RuntimeError(
+                    "Subject did not receive every source word in order: " + ident
+                )
             lived = doctor._port.brain.store.get_memory(reading["memory_id"])
             if (not lived or lived["text"] != reading["subject"]["inner"]
                     or lived["evidence_class"] != "lived_runtime_memory"
@@ -206,8 +213,13 @@ def run(lab_root: Path, output_root: Path, affectus_root: Path) -> dict:
             ident, "read", event_id="fulltext-book007-read-page2",
             authorized=True,
         )
-        if expected_segments[ident][1] not in second_read["subject"]["inner"]:
-            raise RuntimeError("Page two is not the pinned full source")
+        expected_second = (
+            "I read a page of " + record[ident]["title"]
+            + ". The words before me read: "
+            + " ".join(expected_segments[ident][1].split())
+        )
+        if second_read["subject"]["inner"] != expected_second:
+            raise RuntimeError("Page two words differ from pinned full source")
         # Publish once through the durable first-person gate. Never give
         # engineering catalog or hidden source bytes to a renderer.
         host.ipseity.publish_current()
@@ -231,8 +243,12 @@ def run(lab_root: Path, output_root: Path, affectus_root: Path) -> dict:
             raise RuntimeError("World restart duplicated a read receipt")
         for ident, memory_id in read_memories.items():
             mem = reopened._port.brain.store.get_memory(memory_id)
-            if not mem or expected_segments[ident][0] not in mem["text"]:
-                raise RuntimeError("Restart lost source-attested personal reading")
+            if not mem or mem["text"] != (
+                "I read a page of " + record[ident]["title"]
+                + ". The words before me read: "
+                + " ".join(expected_segments[ident][0].split())
+            ):
+                raise RuntimeError("Restart lost exact normalized source page")
     if before_replay_events != library.verify():
         raise RuntimeError("Replaying old page read mutated the world book ledger")
     if len(set(read_memories.values())) != 17:
