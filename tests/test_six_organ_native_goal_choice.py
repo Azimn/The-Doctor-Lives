@@ -119,8 +119,8 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             "steps": i + 1, "host_selected_route": True
         }, sort_keys=True))
 
-    def _originate_rest_at_hall(self, chooser):
-        for i in range(120):
+    def _originate_rest_after_real_episodes(self, chooser):
+        for i in range(12):
             result = chooser.step()
             if result.kind == "rest" and result.status == "goal_created":
                 self.assertEqual(result.selected_tendency, "avoid")
@@ -128,33 +128,41 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
                 return result
             self.assertEqual(result.status, "no_situated_goal")
             self.assertEqual(result.kind, None)
-        self.fail("Original canonical neural policy never selected avoid")
+        self.fail("After authentic six-organ movement/weather, native avoid never emerged")
 
     def test_native_avoid_rest_continues_after_restart_with_world_receipt(self):
         path = self.root / "rest-mind"
         rt = SixOrganRuntime.open(path, neural_config=config())
         with self.host(rt) as session:
-            # Real host setup is not counted as a subject-originated step.
-            session.bridge.act(
-                "walk", station="station:hall", event_id="fixed_test_start_hall"
-            )
+            # Four REAL source-receipted six-organ world cycles supply
+            # embodied consequences and temporal Affectus weather. Those
+            # are host-scheduled preparatory interactions, NOT goals the
+            # Doctor self-authored. The next native selection is unforced.
+            for _ in range(4):
+                prior = session.cycle(authorized_world_action=True)
+                self.assertEqual(len(prior.ports_used), 6)
+            before_denial = self.subject.embodied.verify()["station"]
             chooser = NativeLaboratoryGoalChooser(session, authorized=True)
-            origin = self._originate_rest_at_hall(chooser)
+            origin = self._originate_rest_after_real_episodes(chooser)
             self.assertEqual(chooser.step().status, "authorization_required")
-            self.assertEqual(self.subject.embodied.verify()["station"], "station:hall")
+            self.assertEqual(self.subject.embodied.verify()["station"], before_denial)
             rt.checkpoint()
         restarted = SixOrganRuntime.open(path)
         with self.host(restarted) as session:
             chooser = NativeLaboratoryGoalChooser(session, authorized=True)
-            traveled = chooser.step(authorized_world_action=True)
-            self.assertEqual(traveled.status, "moved")
-            self.assertEqual(traveled.kind, "rest")
-            self.assertEqual(traveled.goal_id, origin.goal_id)
+            movement_count = 0
+            for _ in range(12):
+                rest = chooser.step(authorized_world_action=True)
+                self.assertEqual(rest.kind, "rest")
+                self.assertEqual(rest.goal_id, origin.goal_id)
+                if rest.status == "moved":
+                    movement_count += 1
+                if rest.status == "completed":
+                    break
+            else:
+                self.fail("Original native avoid/rest did not physically finish")
+            self.assertGreaterEqual(movement_count, 1)
             self.assertEqual(self.subject.embodied.verify()["station"], "station:bedroom")
-            rest = chooser.step(authorized_world_action=True)
-            self.assertEqual(rest.status, "completed")
-            self.assertEqual(rest.kind, "rest")
-            self.assertEqual(rest.goal_id, origin.goal_id)
             observed = restarted._port.brain.store.get_memory(rest.memory_id)
             self.assertEqual(observed["evidence_class"], "lived_runtime_memory")
             self.assertTrue(observed["source"].startswith("laboratory-home:action:"))
@@ -178,11 +186,10 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         path = self.root / "tamper-mind"
         rt = SixOrganRuntime.open(path, neural_config=config())
         with self.host(rt) as session:
-            session.bridge.act(
-                "walk", station="station:hall", event_id="tamper_hall_setup"
-            )
+            for _ in range(4):
+                session.cycle(authorized_world_action=True)
             chooser = NativeLaboratoryGoalChooser(session, authorized=True)
-            self._originate_rest_at_hall(chooser)
+            self._originate_rest_after_real_episodes(chooser)
             before = self.subject.embodied.verify()["revision"]
             envelope = json.loads(rt._port.brain.store.meta(_REST_KEY))
             envelope["payload"]["phase"] = "complete"
