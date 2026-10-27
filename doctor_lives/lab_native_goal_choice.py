@@ -108,8 +108,33 @@ class NativeLaboratoryGoalChooser:
             self.store.bump_state_version(db)
 
     def _native_policy(self):
-        proposal = self.runtime.noesis.deliberate(
-            host_trigger="native_laboratory_goal_choice"
+        """Read the native choice from an ACTUAL full six-organ cycle.
+
+        Body/world sensing and source-verified Affectus weather must advance
+        before claiming any native intent. No host-controlled tendency,
+        rendered prose, or desired outcome is substituted for the policy.
+        The cycle is explicitly NON-actuating; this layer separately
+        authorizes later physical actions.
+        """
+        from .organs import CognitiveProposal
+        cycle = self.host.cycle(authorized_world_action=False)
+        with self.store.connect() as db:
+            row = db.execute(
+                "SELECT id,selected_action FROM policy_decisions "
+                "WHERE trigger='six_organ_lab_cycle' ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+            if row is None or row["selected_action"] != cycle.selected_tendency:
+                raise RuntimeError("No canonical native six-organ choice receipt")
+            thought = db.execute(
+                "SELECT id FROM thoughts WHERE generated_by=? "
+                "ORDER BY rowid DESC LIMIT 1",
+                ("neural_policy:" + row["id"],),
+            ).fetchone()
+        if thought is None:
+            raise RuntimeError("Native six-organ decision lacks neural thought")
+        proposal = CognitiveProposal(
+            policy_decision_id=row["id"], thought_id=thought["id"],
+            selected_tendency=row["selected_action"],
         )
         _, latest = self.host.corpus._verified_policy(proposal)
         if latest != proposal.policy_decision_id:
