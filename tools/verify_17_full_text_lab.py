@@ -257,7 +257,7 @@ def run(lab_root: Path, output_root: Path, affectus_root: Path) -> dict:
         raise RuntimeError("World restart lost a physical full text")
     # Creates an independently replay-verified physical backup with ALL pages.
     backup_path = output_root / "verified-17-full-text-backup.sqlite3"
-    world_reopened.backup(backup_path)
+    world_reopened.backup_to(backup_path)
     backup_books = BookLibrary(SpatialHabitat(backup_path))
     if set(backup_books.catalog()) != required:
         raise RuntimeError("Backed-up full-text collection incomplete")
