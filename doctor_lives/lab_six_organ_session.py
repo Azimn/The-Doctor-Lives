@@ -144,28 +144,55 @@ class SixOrganLaboratoryCycle:
         bounded deterministic affordance allocator, NOT an extra neural
         selector, task controller or authored narrative intention.
         """
-        if tendency != "explore":
-            return None
+        from collections import Counter, deque
         from pretorius_lab.embodied_access import STATIONS
+        from .lab_home_bridge import _row
+
         if station not in STATIONS:
             raise PermissionError("Outside source-reviewed Laboratory affordances")
         options = STATIONS[station][1]
         if not options:
             return None
-        # Prefer the least-experienced admissible option using only the
-        # canonical brain's LIVED memory text. No privileged destination
-        # lookup or task-solution oracle enters the cognitive selector.
-        prior = [
-            m["text"].lower() for m in self.runtime._port.brain.store.memories()
+        if tendency == "avoid":
+            # Feasible physical retreat toward the REAL bedroom; no
+            # geometric shortcuts and no host-authored task destination.
+            queue = deque([(station, ())])
+            seen = {station}
+            while queue:
+                at, steps = queue.popleft()
+                if at == "station:bedroom":
+                    return steps[0] if steps else None
+                for neighbor in STATIONS[at][1]:
+                    if neighbor not in seen:
+                        seen.add(neighbor)
+                        queue.append((neighbor, steps + (neighbor,)))
+            return None
+        if tendency != "explore":
+            return None
+
+        # Only source-verified movements that the SAME canonical brain
+        # actually lived may affect exploration priorities.
+        counts = Counter()
+        lived = [
+            m for m in self.runtime._port.brain.store.memories()
             if m["source"].startswith("laboratory-home:action:")
         ]
-        return min(
-            options,
-            key=lambda destination: (
-                sum(_VALID[destination] in text for text in prior),
-                destination,
-            ),
-        )
+        with self.bridge.world._open() as db:
+            for memory in lived:
+                digest = memory["source"].split(":")[-1]
+                row = db.execute(
+                    "SELECT event_id FROM embodied_events WHERE event_hash=?",
+                    (digest,),
+                ).fetchone()
+                if row is None:
+                    continue
+                event, verified = _row(db, "embodied_events", row[0])
+                if verified != digest:
+                    raise RuntimeError("Autobiography/world movement source mismatch")
+                destination = event["after_station"]
+                if destination in STATIONS:
+                    counts[destination] += 1
+        return min(options, key=lambda dest: (counts[dest], dest))
 
     def cycle(self, *, authorized_world_action: bool = False) -> SixOrganCycleReceipt:
         """One real cycle, fail-closed if either pinned donor is unavailable."""
@@ -255,6 +282,18 @@ class SixOrganLaboratoryCycle:
             status = receipt.status
             if receipt.spoken_aloud == "Ow! My foot!":
                 self.affect.admit_impact(receipt, authorized=True)
+        elif (proposal.selected_tendency == "avoid"
+              and station == "station:bedroom" and authorized_world_action):
+            self.corpus._verified_policy(proposal)
+            from hashlib import sha256
+            event_id = "six_rest_" + sha256(
+                proposal.policy_decision_id.encode()
+            ).hexdigest()[:32]
+            rest = self.bridge.act("rest", event_id=event_id)
+            if rest["status"] not in ("admitted", "already_admitted"):
+                raise RuntimeError("Laboratory rest lacked verified admission")
+            status = "rested"
+            destination = station
 
         # IPSEITY: never call an LLM/renderer directly with audit/context.
         # In-process host conventions alone are not a universal D3 sandbox.
