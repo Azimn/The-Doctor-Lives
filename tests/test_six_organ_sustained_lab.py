@@ -241,6 +241,119 @@ class TwelveCycleActualSixOrganLaboratory(unittest.TestCase):
                 )
             self.assertEqual(self.subject.embodied.verify()["revision"], revision)
 
+    def test_real_book_three_page_source_edition_custody_and_replay(self):
+        """Physical read is actual page text, not a title/LLM improvisation.
+
+        Movement destination and book ID are host-provided here: this
+        demonstrates an authenticated TASK CAPABILITY, not autonomy.
+        """
+        import json
+        from pretorius_lab.book_library import BookLibrary
+        from pretorius_lab import book_library
+        from pretorius_lab.physics import LabError
+
+        fixture_path = (
+            Path(book_library.__file__).resolve().parents[1]
+            / "fixtures" / "DEMO_BOOK_007.json"
+        )
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        lib = BookLibrary(self.world)
+        lib.initialize()
+        lib.install("book:007", **fixture,
+                    event_id="six_book_fixture_verified_source")
+        rt = SixOrganRuntime.open(
+            self.root / "brain-book", neural_config=self.config,
+        )
+        with self.host(rt) as session:
+            with self.assertRaises(PermissionError):
+                session.book_action(
+                    "book:007", "open", event_id="no-permission",
+                )
+            with self.assertRaises(LabError):
+                session.book_action(
+                    "book:007", "open", event_id="wrong-station",
+                    authorized=True,
+                )
+            # Physical setup remains HOST-directed. Every move is audited,
+            # not claimed as a self-originated intention.
+            for event_id, target in (
+                ("host-book-route-center", "station:center"),
+                ("host-book-route-shelf-3", "station:shelf:3"),
+            ):
+                session.bridge.act(
+                    "walk", event_id=event_id, station=target,
+                )
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:shelf:3")
+            opened = session.book_action(
+                "book:007", "open",
+                event_id="verified-book-open", authorized=True,
+            )
+            self.assertEqual(opened["status"], "admitted")
+            read = session.book_action(
+                "book:007", "read",
+                event_id="verified-book-page-one", authorized=True,
+            )
+            self.assertIn(fixture["pages"][0], read["subject"]["inner"])
+            self.assertEqual(
+                rt._port.brain.store.get_memory(read["memory_id"])["text"],
+                read["subject"]["inner"],
+            )
+            same = session.book_action(
+                "book:007", "read",
+                event_id="verified-book-page-one", authorized=True,
+            )
+            self.assertEqual(same["status"], "already_admitted")
+            self.assertEqual(same["memory_id"], read["memory_id"])
+            session.book_action(
+                "book:007", "turn", direction=1,
+                event_id="verified-book-turn", authorized=True,
+            )
+            page2 = session.book_action(
+                "book:007", "read",
+                event_id="verified-book-page-two", authorized=True,
+            )
+            self.assertIn(fixture["pages"][1], page2["subject"]["inner"])
+            self.assertNotEqual(read["memory_id"], page2["memory_id"])
+            with self.assertRaises(Exception):
+                session.book_action(
+                    "book:001", "read", event_id="not-installed-book",
+                    authorized=True,
+                )
+            session.ipseity.publish_current()
+            session.ipseity.deliver_next(now_ms=900_000)
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(self.root / "brain-book")
+        with self.host(reopened) as session:
+            replay = session.book_action(
+                "book:007", "read",
+                event_id="verified-book-page-two", authorized=True,
+            )
+            self.assertEqual(replay["status"], "already_admitted")
+            self.assertEqual(replay["memory_id"], page2["memory_id"])
+            self.assertIn(fixture["pages"][1],
+                          reopened._port.brain.store.get_memory(
+                              replay["memory_id"]
+                          )["text"])
+            with self.assertRaises(Exception):
+                session.book_action(
+                    "book:007", "turn", direction=1,
+                    event_id="verified-book-page-two",
+                    authorized=True,
+                )
+        self.assertGreaterEqual(lib.verify()["catalog_count"], 1)
+        print("SIX_ORGAN_SOURCE_VERIFIED_BOOK_READ=" + json.dumps({
+            "real_lab_book_id": "book:007",
+            "title": fixture["title"],
+            "installed_pages": len(fixture["pages"]),
+            "real_physical_station": "station:shelf:3",
+            "source_verified_pages_read": 2,
+            "duplicate_read_memories": 0,
+            "host_directed_travel": True,
+            "autonomous_book_goal": False,
+            "historical_corpus_installed": False,
+        }, sort_keys=True))
+
     def test_host_denial_all_six_still_run_without_world_move(self):
         rt = SixOrganRuntime.open(self.root / "denied", neural_config=self.config)
         before = self.subject.embodied.verify()["revision"]
