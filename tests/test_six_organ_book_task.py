@@ -137,6 +137,68 @@ class RealBookTaskBenchmark(unittest.TestCase):
               "memory 1/1, lesion 0/1, restoration 1/1, "
               "equal-information receipt ledger 1/1; superiority NOT shown")
 
+    def test_three_real_shelf_locations_memory_lesion_restoration_and_ledger(self):
+        """Reproduce donor #61's three physical cases on the six-organ runtime.
+
+        These are authored regression cases, NOT independent held-out proof.
+        The ledger comparator receives the SAME authenticated source sighting.
+        """
+        success = {"memory": 0, "lesion": 0, "restored": 0, "ledger": 0}
+        for shelf in (1, 2, 3):
+            for arm in success:
+                with self.subTest(shelf=shelf, arm=arm):
+                    runtime, lab, port, pilot = self.world(
+                        f"three-{shelf}-{arm}"
+                    )
+                    if shelf != 3:
+                        lab.commit({
+                            "op": "place", "object_id": "book:007",
+                            "anchor_id": f"shelf:{shelf}/slot:1",
+                        })
+                    target_station = f"station:shelf:{shelf}"
+                    port.move(target_station)
+                    receipt = port.look()
+                    ids = pilot.admit_sighting(receipt)
+                    self.assertTrue(ids)
+                    memory_id = next(
+                        mid for mid in ids
+                        if runtime._port.brain.store.get_memory(mid)["text"]
+                        == f"I see research volume 7 on shelf {shelf}."
+                    )
+                    port.move("station:center")
+                    if arm in ("lesion", "restored"):
+                        store = runtime._port.brain.store
+                        with store.transaction() as db:
+                            store.archive_memory(
+                                db, memory_id, store.tick,
+                                "controlled benchmark lesion",
+                            )
+                            if arm == "restored":
+                                db.execute(
+                                    "UPDATE memories SET active=1 WHERE id=?",
+                                    (memory_id,),
+                                )
+                            store.bump_state_version(db)
+                    report = pilot.run(
+                        task_id=f"three_shelf_{shelf}",
+                        book_id="book:007", max_actions=4,
+                        authorized=True,
+                        ledger_hint=target_station if arm == "ledger" else None,
+                    )
+                    expected = not (arm == "lesion" and shelf != 1)
+                    self.assertEqual(report["success"], expected)
+                    if report["success"]:
+                        self.assertEqual(
+                            report["page_text"], "Copper conducts electricity."
+                        )
+                        success[arm] += 1
+        self.assertEqual(success, {
+            "memory": 3, "lesion": 1, "restored": 3, "ledger": 3,
+        })
+        print("SIX_ORGAN_BOOK_TASK_3_SHELF_REGRESSION="
+              + str(success) +
+              "; authored cases; NO superiority over equal-information ledger")
+
     def test_no_sighting_fails_without_privileged_global_book_knowledge(self):
         runtime, _, port, pilot = self.world("uninformed")
         self.assertIsNone(pilot.memory_hint("book:007"))
