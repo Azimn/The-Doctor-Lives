@@ -132,6 +132,53 @@ class TwelveCycleActualSixOrganLaboratory(unittest.TestCase):
                               "world_epoch", "opponent_levels", "checkpoint_sha256"):
                 self.assertNotIn(forbidden, line)
 
+    def test_one_lived_world_consequence_drives_weather_at_most_once_across_restart(self):
+        rt = SixOrganRuntime.open(
+            self.root / "brain-one-event", neural_config=self.config,
+        )
+        with self.host(rt) as session:
+            proposal = rt.noesis.deliberate(
+                host_trigger="six_organ_one_weather_driver"
+            )
+            world_result = session._execute_movement(
+                proposal, "station:hall"
+            )
+            lived = rt._port.brain.store.get_memory(world_result.memory_id)
+            source = lived["source"]
+            original = session.weather.driver(
+                "goal_progress", 1.0, source,
+            )
+            session.weather.step(
+                1, (original,), authorized=True,
+                consumed_world_source=source,
+            )
+            self.assertEqual(
+                session.weather.last_consumed_world_source(), source,
+            )
+            with self.assertRaisesRegex(RuntimeError, "twice"):
+                session.weather.step(
+                    2, (original,), authorized=True,
+                    consumed_world_source=source,
+                )
+            self.assertEqual(session.weather.tick, 1)
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(self.root / "brain-one-event")
+        with self.host(reopened) as session:
+            self.assertEqual(session.weather.tick, 1)
+            self.assertEqual(
+                session.weather.last_consumed_world_source(), source,
+            )
+            with self.assertRaisesRegex(RuntimeError, "twice"):
+                session.weather.step(
+                    2, (session.weather.driver(
+                        "goal_progress", 1.0, source,
+                    ),), authorized=True,
+                    consumed_world_source=source,
+                )
+            next_cycle = session.cycle(authorized_world_action=False)
+            self.assertEqual(next_cycle.tick, 2)
+            self.assertEqual(session.weather.last_consumed_world_source(), source)
+
     def test_crash_between_physical_commit_and_lived_admission_recovers_once(self):
         """No duplicate movement, one admitted memory and one reflection."""
         from unittest.mock import patch
