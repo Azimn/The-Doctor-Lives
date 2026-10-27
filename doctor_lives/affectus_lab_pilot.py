@@ -86,14 +86,20 @@ class VerifiedLaboratoryAffectPilot:
                 db, "domestic_events", "motion:" + physical_hash[:32]
             )
         subject = domestic.get("subject", {})
-        if (domestic.get("op") != "walk"
-                or domestic.get("body_cursor") != physical_hash
-                or domestic.get("station") != "station:shop:private"
-                or domestic.get("world_epoch") != physical.get("world_epoch")
-                or subject.get("spoken_aloud") != "Ow! My foot!"
-                or subject.get("inner") != consequence.first_person
-                or consequence.spoken_aloud != "Ow! My foot!"):
-            raise PermissionError("Source history does not establish foot impact")
+        checks = {
+            "operation": domestic.get("op") == "walk",
+            "movement_link": domestic.get("body_cursor") == physical_hash,
+            "location": domestic.get("station") == "station:shop:private",
+            "epoch": domestic.get("world_epoch") == physical.get("world_epoch"),
+            "reflex": subject.get("spoken_aloud") == "Ow! My foot!",
+            "lived_text": subject.get("inner") == consequence.first_person,
+            "reported_reflex": consequence.spoken_aloud == "Ow! My foot!",
+        }
+        invalid = tuple(k for k, valid in checks.items() if not valid)
+        if invalid:
+            # Expose only violated engineering predicates, not raw telemetry.
+            raise PermissionError("Unverified impact source fields: "
+                                  + ", ".join(invalid))
 
         source = "laboratory-body:impact:" + domestic_hash
         prior = [
