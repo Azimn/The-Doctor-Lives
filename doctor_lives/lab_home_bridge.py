@@ -28,6 +28,7 @@ _ACTION_DOMAINS = {
     "measure": "instrument_events", "take_book": "custody_events",
     "put_book": "custody_events",
 }
+_EVENT_PAYLOAD_COLUMNS = {"books_events": "payload", "custody_events": "payload"}
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,80}\Z")
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -56,9 +57,11 @@ def _first_person_frame(value: dict) -> str:
 
 
 def _row(db, table, event_id):
-    # Table is selected only from hard-coded trusted operation mapping.
+    # Only the hard-coded trusted domain mapping selects these tables.
+    # Source books/custody store "payload"; physical/rhythm "envelope".
+    column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
     result = db.execute(
-        "SELECT envelope,event_hash FROM " + table + " WHERE event_id=?",
+        "SELECT " + column + ",event_hash FROM " + table + " WHERE event_id=?",
         (event_id,),
     ).fetchone()
     if not result:
@@ -91,8 +94,18 @@ class DoctorHomeBridge:
         self.world = subject_port.habitat
         self.subject.verify()
 
-    def _admit(self, frame, source, *, kind):
+    def _admit(self, frame, source, *, kind, source_book_page=False):
         text = _first_person_frame(frame)
+        if source_book_page:
+            # The Laboratory stores the ORIGINAL verified source bytes with
+            # print-style newlines in its book ledger. Doctor's existing
+            # world ingress intentionally normalizes all whitespace. For
+            # a verified BOOK READ only, normalize that same whitespace
+            # *before* the canonical admission equality check, so a real
+            # book's content is neither rejected nor silently rewritten.
+            # Keep original full source and independent receipt unchanged.
+            text = " ".join(text.split())
+            frame = {"inner": text, "spoken_aloud": frame["spoken_aloud"]}
         if not source.startswith("laboratory-home:"):
             raise PermissionError("Unapproved lived Laboratory source")
         if len(source) > 225:
@@ -203,8 +216,10 @@ class DoctorHomeBridge:
         # has changed since the original action. Never regenerate a subjective
         # result from the new world state for an old source receipt.
         with self.world._open() as db:
+            table = _ACTION_DOMAINS[op]
+            column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
             known = db.execute(
-                "SELECT envelope,event_hash FROM " + _ACTION_DOMAINS[op] +
+                "SELECT " + column + ",event_hash FROM " + table +
                 " WHERE event_id=?", (event_id,),
             ).fetchone()
         if known is not None:
@@ -238,7 +253,10 @@ class DoctorHomeBridge:
             e, cursor = _row(db, _ACTION_DOMAINS[op], event_id)
             self._check_action_proof(op, args, e)
         source = "laboratory-home:action:" + cursor
-        return self._admit(result, source, kind="observation")
+        return self._admit(
+            result, source, kind="observation",
+            source_book_page=(op == "book" and args.get("operation") == "read"),
+        )
 
     def request_cognition(self, *, trigger="laboratory_home"):
         """Actual Doctor cognition is available, not a scripted second policy.
