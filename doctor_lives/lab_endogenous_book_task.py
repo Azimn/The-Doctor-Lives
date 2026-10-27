@@ -159,7 +159,8 @@ class EndogenousBookPursuit:
             goal_origin="original-neural-explore-with-situated-evidence",
         )
 
-    def step(self, *, authorized_world_action: bool = False):
+    def step(self, *, authorized_world_action: bool = False,
+             native_proposal=None):
         """One bounded cognitive opportunity and at most ONE physical act.
 
         A host schedules an opportunity, not a goal, destination, title or
@@ -180,12 +181,21 @@ class EndogenousBookPursuit:
         if (lived is None or lived["evidence_class"] != "lived_runtime_memory"
                 or not lived["source"].startswith("laboratory-home:observe:")):
             raise RuntimeError("Endogenous opportunity lacks situated lived observation")
-        proposal = self.runtime.noesis.deliberate(
-            host_trigger="endogenous_book_opportunity"
-        )
-        # Checks the actual neural decision and thought relationship, rather
-        # than trusting the selected_action copied into a Python dataclass.
-        self.host.corpus._verified_policy(proposal)
+        # An authenticated caller may forward the JUST-ISSUED native policy
+        # event from a common multi-goal deliberation. This cannot be a
+        # host-authored action label or stale policy receipt.
+        from .organs import CognitiveProposal
+        if native_proposal is not None:
+            if type(native_proposal) is not CognitiveProposal:
+                raise PermissionError("Expected an original typed neural decision")
+            proposal = native_proposal
+        else:
+            proposal = self.runtime.noesis.deliberate(
+                host_trigger="endogenous_book_opportunity"
+            )
+        _, newest_id = self.host.corpus._verified_policy(proposal)
+        if newest_id != proposal.policy_decision_id:
+            raise PermissionError("Stale policy cannot originate a new book goal")
         if state is None:
             # An internal exploratory choice alone does not create a book fact.
             # The co-present bookshelves cue must come from a verified local
