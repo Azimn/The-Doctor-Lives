@@ -135,9 +135,29 @@ def run(lab_root: Path, output_root: Path, affectus_root: Path) -> dict:
             "last_segment_sha256": sha256(expected[-1].encode("utf-8")).hexdigest(),
         }
 
-    # Initialize the SAME embodied person in the already populated source world.
+    # Materialize an UNREAD, source-backed starting Laboratory BEFORE any
+    # experimenter-directed movement or page reading. Reusing a post-test
+    # world with a fresh brain could misattribute earlier test activities
+    # to the new subject; this pristine fixture avoids that history leak.
     HomeLife(world).initialize()
     DailyRhythm(world).initialize()
+    pristine_path = output_root / "unread-17-full-text-lab.sqlite3"
+    world.backup_to(pristine_path)
+    pristine = SpatialHabitat(pristine_path)
+    if set(BookLibrary(pristine).catalog()) != required:
+        raise RuntimeError("Pristine full-text Lab backup lost a volume")
+    with pristine._open() as db:
+        unread_books = json.loads(db.execute(
+            "SELECT value FROM books_meta WHERE key='books'"
+        ).fetchone()[0])
+        world_moves = db.execute(
+            "SELECT count(*) FROM embodied_events"
+        ).fetchone()[0]
+    if world_moves != 0 or any(
+        v["opened"] or v["current_page"] != 1
+        for v in unread_books.values()
+    ):
+        raise RuntimeError("Pristine library contains past experimental reading")
     subject = SubjectPort(world)
     doctor_path = output_root / "isolated-doctor-brain"
     doctor = SixOrganRuntime.open(doctor_path, neural_config=config())
@@ -270,6 +290,9 @@ def run(lab_root: Path, output_root: Path, affectus_root: Path) -> dict:
         "full_source_bytes": sum(original_bytes.values()),
         "total_digital_segments": sum(len(p) for p in expected_segments.values()),
         "world_verified": True, "physical_shelves_verified": 17,
+        "pristine_unread_world_available": True,
+        "pristine_book_count": len(unread_books),
+        "pristine_prior_world_moves": world_moves,
         "actual_host_authorized_book_reads": len(read_memories),
         "distinct_lived_read_memories": len(set(read_memories.values())),
         "actual_second_page_issued": 1, "duplicate_read_memory_count": 0,
