@@ -166,7 +166,7 @@ class CanonicalWeather:
              authorized: bool = False) -> WeatherReceipt:
         if authorized is not True:
             raise PermissionError("Only trusted host can advance weather")
-        if type(tick) is not int or tick != self.tick + 1:
+        if type(tick) is not int or tick != (1 if self.tick == -1 else self.tick + 1):
             raise RuntimeError("Weather ticks must be monotonically continuous")
         if type(drivers) is not tuple or any(
             type(event) is not self._module.DriverEvent for event in drivers
