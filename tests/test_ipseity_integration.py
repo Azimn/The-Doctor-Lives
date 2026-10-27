@@ -8,6 +8,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from doctor_lives.neural import DEFAULT_CONFIG
 
@@ -77,6 +78,16 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
             self.assertNotIn("source_record_ids", text)
             self.assertNotIn(inquiry, text)
             self.assertNotIn("I read a message from User", text)
+
+    def test_publication_uses_typed_host_port_instead_of_engineer_shortcut(self):
+        with self.session() as session:
+            with patch.object(
+                session._doctor, "subject_frame",
+                wraps=session._doctor.subject_frame,
+            ) as access:
+                publication = session.publish_current()
+                access.assert_called_once_with(None)
+                self.assertIsNotNone(publication.outbox_id)
 
     def test_normal_subject_frame_through_same_durable_port(self):
         with self.session() as session:

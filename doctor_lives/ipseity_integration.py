@@ -52,7 +52,17 @@ class DoctorSyntheticIpseitySession:
         renderer: Callable[[str], str],
         epoch_id: str = DEFAULT_EPOCH,
         neural_config: dict[str, Any] | None = None,
+        brain_port: PretoriusBrainPort | None = None,
     ):
+        # The six-organ host MUST inject its existing PretoriusBrainPort.
+        # Never reopen a competing brain handle or migrate brain state here.
+        if brain_port is not None:
+            if type(brain_port) is not PretoriusBrainPort:
+                raise TypeError("Only the canonical PretoriusBrainPort may be injected")
+            if neural_config is not None:
+                raise ValueError("Injected brain_port already owns the neural configuration")
+            if Path(state_dir).resolve() != brain_port.brain.state_dir.resolve():
+                raise ValueError("Durable Ipseity state_dir must equal the canonical brain directory")
         if not callable(renderer):
             raise TypeError("renderer must accept subject text")
         try:
@@ -68,7 +78,11 @@ class DoctorSyntheticIpseitySession:
             )
         self.state_dir = Path(state_dir)
         self.state_dir.mkdir(parents=True, exist_ok=True)
-        self._doctor = PretoriusBrainPort(self.state_dir, neural_config=neural_config)
+        self._doctor = (
+            brain_port
+            if brain_port is not None
+            else PretoriusBrainPort(self.state_dir, neural_config=neural_config)
+        )
         self._ipseity = DurableIpseityHost(
             self.state_dir / "synthetic_ipseity.sqlite3",
             subject_id=self.SUBJECT_ID,
@@ -92,7 +106,7 @@ class DoctorSyntheticIpseitySession:
 
     def publish_current(self, user_input: str | None = None):
         """Commit real Doctor subject experience into the durable Ipseity gate."""
-        source = self._doctor.brain.render_request(user_input).subject_frame
+        source = self._doctor.subject_frame(user_input)
         return self._publish_typed_subject_frame(source)
 
     def bind_recollection_controller(
