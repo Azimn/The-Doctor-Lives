@@ -218,6 +218,126 @@ class AffectusWeatherCausalAblation(unittest.TestCase):
             self.assertEqual(a["tendency"], b["tendency"])
             self.assertEqual(a["baseline"], b["baseline"])
 
+    def test_same_current_inputs_distinct_weather_histories_affect_native_choices(self):
+        """History-dependent modulation with an identical final eight driver ticks.
+
+        This is an independently preregistered causal check, never a measure
+        of successful real-world action or a subject-facing felt explanation.
+        """
+        groups = {"weather_on_different_history": 0,
+                  "needs_only_different_history": 0,
+                  "progress_on_vs_off": 0,
+                  "impediment_on_vs_off": 0}
+        observations = []
+        def controlled_arm(root, seed, history_kind, enabled):
+            runtime = SixOrganRuntime.open(root, neural_config=config(seed))
+            prior = needs_and_neural(runtime)
+            weather = Affectus(AffectusConfig(seed=seed))
+            for tick in range(1, 81):
+                kind = history_kind if tick <= 72 else "rest_density"
+                magnitude = 1.0 if tick <= 72 else 0.0
+                weather.step(tick, (DriverEvent(
+                    kind=kind, magnitude=magnitude,
+                    source_ref="unlived-experimental-driver-fixture",
+                ),))
+            self.assertEqual(len(weather.receipts), 80)
+            self.assertLess(weather.sensitivities[history_kind], 1.0)
+            self.assertNotEqual(weather.opponent_levels[history_kind], 0.0)
+            self.assertTrue(any(abs(x) > 1e-6 for x in weather.state.values()))
+            # Weather persistence is only donor-local, never stored as
+            # another organ's checkpoint.
+            saved = weather.snapshot()
+            restored = Affectus.restore(saved, AffectusConfig(seed=seed))
+            self.assertEqual(weather.state, restored.state)
+            self.assertEqual(weather.sensitivities, restored.sensitivities)
+            self.assertEqual(weather.opponent_levels, restored.opponent_levels)
+            self.assertEqual(weather.receipts, restored.receipts)
+            mod = weather.modulation()
+            with original_policy_with_weather(
+                runtime._port.brain, mod, enabled=enabled,
+            ):
+                proposal = runtime.noesis.deliberate(
+                    host_trigger="affectus_history_trial"
+                )
+            self.assertEqual(needs_and_neural(runtime), prior)
+            with runtime._port.brain.store.connect() as db:
+                row = db.execute(
+                    "SELECT action_scores_json FROM policy_decisions WHERE id=?",
+                    (proposal.policy_decision_id,),
+                ).fetchone()
+            return {
+                "choice": proposal.selected_tendency,
+                "scores": json.loads(row["action_scores_json"]),
+                "bias": mod.exploration_bias,
+                "state": weather.state,
+                "needs_neural": prior,
+            }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for seed in range(2200, 2220):
+                a_on = controlled_arm(
+                    root / f"{seed}-a-on", seed, "goal_progress", True,
+                )
+                a_off = controlled_arm(
+                    root / f"{seed}-a-off", seed, "goal_progress", False,
+                )
+                b_on = controlled_arm(
+                    root / f"{seed}-b-on", seed, "goal_impediment", True,
+                )
+                b_off = controlled_arm(
+                    root / f"{seed}-b-off", seed, "goal_impediment", False,
+                )
+                for candidate in (a_off, b_on, b_off):
+                    self.assertEqual(a_on["needs_neural"], candidate["needs_neural"])
+                # The final 8 ticks, including current driver, are identical.
+                self.assertNotEqual(a_on["state"], b_on["state"])
+                self.assertEqual(a_off["choice"], b_off["choice"],
+                                 "A needs-only control should not see hidden weather")
+                self.assertEqual(a_off["scores"], b_off["scores"])
+                groups["weather_on_different_history"] += int(
+                    a_on["choice"] != b_on["choice"]
+                )
+                groups["needs_only_different_history"] += int(
+                    a_off["choice"] != b_off["choice"]
+                )
+                groups["progress_on_vs_off"] += int(
+                    a_on["choice"] != a_off["choice"]
+                )
+                groups["impediment_on_vs_off"] += int(
+                    b_on["choice"] != b_off["choice"]
+                )
+                observations.append({
+                    "seed": seed, "progress_bias": a_on["bias"],
+                    "impediment_bias": b_on["bias"],
+                    "progress_weather_choice": a_on["choice"],
+                    "impediment_weather_choice": b_on["choice"],
+                    "needs_only_choice": a_off["choice"],
+                })
+        report = {
+            "schema": "pretorius.affectus-history-dependence.v1",
+            "locked_protocol":
+                "docs/experiments/AFFECTUS_HISTORY_DEPENDENCE_PREREG_2026-10-26.md",
+            "independent_neural_seeds": 20,
+            "driver_prefix_ticks": 72,
+            "identical_final_driver_ticks": 8,
+            "selected_tendency_counts": groups,
+            "different_history_causal_choice_effect": (
+                groups["weather_on_different_history"] > 0
+                and groups["needs_only_different_history"] == 0
+            ),
+            "modulation_consumed": ["exploration_bias"],
+            "unconsumed": [
+                "salience_gain", "rehearsal_bias", "decay_multiplier",
+            ],
+            "world_tasks_tested": 0,
+            "observations": observations,
+        }
+        print("AFFECTUS_SAME_CURRENT_DIFFERENT_HISTORY="
+              + json.dumps(report, sort_keys=True))
+        self.assertEqual(groups["needs_only_different_history"], 0)
+        # No forced-positive assertion: a null decision effect is valid
+        # evidence and must not provoke post-hoc changes to driver inputs.
+
     def test_weather_snapshot_restores_but_canonical_brain_does_not_persist_it(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "canonical-brain"
