@@ -87,6 +87,27 @@ class TwelveCycleActualSixOrganLaboratory(unittest.TestCase):
             self.assertIs(session.runtime._port, session.runtime.affectus._port)
             self.assertIs(session.runtime._port, session.runtime.corpus._port)
             self.assertIs(session.runtime._port, session.runtime.synthetic_ipseity._port)
+        # Engineering metrics are audit output ONLY, never renderer context.
+        import json
+        diagnostics = {
+            "schema": "pretorius.six-organ.actual-lab-12-cycle.v1",
+            "cycles": len(results),
+            "all_organs_each_cycle": sum(len(r.ports_used) == 6 for r in results),
+            "executed_world_moves": sum(r.movement_status == "admitted" for r in results),
+            "self_selected_goal_proven": sum(r.self_selected_goal_proven for r in results),
+            "host_goal_actions": sum(r.host_provided_goal for r in results),
+            "station_now": self.subject.embodied.verify()["station"],
+            "destinations": [r.destination for r in results],
+            "selected_tendencies": [r.selected_tendency for r in results],
+            "restarts": 1,
+            "book_read": any(
+                m["source"].startswith("laboratory-home:action:")
+                and "I read a page of" in m["text"]
+                for m in reopened._port.brain.store.memories()
+            ),
+        }
+        print("SIX_ORGAN_LAB_12_CYCLE_DIAGNOSTICS="
+              + json.dumps(diagnostics, sort_keys=True))
         self.assertEqual(len(results), 12)
         self.assertEqual(len(self.received), 12)
         self.assertEqual([r.tick for r in results], list(range(1, 13)))
