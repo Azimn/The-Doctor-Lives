@@ -126,6 +126,48 @@ class PinnedSpinozaTransitionAudit(unittest.TestCase):
         self.assertLessEqual(33, 37)
         self.assertTrue(set(range(29, 34)) & set(range(30, 38)))
 
+    def test_reproduce_original_overlapping_donor_metric_without_prediction_claim(self):
+        """Mirror exactly the original donor's 40-seed, overlapping fitness.
+
+        The original test asserts >70% agreement. We report its actual ratio
+        independently here; the documented 84% is a *source claim*, not yet
+        established as the same number on this pinned commit.
+        """
+        matches = 0
+        compared = 0
+        by_dim = {d: {"compared": 0, "correct": 0} for d in DIMS}
+        for seed in range(40):
+            history, _ = episode(seed)
+            for dim in DIMS:
+                values = history[30:38]
+                delta = values[-1][dim] - values[0][dim]
+                direction = sign(delta, 0.02)
+                # The original label ends at hist[33], before the input
+                # direction window finishes at hist[37].
+                label = sign(history[33][dim] - history[29][dim], 0.005)
+                if direction and label:
+                    compared += 1
+                    matches += int(direction == label)
+                    by_dim[dim]["compared"] += 1
+                    by_dim[dim]["correct"] += int(direction == label)
+        self.assertGreater(compared, 40)
+        result = {
+            "schema": "pretorius.affectus-donor.reproduced-overlapping-v1",
+            "seeds": "0..39",
+            "trajectory_indices": [30, 37],
+            "label_indices": [29, 33],
+            "predictor_contains_label_future": True,
+            "compared": compared,
+            "correct": matches,
+            "overlapping_agreement": round(matches / compared, 6),
+            "by_dimension": by_dim,
+            "is_prospective_forecast": False,
+        }
+        print("AFFECTUS_ORIGINAL_OVERLAPPING_REPRODUCTION="
+              + json.dumps(result, sort_keys=True))
+        # No pass/fail claim about forecasting can come from overlap.
+        self.assertTrue(0 <= matches / compared <= 1)
+
     def test_exact_donor_time_aligned_future_holdout_by_dimension(self):
         """Post-hoc diagnostic: match donor's predictor endpoint at tick 38.
 
