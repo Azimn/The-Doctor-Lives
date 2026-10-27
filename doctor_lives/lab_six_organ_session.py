@@ -134,6 +134,46 @@ class SixOrganLaboratoryCycle:
     def __exit__(self, *_):
         self.close()
 
+    def book_action(self, book_id: str, operation: str, *,
+                    event_id: str, authorized: bool = False,
+                    direction: int | None = None):
+        """Operate a REAL installed, reachable book via source-backed receipt.
+
+        This is a host-authorized research capability. A caller choosing
+        a title does NOT establish endogenous goal selection. Pretorius
+        receives only verified first-person page text as lived memory,
+        never engineer catalog state, hidden pages or bare Gutenberg URLs.
+        World and book ledgers own location, edition and physical access.
+        """
+        import re
+        if authorized is not True:
+            raise PermissionError("Separate host authorization required for book act")
+        if (type(book_id) is not str
+                or re.fullmatch(r"book:[0-9]{3}", book_id) is None):
+            raise ValueError("Expected stable physical Laboratory book ID")
+        if operation not in ("open", "read", "turn", "close"):
+            raise PermissionError("Unsupported bounded research book operation")
+        if self._pending() is not None:
+            raise RuntimeError("Reconcile pending body motion before reading")
+        kwargs = {"book_id": book_id, "operation": operation}
+        if operation == "turn":
+            if direction not in (-1, 1) or type(direction) is not int:
+                raise ValueError("Page turn must be exactly one leaf")
+            kwargs["direction"] = direction
+        elif direction is not None:
+            raise ValueError("Direction is valid only for page turns")
+        # Bridge validates the actual book-event hash AND original world
+        # physical custody/pose; replay gets the one original memory.
+        outcome = self.bridge.act("book", event_id=event_id, **kwargs)
+        admitted = self.runtime._port.brain.store.get_memory(
+            outcome["memory_id"],
+        )
+        if (admitted is None or admitted["text"] != outcome["subject"]["inner"]
+                or not admitted["source"].startswith("laboratory-home:action:")
+                or admitted["evidence_class"] != "lived_runtime_memory"):
+            raise RuntimeError("Book action was not admitted as lived source evidence")
+        return outcome
+
     _PENDING = "six_organ_lab_pending_world_action_v1"
 
     def _pending(self):
