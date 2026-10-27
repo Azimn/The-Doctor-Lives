@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - tests/test_six_organ_affectus_donor_audit.py
+      - doctor_lives/affectus_lab_pilot.py
+      - doctor_lives/organs.py
       - .github/workflows/six-organ-affectus-donor-audit.yml
   workflow_dispatch:
 permissions:
