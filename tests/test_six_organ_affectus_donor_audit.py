@@ -96,11 +96,25 @@ class PinnedSpinozaTransitionAudit(unittest.TestCase):
         self.assertEqual(weather.receipts, restored.receipts)
 
     def test_original_interval_overlap_is_explicit(self):
+        # Inspect the executed pinned donor test, not merely a paraphrase
+        # of its formula. If the donor test changes, the interval proof
+        # must be inspected anew before anyone repeats this criticism.
+        from pathlib import Path
+
+        source = (
+            Path(__file__).resolve().parent.parent
+            / "pinned-affectus-donor" / "tests" / "test_affectus.py"
+        )
+        self.assertTrue(source.is_file(), "source-pinned donor is required")
+        text = source.read_text(encoding="utf-8")
+        self.assertIn('w = hist[30:30 + win]', text)
+        self.assertIn('past = w[-1][dim] - w[0][dim]', text)
+        self.assertIn('fut = hist[33][dim] - hist[29][dim]', text)
+        self.assertIn('win, eps = 8, 0.02', text)
+
         # Donor fitness: direction from hist[30:38], then "future" label
-        # computed as hist[33] - hist[29]. Entire label ends BEFORE the
-        # direction input finishes at index 37. It is NOT a forecast.
+        # hist[33]-hist[29]. Label ends BEFORE its predictor window ends.
         self.assertLessEqual(33, 37)
-        self.assertGreaterEqual(29, 30 - 1)
         self.assertTrue(set(range(29, 34)) & set(range(30, 38)))
 
     def test_independent_strict_future_holdout_reports_actual_coverage(self):
