@@ -28,6 +28,7 @@ _SOURCE_BLOBS = {
 }
 _PACKAGE = "pretorius_reviewed_weather_donor"
 _META = "six_organ_canonical_weather_v1"
+_WORLD_CONSUMED_META = "six_organ_weather_last_world_consequence_v1"
 _SCHEMA = "pretorius.canonical-affectus-weather.v1"
 
 
@@ -162,8 +163,12 @@ class CanonicalWeather:
     def modulation(self):
         return self._weather.modulation()
 
+    def last_consumed_world_source(self) -> str | None:
+        return self._port.brain.store.meta(_WORLD_CONSUMED_META)
+
     def step(self, tick: int, drivers: tuple, *,
-             authorized: bool = False) -> WeatherReceipt:
+             authorized: bool = False,
+             consumed_world_source: str | None = None) -> WeatherReceipt:
         if authorized is not True:
             raise PermissionError("Only trusted host can advance weather")
         if type(tick) is not int or tick != (1 if self.tick == -1 else self.tick + 1):
@@ -172,6 +177,20 @@ class CanonicalWeather:
             type(event) is not self._module.DriverEvent for event in drivers
         ):
             raise TypeError("Drivers must be source-pinned typed events")
+        if consumed_world_source is not None:
+            if (type(consumed_world_source) is not str
+                    or not consumed_world_source.startswith(
+                        "laboratory-home:action:"
+                    )):
+                raise PermissionError("Only a canonical lived world action is consumable")
+            m = [
+                m for m in self._port.brain.store.memories()
+                if m["source"] == consumed_world_source
+            ]
+            if len(m) != 1 or m[0]["evidence_class"] != "lived_runtime_memory":
+                raise PermissionError("Weather driver has no active lived world memory")
+            if consumed_world_source == self.last_consumed_world_source():
+                raise RuntimeError("One physical consequence cannot drive weather twice")
         old = self._stored_digest
         self._weather.step(tick, drivers)
         envelope = self._envelope()
@@ -182,6 +201,13 @@ class CanonicalWeather:
             if row is None or self._decode(row[0])["integrity"] != old:
                 raise RuntimeError("Concurrent/stale canonical weather writer")
             self._port.brain.store.set_meta(_META, _json(envelope), conn)
+            if consumed_world_source is not None:
+                # Commit the source cursor in the SAME transaction as the
+                # weather update: interrupted replay cannot count the same
+                # physical event as a second emotional stimulus.
+                self._port.brain.store.set_meta(
+                    _WORLD_CONSUMED_META, consumed_world_source, conn,
+                )
             self._port.brain.store.bump_state_version(conn)
         self._stored_digest = new
         return WeatherReceipt(
