@@ -238,7 +238,7 @@ class NoesisCorpusLaboratoryActionTests(unittest.TestCase):
         harmless = safe.act(
             neutral_policy,
             HostCorpusOffer(
-                neutral_policy.selected_tendency, "walk", "station:center",
+                neutral_policy.selected_tendency, "walk", "station:kitchen",
             ),
             authorized=True,
         )
