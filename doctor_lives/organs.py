@@ -223,6 +223,20 @@ class AffectusOrgan:
     def __init__(self, port: PretoriusBrainPort):
         self._port = port
 
+    def opt_in_laboratory_body_evidence(self, runtime, subject_port, *,
+                                        authorized: bool = False):
+        """Prototype from verified world impact through ORIGINAL needs circuit.
+
+        This does not adopt the unpinned Spinoza transition prototype or
+        authorize a second selector. It is never active by default.
+        """
+        if runtime._port is not self._port:
+            raise PermissionError("Affectus must use its own canonical brain")
+        from .affectus_lab_pilot import VerifiedLaboratoryAffectPilot
+        return VerifiedLaboratoryAffectPilot(
+            runtime, subject_port, authorized=authorized
+        )
+
     def read_motivational_influence(self) -> AffectiveInfluence:
         """Read existing need influence; do not introduce a second decision rule.
 
