@@ -159,10 +159,14 @@ class NativeLaboratoryGoalChooser:
             )
         if rest is not None:
             return self._continue_rest(rest, authorized_world_action)
-        if book.goal_id is not None and book.phase == "complete":
-            return NativeGoalChoiceReceipt(
-                "already_complete", "read_book", book.goal_id, book.memory_id
-            )
+        # A fulfilled intention is HISTORY, not a permanent prohibition on
+        # having a different intention. Preserve the original book receipt;
+        # permit ONLY a later native AVOID choice to originate a distinct rest
+        # goal. Never restart the already-completed book or infer that an
+        # engineer has provided a second goal.
+        prior_book_complete = book.goal_id is not None and book.phase == "complete"
+        if prior_book_complete:
+            self._verify_completed_book(book)
 
         observed = self.host.bridge.observe()
         lived = self.store.get_memory(observed["memory_id"])
@@ -174,6 +178,14 @@ class NativeLaboratoryGoalChooser:
         station = state["station"]
         proposal = self._native_policy()
         if proposal.selected_tendency == "explore":
+            if book.goal_id is not None:
+                # Exhausted or completed once: never accidentally reopen
+                # the original volume or start an alias of the old goal.
+                return NativeGoalChoiceReceipt(
+                    "already_complete" if prior_book_complete else "exhausted",
+                    "read_book", book.goal_id, book.memory_id,
+                    selected_tendency="explore",
+                )
             # The situated cue must come from a source-verified local LOOK.
             # "explore" alone never invents a book.
             scene = next((
@@ -215,6 +227,33 @@ class NativeLaboratoryGoalChooser:
         return NativeGoalChoiceReceipt(
             "goal_created", "rest", ident, selected_tendency="avoid"
         )
+
+    def _verify_completed_book(self, book):
+        """Source-prove historical completion BEFORE issuing a later goal.
+
+        The original first-person page memory must map to a real hashed
+        Laboratory book READ event. The neural policy cannot use a forged
+        completed-record flag to clear an existing unfinished intention.
+        """
+        from .lab_home_bridge import _row
+        memory = self.store.get_memory(book.memory_id)
+        if (memory is None or not memory["active"]
+                or memory["evidence_class"] != "lived_runtime_memory"
+                or not memory["source"].startswith("laboratory-home:action:")
+                or "I read a page of " not in memory["text"]):
+            raise RuntimeError("Prior book goal lacks a verified lived read")
+        digest = memory["source"].removeprefix("laboratory-home:action:")
+        with self.host.bridge.world._open() as db:
+            events = db.execute(
+                "SELECT event_id FROM books_events WHERE event_hash=?",
+                (digest,),
+            ).fetchall()
+            if len(events) != 1:
+                raise RuntimeError("Prior book memory has no unique physical event")
+            event, hash_value = _row(db, "books_events", events[0][0])
+        if (hash_value != digest or event.get("action", {}).get("op") != "read"
+                or event.get("page_receipt") is None):
+            raise RuntimeError("Earlier goal was not an authentic book reading")
 
     def _continue_rest(self, state, authorized):
         if state["phase"] == "complete":
