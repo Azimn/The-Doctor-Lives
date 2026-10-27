@@ -192,6 +192,55 @@ class NoesisCorpusLaboratoryActionTests(unittest.TestCase):
             ], "lived_runtime_memory",
         )
 
+    def test_crash_after_world_action_before_memory_reconciles_once_after_restart(self):
+        """Physical source commits first; recovering Doctor must not move twice.
+
+        Reproduce the most dangerous interruption window without inventing a
+        successful subjective experience before canonical memory admission.
+        """
+        from unittest.mock import patch
+
+        runtime, subject, pilot = self.fresh("interrupted-world")
+        chosen = runtime.noesis.deliberate(host_trigger="crash-world-before-memory")
+        offer = HostCorpusOffer(chosen.selected_tendency, "walk", "station:hall")
+        original_position = subject.embodied.verify()["station"]
+        self.assertNotEqual(original_position, "station:hall")
+        before_tick = runtime._port.brain.store.tick
+        with patch.object(
+            pilot._bridge, "_admit",
+            side_effect=RuntimeError("simulated crash after world commit"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "simulated crash"):
+                pilot.act(chosen, offer, authorized=True)
+        world_revision = subject.embodied.verify()["revision"]
+        self.assertEqual(subject.embodied.verify()["station"], "station:hall")
+        self.assertEqual(runtime._port.brain.store.tick, before_tick)
+        self.assertFalse(any(
+            m["source"].startswith("laboratory-home:action:")
+            for m in runtime._port.brain.store.memories(False)
+        ))
+        runtime.checkpoint()
+
+        reopened = SixOrganRuntime.open(
+            self.root / "interrupted-world" / "brain"
+        )
+        resumed = reopened.bind_causal_laboratory(subject, authorized=True)
+        admitted = resumed.act(chosen, offer, authorized=True)
+        self.assertEqual(admitted.status, "admitted")
+        self.assertEqual(subject.embodied.verify()["revision"], world_revision)
+        self.assertEqual(reopened._port.brain.store.tick, before_tick + 1)
+        retry = resumed.act(chosen, offer, authorized=True)
+        self.assertEqual(retry.status, "already_admitted")
+        self.assertEqual(retry.memory_id, admitted.memory_id)
+        self.assertEqual(subject.embodied.verify()["revision"], world_revision)
+        self.assertEqual(reopened._port.brain.store.tick, before_tick + 1)
+        first_thought = resumed.reflect(admitted, authorized=True)
+        second_thought = resumed.reflect(retry, authorized=True)
+        self.assertFalse(first_thought.is_replay)
+        self.assertTrue(second_thought.is_replay)
+        self.assertEqual(first_thought.policy_decision_id,
+                         second_thought.policy_decision_id)
+
     def test_stale_proposal_rejected_before_movement_and_forged_feedback(self):
         runtime, subject, pilot = self.fresh()
         prior = runtime.noesis.deliberate(host_trigger="body-old")
