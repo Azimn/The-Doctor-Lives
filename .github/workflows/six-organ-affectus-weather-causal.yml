@@ -1,0 +1,45 @@
+name: Six-organ Affectus matched causal ablation (research only)
+on:
+  pull_request:
+    paths:
+      - tests/test_six_organ_affectus_weather_causal.py
+      - .github/workflows/six-organ-affectus-weather-causal.yml
+      - docs/experiments/AFFECTUS_WEATHER_CAUSAL_PREREG_2026-10-26.md
+      - docs/experiments/AFFECTUS_WEATHER_CAUSAL_RESULT_2026-10-26.md
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-weather-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: pinned-affectus-donor
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert exact untouched donor
+        run: |
+          test "$(git -C pinned-affectus-donor rev-parse HEAD)" = "904bf11861700739ccc03d4b0d4340ff3422a7d3"
+          git diff --exit-code
+      - name: Install canonical Doctor (no alternate selector or donor fork)
+        run: python -m pip install -e .
+      - name: Verify original donor functionality
+        env:
+          PYTHONPATH: pinned-affectus-donor
+        run: python -m unittest discover -s pinned-affectus-donor/tests -p test_affectus.py -v
+      - name: Run two-arm matched selected-policy and lesion/restart checks WITHOUT SKIP
+        env:
+          PYTHONPATH: pinned-affectus-donor
+        run: |
+          python -c "from sensus_artificialis.affectus import Affectus; assert Affectus.__module__ == 'sensus_artificialis.affectus'"
+          python -m unittest discover -s tests -p test_six_organ_affectus_weather_causal.py -v
+      - name: Whole canonical Doctor Python suite (report all skips)
+        env:
+          PYTHONPATH: pinned-affectus-donor
+        run: python -m unittest discover -s tests -v
