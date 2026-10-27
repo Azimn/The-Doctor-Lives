@@ -126,11 +126,83 @@ class PinnedSpinozaTransitionAudit(unittest.TestCase):
         self.assertLessEqual(33, 37)
         self.assertTrue(set(range(29, 34)) & set(range(30, 38)))
 
+    def test_exact_donor_time_aligned_future_holdout_by_dimension(self):
+        """Post-hoc diagnostic: match donor's predictor endpoint at tick 38.
+
+        SAME: config defaults (window=8, epsilon=.02), six driver kinds,
+        uniform(-1,1) magnitudes, seeded random/noise.
+        DIFFERENT: donor leak used hist[33]-hist[29]; this test observes
+        hist[37] THEN scores hist[41]-hist[37], so it is prospective.
+        Unseen seeds 40..79 have already been inspected elsewhere in this PR:
+        this diagnostic cannot be called a NEW preregistered holdout.
+        """
+        groups = {
+            dim: {"compared": 0, "correct": 0, "excluded": 0,
+                  "realized_up": 0, "realized_down": 0}
+            for dim in DIMS
+        }
+        for seed in range(40, 80):
+            history, _ = episode(seed)
+            current_idx = 37  # same as donor's hist[30:38][-1]
+            future_idx = 41  # four updates AFTER index 37
+            for dim in DIMS:
+                delta_past = history[current_idx][dim] - history[30][dim]
+                prediction = sign(
+                    delta_past, AffectusConfig(seed=seed).direction_epsilon
+                )
+                realized = sign(
+                    history[future_idx][dim] - history[current_idx][dim],
+                    0.005,
+                )
+                d = groups[dim]
+                if not prediction or not realized:
+                    d["excluded"] += 1
+                else:
+                    d["compared"] += 1
+                    d["correct"] += int(prediction == realized)
+                    d["realized_up" if realized > 0 else "realized_down"] += 1
+        n = sum(x["compared"] for x in groups.values())
+        self.assertGreater(n, 0)
+        successes = sum(x["correct"] for x in groups.values())
+        result = {
+            "schema": "pretorius.affectus-donor.donor-time-aligned-v1",
+            "type": "posthoc_diagnostic_not_preregistered",
+            "seed_range": [40, 79],
+            "same_driver_regime": True,
+            "same_default_trajectory_window": 8,
+            "same_default_direction_epsilon": 0.02,
+            "prediction_at_tick": 38,
+            "label_at_tick": 42,
+            "four_tick_future_accuracy": round(successes / n, 6),
+            "compared": n,
+            "by_dimension": {
+                dim: {
+                    **data,
+                    "accuracy": round(data["correct"] / data["compared"], 6)
+                    if data["compared"] else None,
+                } for dim, data in groups.items()
+            },
+            "adoption_qualified": False,
+        }
+        print("AFFECTUS_DONOR_TIME_ALIGNED_DIMENSIONS="
+              + json.dumps(result, sort_keys=True))
+        self.assertTrue(0.0 <= successes / n <= 1.0)
+
     def test_independent_strict_future_holdout_reports_actual_coverage(self):
         compared = 0
         direction_correct = 0
         level_correct = 0
+        raw_level_correct = 0
         flat = 0
+        per_dimension = {
+            d: {
+                "compared": 0, "correct_direction": 0,
+                "correct_coarse_level": 0, "correct_raw_level": 0,
+                "excluded_flat": 0, "predicted_up": 0,
+                "predicted_down": 0, "realized_up": 0,
+                "realized_down": 0,
+            } for d in DIMS
+        }
         for seed in range(40, 80):  # distinct from original donor's 0..39
             history, reports = episode(seed)
             for tick, report in reports.items():
@@ -142,15 +214,25 @@ class PinnedSpinozaTransitionAudit(unittest.TestCase):
                     pred = {"^": 1, "v": -1, "~": 0}[token[-1]]
                     # Level sign is an independent, naive comparator.
                     baseline = sign(float(token[:-1]), 0.001)
+                    raw_baseline = sign(current[dim], 0.001)
                     realized = sign(
                         future[dim] - current[dim], 0.005
                     )
+                    counts = per_dimension[dim]
                     if not pred or not realized:
                         flat += 1
+                        counts["excluded_flat"] += 1
                         continue
                     compared += 1
+                    counts["compared"] += 1
+                    counts["predicted_up" if pred > 0 else "predicted_down"] += 1
+                    counts["realized_up" if realized > 0 else "realized_down"] += 1
+                    counts["correct_direction"] += int(pred == realized)
+                    counts["correct_coarse_level"] += int(baseline == realized)
+                    counts["correct_raw_level"] += int(raw_baseline == realized)
                     direction_correct += (pred == realized)
                     level_correct += (baseline == realized)
+                    raw_level_correct += (raw_baseline == realized)
         self.assertGreaterEqual(compared, 40)
         accuracy = direction_correct / compared
         baseline = level_correct / compared
@@ -164,6 +246,21 @@ class PinnedSpinozaTransitionAudit(unittest.TestCase):
             "excluded_zero_sign_cases": flat,
             "direction_accuracy": round(accuracy, 6),
             "level_only_accuracy": round(baseline, 6),
+            "raw_state_level_accuracy": round(raw_level_correct / compared, 6),
+            "level_comparator_note": "coarse value is often 0.00; conditionally scored only when direction and actual sign nonzero",
+            "episodes_are_independent_units": 40,
+            "four_dimensions_and_five_anchors_per_episode": True,
+            "per_dimension": {
+                dim: {
+                    **counts,
+                    "accuracy": round(
+                        counts["correct_direction"] / counts["compared"], 6
+                    ) if counts["compared"] else None,
+                    "raw_level_accuracy": round(
+                        counts["correct_raw_level"] / counts["compared"], 6
+                    ) if counts["compared"] else None,
+                } for dim, counts in per_dimension.items()
+            },
             "beats_level": accuracy > baseline,
             "passes_donor_revert_criterion": accuracy > 0.60,
             "production_adopted": False,
