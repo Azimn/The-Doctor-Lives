@@ -134,7 +134,8 @@ class SixOrganLaboratoryCycle:
             m for m in self.runtime._port.brain.store.memories()
             if m["source"].startswith("laboratory-home:action:")
         ]
-        return memories[-1] if memories else None
+        # BrainStore.memories() orders newest first by updated/created tick.
+        return memories[0] if memories else None
 
     def _select_internal_affordance(self, tendency: str, station: str):
         """Only an internal explore tendency may originate locomotion.
