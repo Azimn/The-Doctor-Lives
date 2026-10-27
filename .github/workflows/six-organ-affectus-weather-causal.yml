@@ -22,7 +22,10 @@ jobs:
           path: pinned-affectus-donor
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          # Match the repository's authoritative brain-tests workflow.
+          # Python 3.12 uses compensated summation, avoiding a Python-3.11
+          # implementation-specific normalization roundoff difference.
+          python-version: '3.12'
       - name: Assert exact untouched donor
         run: |
           test "$(git -C pinned-affectus-donor rev-parse HEAD)" = "904bf11861700739ccc03d4b0d4340ff3422a7d3"
@@ -39,7 +42,10 @@ jobs:
         run: |
           python -c "from sensus_artificialis.affectus import Affectus; assert Affectus.__module__ == 'sensus_artificialis.affectus'"
           python -m unittest discover -s tests -p test_six_organ_affectus_weather_causal.py -v
-      - name: Whole canonical Doctor Python suite (report all skips)
-        env:
-          PYTHONPATH: pinned-affectus-donor
-        run: python -m unittest discover -s tests -v
+      - name: Whole canonical Doctor Python suite without unreviewed Sensus overlay (report all skips)
+        run: |
+          # The Affectus donor is at 904bf118; Sensus acquisition requires
+          # a DIFFERENT reviewed checkout at 802e459. Do not expose one
+          # checkout under the other's required identity. Both remain pinned.
+          python -c "import importlib.util; assert importlib.util.find_spec('sensus_artificialis') is None"
+          python -m unittest discover -s tests -v
