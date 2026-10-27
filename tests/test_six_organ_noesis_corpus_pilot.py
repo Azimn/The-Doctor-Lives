@@ -192,6 +192,87 @@ class NoesisCorpusLaboratoryActionTests(unittest.TestCase):
             ], "lived_runtime_memory",
         )
 
+    def test_affectus_pain_sensitivity_gap_is_measured_not_invented(self):
+        """A real collision must not be mistaken for proven affective adaptation.
+
+        Both arms receive equal event counts, real world source receipts,
+        and the same original recurrent policy. The *specific* contrast
+        between collision and ordinary movement is what matters, not the
+        generic fatigue increment supplied on every new experience.
+        """
+        treated, collision_world, collide = self.fresh("affect-collision")
+        control, safe_world, safe = self.fresh("affect-neutral")
+
+        for runtime, pilot in ((treated, collide), (control, safe)):
+            initial = runtime.noesis.deliberate(host_trigger="affect-hall")
+            moved = pilot.act(
+                initial,
+                HostCorpusOffer(initial.selected_tendency, "walk", "station:hall"),
+                authorized=True,
+            )
+            self.assertEqual(moved.status, "admitted")
+        prior_collision = treated.affectus.read_motivational_influence()
+        prior_neutral = control.affectus.read_motivational_influence()
+        self.assertEqual(prior_collision.felt_bands, prior_neutral.felt_bands)
+        self.assertEqual(
+            prior_collision.need_policy_deltas, prior_neutral.need_policy_deltas
+        )
+        collision_policy = treated.noesis.deliberate(
+            host_trigger="affect-second"
+        )
+        neutral_policy = control.noesis.deliberate(
+            host_trigger="affect-second"
+        )
+        self.assertEqual(
+            collision_policy.selected_tendency,
+            neutral_policy.selected_tendency,
+        )
+        painful = collide.act(
+            collision_policy,
+            HostCorpusOffer(
+                collision_policy.selected_tendency,
+                "walk", "station:shop:private",
+            ),
+            authorized=True,
+        )
+        harmless = safe.act(
+            neutral_policy,
+            HostCorpusOffer(
+                neutral_policy.selected_tendency, "walk", "station:center",
+            ),
+            authorized=True,
+        )
+        self.assertEqual(painful.spoken_aloud, "Ow! My foot!")
+        self.assertNotEqual(painful.first_person, harmless.first_person)
+        measured_collision = treated.affectus.read_motivational_influence()
+        measured_neutral = control.affectus.read_motivational_influence()
+        delta_collision = dict(measured_collision.need_policy_deltas)
+        delta_neutral = dict(measured_neutral.need_policy_deltas)
+        assert set(delta_collision) == set(delta_neutral)
+        different = {
+            key: round(delta_collision[key] - delta_neutral[key], 9)
+            for key in delta_collision
+            if abs(delta_collision[key] - delta_neutral[key]) > 1e-9
+        }
+        # The baseline currently projects ordinary event scalars, without
+        # trusted collision-specific valence/threat. Preserve this honest
+        # missing causal link as a regression target rather than claiming
+        # pain has changed motivational priorities just because a memory exists.
+        self.assertEqual(
+            different, {},
+            "Baseline pain-specific need impact changed; requalify the affect gate",
+        )
+        self.assertEqual(measured_collision.felt_bands,
+                         measured_neutral.felt_bands)
+        print("AFFECTUS_REAL_COLLISION_VS_SAFE_MOVE=" + json.dumps({
+            "schema": "pretorius.affectus.pain-sensitivity-control.v1",
+            "verified_collision": True,
+            "real_first_person_pain_memory": True,
+            "different_need_policy_deltas": different,
+            "collision_specific_affect_established": False,
+            "adaptively_better_decisions_established": False,
+        }, sort_keys=True))
+
     def test_crash_after_world_action_before_memory_reconciles_once_after_restart(self):
         """Physical source commits first; recovering Doctor must not move twice.
 
