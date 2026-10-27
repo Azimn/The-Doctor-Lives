@@ -108,7 +108,13 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             memory = reopened._port.brain.store.get_memory(last.memory_id)
             self.assertIn(fixture["pages"][0], memory["text"])
             self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
-            self.assertEqual(chooser.step().status, "already_complete")
+            post = chooser.step()
+            # A later native AVOID is allowed to start a *different*
+            # intention; an EXPLORE must not duplicate the completed book.
+            self.assertIn(post.status, ("already_complete", "goal_created"))
+            if post.status == "goal_created":
+                self.assertEqual(post.kind, "rest")
+                self.assertEqual(post.selected_tendency, "avoid")
         with self.world._open() as db:
             reads = [json.loads(r[0]) for r in db.execute(
                 "SELECT payload FROM books_events"
@@ -200,3 +206,172 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Corrupt"):
                 chooser.step(authorized_world_action=True)
             self.assertEqual(self.subject.embodied.verify()["revision"], before)
+
+
+    def test_same_individual_reads_then_selects_rest_with_two_restarts(self):
+        """One continuous identity and world, TWO different neural decisions.
+
+        The later rest decision is not supplied by the host. Four source-
+        verified physical episodes are a known host-provided *opportunity*
+        and deliberately NOT counted as native task origin evidence.
+        """
+        from doctor_lives.lab_endogenous_book_task import _KEY
+
+        fixture = self.install_fixture()
+        path = self.root / "one-mind-two-goals"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        original_world_epoch = self.subject.verify()["world_epoch"]
+
+        with self.host(rt) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            first = chooser.step()
+            self.assertEqual(first.kind, "read_book")
+            self.assertEqual(first.status, "goal_created")
+            self.assertEqual(first.selected_tendency, "explore")
+            # Permission gating is independent of the original policy.
+            before_permission = self.subject.embodied.verify()["revision"]
+            self.assertEqual(chooser.step().status, "authorization_required")
+            self.assertEqual(self.subject.embodied.verify()["revision"],
+                             before_permission)
+            for n in range(24):
+                read = chooser.step(authorized_world_action=True)
+                if read.status == "completed":
+                    break
+            else:
+                self.fail("Original neural reading goal did not complete")
+            self.assertEqual(read.kind, "read_book")
+            self.assertEqual(first.goal_id, read.goal_id)
+            page_memory_id = read.memory_id
+            page_memory = rt._port.brain.store.get_memory(page_memory_id)
+            self.assertIn(fixture["pages"][0], page_memory["text"])
+            first_memory_source = page_memory["source"]
+            self.assertTrue(first_memory_source.startswith(
+                "laboratory-home:action:"
+            ))
+            # Four genuine world-action cycles with original cognition and
+            # weather offer embodied experience before a second choice.
+            # Their scheduling is HOST-DRIVEN, so not scored as goals.
+            for _ in range(4):
+                source_episode = session.cycle(authorized_world_action=True)
+                self.assertEqual(len(source_episode.ports_used), 6)
+            rt.checkpoint()
+
+        reopened = SixOrganRuntime.open(path)
+        with self.host(reopened) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            self.assertEqual(
+                chooser.book.status().goal_id, first.goal_id
+            )
+            self.assertEqual(chooser.book.status().phase, "complete")
+            prior = reopened._port.brain.store.get_memory(page_memory_id)
+            self.assertEqual(prior["source"], first_memory_source)
+            self.assertEqual(prior["text"], page_memory["text"])
+            self.assertEqual(self.subject.verify()["world_epoch"],
+                             original_world_epoch)
+            for chance in range(12):
+                next_goal = chooser.step(authorized_world_action=False)
+                if (next_goal.status == "goal_created"
+                        and next_goal.kind == "rest"):
+                    break
+                self.assertEqual(next_goal.status, "already_complete")
+                self.assertEqual(next_goal.kind, "read_book")
+            else:
+                self.fail("Same brain did not produce a later native avoid goal")
+            self.assertEqual(next_goal.selected_tendency, "avoid")
+            self.assertNotEqual(next_goal.goal_id, first.goal_id)
+            with reopened._port.brain.store.connect() as db:
+                intent = json.loads(
+                    reopened._port.brain.store.meta(_REST_KEY)
+                )["payload"]
+                selected = db.execute(
+                    "SELECT selected_action FROM policy_decisions WHERE id=?",
+                    (intent["origin_policy_id"],)
+                ).fetchone()
+                self.assertEqual(selected["selected_action"], "avoid")
+            denied_station = self.subject.embodied.verify()["station"]
+            self.assertEqual(
+                chooser.step(authorized_world_action=False).status,
+                "authorization_required"
+            )
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             denied_station)
+            reopened.checkpoint()
+
+        last_runtime = SixOrganRuntime.open(path)
+        with self.host(last_runtime) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            for step_index in range(15):
+                resting = chooser.step(authorized_world_action=True)
+                self.assertEqual(resting.kind, "rest")
+                self.assertEqual(resting.goal_id, next_goal.goal_id)
+                if resting.status == "completed":
+                    break
+            else:
+                self.fail("Same individual did not physically finish rest")
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:bedroom")
+            self.assertEqual(chooser.step().status, "already_complete")
+            self.assertEqual(chooser.book.status().phase, "complete")
+            old_page = last_runtime._port.brain.store.get_memory(page_memory_id)
+            rest_memory = last_runtime._port.brain.store.get_memory(
+                resting.memory_id
+            )
+            self.assertEqual(old_page["source"], first_memory_source)
+            self.assertIn(fixture["pages"][0], old_page["text"])
+            self.assertNotEqual(old_page["id"], rest_memory["id"])
+            self.assertEqual(rest_memory["evidence_class"], "lived_runtime_memory")
+            self.assertTrue(rest_memory["source"].startswith(
+                "laboratory-home:action:"
+            ))
+            self.assertIsNotNone(last_runtime._port.brain.store.meta(_KEY))
+            self.assertIsNotNone(last_runtime._port.brain.store.meta(_REST_KEY))
+
+        with self.world._open() as db:
+            books = [json.loads(row[0]) for row in db.execute(
+                "SELECT payload FROM books_events"
+            )]
+            rest_events = [json.loads(row[0]) for row in db.execute(
+                "SELECT envelope FROM rhythm_events"
+            ) if "ng_" in row[0]]
+        self.assertEqual(
+            sum(entry["action"]["op"] == "read" for entry in books), 1
+        )
+        self.assertEqual(len(rest_events), 1)
+        print("NATIVE_SAME_LIFETIME_TWO_GOALS=" + json.dumps({
+            "canonical_brain_restarts": 2,
+            "same_laboratory_epoch": True,
+            "different_original_policy_goals": 2,
+            "book_read_world_events": 1,
+            "rest_world_events": 1,
+            "verified_first_page_memory_retained": True,
+            "host_scheduled_preparatory_cycles": 4,
+            "later_task_chosen_by_unforced_native_avoid": True,
+            "host_selected_route": True,
+            "scope": "conditional_goal_router_not_novel_goal_authorship",
+        }, sort_keys=True))
+
+    def test_self_consistent_forged_book_completion_cannot_clear_goal(self):
+        """Even a recomputed checksum cannot replace actual world evidence."""
+        from doctor_lives.lab_endogenous_book_task import (
+            _KEY, _digest, _stable
+        )
+        self.install_fixture()
+        rt = SixOrganRuntime.open(
+            self.root / "forged-completion", neural_config=config()
+        )
+        with self.host(rt) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            self.assertEqual(chooser.step().kind, "read_book")
+            saved = json.loads(rt._port.brain.store.meta(_KEY))
+            saved["payload"]["phase"] = "complete"
+            saved["payload"]["read_memory_id"] = (
+                "nonexistent_world_source_claim"
+            )
+            saved["sha256"] = _digest(saved["payload"])
+            with rt._port.brain.store.transaction() as db:
+                rt._port.brain.store.set_meta(_KEY, _stable(saved), db)
+            before = self.subject.embodied.verify()["revision"]
+            with self.assertRaisesRegex(RuntimeError, "verified lived read"):
+                chooser.step(authorized_world_action=True)
+            self.assertEqual(self.subject.embodied.verify()["revision"],
+                             before)
