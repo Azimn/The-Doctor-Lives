@@ -12,11 +12,13 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+import json
 from typing import Callable
 from unittest.mock import patch
 
 from .canonical_affectus_weather import CanonicalWeather
 from .noesis_corpus_pilot import HostCorpusOffer
+from .organs import CognitiveProposal
 from .organs import SixOrganRuntime
 
 _G = 0.05  # Preserved, PREDECLARED PR #90 experimental coupling. No tuning.
@@ -113,6 +115,9 @@ class SixOrganLaboratoryCycle:
         self.ipseity = runtime.synthetic_ipseity.open_durable_delivery(
             renderer=renderer,
         )
+        # Recover a world action that committed before brain admission,
+        # once the SAME original brain/weather is reopened from its store.
+        self._reconcile_pending()
         if len({
             id(runtime.noesis._port), id(runtime.mnemosyne._port),
             id(runtime.affectus._port), id(runtime.sensus._port),
@@ -128,6 +133,76 @@ class SixOrganLaboratoryCycle:
 
     def __exit__(self, *_):
         self.close()
+
+    _PENDING = "six_organ_lab_pending_world_action_v1"
+
+    def _pending(self):
+        raw = self.runtime._port.brain.store.meta(self._PENDING)
+        if raw is None:
+            return None
+        try:
+            result = json.loads(raw)
+        except ValueError as exc:
+            raise RuntimeError("Corrupt pending physical authorization") from exc
+        if (type(result) is not dict or
+            set(result) != {"policy_decision_id", "thought_id",
+                            "selected_tendency", "destination"}):
+            raise RuntimeError("Invalid pending Laboratory action reservation")
+        return result
+
+    def _reserve_movement(self, proposal: CognitiveProposal, destination: str):
+        from pretorius_lab.embodied_access import STATIONS
+        if destination not in STATIONS:
+            raise PermissionError("Unreviewed physical destination")
+        if self._pending() is not None:
+            raise RuntimeError("Pending Laboratory action must first reconcile")
+        # Neural checkpoint first; then the canonical SQLite reservation.
+        # A crash cannot turn a verified physical action into a forgotten
+        # host decision solely because the process lost in-memory weights.
+        self.runtime.checkpoint()
+        data = {
+            "policy_decision_id": proposal.policy_decision_id,
+            "thought_id": proposal.thought_id,
+            "selected_tendency": proposal.selected_tendency,
+            "destination": destination,
+        }
+        with self.runtime._port.brain.store.transaction() as db:
+            self.runtime._port.brain.store.set_meta(
+                self._PENDING, json.dumps(data, sort_keys=True), db,
+            )
+            self.runtime._port.brain.store.bump_state_version(db)
+
+    def _clear_movement(self):
+        with self.runtime._port.brain.store.transaction() as db:
+            db.execute("DELETE FROM meta WHERE key=?", (self._PENDING,))
+            self.runtime._port.brain.store.bump_state_version(db)
+
+    def _reconcile_pending(self):
+        pending = self._pending()
+        if pending is None:
+            return None
+        proposal = CognitiveProposal(
+            policy_decision_id=pending["policy_decision_id"],
+            thought_id=pending["thought_id"],
+            selected_tendency=pending["selected_tendency"],
+        )
+        offer = HostCorpusOffer(
+            proposal.selected_tendency, "walk", pending["destination"],
+        )
+        # The existing Corpus pilot checks the ORIGINAL policy receipt
+        # and the actual world action, admitting at most one lived memory.
+        consequence = self.corpus.act(proposal, offer, authorized=True)
+        self.corpus.reflect(consequence, authorized=True)
+        if consequence.spoken_aloud == "Ow! My foot!":
+            self.affect.admit_impact(consequence, authorized=True)
+        self._clear_movement()
+        return consequence
+
+    def _execute_movement(self, proposal: CognitiveProposal, destination: str):
+        self._reserve_movement(proposal, destination)
+        # If the host dies between world commit and Doctor admission,
+        # the reservation remains. Next host restart reconciles it.
+        return self._reconcile_pending()
 
     def _canonical_recent_action(self):
         memories = [
@@ -272,16 +347,8 @@ class SixOrganLaboratoryCycle:
         )
         status = "not_executed"
         if destination is not None and authorized_world_action:
-            receipt = self.corpus.act(
-                proposal,
-                HostCorpusOffer(
-                    proposal.selected_tendency, "walk", destination,
-                ),
-                authorized=True,
-            )
+            receipt = self._execute_movement(proposal, destination)
             status = receipt.status
-            if receipt.spoken_aloud == "Ow! My foot!":
-                self.affect.admit_impact(receipt, authorized=True)
         elif (proposal.selected_tendency == "avoid"
               and station == "station:bedroom" and authorized_world_action):
             self.corpus._verified_policy(proposal)
