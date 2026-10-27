@@ -400,6 +400,10 @@ class NoesisCorpusLaboratoryActionTests(unittest.TestCase):
         one = affect.admit_impact(consequence, authorized=True)
         tick = runtime._port.brain.store.tick
         replay = affect.admit_impact(consequence, authorized=True)
+        with self.assertRaisesRegex(PermissionError, "Cannot switch appraisal arm"):
+            affect.admit_impact(
+                consequence, authorized=True, appraisal_enabled=False,
+            )
         self.assertEqual(replay.status, "already_admitted")
         self.assertEqual(one.body_memory_id, replay.body_memory_id)
         self.assertEqual(runtime._port.brain.store.tick, tick)
