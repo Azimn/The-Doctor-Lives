@@ -17,10 +17,18 @@ import json
 from random import Random
 import unittest
 
-from sensus_artificialis import Attribution, Evidence, Sensus
-from sensus_artificialis.affectus import (
-    Affectus, AffectusConfig, DriverEvent, DIMS, DRIVER_KINDS,
-)
+# Donor is intentionally absent from the default Doctor installation.
+# Dedicated CI must load this exact pinned donor and run unskipped tests.
+try:
+    from sensus_artificialis import Attribution, Evidence, Sensus
+    from sensus_artificialis.affectus import (
+        Affectus, AffectusConfig, DriverEvent, DIMS, DRIVER_KINDS,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name != "sensus_artificialis":
+        raise
+    Affectus = None
+
 
 _KINDS = (
     "goal_progress", "goal_impediment", "social_feedback",
@@ -53,6 +61,7 @@ def episode(seed):
     return history, reported
 
 
+@unittest.skipUnless(Affectus is not None, "Pinned donor runs only in its isolated CI")
 class PinnedSpinozaTransitionAudit(unittest.TestCase):
     def test_four_dimensions_eight_drivers_untrusted_attribution_and_no_reset(self):
         self.assertEqual(DIMS, ("valence", "arousal", "security", "fatigue"))
