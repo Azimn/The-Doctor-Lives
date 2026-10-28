@@ -48,9 +48,47 @@ def _feasible_work(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     return tuple(legal)
 
 
+def _verified_work_outcomes(bridge: DoctorHomeBridge) -> tuple[str, ...]:
+    """Identify original lived outcomes with independently replayable world hashes.
+
+    The host supplies only eligible *memory IDs*. It cannot tell the original
+    Noesis which action the episode favors or supply its numeric world state.
+    """
+    import re
+    # Verify full rhythm and world history before trusting ANY row in its chain.
+    bridge.subject.rhythm.verify()
+    verified = []
+    with bridge.world._open() as db:
+        for m in bridge.doctor.brain.store.memories():
+            if (m["evidence_class"] != "lived_runtime_memory"
+                    or m["external"]
+                    or not m["source"].startswith("laboratory-home:action:")):
+                continue
+            digest = m["source"].removeprefix("laboratory-home:action:")
+            if not re.fullmatch(r"[0-9a-f]{64}", digest):
+                continue
+            matches = db.execute(
+                "SELECT event_id FROM rhythm_events WHERE event_hash=?",
+                (digest,),
+            ).fetchall()
+            if len(matches) != 1:
+                continue
+            receipt, checked = _row(db, "rhythm_events", matches[0][0])
+            if (checked != digest or receipt.get("op") not in _OFFERS
+                    or receipt.get("station") != "station:bench"
+                    or receipt.get("args") != {}
+                    or not isinstance(receipt.get("subject"), dict)
+                    or receipt["subject"].get("inner") != m["text"]):
+                continue
+            verified.append(m["id"])
+            if len(verified) >= 64:
+                break
+    return tuple(verified)
+
+
 def propose_noesis_work(
     bridge: DoctorHomeBridge, *, learning_enabled: bool = True,
-    neural_prior_enabled: bool = True,
+    neural_prior_enabled: bool = True, outcome_learning_enabled: bool = False,
 ) -> NoesisWorkProposal:
     """Give one real situated opportunity and eligible lived IDs to Noesis.
 
@@ -60,8 +98,9 @@ def propose_noesis_work(
     """
     if not isinstance(bridge, DoctorHomeBridge):
         raise TypeError("Use a source-authorized original brain Laboratory bridge")
-    if type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool:
-        raise TypeError("Both experimental lesion flags must be booleans")
+    if (type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool
+            or type(outcome_learning_enabled) is not bool):
+        raise TypeError("Experimental lesion flags must be booleans")
     options = _feasible_work(bridge)
     if not options:
         raise RuntimeError("Real Laboratory offers no feasible work action")
@@ -83,18 +122,25 @@ def propose_noesis_work(
             eligible.append(memory["id"])
         if len(eligible) >= 32:
             break
+    verified_outcomes = (
+        _verified_work_outcomes(bridge) if outcome_learning_enabled else ()
+    )
     decision = NoesisOrgan(bridge.doctor).deliberate_feasible_actions(
         observation_memory_id=received["memory_id"],
         eligible_read_memory_ids=tuple(eligible),
         feasible_actions=options,
         learning_enabled=learning_enabled,
         neural_prior_enabled=neural_prior_enabled,
+        outcome_learning_enabled=outcome_learning_enabled,
+        eligible_outcome_memory_ids=verified_outcomes,
     )
     return NoesisWorkProposal(
         action=decision["selected_action"],
         decision_id=decision["policy_decision_id"],
         observation_memory_id=received["memory_id"],
-        supporting_memory_ids=tuple(decision["source_memory_ids"]),
+        supporting_memory_ids=tuple(
+            decision["source_memory_ids"] + decision["used_outcome_memory_ids"]
+        ),
         neural_scores=decision["base_action_scores"],
         candidate_scores=decision["action_scores"],
     )
@@ -109,12 +155,13 @@ def execute_noesis_work(
         raise PermissionError("Native cognitive decision has no motor authority")
     if type(decision_id) is not str or not decision_id:
         raise ValueError("Original canonical policy ID required")
-    from .noesis_situated_choice import VERSION
+    from .noesis_situated_choice import VERSION, OUTCOME_VERSION
     with bridge.doctor.brain.store.connect() as db:
         rows = db.execute(
-            "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
-            "WHERE id=? AND trigger='noesis_situated_choice' AND policy_version=?",
-            (decision_id, VERSION),
+            "SELECT id,selected_action,policy_version,state_pressure_json FROM policy_decisions "
+            "WHERE id=? AND trigger='noesis_situated_choice' "
+            "AND policy_version IN (?,?)",
+            (decision_id, VERSION, OUTCOME_VERSION),
         ).fetchall()
         latest = db.execute(
             "SELECT id FROM policy_decisions WHERE trigger='noesis_situated_choice' "
@@ -126,7 +173,8 @@ def execute_noesis_work(
     evidence = json.loads(rows[0]["state_pressure_json"])
     if (action not in _OFFERS or evidence.get("selector_authority") != "original_noesis"
             or evidence.get("physical_authority") != "none"
-            or evidence.get("version") != VERSION):
+            or evidence.get("version") != rows[0]["policy_version"]
+            or rows[0]["policy_version"] not in (VERSION, OUTCOME_VERSION)):
         raise PermissionError("Original Noesis decision has invalid action evidence")
 
     # Idempotent existing world receipt may be retried after a crash/restart
