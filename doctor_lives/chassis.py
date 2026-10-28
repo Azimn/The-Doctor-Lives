@@ -104,6 +104,46 @@ class PretoriusBrainPort:
             raise PermissionError("No active, source-verified Laboratory handoff")
         return self._project_and_ingest(event, laboratory_verified=True)
 
+    def _ingest_authorized_sensus(self, event: Mapping[str, Any], *,
+                                   organ: object) -> dict[str, Any]:
+        """Trusted host-to-Sensus boundary; not an untrusted model API.
+
+        One existing SensusOrgan tied to THIS original brain must explicitly
+        offer an already-verified percept. Host authority is a research
+        assumption here, not a cryptographic attestation.
+        """
+        from .organs import SensusOrgan
+        if (type(organ) is not SensusOrgan
+                or organ._port is not self
+                or event.get("channel") not in ("world", "tool")):
+            raise PermissionError("Percept is not from the bound Sensus host")
+        return self._project_and_ingest(
+            event, laboratory_verified=(event["channel"] == "world"),
+        )
+
+    def _ingest_verified_virtual_world(self, event: Mapping[str, Any], *,
+                                       environment: object,
+                                       receipt: object) -> dict[str, Any]:
+        """Require the bound world provider to independently verify receipt."""
+        from .virtual_world_port import (
+            VirtualWorldEnvironmentPort, VirtualWorldReceipt,
+        )
+        if (type(environment) is not VirtualWorldEnvironmentPort
+                or type(receipt) is not VirtualWorldReceipt
+                or environment._runtime._port is not self
+                or not environment._provider.verify_receipt(receipt)
+                or receipt.world_id != environment._world_id
+                or receipt.world_epoch != environment._epoch
+                or event.get("channel") != "world"
+                or event.get("percept") != receipt.first_person
+                or event.get("source") != (
+                    "virtual-world:" + receipt.world_id + ":"
+                    + receipt.world_epoch + ":" + receipt.kind + ":"
+                    + receipt.event_id
+                )):
+            raise PermissionError("Unverified virtual-world source")
+        return self._project_and_ingest(event, laboratory_verified=True)
+
     def _ingest_mock_fixture(self, event: Mapping[str, Any], *,
                              provider: object, observation: object) -> dict[str, Any]:
         """Admit one explicitly synthetic sensor fixture as a REPORTED event.
