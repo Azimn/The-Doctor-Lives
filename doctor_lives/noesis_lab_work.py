@@ -136,7 +136,7 @@ def execute_noesis_work(
             "SELECT event_id FROM rhythm_events WHERE event_id=?", (event_id,)
         ).fetchone()
         if prior is not None:
-            envelope, _ = _row(db, "rhythm_events", prior["event_id"])
+            envelope, _ = _row(db, "rhythm_events", prior[0])
             if envelope.get("op") != action:
                 raise PermissionError("World receipt was recorded for another action")
             return {"action": action, "decision_id": decision_id,
