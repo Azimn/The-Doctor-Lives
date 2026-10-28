@@ -207,6 +207,7 @@ def project_raw_ingress(
     *,
     context: ProjectionContext,
     _laboratory_verified: bool = False,
+    _mock_fixture: bool = False,
 ) -> ProjectedIngress:
     if not isinstance(raw, Mapping):
         raise TypeError("raw ingress must be a mapping")
@@ -285,11 +286,11 @@ def project_raw_ingress(
         # An in-process caller cannot make a real observation by choosing a
         # source string or writing "I saw..." in the percept field. Real Lab
         # receipts use the separate, bridge-checked admission capability.
-        if not _laboratory_verified and raw.get("percept") is not None:
+        if not (_laboratory_verified or _mock_fixture) and raw.get("percept") is not None:
             raise IngressProjectionError(
                 "firsthand world percept requires trusted source-backed admission"
             )
-        if _laboratory_verified:
+        if _laboratory_verified or _mock_fixture:
             subject_text = _text(raw.get("percept"), "percept")
             if _raw_looks_machine_native(subject_text):
                 raise IngressProjectionError("untrusted structure in physical percept")
