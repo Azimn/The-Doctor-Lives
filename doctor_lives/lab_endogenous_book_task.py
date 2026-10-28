@@ -257,7 +257,14 @@ class EndogenousBookPursuit:
                     and self.books.memory_hint(x["object_id"])["station"] == station
                 )
                 if candidates:
-                    chosen = candidates[0]
+                    # Preference comes from the original Doctor's verified
+                    # autobiographical reading history, not the host's book
+                    # ID order. A lesion uses the ID baseline for comparison.
+                    from .autobiographical_book_preference import choose_visible_book
+                    chosen = choose_visible_book(
+                        candidates, store=self.store,
+                        world=self.host.bridge.world,
+                    )
                     proof = self.books.memory_hint(chosen)
                     if proof is None:
                         raise RuntimeError("Visible book lacks canonical sight memory")
