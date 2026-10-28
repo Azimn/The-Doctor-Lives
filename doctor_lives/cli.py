@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .cognition import PretoriusBrain
-from .models import Experience
+from .chassis import PretoriusBrainPort
 
 
 def emit(value):
@@ -33,9 +33,27 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     a=parser().parse_args(argv)
+    # The CLI is a human report, NOT a trusted physical-world provider.
+    # Never hand it raw Experience construction or caller-chosen world proof.
+    if a.cmd == "ingest":
+        if a.source != "world" or a.external:
+            raise PermissionError(
+                "CLI cannot certify source identity or external/world truth; "
+                "use an authorized provider instead"
+            )
+        port = PretoriusBrainPort(a.state)
+        emit(port.ingest({
+            "channel": "user", "text": a.text,
+            "actor": a.actor or "CLI operator",
+            "source": "cli:user-communication",
+            "kind": "communication",
+            "valence": a.valence, "arousal": a.arousal,
+            "threat": a.threat, "novelty": a.novelty,
+            "authority": a.authority, "autonomy": a.autonomy,
+        }))
+        return 0
     brain=PretoriusBrain(a.state)
     if a.cmd=="init": brain.save(); emit(brain.status())
-    elif a.cmd=="ingest": emit(brain.ingest(Experience(a.text,source=a.source,kind=a.kind,actor=a.actor,external=a.external,valence=a.valence,arousal=a.arousal,threat=a.threat,novelty=a.novelty,authority=a.authority,autonomy=a.autonomy)))
     elif a.cmd=="think": emit(brain.think(a.trigger))
     elif a.cmd=="heartbeat": emit(brain.heartbeat(a.ticks))
     elif a.cmd=="sleep": emit(brain.sleep(a.ticks))
