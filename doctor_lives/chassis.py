@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .cognition import PretoriusBrain
-from .ingress import project_raw_ingress
+from .ingress import IngressProjectionError, project_raw_ingress
 from .models import SubjectFrame
 from .projection import ProjectionContext
 from .subject_inquiry import (
@@ -57,9 +57,55 @@ class PretoriusBrainPort:
         self.brain = PretoriusBrain(state_dir, neural_config=neural_config)
         self._recollection_controller: HostRecollectionController | None = None
         self._pending_subject_inquiry: tuple[object, str, str, int] | None = None
+        # Host-only physical admission capabilities. This is intentionally
+        # NOT a public model API or an alternative memory store.
+        self._verified_laboratory_bridges: set[object] = set()
 
     def ingest(self, event: Mapping[str, Any]) -> dict[str, Any]:
-        """Project raw chassis input before it can become Pretorius's experience."""
+        """Untrusted chassis input may NOT assert firsthand physical truth.
+
+        WORLD text becomes explicitly attributed external report evidence;
+        WORLD percept fields cannot be admitted through this public entrypoint.
+        Only a separately authorized, source-backed Laboratory bridge can
+        admit actual physical lived observations.
+        """
+        return self._project_and_ingest(event, laboratory_verified=False)
+
+    def _register_laboratory_bridge(self, bridge: object) -> None:
+        """Trusted in-process host registration; NOT a security sandbox."""
+        from .lab_home_bridge import DoctorHomeBridge
+
+        if type(bridge) is not DoctorHomeBridge or bridge.doctor is not self:
+            raise PermissionError("Only a bound original Laboratory host can register")
+        if bridge.subject.habitat is not bridge.world:
+            raise PermissionError("Laboratory subject and physical world do not match")
+        bridge.subject.verify()
+        self._verified_laboratory_bridges.add(bridge)
+
+    def _ingest_verified_laboratory(self, event: Mapping[str, Any], *,
+                                    bridge: object) -> dict[str, Any]:
+        """Accept a one-use verified host handoff, never an asserted source key.
+
+        The original DoctorHomeBridge verifies actual world/percept or action
+        receipts before issuing this in-process handoff. An arbitrary caller
+        supplying a syntactically valid Laboratory source string is denied.
+        """
+        from .lab_home_bridge import DoctorHomeBridge
+
+        if (type(bridge) is not DoctorHomeBridge
+                or bridge not in self._verified_laboratory_bridges
+                or bridge.doctor is not self
+                or not isinstance(event, Mapping)
+                or event.get("channel") != "world"
+                or not isinstance(event.get("percept"), str)
+                or bridge._active_verified_admission != (
+                    event.get("source"), event.get("percept")
+                )):
+            raise PermissionError("No active, source-verified Laboratory handoff")
+        return self._project_and_ingest(event, laboratory_verified=True)
+
+    def _project_and_ingest(self, event: Mapping[str, Any], *,
+                            laboratory_verified: bool) -> dict[str, Any]:
         projected = project_raw_ingress(
             event,
             context=ProjectionContext(
@@ -68,6 +114,7 @@ class PretoriusBrainPort:
                 source_state_digest=self.brain.store.digest(),
                 projection_rule_version="subject-interface-a12-port",
             ),
+            _laboratory_verified=laboratory_verified,
         )
         result = self.brain.ingest(projected.experience)
         result["ingress"] = {
