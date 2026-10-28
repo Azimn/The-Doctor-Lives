@@ -186,7 +186,7 @@ class PretoriusBrainPort:
         # strings or apparent first-person wording.
         if (not (laboratory_verified or mock_fixture)
                 and isinstance(claimed, str)
-                and claimed.startswith(reserved)):
+                and claimed.strip().startswith(reserved)):
             raise PermissionError("Reserved physical or provider source authority")
         projected = project_raw_ingress(
             event,
