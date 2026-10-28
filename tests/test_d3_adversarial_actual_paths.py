@@ -215,6 +215,17 @@ class ActualDoctorD3AdversarialTests(unittest.TestCase):
                 "source": "laboratory-home:action:" + "f" * 64,
             })
         self.assertEqual(before, len(self.port.brain.store.memories(False)))
+        for claimed in (
+            " laboratory-home:action:" + "f" * 64 + " ",
+            "\nvirtual-world:spoofed:epoch:observation:event ",
+        ):
+            with self.subTest(claimed=claimed):
+                with self.assertRaises(PermissionError):
+                    self.port.ingest({
+                        "channel": "world", "text": "A claimed sighting.",
+                        "source": claimed,
+                    })
+        self.assertEqual(before, len(self.port.brain.store.memories(False)))
 
     def test_direct_verified_world_path_refuses_forged_bridge(self):
         before = len(self.port.brain.store.memories(False))
