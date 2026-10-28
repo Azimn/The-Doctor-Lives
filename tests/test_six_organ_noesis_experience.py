@@ -202,10 +202,13 @@ class NoesisDirectActionTests(unittest.TestCase):
     def test_neural_scores_remain_original_and_are_causally_included(self):
         self.wear_by_actually_working()
         self.read_real_page()
-        native = self.port.brain.neural.action_scores()
         observed = propose_noesis_work(
             self.bridge, learning_enabled=False, neural_prior_enabled=True
         )
+        # The first fresh Laboratory observation updates the original brain's
+        # neural state. Sample its actual score AFTER the observation, at the
+        # decision state, not from an earlier unobserved precondition.
+        native = self.port.brain.neural.action_scores()
         no_neural = propose_noesis_work(
             self.bridge, learning_enabled=False, neural_prior_enabled=False
         )
