@@ -1048,6 +1048,27 @@ class PretoriusBrain:
             "policy_version": policy_version,
         }
 
+    def choose_feasible_action(
+        self, *, observation_memory_id: str,
+        eligible_read_memory_ids: tuple[str, ...],
+        feasible_actions: tuple[str, ...],
+        learning_enabled: bool = True, neural_prior_enabled: bool = True,
+    ) -> dict[str, Any]:
+        """Original-brain opt-in choice; no host-owned action selector.
+
+        Uses the one canonical recurrent substrate, first-person BrainStore,
+        and normal policy-decision tables. World opportunity and authorization
+        remain external; this never operates the Laboratory by itself.
+        """
+        from .noesis_situated_choice import select_with_original_noesis
+        return select_with_original_noesis(
+            self, observation_memory_id=observation_memory_id,
+            eligible_read_memory_ids=eligible_read_memory_ids,
+            feasible_actions=feasible_actions,
+            learning_enabled=learning_enabled,
+            neural_prior_enabled=neural_prior_enabled,
+        )
+
     def add_commitment(self, description: str, actor: str | None = None,
                        due_tick: int | None = None, importance: float = .6) -> str:
         if not description.strip():
