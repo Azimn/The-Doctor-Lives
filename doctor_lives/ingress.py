@@ -334,7 +334,8 @@ def project_raw_ingress(
         # A structured tool payload requires an independently projected,
         # natural-language observation instead of simply copying its JSON.
         if (_raw_looks_machine_native(percept)
-                or re.search(r"[\\{\\[]\\s*[\"']", percept)
+                or ("{" in percept and ":" in percept)
+                or ("[" in percept and "{" in percept)
                 or re.search(r"[\"']\\s*:\\s*", percept)):
             raise IngressProjectionError(
                 "structured/control-like tool percept must be projected, not copied"
