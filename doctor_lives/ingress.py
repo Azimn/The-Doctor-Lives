@@ -206,6 +206,7 @@ def project_raw_ingress(
     raw: Mapping[str, Any],
     *,
     context: ProjectionContext,
+    _laboratory_verified: bool = False,
 ) -> ProjectedIngress:
     if not isinstance(raw, Mapping):
         raise TypeError("raw ingress must be a mapping")
@@ -281,20 +282,29 @@ def project_raw_ingress(
         kind = exp_probe.kind
 
     elif channel is IngressChannel.WORLD:
-        if raw.get("percept") is not None:
+        # An in-process caller cannot make a real observation by choosing a
+        # source string or writing "I saw..." in the percept field. Real Lab
+        # receipts use the separate, bridge-checked admission capability.
+        if not _laboratory_verified and raw.get("percept") is not None:
+            raise IngressProjectionError(
+                "firsthand world percept requires trusted source-backed admission"
+            )
+        if _laboratory_verified:
             subject_text = _text(raw.get("percept"), "percept")
+            if _raw_looks_machine_native(subject_text):
+                raise IngressProjectionError("untrusted structure in physical percept")
         else:
             observed = _text(raw.get("text"), "text")
             if _raw_looks_machine_native(observed):
-                raise IngressProjectionError(
-                    "machine-native world input requires an explicit subject percept"
-                )
-            subject_text = f"I notice: {observed}"
+                raise IngressProjectionError("machine-native world report is not perception")
+            # Still memorable as a report, but never certified as a lived
+            # firsthand physical observation, regardless of claimed source.
+            subject_text = f"I have received an unverified report: {observed}"
         exp_probe = Experience(
             text=subject_text,
             source=source,
-            kind=str(raw.get("kind") or "observation"),
-            external=False,
+            kind=str(raw.get("kind") or ("observation" if _laboratory_verified else "report")),
+            external=not _laboratory_verified,
             **kwargs,
         )
         event = _make_event(
@@ -302,8 +312,11 @@ def project_raw_ingress(
             channel=channel,
             text=exp_probe.text,
             mode=PhenomenalMode.PERCEPT,
-            external=True,
-            subjective_source=SubjectiveSourceKind.LIVED,
+            external=not _laboratory_verified,
+            subjective_source=(
+                SubjectiveSourceKind.LIVED if _laboratory_verified
+                else SubjectiveSourceKind.TOLD
+            ),
             confidence=confidence,
         )
         kind = exp_probe.kind
@@ -315,6 +328,16 @@ def project_raw_ingress(
                 "cannot enter character experience directly"
             )
         percept = _text(raw.get("percept"), "percept")
+        # Prefixing "I receive..." must never launder embedded raw JSON,
+        # machine controls, or an untrusted world page into first-person truth.
+        # A structured tool payload requires an independently projected,
+        # natural-language observation instead of simply copying its JSON.
+        if (_raw_looks_machine_native(percept)
+                or re.search(r"[\\{\\[]\\s*[\"']", percept)
+                or re.search(r"[\"']\\s*:\\s*", percept)):
+            raise IngressProjectionError(
+                "structured/control-like tool percept must be projected, not copied"
+            )
         subject_text = f"I receive this result from the tool: {percept}"
         exp_probe = Experience(
             text=subject_text,
@@ -359,22 +382,13 @@ def project_raw_ingress(
         )
         kind = exp_probe.kind
 
-    if channel is IngressChannel.BODY:
-        experience = Experience(
-            text=subject_text,
-            source=source,
-            kind=kind,
-            external=False,
-            **kwargs,
-        )
-    else:
-        experience = Experience(
-            text=event.subject_text,
-            source=source,
-            kind=kind,
-            external=False,
-            **kwargs,
-        )
+    experience = Experience(
+        text=event.subject_text,
+        source=source,
+        kind=kind,
+        external=(channel is IngressChannel.WORLD and not _laboratory_verified),
+        **kwargs,
+    )
 
     audit = EngineerAuditEnvelope.capture(
         {
