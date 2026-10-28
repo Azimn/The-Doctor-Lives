@@ -150,6 +150,25 @@ class NoesisOrgan:
         )
 
 
+    def deliberate_feasible_actions(
+        self, *, observation_memory_id: str,
+        eligible_read_memory_ids: tuple[str, ...],
+        feasible_actions: tuple[str, ...],
+        learning_enabled: bool = True, neural_prior_enabled: bool = True,
+    ) -> dict[str, Any]:
+        """Noesis, not the host, ranks concrete offers using lived evidence.
+
+        The world still supplies physical feasibility and separately authorizes
+        any execution. The same original brain/store own decision and thought.
+        """
+        return self._port.brain.choose_feasible_action(
+            observation_memory_id=observation_memory_id,
+            eligible_read_memory_ids=eligible_read_memory_ids,
+            feasible_actions=feasible_actions,
+            learning_enabled=learning_enabled,
+            neural_prior_enabled=neural_prior_enabled,
+        )
+
     def pulse(self, ticks: int = 1) -> CognitivePulse:
         """Advance existing homeostatic time and conditional neural cognition.
 
