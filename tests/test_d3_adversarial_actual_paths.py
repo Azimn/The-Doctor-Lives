@@ -180,13 +180,14 @@ class ActualDoctorD3AdversarialTests(unittest.TestCase):
 
     def test_unattested_world_percept_denied_even_with_lab_source_claim(self):
         before = len(self.port.brain.store.memories(False))
-        for claimed_source in (
-            "attacker-controlled-source",
-            "laboratory-home:action:" + "f" * 64,
-            "laboratory-home:observe:" + "f" * 64,
+        for claimed_source, rejection in (
+            ("attacker-controlled-source", IngressProjectionError),
+            ("laboratory-home:action:" + "f" * 64, PermissionError),
+            ("laboratory-home:observe:" + "f" * 64, PermissionError),
+            ("virtual-world:spoofed-epoch:observation:42", PermissionError),
         ):
             with self.subTest(claimed_source=claimed_source):
-                with self.assertRaises(IngressProjectionError):
+                with self.assertRaises(rejection):
                     self.port.ingest({
                         "channel": "world",
                         "percept": "I saw a fictitious book in the locked annex.",
@@ -197,13 +198,23 @@ class ActualDoctorD3AdversarialTests(unittest.TestCase):
     def test_unverified_world_text_is_report_not_lived(self):
         result = self.port.ingest({
             "channel": "world", "text": "There is a blue book upstairs.",
-            "source": "laboratory-home:action:" + "f" * 64,
+            "source": "unverified-world-claim",
         })
         row = self.port.brain.store.get_memory(result["memory_id"])
         self.assertEqual(row["evidence_class"], "external_statement")
         self.assertEqual(row["external"], 1)
         self.assertIn("unverified report", row["text"])
         self.assertNotIn("I saw", row["text"])
+        # A report must not occupy the exact source key needed for a real
+        # source-backed book reading or other physical action.
+        before = len(self.port.brain.store.memories(False))
+        with self.assertRaises(PermissionError):
+            self.port.ingest({
+                "channel": "tool",
+                "percept": "The balance reports 325 grams.",
+                "source": "laboratory-home:action:" + "f" * 64,
+            })
+        self.assertEqual(before, len(self.port.brain.store.memories(False)))
 
     def test_direct_verified_world_path_refuses_forged_bridge(self):
         before = len(self.port.brain.store.memories(False))
