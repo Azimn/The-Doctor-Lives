@@ -53,7 +53,7 @@ def choose_visible_book(candidates: list[str], *, store, world,
             ).fetchall()
             if len(hits) != 1:
                 continue
-            receipt, digest = _row(db, "books_events", hits[0]["event_id"])
+            receipt, digest = _row(db, "books_events", hits[0][0])
             action = receipt.get("action", {})
             book_id = action.get("book_id")
             if (digest == checksum and action.get("op") == "read"
