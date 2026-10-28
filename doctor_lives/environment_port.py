@@ -112,6 +112,7 @@ class MockRobotEnvironmentPort:
         if len({x.event_id for x in observations}) != len(observations):
             raise ValueError("Duplicate mock observation IDs")
         self._port: PretoriusBrainPort = runtime._port
+        self._authorized = True
         self._session = session_id
         self._observations = observations
         self._cursor = 0
@@ -136,10 +137,10 @@ class MockRobotEnvironmentPort:
                 status="already_admitted", memory_id=saved[0]["id"],
                 first_person=saved[0]["text"], source_kind="mock_robot",
             )
-        received = self._port.ingest({
+        received = self._port._ingest_mock_fixture({
             "channel": "world", "source": source,
             "kind": "mock_sensor_observation", "percept": item.first_person,
-        })
+        }, provider=self, observation=item)
         return EnvironmentFeedback(
             status="admitted", memory_id=received["memory_id"],
             first_person=received["ingress"]["subject_text"],
