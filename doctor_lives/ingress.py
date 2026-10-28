@@ -313,7 +313,7 @@ def project_raw_ingress(
             channel=channel,
             text=exp_probe.text,
             mode=PhenomenalMode.PERCEPT,
-            external=not _laboratory_verified,
+            external=True,  # An observed or reported world event has an external subject.
             subjective_source=(
                 SubjectiveSourceKind.LIVED if _laboratory_verified
                 else SubjectiveSourceKind.TOLD
