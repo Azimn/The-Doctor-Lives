@@ -269,7 +269,9 @@ class SensusOrgan:
             raise PermissionError("Host must explicitly authorize percept ingress")
         if not isinstance(raw, Mapping) or raw.get("channel") not in ("world", "tool"):
             raise ValueError("Sensus receives only world/tool percepts")
-        return AcquisitionReceipt.from_brain(self._port.ingest(raw))
+        return AcquisitionReceipt.from_brain(
+            self._port._ingest_authorized_sensus(raw, organ=self)
+        )
 
     def opt_in_multichannel_pilot(self):
         """Use the reviewed Sensus binder only in an explicitly tested host.
