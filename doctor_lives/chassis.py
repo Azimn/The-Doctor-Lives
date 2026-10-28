@@ -104,8 +104,35 @@ class PretoriusBrainPort:
             raise PermissionError("No active, source-verified Laboratory handoff")
         return self._project_and_ingest(event, laboratory_verified=True)
 
+    def _ingest_mock_fixture(self, event: Mapping[str, Any], *,
+                             provider: object, observation: object) -> dict[str, Any]:
+        """Admit one explicitly synthetic sensor fixture as a REPORTED event.
+
+        This is neither a real-world attestation nor permission to actuate.
+        The typed test provider owns its finite schedule; no caller may
+        manufacture synthetic observation authority via source labels alone.
+        """
+        from .environment_port import MockRobotEnvironmentPort, MockSensorObservation
+
+        if (type(provider) is not MockRobotEnvironmentPort
+                or type(observation) is not MockSensorObservation
+                or provider._port is not self
+                or observation not in provider._observations
+                or not provider._authorized
+                or event.get("channel") != "world"
+                or event.get("percept") != observation.first_person
+                or event.get("source") != (
+                    "mock-robot-fixture:" + provider._session + ":"
+                    + observation.event_id
+                )):
+            raise PermissionError("No authenticated synthetic fixture")
+        return self._project_and_ingest(
+            event, laboratory_verified=False, mock_fixture=True,
+        )
+
     def _project_and_ingest(self, event: Mapping[str, Any], *,
-                            laboratory_verified: bool) -> dict[str, Any]:
+                            laboratory_verified: bool,
+                            mock_fixture: bool = False) -> dict[str, Any]:
         projected = project_raw_ingress(
             event,
             context=ProjectionContext(
@@ -115,6 +142,7 @@ class PretoriusBrainPort:
                 projection_rule_version="subject-interface-a12-port",
             ),
             _laboratory_verified=laboratory_verified,
+            _mock_fixture=mock_fixture,
         )
         result = self.brain.ingest(projected.experience)
         result["ingress"] = {
