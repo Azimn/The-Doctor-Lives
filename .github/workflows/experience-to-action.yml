@@ -5,11 +5,14 @@ on:
     paths:
       - doctor_lives/experience_to_action.py
       - doctor_lives/noesis_situated_choice.py
+      - doctor_lives/noesis_consequences.py
       - doctor_lives/noesis_lab_work.py
       - doctor_lives/cognition.py
       - doctor_lives/organs.py
       - tests/test_six_organ_experience_to_action.py
       - tests/test_six_organ_noesis_experience.py
+      - tests/test_six_organ_noesis_consequences.py
+      - docs/experiments/NOESIS_OUTCOME_LEARNING_PREREG_2026-10-28.md
       - docs/experiments/NOESIS_SITUATED_CHOICE_PREREG_2026-10-28.md
       - docs/experiments/EXPERIENCE_TO_ACTION_PREREG_2026-10-28.md
       - .github/workflows/experience-to-action.yml
@@ -46,6 +49,11 @@ jobs:
           PYTHONPATH: donor-laboratory
         run: |
           python -m unittest discover -s tests -p test_six_organ_noesis_experience.py -v
+      - name: Verify Noesis learns from real action consequences without a manual
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_noesis_consequences.py -v
       - name: Preserve earlier autobiographical book preference controls
         env:
           PYTHONPATH: donor-laboratory
