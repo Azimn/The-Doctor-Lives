@@ -233,6 +233,18 @@ class ActualDoctorD3AdversarialTests(unittest.TestCase):
                     })
         self.assertEqual(before, len(self.port.brain.store.memories(False)))
 
+    def test_cli_cannot_claim_a_laboratory_source_or_bypass_projection(self):
+        from doctor_lives.cli import main as cli_main
+
+        spoofed_state = self.root / "cli-spoof"
+        with self.assertRaises(PermissionError):
+            cli_main([
+                "--state", str(spoofed_state),
+                "ingest", "I saw a secret page in an unopened book.",
+                "--source", "laboratory-home:action:" + "e" * 64,
+            ])
+        self.assertFalse(spoofed_state.exists())
+
     def test_legitimate_plain_language_tool_result_is_attributed(self):
         receipt = self.port.ingest({
             "channel": "tool",
