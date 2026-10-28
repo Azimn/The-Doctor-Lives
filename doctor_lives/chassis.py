@@ -173,6 +173,21 @@ class PretoriusBrainPort:
     def _project_and_ingest(self, event: Mapping[str, Any], *,
                             laboratory_verified: bool,
                             mock_fixture: bool = False) -> dict[str, Any]:
+        if not isinstance(event, Mapping):
+            raise TypeError("Ingest requires a typed mapping")
+        reserved = (
+            "laboratory-home:", "virtual-world:",
+            "sensus-pilot-verified:", "mock-robot-fixture:",
+        )
+        claimed = event.get("source")
+        # In particular, an untrusted report with an invented Laboratory
+        # hash must not poison an eventual REAL world receipt's idempotency
+        # key. Source namespaces belong to provider verification, not caller
+        # strings or apparent first-person wording.
+        if (not (laboratory_verified or mock_fixture)
+                and isinstance(claimed, str)
+                and claimed.startswith(reserved)):
+            raise PermissionError("Reserved physical or provider source authority")
         projected = project_raw_ingress(
             event,
             context=ProjectionContext(
