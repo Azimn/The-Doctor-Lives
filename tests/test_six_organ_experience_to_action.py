@@ -229,5 +229,81 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
         self.assertEqual(self.history_count("repair"), 0)
 
 
+    def test_crash_after_real_repair_world_commit_recovers_exactly_once(self):
+        """R5: an interrupted physical repair must not be lost or duplicated.
+
+        This deliberately kills Doctor admission AFTER the authoritative
+        Laboratory has committed the repair. Reopening the original BrainStore
+        must recover that exact first-person receipt, not synthesize an event.
+        """
+        from unittest.mock import patch
+
+        self.wear_by_actually_working()
+        read_id = self.read_real_page()
+        self.assertEqual(
+            propose_bench_action(self.bridge, read_memory_id=read_id).action,
+            "repair",
+        )
+        original_admit = self.bridge._admit_verified
+
+        def crash_only_after_world(frame, source, **kwargs):
+            if source.startswith("laboratory-home:action:"):
+                raise RuntimeError("injected crash after world commit")
+            return original_admit(frame, source, **kwargs)
+
+        with patch.object(
+            self.bridge, "_admit_verified", side_effect=crash_only_after_world,
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, "injected crash after world commit",
+            ):
+                execute_bench_action(
+                    self.bridge, read_memory_id=read_id,
+                    event_id="crash-repair", expected_action="repair",
+                    authorized_world_action=True,
+                )
+
+        self.assertEqual(self.history_count("repair"), 1)
+        self.assertEqual(self.world_state()["apparatus"], 3)
+        self.assertEqual(self.world_state()["repairs"], 1)
+        with self.world._open() as db:
+            row = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("crash-repair",),
+            ).fetchone()
+        self.assertIsNotNone(row)
+        source = "laboratory-home:action:" + row[0]
+        self.assertFalse(any(
+            m["source"] == source
+            for m in self.port.brain.store.memories(False)
+        ))
+
+        # New process-equivalent objects, original world and original brain.
+        reopened = PretoriusBrainPort(self.port.brain.state_dir)
+        restarted = DoctorHomeBridge(reopened, self.subject, authorized=True)
+        recovered = restarted.act("repair", event_id="crash-repair")
+        self.assertEqual(recovered["status"], "admitted")
+        memory = reopened.brain.store.get_memory(recovered["memory_id"])
+        self.assertEqual(memory["source"], source)
+        self.assertEqual(memory["text"], recovered["subject"]["inner"])
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+
+        replay = restarted.act("repair", event_id="crash-repair")
+        self.assertEqual(replay["status"], "already_admitted")
+        self.assertEqual(replay["memory_id"], recovered["memory_id"])
+        self.assertEqual(self.history_count("repair"), 1)
+        self.assertEqual(self.world_state()["repairs"], 1)
+        self.assertEqual(sum(
+            m["source"] == source
+            for m in reopened.brain.store.memories(False)
+        ), 1)
+
+        # A different requested action cannot launder the prior world receipt.
+        with self.assertRaises(RuntimeError):
+            restarted.act("experiment", event_id="crash-repair")
+        self.assertEqual(self.history_count("experiment"), 1)
+        self.assertEqual(self.history_count("repair"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
