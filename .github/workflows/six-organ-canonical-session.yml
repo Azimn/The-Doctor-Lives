@@ -8,6 +8,7 @@ on:
       - doctor_lives/lab_endogenous_book_task.py
       - doctor_lives/lab_native_goal_choice.py
       - tests/test_six_organ_native_goal_choice.py
+      - tests/test_d3_adversarial_actual_paths.py
       - tests/test_six_organ_endogenous_book_task.py
       - tests/test_six_organ_sustained_lab.py
       - .github/workflows/six-organ-canonical-session.yml
@@ -39,6 +40,8 @@ jobs:
           PRETORIUS_PINNED_AFFECTUS_ROOT: pinned-affectus-donor
         run: |
           python -m unittest discover -s tests -p test_six_organ_canonical_weather.py -v
+      - name: Execute D3 adversarial default renderer ingress and recollection battery
+        run: python -m unittest discover -s tests -p test_d3_adversarial_actual_paths.py -v
       - name: Run complete existing Doctor regression suite without donor import overlay
         run: python -m unittest discover -s tests -v
   actual-six-organ-laboratory:
@@ -94,3 +97,10 @@ jobs:
           PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
         run: |
           python -m unittest discover -s tests -p test_six_organ_native_goal_choice.py -v
+      - name: Execute D3 adversarial real Ipseity renderer ingress and recollection non-skipped
+        env:
+          PYTHONPATH: donor-laboratory:donor-sensus
+          PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
+        run: |
+          python -c "import synthetic_ipseity; import doctor_lives.ipseity_integration"
+          python -m unittest discover -s tests -p test_d3_adversarial_actual_paths.py -v

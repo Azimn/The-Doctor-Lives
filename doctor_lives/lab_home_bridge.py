@@ -93,6 +93,28 @@ class DoctorHomeBridge:
         self.subject = subject_port
         self.world = subject_port.habitat
         self.subject.verify()
+        self._active_verified_admission = None
+        self.doctor._register_laboratory_bridge(self)
+
+    def _admit_verified(self, frame, source, *, kind, source_book_page=False):
+        """Host-only handoff after verified observation or physical action.
+
+        The active grant is one-use and never materialized as a portable
+        boolean or user-provided source label. Only the two world-verified
+        entrypoints below may call this method.
+        """
+        if self._active_verified_admission is not None:
+            raise RuntimeError("Overlapping Laboratory source admissions")
+        text = _first_person_frame(frame)
+        if source_book_page:
+            text = " ".join(text.split())
+        self._active_verified_admission = (source, text)
+        try:
+            return self._admit(
+                frame, source, kind=kind, source_book_page=source_book_page,
+            )
+        finally:
+            self._active_verified_admission = None
 
     def _admit(self, frame, source, *, kind, source_book_page=False):
         text = _first_person_frame(frame)
@@ -106,6 +128,8 @@ class DoctorHomeBridge:
             # Keep original full source and independent receipt unchanged.
             text = " ".join(text.split())
             frame = {"inner": text, "spoken_aloud": frame["spoken_aloud"]}
+        if self._active_verified_admission != (source, text):
+            raise PermissionError("Laboratory experience was not verified by the host")
         if not source.startswith("laboratory-home:"):
             raise PermissionError("Unapproved lived Laboratory source")
         if len(source) > 225:
@@ -121,11 +145,11 @@ class DoctorHomeBridge:
             return {"status": "already_admitted",
                     "memory_id": previous[0]["id"],
                     "subject": frame}
-        outcome = self.doctor.ingest({
+        outcome = self.doctor._ingest_verified_laboratory({
             "channel": "world", "percept": text,
             "kind": kind, "source": source,
             "confidence": 1.0,
-        })
+        }, bridge=self)
         if outcome["ingress"]["subject_text"] != text:
             raise RuntimeError("Doctor ingress changed verified world wording")
         return {"status": "admitted", "memory_id": outcome["memory_id"],
@@ -173,7 +197,7 @@ class DoctorHomeBridge:
             "epoch": after["world_epoch"], "station": final_station,
             "state": after_state, "text": frame["inner"],
         })
-        return self._admit(frame, source, kind="observation")
+        return self._admit_verified(frame, source, kind="observation")
 
     @staticmethod
     def _check_action_proof(op, args, event):
@@ -253,7 +277,7 @@ class DoctorHomeBridge:
             e, cursor = _row(db, _ACTION_DOMAINS[op], event_id)
             self._check_action_proof(op, args, e)
         source = "laboratory-home:action:" + cursor
-        return self._admit(
+        return self._admit_verified(
             result, source, kind="observation",
             source_book_page=(op == "book" and args.get("operation") == "read"),
         )
