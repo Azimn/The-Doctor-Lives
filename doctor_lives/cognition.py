@@ -1053,6 +1053,8 @@ class PretoriusBrain:
         eligible_read_memory_ids: tuple[str, ...],
         feasible_actions: tuple[str, ...],
         learning_enabled: bool = True, neural_prior_enabled: bool = True,
+        outcome_learning_enabled: bool = False,
+        eligible_outcome_memory_ids: tuple[str, ...] = (),
     ) -> dict[str, Any]:
         """Original-brain opt-in choice; no host-owned action selector.
 
@@ -1067,6 +1069,8 @@ class PretoriusBrain:
             feasible_actions=feasible_actions,
             learning_enabled=learning_enabled,
             neural_prior_enabled=neural_prior_enabled,
+            outcome_learning_enabled=outcome_learning_enabled,
+            eligible_outcome_memory_ids=eligible_outcome_memory_ids,
         )
 
     def add_commitment(self, description: str, actor: str | None = None,
