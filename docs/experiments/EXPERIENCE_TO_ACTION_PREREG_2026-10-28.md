@@ -32,3 +32,7 @@ This fixture demonstrates memory-conditioned *host interpretation* of a personal
 ## Requirements for engineering attribution
 
 Record `source_of_opportunity=real_Laboratory`, `read_provenance=verified_BookLibrary`, `memory_owner=original_BrainStore`, `action_selector=bounded_host_interpreter`, `physical_authorizer=explicit_host`, `world_executor=SubjectPort`, and `outcome_adjudicator=Laboratory`. Source strings and a first-person prefix alone are not source authority. Any missing receipt or changed book content fails closed. Renderer and first-person experience interfaces remain unchanged. No new claim can be promoted on CI status alone.
+
+## Pre-implementation fixture correction
+
+The pinned Laboratory's `DailyRhythm.verify()` rejects noncanonical no-parent genesis states. Therefore do **not** inject apparatus=1 directly. Begin with its canonical default apparatus=2 and perform one real, independently receipted `experiment` action at the actual bench to wear it to 1. This preparation is a true lived event in every arm, not invented childhood or a fake initial state. Keep its history identical across compared conditions; the manipulated variable remains access to the *later physically read manual*. The unworn control uses canonical apparatus=2 before that setup experiment. This correction was recorded before adding the new choice logic and preserves all predicted outcomes.
