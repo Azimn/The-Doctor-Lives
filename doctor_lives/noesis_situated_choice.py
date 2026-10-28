@@ -19,6 +19,7 @@ from .neural import ACTIONS
 from .store import new_id, utc_now
 
 VERSION = "noesis-situated-choice-v0.2"
+OUTCOME_VERSION = "noesis-situated-choice-v0.3"
 # Grounded here in Noesis, not selected by the host. The existing neural motor
 # vocabulary still has ten abstract tendencies, not physical work commands.
 NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist"}
@@ -47,6 +48,8 @@ def select_with_original_noesis(
     eligible_read_memory_ids: tuple[str, ...],
     feasible_actions: tuple[str, ...],
     learning_enabled: bool = True, neural_prior_enabled: bool = True,
+    outcome_learning_enabled: bool = False,
+    eligible_outcome_memory_ids: tuple[str, ...] = (),
 ) -> dict[str, Any]:
     """Commit one original-brain choice and detailed engineer-only audit.
 
@@ -56,7 +59,8 @@ def select_with_original_noesis(
     selects the action itself. Callers must not supply suggested choice, raw
     page text, numeric body data or a fabricated percept.
     """
-    if type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool:
+    if (type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool
+            or type(outcome_learning_enabled) is not bool):
         raise TypeError("Research lesion switches must be explicit booleans")
     if type(observation_memory_id) is not str:
         raise TypeError("An original brain observation memory ID is required")
@@ -111,10 +115,31 @@ def select_with_original_noesis(
     chosen_evidence = [considered[0][1]] if considered else []
     if chosen_evidence:
         final[considered[0][2]] += MEMORY_WEIGHT
+    outcome_scores = {action: 0.0 for action in feasible_actions}
+    eligible_outcomes = []
+    used_outcomes = []
+    if outcome_learning_enabled:
+        from .noesis_consequences import consequence_pressure
+        outcome_scores, eligible_outcomes, used_outcomes = consequence_pressure(
+            brain, observation=observation["text"],
+            verified_outcome_memory_ids=eligible_outcome_memory_ids,
+            feasible_actions=feasible_actions,
+        )
+        for action in feasible_actions:
+            final[action] += outcome_scores[action]
+    elif eligible_outcome_memory_ids:
+        # In opt-out controls, do not inspect or implicitly use outcome IDs.
+        if type(eligible_outcome_memory_ids) is not tuple:
+            raise TypeError("Outcome evidence IDs must be a tuple")
     selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
+    active_version = OUTCOME_VERSION if outcome_learning_enabled else VERSION
 
     evidence = {
-        "version": VERSION,
+        "version": active_version,
+        "outcome_learning_enabled": outcome_learning_enabled,
+        "eligible_verified_outcome_ids": eligible_outcomes,
+        "used_outcome_memory_ids": used_outcomes,
+        "outcome_contributions": outcome_scores,
         "neural_affordance_map": {a: NEURAL_AFFORDANCE_MAP[a] for a in feasible_actions},
         "neural_prior_weight": NEURAL_WEIGHT,
         "learning_weight": MEMORY_WEIGHT,
@@ -148,8 +173,8 @@ def select_with_original_noesis(
              json.dumps(evidence, sort_keys=True),
              json.dumps(final, sort_keys=True),
              json.dumps([observation_memory_id] + eligible),
-             json.dumps([observation_memory_id] + chosen_evidence),
-             int(brain.neural.tick), checkpoint, VERSION),
+             json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
+             int(brain.neural.tick), checkpoint, active_version),
         )
         subject_thought = (
             "I judge that " + selected_action
@@ -161,7 +186,7 @@ def select_with_original_noesis(
             VALUES(?,?,?,?,?,?,?)""",
             (tid, brain.store.tick, subject_thought, "noesis_situated_choice",
              "noesis_situated_choice:" + pid,
-             json.dumps([observation_memory_id] + chosen_evidence),
+             json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
              json.dumps(final, sort_keys=True)),
         )
         brain.store.bump_state_version(db)
@@ -172,6 +197,8 @@ def select_with_original_noesis(
         "action_scores": final,
         "base_action_scores": base,
         "source_memory_ids": chosen_evidence,
+        "used_outcome_memory_ids": used_outcomes,
+        "outcome_contributions": outcome_scores,
         "observation_memory_id": observation_memory_id,
-        "policy_version": VERSION,
+        "policy_version": active_version,
     }
