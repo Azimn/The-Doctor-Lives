@@ -18,18 +18,11 @@ from .engineer_time import engineer_time
 
 
 @contextmanager
-def _exclusive_host(state: Path):
-    """One cooperative Laboratory host per canonical BrainStore, across processes.
-
-    The lock file is deliberately persistent: unlinking it while another
-    process holds an OS lock would allow a second inode and a second host.
-    The operating system releases the byte/range lock on process death.
-    This protects cooperating lab-run processes, not arbitrary privileged
-    writers or external Laboratory/BrainStore entrypoints.
-    """
+def _exclusive_lock(lock_path: Path, label: str):
+    """Keep a cooperative OS lock on a persistent, non-symlink sidecar."""
     flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_BINARY", 0)
     flags |= getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(state / ".laboratory-host.lock", flags, 0o600)
+    fd = os.open(lock_path, flags, 0o600)
     with os.fdopen(fd, "r+b") as handle:
         acquired = False
         try:
@@ -43,9 +36,7 @@ def _exclusive_host(state: Path):
             acquired = True
         except OSError as exc:
             if exc.errno in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
-                raise RuntimeError(
-                    "Canonical Doctor Laboratory host already active"
-                ) from exc
+                raise RuntimeError(f"{label} host already active") from exc
             raise
         try:
             yield
@@ -60,12 +51,36 @@ def _exclusive_host(state: Path):
                     fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
+@contextmanager
+def _exclusive_host(state: Path, world: Path | None = None):
+    """Exclude cooperating hosts sharing EITHER the brain OR the real world.
+
+    The original state lock remains in place. A second lock beside the
+    resolved Laboratory SQLite file also denies a different state directory
+    pointed at the same world. Both sidecars are persistent so unlinking
+    cannot silently split lock ownership. These are cooperative host leases,
+    not protection from privileged/direct database writers.
+    """
+    with _exclusive_lock(state / ".laboratory-host.lock", "Canonical Doctor Laboratory"):
+        if world is None:
+            yield
+        else:
+            canonical_world = world.resolve(strict=True)
+            if not canonical_world.is_file():
+                raise FileNotFoundError("Existing authoritative Laboratory world required")
+            world_lock = canonical_world.with_name(
+                canonical_world.name + ".laboratory-host.lock"
+            )
+            with _exclusive_lock(world_lock, "Authoritative Laboratory world"):
+                yield
+
+
 def run_laboratory(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,
 ) -> dict:
     """Run with an OS-backed nonblocking lease on the ONE canonical state."""
-    with _exclusive_host(state):
+    with _exclusive_host(state, world):
         return _run_laboratory_session(
             state, world, duration_seconds=duration_seconds,
             interval_seconds=interval_seconds, stop=stop,
