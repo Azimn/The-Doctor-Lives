@@ -1,6 +1,7 @@
 """Real-time offline host controls against the pinned ORIGINAL Laboratory."""
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
 import subprocess
@@ -12,11 +13,14 @@ import unittest
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.lab_runtime import run_laboratory
 from doctor_lives.neural import DEFAULT_CONFIG
-from pretorius_lab.daily_rhythm import DailyRhythm
-from pretorius_lab.habitat_v2 import SpatialHabitat
-from pretorius_lab.home_life import HomeLife
+HAS_ORIGINAL_LAB = importlib.util.find_spec("pretorius_lab") is not None
+if HAS_ORIGINAL_LAB:
+    from pretorius_lab.daily_rhythm import DailyRhythm
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+    from pretorius_lab.home_life import HomeLife
 
 
+@unittest.skipUnless(HAS_ORIGINAL_LAB, "Requires the pinned original Laboratory")
 class OfflineLaboratoryRunTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
