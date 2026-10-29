@@ -126,12 +126,71 @@ def main():
             capture_output=True, text=True, timeout=120,
         )
         assert denied.returncode != 0 and not denied.stdout and not missing.exists()
+        # Separate default-size 4,096-neuron ORIGINAL recurrent-policy smoke.
+        # Preserve the accepted 128-neuron baseline above unchanged.
+        full_world_path = root / "full-world.sqlite3"
+        full_brain_path = root / "full-brain"
+        full_world = SpatialHabitat.create(full_world_path)
+        HomeLife(full_world).initialize()
+        DailyRhythm(full_world).initialize()
+        full_port = PretoriusBrainPort(
+            full_brain_path, neural_config=dict(DEFAULT_CONFIG),
+        )
+        assert full_port.brain.neural.n == 4096
+        assert full_port.brain.neural.cfg == DEFAULT_CONFIG
+        assert (full_brain_path / "pretorius_recurrent.npz").is_file()
+        full_crashed = _run(
+            [sys.executable, __file__, "--crash",
+             str(full_world_path), str(full_brain_path)],
+            expected=79,
+        )
+        assert not full_crashed.stdout
+        with full_world._open() as db:
+            full_rows = db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("wheel-crash-walk",),
+            ).fetchall()
+        assert len(full_rows) == 1
+        full_source = "laboratory-home:action:" + full_rows[0][0]
+        assert not any(
+            m["source"] == full_source
+            for m in PretoriusBrainPort(full_brain_path).brain.store.memories(False)
+        )
+        full_command = [
+            console, "--state", str(full_brain_path),
+            "lab-start", "--world", str(full_world_path),
+        ]
+        full_first = json.loads(_run(full_command).stdout)
+        assert full_first["status"] == "ready"
+        assert full_first["recovered"] == 1
+        assert len(full_first["subject_frames"]) == 1
+        full_memories = [
+            m for m in PretoriusBrainPort(full_brain_path).brain.store.memories(False)
+            if m["source"] == full_source
+        ]
+        assert len(full_memories) == 1
+        assert full_memories[0]["evidence_class"] == "lived_runtime_memory"
+        assert full_memories[0]["text"] == full_first["subject_frames"][0]["inner"]
+        assert json.loads(_run(full_command).stdout)["recovered"] == 0
+        with full_world._open() as db:
+            assert db.execute(
+                "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
+                ("wheel-crash-walk",),
+            ).fetchone()[0] == 1
+        assert sum(
+            m["source"] == full_source
+            for m in PretoriusBrainPort(full_brain_path).brain.store.memories(False)
+        ) == 1
+
         print(json.dumps({"result": "PASS", "installed_console": True,
                           "original_lab_world_actions": 1,
                           "verified_lived_memories": 1,
                           "recovered_on_restart": 1,
                           "recovered_on_second_restart": 0,
-                          "missing_authority_denied": True}, sort_keys=True))
+                          "missing_authority_denied": True,
+                          "full_size_4096_original_neurons": 4096,
+                          "full_size_4096_recovered": 1,
+                          "full_size_4096_second_restart": 0}, sort_keys=True))
 
 
 if __name__ == "__main__":
