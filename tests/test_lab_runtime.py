@@ -803,7 +803,7 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         denied = self._work_cli("foreign-same-domain-work")
         self.assertNotEqual(denied.returncode, 0)
         self.assertEqual(denied.stdout, "")
-        self.assertIn("No preexisting Doctor-owned work reservation",
+        self.assertIn("No matching preexisting Doctor-owned work reservation",
                       denied.stderr)
         self.assertEqual(self._receipt_and_observation_counts(), stable)
         port = PretoriusBrainPort(self.state)
