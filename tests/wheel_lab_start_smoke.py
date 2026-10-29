@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -205,6 +206,74 @@ def main():
             "--world", str(foreign_world_path), "--output", str(foreign_archive),
         ]).stdout)["status"] == "backed_up"
 
+        # Source-backed negative: SQLite integrity and every action-row digest
+        # remain valid, but the ORIGINAL Laboratory rejects the world ledger.
+        # The installed CLI must reject both backup and a manifest-rehashed
+        # restore before creating an archive or a new authority.
+        from pretorius_lab.physics import Conflict
+        for damaged_field, replacement in (
+            ("world_epoch", "corrupted-world-epoch"),
+            ("head_hash", "f" * 64),
+        ):
+            damaged_world = root / f"damaged-{damaged_field}.sqlite3"
+            shutil.copyfile(foreign_archive / "world.sqlite3", damaged_world)
+            shutil.copyfile(
+                foreign_archive / "action-intents.sqlite3",
+                Path(str(damaged_world) + ".doctor-action-intents.sqlite3"),
+            )
+            with sqlite3.connect(damaged_world) as damaged_db:
+                damaged_db.execute(
+                    "UPDATE meta SET value=? WHERE key=?",
+                    (json.dumps(replacement), damaged_field),
+                )
+                assert damaged_db.execute(
+                    "PRAGMA integrity_check"
+                ).fetchone() == ("ok",)
+            try:
+                SpatialHabitat(damaged_world).verify()
+            except Conflict:
+                pass
+            else:
+                raise AssertionError(
+                    f"Original Laboratory accepted corrupt {damaged_field}"
+                )
+
+            denied_archive = root / f"denied-{damaged_field}-backup"
+            bad_backup = subprocess.run([
+                console, "--state", str(foreign_brain_path), "lab-backup",
+                "--world", str(damaged_world), "--output", str(denied_archive),
+            ], capture_output=True, text=True, timeout=120)
+            assert bad_backup.returncode != 0 and not bad_backup.stdout
+            assert "Original Laboratory world/ledger verification failed" in bad_backup.stderr
+            assert not denied_archive.exists()
+
+            damaged_archive = root / f"damaged-{damaged_field}-archive"
+            shutil.copytree(foreign_archive, damaged_archive)
+            shutil.copyfile(damaged_world, damaged_archive / "world.sqlite3")
+            member = damaged_archive / "world.sqlite3"
+            damaged_manifest = damaged_archive / "manifest.json"
+            data = json.loads(damaged_manifest.read_text(encoding="utf-8"))
+            data["files"]["world.sqlite3"] = {
+                "sha256": hashlib.sha256(member.read_bytes()).hexdigest(),
+                "bytes": member.stat().st_size,
+            }
+            damaged_manifest.write_text(
+                json.dumps(data, sort_keys=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            denied_brain = root / f"denied-{damaged_field}-brain"
+            denied_world = root / f"denied-{damaged_field}-world.sqlite3"
+            bad_restore = subprocess.run([
+                console, "--state", str(denied_brain), "lab-restore",
+                "--world", str(denied_world), "--archive", str(damaged_archive),
+            ], capture_output=True, text=True, timeout=120)
+            assert bad_restore.returncode != 0 and not bad_restore.stdout
+            assert "Original Laboratory world/ledger verification failed" in bad_restore.stderr
+            assert not denied_brain.exists() and not denied_world.exists()
+            assert not Path(
+                str(denied_world) + ".doctor-action-intents.sqlite3"
+            ).exists()
+
         mixed_backup = root / "forbidden-mixed-backup"
         mixed_backup_attempt = subprocess.run([
             console, "--state", str(brain_path), "lab-backup",
@@ -342,6 +411,8 @@ def main():
                           "mixed_authority_backup_denied": True,
                           "mixed_authority_restore_denied": True,
                           "existing_restore_denied": True,
+                          "corrupt_world_ledger_backup_denied": True,
+                          "rehashed_corrupt_world_restore_denied": True,
                           "full_size_4096_original_neurons": 4096,
                           "full_size_4096_recovered": 1,
                           "full_size_4096_second_restart": 0}, sort_keys=True))
