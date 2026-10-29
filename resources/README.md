@@ -2,7 +2,7 @@
 
 **Purpose:** A source-controlled intake area for proven open-source components, code references, licenses, and experiments that can shorten the remaining six-organ, Phantasmagorium, and Conclave construction.
 
-**Status 2026-10-29:** Resource collection started on research PR #100, **not** adopted into the canonical Pretorius runtime. The `sources.lock.json` manifest contains 17 repositories with observed licenses and exact commit SHAs. The `companion-directory.md` links **252** additional projects/list entries from a pinned community directory. **Only one self-contained third-party code module has actually been copied**, for inspection and isolated testing.
+**Status 2026-10-29:** Resource collection started on research PR #100, **not** adopted into the canonical Pretorius runtime. The `sources.lock.json` manifest contains 17 repositories with observed licenses and exact commit SHAs. The `companion-directory.md` links **252** additional projects/list entries from a pinned community directory. **Two self-contained third-party Python components have actually been copied**, for inspection and isolated testing.
 
 ## Where things are
 
@@ -11,8 +11,8 @@
 | `sources.lock.json` | 17 manually prioritized and GitHub-metadata-checked upstream repositories, pinned to commits with expected integration locations and concerns. `integrated:false` is literal. |
 | `companion-directory.md` | 252 upstream names/links for discovery, categorized by subject. These are not independently validated candidates. |
 | `candidates/revive-companion/control_pid.py` | Byte-for-byte source snapshot of a dependency-free MIT PID controller at `pearthink123/revive-companion@7d11386b778c89de52479a91f838a99c3372fd07`; potential **Affectus regulation** mechanism, not installed. |
-| `candidates/revive-companion/LICENSE` | Upstream copyright/permission notice preserved verbatim. |
-| `tests/test_pid_candidate.py` | A local, stdlib-only smoke test for the isolated PID candidate, not evidence of Pretorius integration. |
+| `candidates/revive-companion/bayesian_state.py` | Byte-for-byte snapshot of an MIT, stdlib-only Bayesian user-state estimator; potential companion outreach timing research, NOT Pretorius's own subject state or autonomy. |\n| `candidates/revive-companion/LICENSE` | Upstream copyright/permission notice preserved verbatim. |
+| `tests/test_snapshots.py` | Offline stdlib-only integrity and representative behavior tests for both isolated candidates, not evidence of Pretorius integration. |
 
 ## Top integration opportunities
 
