@@ -68,10 +68,19 @@ def _exclusive_host(state: Path, world: Path | None = None):
             canonical_world = world.resolve(strict=True)
             if not canonical_world.is_file():
                 raise FileNotFoundError("Existing authoritative Laboratory world required")
+            # A pathname-based sidecar is not shared by hardlinks to the same
+            # SQLite inode. Fail closed before opening either world authority
+            # rather than allow two cooperating hosts to lock different names.
+            if canonical_world.stat().st_nlink != 1:
+                raise RuntimeError("Authoritative Laboratory world hardlinks are unsupported")
             world_lock = canonical_world.with_name(
                 canonical_world.name + ".laboratory-host.lock"
             )
             with _exclusive_lock(world_lock, "Authoritative Laboratory world"):
+                # Recheck after acquiring the sidecar. A new hardlink created
+                # while another host runs is rejected by its next entrant.
+                if canonical_world.stat().st_nlink != 1:
+                    raise RuntimeError("Authoritative Laboratory world hardlinks are unsupported")
                 yield
 
 
