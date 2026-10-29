@@ -255,12 +255,19 @@ def main():
             with sqlite3.connect(damaged_world) as source_db:
                 with sqlite3.connect(member) as archive_db:
                     source_db.backup(archive_db)
-            try:
-                SpatialHabitat(member).verify()
-            except Conflict:
-                pass
-            else:
-                raise AssertionError("Corrupt world did not survive SQLite snapshot")
+            # Never open a sealed archive SQLite member directly: the
+            # original Laboratory can create -wal/-shm files on open.
+            with tempfile.TemporaryDirectory(prefix="damaged-world-proof-") as proof_dir:
+                proof_world = Path(proof_dir) / "world.sqlite3"
+                shutil.copyfile(member, proof_world)
+                try:
+                    SpatialHabitat(proof_world).verify()
+                except Conflict:
+                    pass
+                else:
+                    raise AssertionError(
+                        "Corrupt world did not survive SQLite snapshot"
+                    )
             damaged_manifest = damaged_archive / "manifest.json"
             data = json.loads(damaged_manifest.read_text(encoding="utf-8"))
             data["files"]["world.sqlite3"] = {
