@@ -500,6 +500,70 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
                 ("operator-sleep-crash",),
             ).fetchone()[0], 1)
 
+    def test_lab_start_obeys_both_live_host_leases_before_opening_authorities(self):
+        # The first process is a real running Laboratory host. The alternate
+        # lab-start path must not bypass either the brain or world lease.
+        before = self._receipt_and_observation_counts()
+        active = subprocess.Popen(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-run", "--world", str(self.world_path),
+             "--seconds", "5", "--interval-seconds", "0.25"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        def start(state):
+            return subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli", "--state",
+                 str(state), "lab-start", "--world", str(self.world_path)],
+                capture_output=True, text=True, timeout=25,
+            )
+        try:
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                if active.poll() is not None:
+                    self.fail("real host exited before lease probe: "
+                              + active.stderr.read())
+                current = self._receipt_and_observation_counts()
+                if all(after > old for old, after in zip(before, current)):
+                    break
+                time.sleep(0.05)
+            else:
+                self.fail("real host did not admit an authenticated LOOK")
+            stable = self._receipt_and_observation_counts()
+
+            same_brain = start(self.state)
+            self.assertNotEqual(same_brain.returncode, 0)
+            self.assertEqual(same_brain.stdout, "")
+            self.assertIn("Canonical Doctor Laboratory host already active",
+                          same_brain.stderr)
+            self.assertEqual(self._receipt_and_observation_counts(), stable)
+
+            # Empty alternate state proves denial by WORLD lease before any
+            # other BrainStore can be created or opened.
+            alternate = Path(self.temp.name) / "empty-alternate-state"
+            alternate.mkdir()
+            same_world = start(alternate)
+            self.assertNotEqual(same_world.returncode, 0)
+            self.assertEqual(same_world.stdout, "")
+            self.assertIn("Authoritative Laboratory world host already active",
+                          same_world.stderr)
+            self.assertFalse((alternate / "brain.sqlite3").exists())
+            self.assertEqual(self._receipt_and_observation_counts(), stable)
+        finally:
+            active.terminate()
+            active.communicate(timeout=10)
+
+        # A cold lab-start after OS lock release must resume the ORIGINAL
+        # authority without adding a fresh LOOK or lived observation.
+        stable = self._receipt_and_observation_counts()
+        resumed = start(self.state)
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        report = json.loads(resumed.stdout)
+        self.assertEqual(report["status"], "ready")
+        self.assertEqual(report["recovered"], 0)
+        self.assertEqual(report["subject_frames"], [])
+        self.assertRegex(report["clock"]["beat"], r"^@[0-9]{3}$")
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
