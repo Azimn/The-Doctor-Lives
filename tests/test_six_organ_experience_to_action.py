@@ -855,6 +855,97 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
             for m in self.port.brain.store.memories(False)
         ))
 
+    def test_offline_cli_cold_start_reconciles_without_supplied_action_id(self):
+        """The installed CLI, not a test recovery function, finds the journal."""
+        root = Path(self.tmp.name)
+        world_path, brain_path = root / "world.sqlite3", root / "brain"
+        crashed = subprocess.run(
+            [sys.executable, "-c", _POISON_QUEUE_CHILD,
+             str(world_path), str(brain_path), "crash"],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True, text=True, timeout=120, check=False,
+        )
+        self.assertEqual(
+            crashed.returncode, 76,
+            f"World-commit crash did not execute: {crashed.stderr}",
+        )
+        with self.world._open() as db:
+            rows = db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("recoverable-center",),
+            ).fetchall()
+        self.assertEqual(len(rows), 1)
+        source = "laboratory-home:action:" + rows[0][0]
+        cold = PretoriusBrainPort(brain_path)
+        self.assertFalse(any(
+            m["source"] == source for m in cold.brain.store.memories(False)
+        ))
+
+        def start():
+            return subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli",
+                 "--state", str(brain_path), "lab-start",
+                 "--world", str(world_path)],
+                cwd=Path(__file__).resolve().parents[1],
+                capture_output=True, text=True, timeout=120, check=False,
+            )
+
+        resumed = start()
+        self.assertEqual(
+            resumed.returncode, 0,
+            f"Offline CLI failed cold recovery: {resumed.stderr}",
+        )
+        report = json.loads(resumed.stdout)
+        self.assertEqual(report["schema"], "doctor-laboratory-offline-start.v1")
+        self.assertEqual(report["status"], "ready")
+        self.assertEqual(report["recovered"], 1)
+        self.assertEqual(len(report["subject_frames"]), 1)
+        self.assertTrue(report["subject_frames"][0]["inner"].startswith("I "))
+        self.assertRegex(report["clock"]["beat"], r"^@[0-9]{3}$")
+        self.assertTrue(report["clock"]["utc"].endswith("Z"))
+        self.assertNotIn("event_id", resumed.stdout)
+        self.assertNotIn("world_epoch", resumed.stdout)
+        self.assertEqual(self.bridge.pending_action_intents(), ())
+
+        reopened = PretoriusBrainPort(brain_path)
+        memories = [m for m in reopened.brain.store.memories(False)
+                    if m["source"] == source]
+        self.assertEqual(len(memories), 1)
+        self.assertEqual(memories[0]["text"], report["subject_frames"][0]["inner"])
+        self.assertEqual(memories[0]["evidence_class"], "lived_runtime_memory")
+        again = start()
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertEqual(json.loads(again.stdout)["recovered"], 0)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
+                ("recoverable-center",),
+            ).fetchone()[0], 1)
+        final = PretoriusBrainPort(brain_path)
+        self.assertEqual(sum(
+            m["source"] == source for m in final.brain.store.memories(False)
+        ), 1)
+
+    def test_offline_cli_refuses_missing_authorities_without_genesis(self):
+        """A mistyped path cannot silently create a new mind or world."""
+        root = Path(self.tmp.name)
+        missing_world = root / "nonexistent-world.sqlite3"
+        missing_brain = root / "nonexistent-brain"
+        for state, world in (
+            (root / "brain", missing_world),
+            (missing_brain, root / "world.sqlite3"),
+        ):
+            result = subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli",
+                 "--state", str(state), "lab-start", "--world", str(world)],
+                cwd=Path(__file__).resolve().parents[1],
+                capture_output=True, text=True, timeout=120, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+        self.assertFalse(missing_world.exists())
+        self.assertFalse(missing_brain.exists())
+
     def test_cold_process_exit_after_world_before_brain_recovery(self):
         self._assert_cold_process_recovery(
             boundary="world_commit", exit_code=73,
