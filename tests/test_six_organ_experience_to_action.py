@@ -667,6 +667,32 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
                 for table in ("embodied_events", "rhythm_events")
             ), 1)
 
+    def test_foreign_domain_collision_cannot_leave_poison_intent(self):
+        """An external original-world receipt is not this bridge's action."""
+        self.subject.act(
+            "walk", event_id="external-original-world-walk",
+            station="station:center",
+        )
+        before = len(self.port.brain.store.memories(False))
+        with self.assertRaisesRegex(
+            RuntimeError, "another Laboratory action domain",
+        ):
+            self.bridge.act(
+                "advance", event_id="external-original-world-walk",
+                minutes=30,
+            )
+        self.assertEqual(self.bridge.pending_action_intents(), ())
+        self.assertEqual(len(self.port.brain.store.memories(False)), before)
+        with self.world._open() as db:
+            self.assertIsNotNone(db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("external-original-world-walk",),
+            ).fetchone())
+            self.assertIsNone(db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("external-original-world-walk",),
+            ).fetchone())
+
     def test_rejected_pre_world_walk_does_not_poison_cold_recovery(self):
         """A rejected original-Lab action cannot block a later crash-pending one."""
         root = Path(self.tmp.name)
