@@ -19,6 +19,7 @@ def parser() -> argparse.ArgumentParser:
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
     x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True)
+    x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0)
     x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
     x=sp.add_parser("lab-restore"); x.add_argument("--world", type=Path, required=True); x.add_argument("--archive", type=Path, required=True)
     x=sp.add_parser("ingest"); x.add_argument("text"); x.add_argument("--source",default="world"); x.add_argument("--kind",default="observation"); x.add_argument("--actor"); x.add_argument("--external",action="store_true"); x.add_argument("--valence",type=float,default=0.0); x.add_argument("--arousal",type=float,default=0.0); x.add_argument("--threat",type=float,default=0.0); x.add_argument("--novelty",type=float,default=0.0); x.add_argument("--authority",type=float,default=0.0); x.add_argument("--autonomy",type=float,default=0.0)
@@ -61,6 +62,27 @@ def main(argv=None) -> int:
             emit(backup(a.state, a.world, a.output))
         else:
             emit(restore(a.archive, a.state, a.world))
+        return 0
+    if a.cmd == "lab-run":
+        import signal
+        from threading import Event
+        from .lab_runtime import run_laboratory
+
+        stop = Event()
+        previous = {}
+        def request_stop(signum, frame):
+            stop.set()
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            previous[signum] = signal.getsignal(signum)
+            signal.signal(signum, request_stop)
+        try:
+            emit(run_laboratory(
+                a.state, a.world, duration_seconds=a.seconds,
+                interval_seconds=a.interval_seconds, stop=stop,
+            ))
+        finally:
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
         return 0
     if a.cmd == "lab-start":
         # Explicit local operator entrypoint. The world and the original
