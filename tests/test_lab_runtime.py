@@ -392,7 +392,7 @@ with _exclusive_host(Path(sys.argv[1])):
         runtime.checkpoint()
         self.assertEqual(bridge.subject.embodied.verify()["station"],
                          "station:bedroom")
-        minute_before = self.world.verify()["minute"]
+        minute_before = DailyRhythm(self.world).verify()["minute"]
         crash_script = """
 import os
 import sys
@@ -423,7 +423,7 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         )
         self.assertEqual(crashed.returncode, 79, crashed.stderr)
         self.assertEqual(crashed.stdout, "")
-        self.assertEqual(self.world.verify()["minute"] - minute_before, 480)
+        self.assertEqual(DailyRhythm(self.world).verify()["minute"] - minute_before, 480)
 
         def sleep_cli(event_id):
             return subprocess.run(
@@ -464,7 +464,7 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         self.assertEqual(second_report["status"], "already_admitted")
         self.assertEqual(second_report["recovered"], 0)
         self.assertEqual(len(second_report["subject_frames"]), 1)
-        self.assertEqual(self.world.verify()["minute"] - minute_before, 480)
+        self.assertEqual(DailyRhythm(self.world).verify()["minute"] - minute_before, 480)
         self.assertEqual(len(sleep_memories()), 1)
 
         # The body has genuinely left the bedroom. An authenticated old ID
