@@ -5,6 +5,8 @@ on:
     paths:
       - doctor_lives/experience_to_action.py
       - doctor_lives/cli.py
+      - tools/offline_wheelhouse.py
+      - tests/test_offline_wheelhouse.py
       - doctor_lives/lab_backup.py
       - pyproject.toml
       - tests/wheel_lab_start_smoke.py
@@ -71,9 +73,17 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_lab_home_bridge.py -v
 
-      - name: Build offline wheelhouse for Doctor and original pinned Laboratory
+      - name: Verify wheelhouse tamper and source-pin negative controls
+        run: python -m unittest discover -s tests -p test_offline_wheelhouse.py -v
+      - name: Build Doctor, original pinned Laboratory and dependency wheels
+        run: python -m pip wheel --wheel-dir "$RUNNER_TEMP/pretorius-wheels" . ./donor-laboratory
+      - name: Seal and verify complete wheelhouse against actual checked-out sources
         run: |
-          python -m pip wheel --wheel-dir "$RUNNER_TEMP/pretorius-wheels" . ./donor-laboratory
+          DOCTOR_SOURCE_SHA="$(git rev-parse HEAD)"
+          LAB_SOURCE_SHA="$(git -C donor-laboratory rev-parse HEAD)"
+          test "$LAB_SOURCE_SHA" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+          python tools/offline_wheelhouse.py seal --wheelhouse "$RUNNER_TEMP/pretorius-wheels" --doctor-sha "$DOCTOR_SOURCE_SHA" --lab-sha "$LAB_SOURCE_SHA"
+          python tools/offline_wheelhouse.py verify --wheelhouse "$RUNNER_TEMP/pretorius-wheels" --doctor-sha "$DOCTOR_SOURCE_SHA" --lab-sha "$LAB_SOURCE_SHA"
           python -m venv "$RUNNER_TEMP/pretorius-wheel-venv"
           "$RUNNER_TEMP/pretorius-wheel-venv/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/pretorius-wheels" "the-doctor-lives[laboratory]==0.5.0rc2"
       - name: Exercise installed console in clean external directory after world-commit crash
