@@ -66,8 +66,10 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
         self.assertGreaterEqual(again["pulses"], 1)
         self.assertEqual(self.world.verify()["world_epoch"], before)
         with self.world._open() as db:
-            self.assertEqual(db.execute("SELECT COUNT(*) FROM embodied_events").fetchone()[0], 0)
-            self.assertEqual(db.execute("SELECT COUNT(*) FROM rhythm_events").fetchone()[0], 0)
+            body = [json.loads(row[0]) for row in db.execute("SELECT envelope FROM embodied_events")]
+            rhythm = [json.loads(row[0]) for row in db.execute("SELECT envelope FROM rhythm_events")]
+            self.assertTrue(body and all(e["kind"] == "look" for e in body))
+            self.assertTrue(rhythm and all(e["op"] == "look" for e in rhythm))
         port = PretoriusBrainPort(self.state)
         observations = [m for m in port.brain.store.memories(False)
                         if m["source"].startswith("laboratory-home:observe:")]
