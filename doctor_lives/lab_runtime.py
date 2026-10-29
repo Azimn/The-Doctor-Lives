@@ -194,6 +194,18 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
             SubjectPort(SpatialHabitat(world)), authorized=True,
         )
         pending_before = bridge.pending_action_intents()
+        # A pending world-committed work action can be admitted by recovery.
+        # Verify its ORIGINAL Noesis ownership BEFORE that admission, not
+        # merely after recovery when the rhythm receipt is inspected.
+        for intent in pending_before:
+            if intent["event_id"] == event_id:
+                if intent["op"] not in ("repair", "experiment") or intent["args"] != {}:
+                    raise RuntimeError(
+                        "Work event ID already reserved for another Laboratory action"
+                    )
+                verify_noesis_work_replay(
+                    bridge, event_id=event_id, action=intent["op"],
+                )
         recovered = bridge.recover_pending_actions()
         if bridge.pending_action_intents():
             raise RuntimeError("Unreconciled Laboratory action; work denied")
