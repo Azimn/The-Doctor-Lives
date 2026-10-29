@@ -170,6 +170,62 @@ with _exclusive_host(Path(sys.argv[1])):
         self.assertGreater(after[1], before[1])
 
 
+    def test_two_actual_hosts_and_shared_world_alias_are_excluded(self):
+        # Both contenders are real lab-run CLI processes, not a synthetic
+        # helper holding the canonical state lease.
+        before = self._receipt_and_observation_counts()
+        command = [
+            sys.executable, "-m", "doctor_lives.cli", "--state",
+            str(self.state), "lab-run", "--world", str(self.world_path),
+            "--seconds", "5", "--interval-seconds", "0.25",
+        ]
+        first = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        try:
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                if first.poll() is not None:
+                    self.fail("first real host exited before lease test: "
+                              + first.stderr.read())
+                current = self._receipt_and_observation_counts()
+                if all(after > old for old, after in zip(before, current)):
+                    break
+                time.sleep(0.05)
+            else:
+                self.fail("first real host did not admit its genuine LOOK")
+            self.assertIsNone(first.poll())
+            stable = self._receipt_and_observation_counts()
+            denied = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+            self.assertNotEqual(denied.returncode, 0)
+            self.assertEqual(denied.stdout, "")
+            self.assertIn("host already active", denied.stderr)
+            self.assertEqual(self._receipt_and_observation_counts(), stable)
+        finally:
+            if first.poll() is None:
+                first.terminate()
+            stdout, stderr = first.communicate(timeout=15)
+        self.assertEqual(first.returncode, 0, stderr)
+        self.assertEqual(json.loads(stdout)["status"], "interrupted")
+
+        # No second Pretorius mind is created. Hold only the WORLD lease
+        # using an otherwise empty alternate state directory. A real
+        # canonical lab-run must refuse the shared world before LOOK.
+        from doctor_lives.lab_runtime import _exclusive_host
+        alternate = Path(self.temp.name) / "alternate-state"
+        alternate.mkdir()
+        stable = self._receipt_and_observation_counts()
+        with _exclusive_host(alternate, self.world_path):
+            denied = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+            self.assertNotEqual(denied.returncode, 0)
+            self.assertEqual(denied.stdout, "")
+            self.assertIn("world host already active", denied.stderr)
+            self.assertEqual(self._receipt_and_observation_counts(), stable)
+        resumed = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(json.loads(resumed.stdout)["status"], "completed")
+
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
