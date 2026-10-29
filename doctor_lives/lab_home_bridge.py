@@ -182,12 +182,23 @@ class DoctorHomeBridge:
                 result[domain] = {k: records[k] for k in keys if k in records}
         return _hash(result)
 
-    def observe(self):
-        """Coherent local world perception, not a prompted account of being at home."""
+    def observe(self, *, cancelled=None):
+        """Source-backed LOOK; optionally decline before physical perception.
+
+        The offline host passes its stop predicate. This closes cancellation
+        during bridge preflight, but cannot make an unrelated Event.set()
+        atomic with the original Laboratory's SQLite LOOK transaction.
+        """
+        if cancelled is not None and cancelled():
+            return None
         before = self.subject.verify()
         initial_station = self.subject.embodied.verify()["station"]
         with self.world._open() as db:
             before_state = self._physical_stamp(db)
+        # World verification and stamp collection may take time. Recheck at
+        # the last bridge-controlled boundary before original physical LOOK.
+        if cancelled is not None and cancelled():
+            return None
         frame = self.subject.observe()
         after = self.subject.verify()
         final_station = self.subject.embodied.verify()["station"]

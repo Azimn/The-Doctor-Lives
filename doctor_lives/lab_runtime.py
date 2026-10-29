@@ -211,8 +211,12 @@ def _run_laboratory_session(
     # Reconciliation may finish after an interrupt. Never start a fresh
     # observation when cancellation arrived during that recovery window.
     if not stop.is_set():
-        observed = bridge.observe()
-        subject_frames.append(observed["subject"])
+        # The outer check is not sufficient: cancellation may arrive while
+        # the bridge prepares its verified physical LOOK. The bridge must
+        # check the same stop predicate before invoking original Lab LOOK.
+        observed = bridge.observe(cancelled=stop.is_set)
+        if observed is not None:
+            subject_frames.append(observed["subject"])
     pulses = 0
     started = time.monotonic()
     deadline = started + duration_seconds

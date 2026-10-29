@@ -564,6 +564,65 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         self.assertRegex(report["clock"]["beat"], r"^@[0-9]{3}$")
         self.assertEqual(self._receipt_and_observation_counts(), stable)
 
+    def test_cancel_between_host_check_and_original_world_look(self):
+        # Two deterministic interleavings against the actual Laboratory.
+        # No synthetic receipts, simulated world or second BrainStore.
+        from unittest.mock import patch
+        from doctor_lives.lab_home_bridge import DoctorHomeBridge
+
+        original_observe = DoctorHomeBridge.observe
+        stop = threading.Event()
+        before = self._receipt_and_observation_counts()
+
+        def cancel_on_bridge_entry(bridge, *args, **kwargs):
+            # The host's outer stop.is_set() already returned False.
+            stop.set()
+            return original_observe(bridge, *args, **kwargs)
+
+        with patch.object(DoctorHomeBridge, "observe", cancel_on_bridge_entry):
+            report = run_laboratory(
+                self.state, self.world_path, duration_seconds=0.3,
+                interval_seconds=0.1, stop=stop,
+            )
+        self.assertEqual(report["status"], "interrupted")
+        self.assertEqual(report["subject_frames"], [])
+        self.assertEqual(report["pulses"], 0)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+
+        # Cancel during the bridge's original-world preflight, after its
+        # entry check but before SubjectPort.observe() can commit a LOOK.
+        stop = threading.Event()
+        original_stamp = DoctorHomeBridge._physical_stamp
+
+        def cancel_during_preflight(db):
+            stamp = original_stamp(db)
+            stop.set()
+            return stamp
+
+        with patch.object(DoctorHomeBridge, "_physical_stamp",
+                          staticmethod(cancel_during_preflight)):
+            report = run_laboratory(
+                self.state, self.world_path, duration_seconds=0.3,
+                interval_seconds=0.1, stop=stop,
+            )
+        self.assertEqual(report["status"], "interrupted")
+        self.assertEqual(report["subject_frames"], [])
+        self.assertEqual(report["pulses"], 0)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+
+        # Positive control: the identical real world and canonical brain
+        # still admit an authentic observation when not cancelled.
+        positive = run_laboratory(
+            self.state, self.world_path, duration_seconds=0.3,
+            interval_seconds=0.1, stop=threading.Event(),
+        )
+        self.assertEqual(positive["status"], "completed")
+        self.assertEqual(len(positive["subject_frames"]), 1)
+        after = self._receipt_and_observation_counts()
+        self.assertGreater(after[0], before[0])
+        self.assertGreater(after[1], before[1])
+        self.assertGreater(after[2], before[2])
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
