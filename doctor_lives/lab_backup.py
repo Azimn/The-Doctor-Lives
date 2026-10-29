@@ -129,7 +129,9 @@ def restore(archive: Path, state: Path, world: Path) -> dict:
         if path.is_file() and path != archive / "manifest.json":
             actual[path.relative_to(archive).as_posix()] = path
     if set(actual) != set(files):
-        raise RuntimeError("Backup archive has missing or unexpected members")
+        raise RuntimeError("Backup archive has missing or unexpected members: "
+                           + repr({"missing": sorted(set(files) - set(actual)),
+                                   "unexpected": sorted(set(actual) - set(files))}))
     for name, info in files.items():
         parts = PurePosixPath(name).parts
         if not parts or any(p in (".", "..") for p in parts) or parts[0] not in ("brain", "world.sqlite3", "action-intents.sqlite3"):
