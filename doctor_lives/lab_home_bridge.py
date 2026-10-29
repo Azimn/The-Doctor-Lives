@@ -76,6 +76,10 @@ def _row(db, table, event_id):
     return parsed, event_hash
 
 
+class _ActionReceiptMismatch(RuntimeError):
+    """Authenticated receipt belongs to a different action request."""
+
+
 class DoctorHomeBridge:
     """Explicitly authorized Laboratory access on the *actual* PretoriusBrainPort.
 
@@ -207,7 +211,7 @@ class DoctorHomeBridge:
         """Prevent a retry from binding an old receipt to a different request."""
         if op == "walk":
             if event.get("kind") != "move" or event.get("after_station") != args.get("station"):
-                raise RuntimeError("Mismatched embodied movement receipt")
+                raise _ActionReceiptMismatch("Mismatched embodied movement receipt")
         elif op == "book":
             action = event.get("action", {})
             expected = {"op": args.get("operation"), "book_id": args.get("book_id")}
@@ -215,23 +219,23 @@ class DoctorHomeBridge:
                 if key in args:
                     expected[key] = args[key]
             if action != expected:
-                raise RuntimeError("Mismatched book operation receipt")
+                raise _ActionReceiptMismatch("Mismatched book operation receipt")
         elif op in ("take_book", "put_book"):
             action = event.get("action", {})
             expected = "take" if op == "take_book" else "put"
             if (action.get("op") != expected or
                     action.get("book_id") != args.get("book_id") or
                     (op == "put_book" and action.get("anchor_id") != args.get("anchor_id"))):
-                raise RuntimeError("Mismatched custody receipt")
+                raise _ActionReceiptMismatch("Mismatched custody receipt")
         elif op == "measure":
             if any(event.get(k) != v for k, v in {
                 "instrument": args.get("instrument"),
                 "object_id": args.get("object_id"),
                 "quantity": args.get("quantity"),
             }.items()):
-                raise RuntimeError("Mismatched instrument receipt")
+                raise _ActionReceiptMismatch("Mismatched instrument receipt")
         elif event.get("op") != op or event.get("args") != args:
-            raise RuntimeError("Mismatched domestic/rhythm receipt")
+            raise _ActionReceiptMismatch("Mismatched domestic/rhythm receipt")
 
     def _intent_path(self) -> Path:
         """Host action reservations live beside, never inside, the world DB."""
@@ -294,12 +298,27 @@ class DoctorHomeBridge:
                             "SELECT 1 FROM sqlite_master "
                             "WHERE type='table' AND name=?", (table,),
                         ).fetchone() is not None
-                        has_receipt = exists and world_db.execute(
+                        if not exists:
+                            # A missing authoritative table may indicate a
+                            # migration or damaged world, never proven absence.
+                            raise RuntimeError("Missing Laboratory action receipt table")
+                        row = world_db.execute(
                             "SELECT 1 FROM " + table +
                             " WHERE event_id=? LIMIT 1", (event_id,),
-                        ).fetchone() is not None
-                    if has_receipt:
-                        db.execute("ROLLBACK")  # uncertain post-world admission
+                        ).fetchone()
+                        keep_pending = row is not None
+                        if keep_pending:
+                            # Same-domain event IDs can belong to an entirely
+                            # different physical request. Authenticate the
+                            # receipt AND compare its action identity before
+                            # retaining a recoverable reservation.
+                            event, _ = _row(world_db, table, event_id)
+                            try:
+                                self._check_action_proof(op, args, event)
+                            except _ActionReceiptMismatch:
+                                keep_pending = False
+                    if keep_pending:
+                        db.execute("ROLLBACK")  # genuine/uncertain post-world action
                     else:
                         db.execute(
                             "DELETE FROM doctor_action_intents "
