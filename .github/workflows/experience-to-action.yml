@@ -5,6 +5,8 @@ on:
     paths:
       - doctor_lives/experience_to_action.py
       - doctor_lives/cli.py
+      - pyproject.toml
+      - tests/wheel_lab_start_smoke.py
       - doctor_lives/lab_home_bridge.py
       - doctor_lives/noesis_situated_choice.py
       - doctor_lives/noesis_consequences.py
@@ -67,3 +69,15 @@ jobs:
           PYTHONPATH: donor-laboratory
         run: |
           python -m unittest discover -s tests -p test_lab_home_bridge.py -v
+
+      - name: Build offline wheelhouse for Doctor and original pinned Laboratory
+        run: |
+          python -m pip wheel --wheel-dir "$RUNNER_TEMP/pretorius-wheels" . ./donor-laboratory
+          python -m venv "$RUNNER_TEMP/pretorius-wheel-venv"
+          "$RUNNER_TEMP/pretorius-wheel-venv/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/pretorius-wheels" "the-doctor-lives[laboratory]==0.5.0rc2"
+      - name: Exercise installed console in clean external directory after world-commit crash
+        env:
+          PYTHONPATH: ""
+        run: |
+          cd "$RUNNER_TEMP"
+          PATH="$RUNNER_TEMP/pretorius-wheel-venv/bin:$PATH" "$RUNNER_TEMP/pretorius-wheel-venv/bin/python" "$GITHUB_WORKSPACE/tests/wheel_lab_start_smoke.py"
