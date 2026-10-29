@@ -21,6 +21,7 @@ def parser() -> argparse.ArgumentParser:
     x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True)
     x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0)
     x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely")
+    x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action")
     x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
     x=sp.add_parser("lab-restore"); x.add_argument("--world", type=Path, required=True); x.add_argument("--archive", type=Path, required=True)
     x=sp.add_parser("ingest"); x.add_argument("text"); x.add_argument("--source",default="world"); x.add_argument("--kind",default="observation"); x.add_argument("--actor"); x.add_argument("--external",action="store_true"); x.add_argument("--valence",type=float,default=0.0); x.add_argument("--arousal",type=float,default=0.0); x.add_argument("--threat",type=float,default=0.0); x.add_argument("--novelty",type=float,default=0.0); x.add_argument("--authority",type=float,default=0.0); x.add_argument("--autonomy",type=float,default=0.0)
@@ -67,6 +68,10 @@ def main(argv=None) -> int:
     if a.cmd == "lab-sleep":
         from .lab_runtime import sleep_laboratory
         emit(sleep_laboratory(a.state, a.world, event_id=a.event_id))
+        return 0
+    if a.cmd == "lab-work":
+        from .lab_runtime import work_laboratory
+        emit(work_laboratory(a.state, a.world, event_id=a.event_id))
         return 0
     if a.cmd == "lab-run":
         import signal

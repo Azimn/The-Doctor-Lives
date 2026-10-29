@@ -161,6 +161,114 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         }
 
 
+
+def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
+    """One operator-offered bench opportunity, chosen by the ORIGINAL Noesis.
+
+    The host cannot select repair versus experiment. Original Laboratory
+    physics supplies eligibility and the existing authorized bridge supplies
+    durable action intent, source-backed memory, and cold crash recovery.
+    This is a bounded externally offered opportunity, not self-initiation.
+    """
+    from .lab_home_bridge import _ACTION_DOMAINS, _SAFE_ID, _row
+
+    # Deny malformed IDs before opening the canonical brain or creating LOOK.
+    if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+        raise ValueError("Stable bounded Laboratory work action ID required")
+    with _exclusive_host(state, world):
+        if not (state / "brain.sqlite3").is_file() or not (
+            state / "pretorius_recurrent.npz"
+        ).is_file():
+            raise FileNotFoundError(
+                "Existing canonical Doctor BrainStore and neural checkpoint required"
+            )
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+        from .organs import SixOrganRuntime
+        from .noesis_lab_work import propose_noesis_work, execute_noesis_work
+
+        runtime = SixOrganRuntime.open(state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(world)), authorized=True,
+        )
+        pending_before = bridge.pending_action_intents()
+        recovered = bridge.recover_pending_actions()
+        if bridge.pending_action_intents():
+            raise RuntimeError("Unreconciled Laboratory action; work denied")
+        if len(recovered) != len(pending_before):
+            raise RuntimeError("Laboratory recovery identity count changed")
+        subject_frames = [
+            item["subject"] for intent, item in zip(pending_before, recovered)
+            if intent["event_id"] != event_id
+        ]
+
+        # A stable ID is a world-wide intent identity, not just a rhythm row.
+        # Refuse a foreign embodied/book ID before making a new Noesis choice.
+        # A historical work receipt is replayed, never executed a second time
+        # and never misreported as a newly selected cognitive action.
+        with bridge.world._open() as db:
+            tables = {
+                row[0] for row in db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            for table in sorted(set(_ACTION_DOMAINS.values()) - {"rhythm_events"}):
+                if table in tables and db.execute(
+                    "SELECT 1 FROM " + table + " WHERE event_id=? LIMIT 1",
+                    (event_id,),
+                ).fetchone():
+                    raise RuntimeError(
+                        "Work event ID already belongs to another Laboratory action"
+                    )
+            prior = (
+                _row(db, "rhythm_events", event_id)[0]
+                if db.execute(
+                    "SELECT 1 FROM rhythm_events WHERE event_id=?",
+                    (event_id,),
+                ).fetchone()
+                else None
+            )
+        if prior is not None:
+            action = prior.get("op")
+            if action not in ("repair", "experiment") or prior.get("args") != {}:
+                raise RuntimeError("Work event ID belongs to non-work rhythm action")
+            replay = bridge.act(action, event_id=event_id)
+            runtime.checkpoint()
+            subject_frames.append(replay["subject"])
+            clock = engineer_time()
+            return {
+                "schema": "doctor-laboratory-offline-work.v1",
+                "status": replay["status"],
+                "action": action,
+                "selection": "historical_world_receipt_replay",
+                "recovered": len(recovered),
+                "subject_frames": subject_frames,
+                "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+            }
+
+        # Reuse the already-tested Noesis choice and original Lab motor bridge.
+        # Neither the CLI nor the scheduler supplies an action preference.
+        proposal = propose_noesis_work(
+            bridge, outcome_learning_enabled=True,
+        )
+        executed = execute_noesis_work(
+            bridge, decision_id=proposal.decision_id,
+            event_id=event_id, authorized_world_action=True,
+        )
+        runtime.checkpoint()
+        subject_frames.append(executed["world"]["subject"])
+        clock = engineer_time()
+        return {
+            "schema": "doctor-laboratory-offline-work.v1",
+            "status": executed["world"]["status"],
+            "action": executed["action"],
+            "selection": "original_noesis",
+            "recovered": len(recovered),
+            "subject_frames": subject_frames,
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        }
+
+
 def _run_laboratory_session(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,

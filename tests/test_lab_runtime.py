@@ -623,6 +623,150 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         self.assertGreater(after[1], before[1])
         self.assertGreater(after[2], before[2])
 
+
+    def _work_cli(self, event_id):
+        return subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-work", "--world", str(self.world_path),
+             "--event-id", event_id],
+            capture_output=True, text=True, timeout=25,
+        )
+
+    def test_cli_noesis_work_uses_lived_consequence_and_cold_replay(self):
+        # Actual Lab navigation and wear are source-backed preparatory acts.
+        # The operator only offers bench work. No action class is specified.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="work-setup-center",
+                   station="station:center")
+        bridge.act("walk", event_id="work-setup-bench",
+                   station="station:bench")
+        wear = bridge.act("experiment", event_id="work-setup-real-wear")
+        self.assertEqual(wear["status"], "admitted")
+        runtime.checkpoint()
+        with self.world._open() as db:
+            before_state = json.loads(db.execute(
+                "SELECT value FROM rhythm_meta WHERE key='state'"
+            ).fetchone()[0])
+        self.assertEqual(before_state["apparatus"], 1)
+        first = self._work_cli("noesis-live-work-001")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        report = json.loads(first.stdout)
+        self.assertEqual(report["schema"], "doctor-laboratory-offline-work.v1")
+        self.assertEqual(report["status"], "admitted")
+        self.assertEqual(report["action"], "repair")
+        self.assertEqual(report["selection"], "original_noesis")
+        self.assertEqual(report["recovered"], 0)
+        self.assertTrue(report["subject_frames"][-1]["inner"].startswith("I "))
+        self.assertRegex(report["clock"]["beat"], r"^@[0-9]{3}$")
+        self.assertTrue(report["clock"]["utc"].endswith("Z"))
+        self.assertNotIn("action_scores", first.stdout)
+        self.assertNotIn("neural_scores", first.stdout)
+        self.assertNotIn("world_epoch", first.stdout)
+        with self.world._open() as db:
+            after_state = json.loads(db.execute(
+                "SELECT value FROM rhythm_meta WHERE key='state'"
+            ).fetchone()[0])
+            receipt = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("noesis-live-work-001",),
+            ).fetchone()
+            work_count = db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                ("noesis-live-work-001",),
+            ).fetchone()[0]
+        self.assertEqual(after_state["apparatus"], 3)
+        self.assertEqual(after_state["repairs"], 1)
+        self.assertEqual(work_count, 1)
+        self.assertIsNotNone(receipt)
+        port = PretoriusBrainPort(self.state)
+        lived = [m for m in port.brain.store.memories(False)
+                 if m["source"] == "laboratory-home:action:" + receipt[0]]
+        self.assertEqual(len(lived), 1)
+        self.assertEqual(lived[0]["evidence_class"], "lived_runtime_memory")
+        with port.brain.store.connect() as db:
+            row = db.execute(
+                "SELECT selected_action,state_pressure_json FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice' ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+            decisions_before = db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0]
+        self.assertEqual(row["selected_action"], "repair")
+        audit = json.loads(row["state_pressure_json"])
+        self.assertEqual(audit["selector_authority"], "original_noesis")
+        self.assertIn(wear["memory_id"], audit["used_outcome_memory_ids"])
+
+        # Move away in the ORIGINAL world and cold-replay the same stable ID.
+        # Replaying must not require bench eligibility or create a new choice.
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="work-leave-bench",
+                   station="station:center")
+        runtime.checkpoint()
+        stable = self._receipt_and_observation_counts()
+        replay = self._work_cli("noesis-live-work-001")
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        old = json.loads(replay.stdout)
+        self.assertEqual(old["status"], "already_admitted")
+        self.assertEqual(old["action"], "repair")
+        self.assertEqual(old["selection"], "historical_world_receipt_replay")
+        self.assertEqual(len(old["subject_frames"]), 1)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                ("noesis-live-work-001",),
+            ).fetchone()[0], 1)
+        port = PretoriusBrainPort(self.state)
+        self.assertEqual(sum(
+            m["source"] == "laboratory-home:action:" + receipt[0]
+            for m in port.brain.store.memories(False)
+        ), 1)
+        with port.brain.store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0], decisions_before)
+
+    def test_cli_work_denies_off_bench_and_cross_domain_id_before_look(self):
+        before = self._receipt_and_observation_counts()
+        denied = self._work_cli("work-off-bench")
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("No bench work opportunity", denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="work-foreign-id",
+                   station="station:center")
+        bridge.act("walk", event_id="work-foreign-to-bench",
+                   station="station:bench")
+        runtime.checkpoint()
+        stable = self._receipt_and_observation_counts()
+        denied = self._work_cli("work-foreign-id")
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("belongs to another Laboratory action", denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        malformed = self._work_cli("not a safe id!")
+        self.assertNotEqual(malformed.returncode, 0)
+        self.assertEqual(malformed.stdout, "")
+        self.assertIn("Stable bounded Laboratory work action ID", malformed.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
