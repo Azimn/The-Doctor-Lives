@@ -19,6 +19,8 @@ def parser() -> argparse.ArgumentParser:
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
     x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True)
+    x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
+    x=sp.add_parser("lab-restore"); x.add_argument("--world", type=Path, required=True); x.add_argument("--archive", type=Path, required=True)
     x=sp.add_parser("ingest"); x.add_argument("text"); x.add_argument("--source",default="world"); x.add_argument("--kind",default="observation"); x.add_argument("--actor"); x.add_argument("--external",action="store_true"); x.add_argument("--valence",type=float,default=0.0); x.add_argument("--arousal",type=float,default=0.0); x.add_argument("--threat",type=float,default=0.0); x.add_argument("--novelty",type=float,default=0.0); x.add_argument("--authority",type=float,default=0.0); x.add_argument("--autonomy",type=float,default=0.0)
     x=sp.add_parser("think"); x.add_argument("--trigger",default="voluntary")
     x=sp.add_parser("heartbeat"); x.add_argument("--ticks",type=int,default=1)
@@ -52,6 +54,13 @@ def main(argv=None) -> int:
             "threat": a.threat, "novelty": a.novelty,
             "authority": a.authority, "autonomy": a.autonomy,
         }))
+        return 0
+    if a.cmd in ("lab-backup", "lab-restore"):
+        from .lab_backup import backup, restore
+        if a.cmd == "lab-backup":
+            emit(backup(a.state, a.world, a.output))
+        else:
+            emit(restore(a.archive, a.state, a.world))
         return 0
     if a.cmd == "lab-start":
         # Explicit local operator entrypoint. The world and the original
