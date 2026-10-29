@@ -283,23 +283,21 @@ class DoctorHomeBridge:
             except BaseException:
                 # A rejected pre-world action must not poison startup replay.
                 # Keep the journal lock while consulting the original world's
-                # durable receipts. Only a PROVEN absence across all known
-                # physical action domains permits removal of this reservation.
+                # durable receipts. Only a PROVEN absence in the exact
+                # action's authoritative domain permits removal. A receipt
+                # in another domain proves a conflicting ID, not this action.
                 # If the world cannot be inspected, fail closed: leave pending.
                 try:
                     with self.world._open() as world_db:
-                        tables = {
-                            row[0] for row in world_db.execute(
-                                "SELECT name FROM sqlite_master WHERE type='table'"
-                            )
-                        }
-                        has_receipt = any(
-                            world_db.execute(
-                                "SELECT 1 FROM " + table +
-                                " WHERE event_id=? LIMIT 1", (event_id,),
-                            ).fetchone() is not None
-                            for table in sorted(set(_ACTION_DOMAINS.values()) & tables)
-                        )
+                        table = _ACTION_DOMAINS[op]
+                        exists = world_db.execute(
+                            "SELECT 1 FROM sqlite_master "
+                            "WHERE type='table' AND name=?", (table,),
+                        ).fetchone() is not None
+                        has_receipt = exists and world_db.execute(
+                            "SELECT 1 FROM " + table +
+                            " WHERE event_id=? LIMIT 1", (event_id,),
+                        ).fetchone() is not None
                     if has_receipt:
                         db.execute("ROLLBACK")  # uncertain post-world admission
                     else:
