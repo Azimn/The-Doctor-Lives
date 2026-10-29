@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import os
+import subprocess
+import sys
 
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.lab_home_bridge import DoctorHomeBridge
@@ -29,6 +32,75 @@ def brain_config():
     )
     return c
 
+
+
+# This fixture is executed by a fresh interpreter. os._exit deliberately
+# bypasses Python cleanup, simulating process loss at either commit boundary.
+# The original Laboratory and original BrainStore are reopened from disk.
+_COLD_CRASH_CHILD = r'''
+import json
+import os
+from pathlib import Path
+import sys
+
+from doctor_lives.chassis import PretoriusBrainPort
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.subject_port import SubjectPort
+
+world_path, brain_path, intent_path, mode = sys.argv[1:]
+intent = json.loads(Path(intent_path).read_text(encoding="utf-8"))
+assert set(intent) == {"event_id", "op"} and intent["op"] == "repair"
+event_id = intent["event_id"]
+world = SpatialHabitat(world_path)
+subject = SubjectPort(world)
+doctor = PretoriusBrainPort(brain_path)
+bridge = DoctorHomeBridge(doctor, subject, authorized=True)
+
+def receipt():
+    with world._open() as db:
+        row = db.execute(
+            "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+            (event_id,),
+        ).fetchone()
+    assert row is not None, "No durable Laboratory action receipt"
+    return "laboratory-home:action:" + row[0]
+
+if mode in ("world_commit", "brain_commit"):
+    original = bridge._admit_verified
+    def interrupt(frame, source, **kwargs):
+        assert source == receipt(), "Wrong physical receipt at crash boundary"
+        if mode == "world_commit":
+            os._exit(73)
+        admitted = original(frame, source, **kwargs)
+        assert admitted["status"] == "admitted"
+        assert sum(m["source"] == source
+                   for m in doctor.brain.store.memories(False)) == 1
+        os._exit(74)
+    bridge._admit_verified = interrupt
+    bridge.act(intent["op"], event_id=event_id)
+    raise AssertionError("Crash interception did not execute")
+elif mode == "recover":
+    outcome = bridge.act(intent["op"], event_id=event_id)
+    source = receipt()
+    memory = doctor.brain.store.get_memory(outcome["memory_id"])
+    assert memory["source"] == source
+    assert memory["text"] == outcome["subject"]["inner"]
+    assert memory["evidence_class"] == "lived_runtime_memory"
+    denied = False
+    try:
+        bridge.act("experiment", event_id=event_id)
+    except RuntimeError:
+        denied = True
+    assert denied, "Conflicting replay unexpectedly accepted"
+    print(json.dumps({
+        "status": outcome["status"], "memory_id": outcome["memory_id"],
+        "source": source, "text": memory["text"],
+        "conflict_denied": denied,
+    }), flush=True)
+else:
+    raise AssertionError("Unknown child mode")
+'''
 
 @unittest.skipUnless(LAB_AVAILABLE, "Requires real pinned physical Laboratory")
 class VerifiedExperienceToActionTests(unittest.TestCase):
@@ -228,6 +300,104 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
             )
         self.assertEqual(self.history_count("repair"), 0)
 
+
+
+    def _assert_cold_process_recovery(self, *, boundary, exit_code):
+        """Force process death, reopen both persisted authorities, and replay.
+
+        The durable intent file is the host's action-identity recovery source.
+        Without that record a host cannot safely infer which action to replay.
+        This test does not claim to solve missing-intent recovery.
+        """
+        self.wear_by_actually_working()
+        read_id = self.read_real_page()
+        self.assertEqual(
+            propose_bench_action(self.bridge, read_memory_id=read_id).action,
+            "repair",
+        )
+        self.port.save()
+        root = Path(self.tmp.name)
+        intent_path = root / "pending-action.json"
+        with intent_path.open("w", encoding="utf-8") as handle:
+            json.dump({"event_id": "cold-" + boundary, "op": "repair"}, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        world_path = root / "world.sqlite3"
+        brain_path = root / "brain"
+
+        def run_child(mode):
+            return subprocess.run(
+                [sys.executable, "-c", _COLD_CRASH_CHILD,
+                 str(world_path), str(brain_path), str(intent_path), mode],
+                cwd=Path(__file__).resolve().parents[1],
+                capture_output=True, text=True, timeout=120, check=False,
+            )
+
+        crashed = run_child(boundary)
+        self.assertEqual(
+            crashed.returncode, exit_code,
+            f"Child did not die at {boundary}: {crashed.stderr}\n{crashed.stdout}",
+        )
+        with self.world._open() as db:
+            rows = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("cold-" + boundary,),
+            ).fetchall()
+        self.assertEqual(len(rows), 1)
+        source = "laboratory-home:action:" + rows[0][0]
+        self.assertEqual(self.history_count("repair"), 1)
+        self.assertEqual(self.world_state()["repairs"], 1)
+        self.assertEqual(self.world_state()["apparatus"], 3)
+
+        # This read is a NEW BrainStore object after the child has exited.
+        cold_brain = PretoriusBrainPort(brain_path)
+        before = [
+            m for m in cold_brain.brain.store.memories(False)
+            if m["source"] == source
+        ]
+        self.assertEqual(len(before), 0 if boundary == "world_commit" else 1)
+
+        recovered = run_child("recover")
+        self.assertEqual(
+            recovered.returncode, 0,
+            f"Cold recovery failed: {recovered.stderr}\n{recovered.stdout}",
+        )
+        result = json.loads(recovered.stdout)
+        self.assertEqual(
+            result["status"],
+            "admitted" if boundary == "world_commit" else "already_admitted",
+        )
+        self.assertEqual(result["source"], source)
+        self.assertEqual(result["text"], "I replace the worn component in my apparatus.")
+        self.assertTrue(result["conflict_denied"])
+
+        # Another fresh interpreter must replay the exact identity, not act again.
+        repeated = run_child("recover")
+        self.assertEqual(
+            repeated.returncode, 0,
+            f"Cold replay failed: {repeated.stderr}\n{repeated.stdout}",
+        )
+        replay = json.loads(repeated.stdout)
+        self.assertEqual(replay["status"], "already_admitted")
+        self.assertEqual(replay["memory_id"], result["memory_id"])
+        self.assertEqual(replay["source"], source)
+        self.assertEqual(self.history_count("repair"), 1)
+        self.assertEqual(self.world_state()["repairs"], 1)
+        self.assertEqual(self.history_count("experiment"), 1)
+        final_brain = PretoriusBrainPort(brain_path)
+        self.assertEqual(sum(
+            m["source"] == source for m in final_brain.brain.store.memories(False)
+        ), 1)
+
+    def test_cold_process_exit_after_world_before_brain_recovery(self):
+        self._assert_cold_process_recovery(
+            boundary="world_commit", exit_code=73,
+        )
+
+    def test_cold_process_exit_after_brain_before_host_ack_recovery(self):
+        self._assert_cold_process_recovery(
+            boundary="brain_commit", exit_code=74,
+        )
 
     def test_crash_after_real_repair_world_commit_recovers_exactly_once(self):
         """R5: an interrupted physical repair must not be lost or duplicated.
