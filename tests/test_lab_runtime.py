@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 
 from doctor_lives.chassis import PretoriusBrainPort
@@ -122,6 +123,52 @@ raise SystemExit(main(sys.argv[1:]))
         self.assertEqual(report["recovered"], 0)
         self.assertEqual(report["subject_frames"], [])
         self.assertEqual(self._receipt_and_observation_counts(), before)
+
+    def test_second_process_denied_and_crashed_holder_releases_lease(self):
+        # A distinct process holds the original BrainStore lease without
+        # touching either authority. The real CLI must fail before LOOK.
+        ready = Path(self.temp.name) / "lease-ready"
+        script = """
+import sys
+import time
+from pathlib import Path
+from doctor_lives.lab_runtime import _exclusive_host
+with _exclusive_host(Path(sys.argv[1])):
+    Path(sys.argv[2]).write_text("ready", encoding="utf-8")
+    time.sleep(30)
+"""
+        holder = subprocess.Popen(
+            [sys.executable, "-c", script, str(self.state), str(ready)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        try:
+            for _ in range(200):
+                if ready.is_file():
+                    break
+                if holder.poll() is not None:
+                    self.fail("lease holder exited: " + holder.stderr.read())
+                time.sleep(0.05)
+            self.assertTrue(ready.is_file(), "lease holder did not start")
+            before = self._receipt_and_observation_counts()
+            denied = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+            self.assertNotEqual(denied.returncode, 0)
+            self.assertEqual(denied.stdout, "")
+            self.assertIn("host already active", denied.stderr)
+            self.assertEqual(self._receipt_and_observation_counts(), before)
+        finally:
+            holder.terminate()
+            holder.communicate(timeout=10)
+        # OS lock ownership dies with the process. A stale lockfile must not
+        # prevent a fresh, genuine Laboratory session or its source receipts.
+        resumed = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        report = json.loads(resumed.stdout)
+        self.assertEqual(report["status"], "completed")
+        self.assertTrue(report["subject_frames"])
+        after = self._receipt_and_observation_counts()
+        self.assertGreater(after[0], before[0])
+        self.assertGreater(after[1], before[1])
+
 
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
