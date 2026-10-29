@@ -249,12 +249,17 @@ def main():
 
             damaged_archive = root / f"damaged-{damaged_field}-archive"
             shutil.copytree(foreign_archive, damaged_archive)
-            # The source is WAL-mode. Copy through SQLite's online backup
-            # rather than copying only its main file and losing WAL changes.
-            member = damaged_archive / "world.sqlite3"
+            # The source is WAL-mode. Checkpoint the corrupted metadata into
+            # the main database before copying bytes into the sealed archive.
+            # Copying only a WAL-mode main file without checkpointing would
+            # silently restore the original valid metadata.
             with sqlite3.connect(damaged_world) as source_db:
-                with sqlite3.connect(member) as archive_db:
-                    source_db.backup(archive_db)
+                checkpoint = source_db.execute(
+                    "PRAGMA wal_checkpoint(TRUNCATE)"
+                ).fetchone()
+                assert checkpoint[0] == 0, checkpoint
+            member = damaged_archive / "world.sqlite3"
+            shutil.copyfile(damaged_world, member)
             # Never open a sealed archive SQLite member directly: the
             # original Laboratory can create -wal/-shm files on open.
             with tempfile.TemporaryDirectory(prefix="damaged-world-proof-") as proof_dir:
