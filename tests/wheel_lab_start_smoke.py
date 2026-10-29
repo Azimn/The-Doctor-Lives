@@ -212,7 +212,7 @@ def main():
         # restore before creating an archive or a new authority.
         from pretorius_lab.physics import Conflict
         for damaged_field, replacement in (
-            ("world_epoch", "corrupted-world-epoch"),
+            ("state", {"tampered": True}),
             ("head_hash", "f" * 64),
         ):
             damaged_world = root / f"damaged-{damaged_field}.sqlite3"
