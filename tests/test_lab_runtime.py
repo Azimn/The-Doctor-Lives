@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -201,6 +202,45 @@ with _exclusive_host(Path(sys.argv[1])):
             self.assertEqual(denied.stdout, "")
             self.assertIn("host already active", denied.stderr)
             self.assertEqual(self._receipt_and_observation_counts(), stable)
+
+            # A second real CLI has an EMPTY state, not another Doctor mind.
+            # Its world lock must deny the symlink alias before brain startup.
+            alternate = Path(self.temp.name) / "alias-contender-empty-state"
+            alternate.mkdir()
+            def alias_cli(path):
+                return subprocess.run(
+                    [sys.executable, "-m", "doctor_lives.cli", "--state",
+                     str(alternate), "lab-run", "--world", str(path),
+                     "--seconds", "0.3", "--interval-seconds", "0.1"],
+                    capture_output=True, text=True, timeout=25,
+                )
+            if os.name != "nt":
+                symlink = Path(self.temp.name) / "symlink-world.sqlite3"
+                symlink.symlink_to(self.world_path)
+                try:
+                    denied_symlink = alias_cli(symlink)
+                    self.assertNotEqual(denied_symlink.returncode, 0)
+                    self.assertEqual(denied_symlink.stdout, "")
+                    self.assertIn("world host already active", denied_symlink.stderr)
+                    self.assertEqual(self._receipt_and_observation_counts(), stable)
+                finally:
+                    symlink.unlink()
+
+            # The same SQLite inode under a different hardlink name previously
+            # acquired a different pathname sidecar. Both paths must now fail
+            # closed, with zero new LOOK receipts or lived memories.
+            hardlink = Path(self.temp.name) / "hardlink-world.sqlite3"
+            hardlink.hardlink_to(self.world_path)
+            try:
+                self.assertTrue(hardlink.samefile(self.world_path))
+                self.assertGreater(self.world_path.stat().st_nlink, 1)
+                denied_hardlink = alias_cli(hardlink)
+                self.assertNotEqual(denied_hardlink.returncode, 0)
+                self.assertEqual(denied_hardlink.stdout, "")
+                self.assertIn("hardlinks are unsupported", denied_hardlink.stderr)
+                self.assertEqual(self._receipt_and_observation_counts(), stable)
+            finally:
+                hardlink.unlink()
         finally:
             if first.poll() is None:
                 first.terminate()
@@ -225,6 +265,34 @@ with _exclusive_host(Path(sys.argv[1])):
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
         self.assertEqual(json.loads(resumed.stdout)["status"], "completed")
 
+
+    def test_hardlinked_world_is_denied_without_holder_and_recovers(self):
+        # Fail closed even when no competing lease exists. Do not silently
+        # admit a world inode whose sidecar can be bypassed by another name.
+        alias = Path(self.temp.name) / "hardlink-unlocked-world.sqlite3"
+        alias.hardlink_to(self.world_path)
+        before = self._receipt_and_observation_counts()
+        try:
+            for path in (self.world_path, alias):
+                with self.subTest(path=path):
+                    denied = subprocess.run(
+                        [sys.executable, "-m", "doctor_lives.cli", "--state",
+                         str(self.state), "lab-run", "--world", str(path),
+                         "--seconds", "0.3", "--interval-seconds", "0.1"],
+                        capture_output=True, text=True, timeout=25,
+                    )
+                    self.assertNotEqual(denied.returncode, 0)
+                    self.assertEqual(denied.stdout, "")
+                    self.assertIn("hardlinks are unsupported", denied.stderr)
+                    self.assertEqual(self._receipt_and_observation_counts(), before)
+        finally:
+            alias.unlink()
+        resumed = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(json.loads(resumed.stdout)["status"], "completed")
+        after = self._receipt_and_observation_counts()
+        self.assertGreater(after[0], before[0])
+        self.assertGreater(after[1], before[1])
 
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
