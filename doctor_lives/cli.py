@@ -18,6 +18,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
+    x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True)
     x=sp.add_parser("ingest"); x.add_argument("text"); x.add_argument("--source",default="world"); x.add_argument("--kind",default="observation"); x.add_argument("--actor"); x.add_argument("--external",action="store_true"); x.add_argument("--valence",type=float,default=0.0); x.add_argument("--arousal",type=float,default=0.0); x.add_argument("--threat",type=float,default=0.0); x.add_argument("--novelty",type=float,default=0.0); x.add_argument("--authority",type=float,default=0.0); x.add_argument("--autonomy",type=float,default=0.0)
     x=sp.add_parser("think"); x.add_argument("--trigger",default="voluntary")
     x=sp.add_parser("heartbeat"); x.add_argument("--ticks",type=int,default=1)
@@ -51,6 +52,39 @@ def main(argv=None) -> int:
             "threat": a.threat, "novelty": a.novelty,
             "authority": a.authority, "autonomy": a.autonomy,
         }))
+        return 0
+    if a.cmd == "lab-start":
+        # Explicit local operator entrypoint. The world and the original
+        # neural checkpoint must already exist; never invent either on typo.
+        if not a.world.is_file():
+            raise FileNotFoundError("Existing authoritative Laboratory world required")
+        if not (a.state / "brain.sqlite3").is_file() or not (
+            a.state / "pretorius_recurrent.npz"
+        ).is_file():
+            raise FileNotFoundError("Existing canonical Doctor BrainStore and neural checkpoint required")
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+        from .engineer_time import engineer_time
+        from .organs import SixOrganRuntime
+
+        # All six functional ports wrap the SAME original brain. This host
+        # only resumes actions previously authorized and durably reserved.
+        # It never chooses a new goal or physical action on behalf of Noesis.
+        runtime = SixOrganRuntime.open(a.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(a.world)), authorized=True,
+        )
+        recovered = bridge.recover_pending_actions()
+        if bridge.pending_action_intents():
+            raise RuntimeError("Unreconciled Laboratory action; startup denied")
+        clock = engineer_time()
+        emit({
+            "schema": "doctor-laboratory-offline-start.v1",
+            "status": "ready",
+            "recovered": len(recovered),
+            "subject_frames": [item["subject"] for item in recovered],
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        })
         return 0
     brain=PretoriusBrain(a.state)
     if a.cmd=="init": brain.save(); emit(brain.status())
