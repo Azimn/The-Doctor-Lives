@@ -269,7 +269,7 @@ class DoctorHomeBridge:
             ).fetchone()
             if row is not None and row[0] != payload:
                 db.execute("ROLLBACK")
-                raise RuntimeError("Action event ID already reserved for another request")
+                raise RuntimeError("Action event ID already reserved for another Laboratory action domain or request")
             if row is None:
                 db.execute(
                     "INSERT INTO doctor_action_intents "
