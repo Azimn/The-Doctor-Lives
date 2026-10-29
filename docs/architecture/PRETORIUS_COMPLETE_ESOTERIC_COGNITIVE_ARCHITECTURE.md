@@ -4,7 +4,7 @@
 **Status:** Target architecture RFC v1.0, 2026-10-29. **Implementation:** Not implemented by this document.  
 **Home:** Azimn/The-Doctor-Lives (one canonical brain); world: Azimn/Pretorius-Laboratory.  
 **Authority:** Research design only. Existing architecture, provenance, first-person, release, and action-authorization contracts prevail.  
-**Release boundary:** Pretorius 1.0 R1–R6 remains the current release target. This RFC specifies the complete subsequent assembly, and any opt-in prototype must not silently change \`main\` or claim 1.0 qualification.
+**Release boundary:** Pretorius 1.0 R1–R6 remains the current release target. This RFC specifies the complete subsequent assembly, and any opt-in prototype must not silently change `main` or claim 1.0 qualification.
 
 ## 0. Executive design decision
 
@@ -70,7 +70,7 @@ The Conclave can internally entertain a theory that a planetary condition has op
 
 **Theurgic / agency models:** separate sourced ontology for non-compellable relationships and simulated autonomous intelligences when the world implements them. Never pretend an independent simulated entity is a deity.
 
-**Tradition Adapter Contract:** every spoke declares \`tradition_id\`, \`source_version\`, \`question_types\`, \`inputs\`, \`output_semantics\`, \`evidence_limits\`, \`allowed_side_effects\` (normally none), \`compatibility\`, \`cost\`, \`determinism\`, and benchmark hooks. Spokes may disagree even about what qualifies as a question.
+**Tradition Adapter Contract:** every spoke declares `tradition_id`, `source_version`, `question_types`, `inputs`, `output_semantics`, `evidence_limits`, `allowed_side_effects` (normally none), `compatibility`, `cost`, `determinism`, and benchmark hooks. Spokes may disagree even about what qualifies as a question.
 
 ### 3.2 The Principle of Preserved Contradiction
 
@@ -84,7 +84,7 @@ Allowed life cycle: generated → noticed (optional) → considered → adopted/
 
 ### 3.3 Conclave outputs
 
-Conclave returns typed \`InterpretiveProposal\` values with \`source_refs\`, \`origin\`, \`claim_scope\`, \`question\`, \`hypotheses\`, \`contradictions\`, \`predictions\`, \`possible_observations\`, \`memory_cues\`, \`affective_associations\`, \`ritual_candidates\`, \`significance\`, and \`action_suggestions\`. Each may be empty. It can also return **silence**, **no reading**, **unresolved**, or **incommensurable**.
+Conclave returns typed `InterpretiveProposal` values with `source_refs`, `origin`, `claim_scope`, `question`, `hypotheses`, `contradictions`, `predictions`, `possible_observations`, `memory_cues`, `affective_associations`, `ritual_candidates`, `significance`, and `action_suggestions`. Each may be empty. It can also return **silence**, **no reading**, **unresolved**, or **incommensurable**.
 
 A candidate ritual is a proposed procedure with prerequisites, dependencies, material/time requirements, source grounding, anticipated effect(s) and acknowledged unknowns. It is *not* a direct operation on physical world state.
 
@@ -140,7 +140,7 @@ Define a small typed interchange contract in the existing codebase; concrete sch
 }
 ~~~
 
-UTC governs ordering. Swatch Internet Time (\`@000\` to \`@999\`, fixed UTC+1) is the consistent project-facing display clock; computed and verified by host code, not invented by an organoid.
+UTC governs ordering. Swatch Internet Time (`@000` to `@999`, fixed UTC+1) is the consistent project-facing display clock; computed and verified by host code, not invented by an organoid.
 
 ### Interpretive entry
 
@@ -166,7 +166,7 @@ The proposition string is illustrative. Production schemas should use typed clai
 
 ### Persistence
 
-Store organoid state inside a **versioned, canonically owned namespace** in the same BrainStore with one transactional write authority per table. Candidate tables: \`organoid_events\`, \`interpretive_entries\`, \`contradictions\`, \`symbolic_associations\`, \`ritual_proposals\`, \`mnemonic_indices\`. Dream/fancy instances are already scoped to their source project's validated schema and should be imported or adapted, not cloned. Provide schema migrations, rollback, backup, restart and replay semantics. No shadow SQLite database for Pretorius.
+Store organoid state inside a **versioned, canonically owned namespace** in the same BrainStore with one transactional write authority per table. Candidate tables: `organoid_events`, `interpretive_entries`, `contradictions`, `symbolic_associations`, `ritual_proposals`, `mnemonic_indices`. Dream/fancy instances are already scoped to their source project's validated schema and should be imported or adapted, not cloned. Provide schema migrations, rollback, backup, restart and replay semantics. No shadow SQLite database for Pretorius.
 
 ## 7. Runtime cycle: one mind, two optional divergences
 
