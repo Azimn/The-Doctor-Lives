@@ -29,7 +29,7 @@ def _digest(path: Path) -> str:
 
 
 def _check_db(path: Path) -> None:
-    with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as db:
+    with sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True) as db:
         if db.execute("PRAGMA integrity_check").fetchone() != ("ok",):
             raise RuntimeError("SQLite integrity check failed")
 
