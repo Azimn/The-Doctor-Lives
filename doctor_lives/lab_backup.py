@@ -126,7 +126,7 @@ def restore(archive: Path, state: Path, world: Path) -> dict:
     for path in archive.rglob("*"):
         if path.is_symlink():
             raise RuntimeError("Backup archive contains a symlink")
-        if path.is_file() and path.name != "manifest.json":
+        if path.is_file() and path != archive / "manifest.json":
             actual[path.relative_to(archive).as_posix()] = path
     if set(actual) != set(files):
         raise RuntimeError("Backup archive has missing or unexpected members")
