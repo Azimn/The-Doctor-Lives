@@ -294,6 +294,89 @@ with _exclusive_host(Path(sys.argv[1])):
         self.assertGreater(after[0], before[0])
         self.assertGreater(after[1], before[1])
 
+    def test_operator_sleep_is_physical_idempotent_and_wake_is_real(self):
+        # This is explicitly OPERATOR requested, not a self-authored goal.
+        # The original world must physically locate Pretorius in the bedroom.
+        def sleep_cli(event_id="operator-sleep-001"):
+            return subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli", "--state",
+                 str(self.state), "lab-sleep", "--world",
+                 str(self.world_path), "--event-id", event_id],
+                capture_output=True, text=True, timeout=25,
+            )
+
+        initial = self._receipt_and_observation_counts()
+        denied = sleep_cli()
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("requires the actual Laboratory bedroom", denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), initial)
+
+        from doctor_lives.organs import SixOrganRuntime
+        from doctor_lives.lab_runtime import _exclusive_host
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        for index, station in enumerate(("station:hall", "station:bedroom")):
+            bridge.act("walk", event_id=f"operator-bedroom-walk-{index}",
+                       station=station)
+        runtime.checkpoint()
+        self.assertEqual(bridge.subject.embodied.verify()["station"],
+                         "station:bedroom")
+        with _exclusive_host(self.state, self.world_path):
+            locked = sleep_cli()
+            self.assertNotEqual(locked.returncode, 0)
+            self.assertEqual(locked.stdout, "")
+            self.assertIn("host already active", locked.stderr)
+
+        before = self._receipt_and_observation_counts()
+        first = sleep_cli()
+        self.assertEqual(first.returncode, 0, first.stderr)
+        report = json.loads(first.stdout)
+        self.assertEqual(report["schema"], "doctor-laboratory-offline-sleep.v1")
+        self.assertEqual(report["status"], "admitted")
+        self.assertEqual(report["physical_sleep_minutes"], 480)
+        self.assertEqual(report["recovered"], 0)
+        self.assertTrue(report["subject_frames"][-1]["inner"].startswith("I "))
+        self.assertRegex(report["clock"]["beat"], r"^@[0-9]{3}$")
+        with self.world._open() as db:
+            sleep_rows = db.execute(
+                "SELECT envelope FROM rhythm_events WHERE event_id=?",
+                ("operator-sleep-001",),
+            ).fetchall()
+        self.assertEqual(len(sleep_rows), 1)
+        self.assertEqual(json.loads(sleep_rows[0][0])["op"], "sleep")
+        after = self._receipt_and_observation_counts()
+        self.assertGreater(after[1], before[1])
+        memories = PretoriusBrainPort(self.state).brain.store.memories(False)
+        sleep_memories = [m for m in memories
+                          if m["source"].startswith("laboratory-home:action:")
+                          and "slept for the night" in m["text"]]
+        self.assertEqual(len(sleep_memories), 1)
+        self.assertEqual(sleep_memories[0]["evidence_class"],
+                         "lived_runtime_memory")
+
+        replay = sleep_cli()
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        self.assertEqual(json.loads(replay.stdout)["status"], "already_admitted")
+        self.assertEqual(self._receipt_and_observation_counts(), after)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                ("operator-sleep-001",),
+            ).fetchone()[0], 1)
+
+        # A new real elapsed host process wakes the SAME brain/world. It
+        # observes authentic post-sleep conditions; no invented wake receipt.
+        waking = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+        self.assertEqual(waking.returncode, 0, waking.stderr)
+        woke = json.loads(waking.stdout)
+        self.assertEqual(woke["status"], "completed")
+        self.assertTrue(woke["subject_frames"])
+        self.assertEqual(self.world.verify()["verified"], True)
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
