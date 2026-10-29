@@ -148,6 +148,83 @@ else:
     raise AssertionError("A successful contender did not hit the crash boundary")
 '''
 
+# A rejected nonadjacent walk must not survive as a poison replay intent.
+# A second, valid walk is killed after the original world commit, then recovered
+# by another fresh interpreter using only the durable journal and authorities.
+_POISON_QUEUE_CHILD = r'''
+import json
+import os
+import sys
+
+from doctor_lives.chassis import PretoriusBrainPort
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.subject_port import SubjectPort
+
+world_path, brain_path, mode = sys.argv[1:]
+world = SpatialHabitat(world_path)
+doctor = PretoriusBrainPort(brain_path)
+bridge = DoctorHomeBridge(doctor, SubjectPort(world), authorized=True)
+invalid_id, valid_id = "rejected-nonadjacent", "recoverable-center"
+
+if mode == "crash":
+    try:
+        bridge.act("walk", event_id=invalid_id, station="station:bench")
+    except Exception as exc:
+        assert "not adjacent" in str(exc), repr(exc)
+    else:
+        raise AssertionError("The impossible walk was accepted")
+
+    def die_after_world(frame, source, **kwargs):
+        with world._open() as db:
+            receipt = db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                (valid_id,),
+            ).fetchone()
+        assert receipt is not None
+        assert source == "laboratory-home:action:" + receipt[0]
+        os._exit(76)
+
+    bridge._admit_verified = die_after_world
+    bridge.act("walk", event_id=valid_id, station="station:center")
+    raise AssertionError("The process did not reach its crash boundary")
+elif mode == "recover":
+    pending = bridge.pending_action_intents()
+    assert len(pending) == 1, pending
+    assert pending[0] == {
+        "event_id": valid_id, "op": "walk",
+        "args": {"station": "station:center"},
+    }, pending
+    recovered = bridge.recover_pending_actions()
+    assert len(recovered) == 1, recovered
+    assert recovered[0]["status"] == "admitted", recovered
+    assert bridge.pending_action_intents() == ()
+    with world._open() as db:
+        receipt = db.execute(
+            "SELECT event_hash FROM embodied_events WHERE event_id=?",
+            (valid_id,),
+        ).fetchone()
+        assert receipt is not None
+        assert db.execute(
+            "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
+            (invalid_id,),
+        ).fetchone()[0] == 0
+    source = "laboratory-home:action:" + receipt[0]
+    memories = [m for m in doctor.brain.store.memories(False)
+                if m["source"] == source]
+    assert len(memories) == 1, memories
+    assert memories[0]["text"] == recovered[0]["subject"]["inner"]
+    assert memories[0]["evidence_class"] == "lived_runtime_memory"
+    print(json.dumps({
+        "source": source, "memory_id": memories[0]["id"],
+        "pending_after": len(bridge.pending_action_intents()),
+        "recovered": len(recovered),
+    }), flush=True)
+else:
+    raise AssertionError("Unknown child mode")
+'''
+
+
 @unittest.skipUnless(LAB_AVAILABLE, "Requires real pinned physical Laboratory")
 class VerifiedExperienceToActionTests(unittest.TestCase):
     def setUp(self):
@@ -589,6 +666,70 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
                 ).fetchone()[0]
                 for table in ("embodied_events", "rhythm_events")
             ), 1)
+
+    def test_rejected_pre_world_walk_does_not_poison_cold_recovery(self):
+        """A rejected original-Lab action cannot block a later crash-pending one."""
+        root = Path(self.tmp.name)
+        world_path, brain_path = root / "world.sqlite3", root / "brain"
+
+        def run_child(mode):
+            return subprocess.run(
+                [sys.executable, "-c", _POISON_QUEUE_CHILD,
+                 str(world_path), str(brain_path), mode],
+                cwd=Path(__file__).resolve().parents[1],
+                capture_output=True, text=True, timeout=120, check=False,
+            )
+
+        crashed = run_child("crash")
+        self.assertEqual(
+            crashed.returncode, 76,
+            f"Wrong crash boundary: {crashed.stderr}\\n{crashed.stdout}",
+        )
+        with self.world._open() as db:
+            self.assertIsNone(db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("rejected-nonadjacent",),
+            ).fetchone())
+            rows = db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("recoverable-center",),
+            ).fetchall()
+        self.assertEqual(len(rows), 1)
+        source = "laboratory-home:action:" + rows[0][0]
+        cold = PretoriusBrainPort(brain_path)
+        self.assertFalse(any(
+            m["source"] == source for m in cold.brain.store.memories(False)
+        ))
+        pending_bridge = DoctorHomeBridge(
+            cold, self.subject, authorized=True,
+        )
+        self.assertEqual(
+            pending_bridge.pending_action_intents(),
+            ({"event_id": "recoverable-center", "op": "walk",
+              "args": {"station": "station:center"}},),
+        )
+
+        resumed = run_child("recover")
+        self.assertEqual(
+            resumed.returncode, 0,
+            f"Cold replay blocked: {resumed.stderr}\\n{resumed.stdout}",
+        )
+        report = json.loads(resumed.stdout)
+        self.assertEqual(report["source"], source)
+        self.assertEqual(report["recovered"], 1)
+        self.assertEqual(report["pending_after"], 0)
+        final = PretoriusBrainPort(brain_path)
+        memories = [m for m in final.brain.store.memories(False)
+                    if m["source"] == source]
+        self.assertEqual(len(memories), 1)
+        self.assertEqual(memories[0]["id"], report["memory_id"])
+        self.assertEqual(memories[0]["evidence_class"], "lived_runtime_memory")
+        self.assertEqual(pending_bridge.pending_action_intents(), ())
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
+                ("recoverable-center",),
+            ).fetchone()[0], 1)
 
     def test_cold_process_exit_after_world_before_brain_recovery(self):
         self._assert_cold_process_recovery(
