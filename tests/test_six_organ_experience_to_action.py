@@ -102,6 +102,52 @@ else:
     raise AssertionError("Unknown child mode")
 '''
 
+
+# Both children open the SAME original brain and world. The winner is killed
+# after an independently committed physical receipt, before memory admission.
+_RACE_CHILD = r'''
+import json
+import os
+from pathlib import Path
+import sys
+import time
+
+from doctor_lives.chassis import PretoriusBrainPort
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.subject_port import SubjectPort
+
+world_path, brain_path, gate_path, op, event_id = sys.argv[1:]
+world = SpatialHabitat(world_path)
+doctor = PretoriusBrainPort(brain_path)
+bridge = DoctorHomeBridge(doctor, SubjectPort(world), authorized=True)
+args = {"station": "station:center"} if op == "walk" else {"minutes": 30}
+Path(gate_path + "." + op + ".ready").write_text("ready", encoding="utf-8")
+deadline = time.monotonic() + 45
+while not Path(gate_path).is_file():
+    assert time.monotonic() < deadline, "Start barrier timed out"
+    time.sleep(.01)
+
+def die_after_world(frame, source, **kwargs):
+    assert source.startswith("laboratory-home:action:")
+    with world._open() as db:
+        table = "embodied_events" if op == "walk" else "rhythm_events"
+        receipt = db.execute(
+            "SELECT event_hash FROM " + table + " WHERE event_id=?",
+            (event_id,),
+        ).fetchone()
+    assert receipt and source == "laboratory-home:action:" + receipt[0]
+    os._exit(75)
+
+bridge._admit_verified = die_after_world
+try:
+    bridge.act(op, event_id=event_id, **args)
+except RuntimeError as exc:
+    print(json.dumps({"status": "denied", "reason": str(exc)}), flush=True)
+else:
+    raise AssertionError("A successful contender did not hit the crash boundary")
+'''
+
 @unittest.skipUnless(LAB_AVAILABLE, "Requires real pinned physical Laboratory")
 class VerifiedExperienceToActionTests(unittest.TestCase):
     def setUp(self):
@@ -436,6 +482,113 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
         )
         self.assertEqual(replay["status"], "already_admitted")
         self.assertEqual(replay["memory_id"], rhythm["memory_id"])
+
+    def test_two_process_same_id_cross_domain_race_and_cold_recovery(self):
+        """R5: one killed winner, one denied rival, one recovered lived action."""
+        import time
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+
+        root = Path(self.tmp.name)
+        event_id = "racing-cross-domain-intent"
+        gate = root / "race-start"
+        world_path = root / "world.sqlite3"
+        brain_path = root / "brain"
+        processes = []
+        try:
+            for op in ("walk", "advance"):
+                processes.append((
+                    op,
+                    subprocess.Popen(
+                        [sys.executable, "-c", _RACE_CHILD,
+                         str(world_path), str(brain_path), str(gate), op,
+                         event_id],
+                        cwd=Path(__file__).resolve().parents[1],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        text=True,
+                    ),
+                ))
+            deadline = time.monotonic() + 45
+            while not all(
+                Path(str(gate) + "." + op + ".ready").exists()
+                for op, _ in processes
+            ):
+                self.assertLess(time.monotonic(), deadline, "Race children not ready")
+                self.assertTrue(all(p.poll() is None for _, p in processes))
+                time.sleep(.02)
+            gate.write_text("go", encoding="utf-8")
+            outcomes = [(op, p.returncode, out, err)
+                        for op, p in processes
+                        for out, err in [p.communicate(timeout=120)]]
+        finally:
+            for _, p in processes:
+                if p.poll() is None:
+                    p.kill()
+                    p.communicate(timeout=10)
+
+        killed = [op for op, code, _, _ in outcomes if code == 75]
+        denied = [(op, json.loads(out)) for op, code, out, _ in outcomes
+                  if code == 0]
+        self.assertEqual(len(killed), 1, outcomes)
+        self.assertEqual(len(denied), 1, outcomes)
+        self.assertEqual(denied[0][1]["status"], "denied")
+        self.assertIn("already reserved", denied[0][1]["reason"])
+
+        with self.world._open() as db:
+            receipts = [
+                (table, row[0])
+                for table in ("embodied_events", "rhythm_events")
+                for row in db.execute(
+                    "SELECT event_hash FROM " + table + " WHERE event_id=?",
+                    (event_id,),
+                ).fetchall()
+            ]
+        self.assertEqual(len(receipts), 1)
+        self.assertEqual(
+            receipts[0][0],
+            "embodied_events" if killed[0] == "walk" else "rhythm_events",
+        )
+        source = "laboratory-home:action:" + receipts[0][1]
+        cold = PretoriusBrainPort(brain_path)
+        self.assertFalse(any(
+            m["source"] == source for m in cold.brain.store.memories(False)
+        ))
+        resumed = DoctorHomeBridge(
+            cold, SubjectPort(SpatialHabitat(world_path)), authorized=True,
+        )
+        pending = resumed.pending_action_intents()
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0]["event_id"], event_id)
+        self.assertEqual(pending[0]["op"], killed[0])
+        recovered = resumed.recover_pending_actions()
+        self.assertEqual(len(recovered), 1)
+        self.assertEqual(recovered[0]["status"], "admitted")
+        self.assertEqual(resumed.pending_action_intents(), ())
+        memory = cold.brain.store.get_memory(recovered[0]["memory_id"])
+        self.assertEqual(memory["source"], source)
+        self.assertEqual(memory["text"], recovered[0]["subject"]["inner"])
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.assertEqual(sum(
+            m["source"] == source for m in cold.brain.store.memories(False)
+        ), 1)
+        with self.assertRaises(RuntimeError):
+            loser = "advance" if killed[0] == "walk" else "walk"
+            loser_args = ({"minutes": 30} if loser == "advance"
+                          else {"station": "station:center"})
+            resumed.act(loser, event_id=event_id, **loser_args)
+        replay = resumed.act(
+            killed[0], event_id=event_id, **pending[0]["args"],
+        )
+        self.assertEqual(replay["status"], "already_admitted")
+        self.assertEqual(replay["memory_id"], recovered[0]["memory_id"])
+        with self.world._open() as db:
+            self.assertEqual(sum(
+                db.execute(
+                    "SELECT COUNT(*) FROM " + table + " WHERE event_id=?",
+                    (event_id,),
+                ).fetchone()[0]
+                for table in ("embodied_events", "rhythm_events")
+            ), 1)
 
     def test_cold_process_exit_after_world_before_brain_recovery(self):
         self._assert_cold_process_recovery(

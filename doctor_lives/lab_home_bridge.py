@@ -7,7 +7,10 @@ actions, but an action offer is not evidence the Doctor independently chose it.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from hashlib import sha256
+from pathlib import Path
+import sqlite3
 import json
 import re
 from typing import Any
@@ -230,12 +233,97 @@ class DoctorHomeBridge:
         elif event.get("op") != op or event.get("args") != args:
             raise RuntimeError("Mismatched domestic/rhythm receipt")
 
+    def _intent_path(self) -> Path:
+        """Host action reservations live beside, never inside, the world DB."""
+        path = getattr(self.world, "path", None)
+        if not isinstance(path, (str, Path)):
+            raise RuntimeError("A durable Laboratory world path is required")
+        return Path(str(path) + ".doctor-action-intents.sqlite3")
+
+    @contextmanager
+    def _locked_action_intent(self, op: str, event_id: str, args: dict):
+        """Durably reserve an action ID, then serialize its world/brain replay.
+
+        The first committed reservation survives a killed process. A separate
+        SQLite IMMEDIATE transaction remains open across the physical action
+        and first-person admission, so competing local processes cannot both
+        pass the cross-domain preflight. This is host coordination, not memory
+        or an independent world authority. All cooperating callers must use
+        this bridge; a privileged external Laboratory writer is not covered.
+        """
+        payload = _stable({"op": op, "args": args})
+        with sqlite3.connect(
+            self._intent_path(), isolation_level=None, timeout=30,
+        ) as db:
+            db.execute("PRAGMA busy_timeout=30000")
+            db.execute("PRAGMA synchronous=FULL")
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS doctor_action_intents ("
+                "event_id TEXT PRIMARY KEY, request_json TEXT NOT NULL, "
+                "status TEXT NOT NULL CHECK(status IN ('pending','complete')))"
+            )
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT request_json FROM doctor_action_intents WHERE event_id=?",
+                (event_id,),
+            ).fetchone()
+            if row is not None and row[0] != payload:
+                db.execute("ROLLBACK")
+                raise RuntimeError("Action event ID already reserved for another request")
+            if row is None:
+                db.execute(
+                    "INSERT INTO doctor_action_intents "
+                    "(event_id,request_json,status) VALUES (?,?,'pending')",
+                    (event_id, payload),
+                )
+            db.execute("COMMIT")  # durable BEFORE the Laboratory action
+            db.execute("BEGIN IMMEDIATE")  # held across world + brain admission
+            try:
+                yield
+            except BaseException:
+                db.execute("ROLLBACK")  # durable pending reservation remains
+                raise
+            else:
+                db.execute(
+                    "UPDATE doctor_action_intents SET status='complete' "
+                    "WHERE event_id=? AND request_json=?",
+                    (event_id, payload),
+                )
+                db.execute("COMMIT")
+
+    def pending_action_intents(self) -> tuple[dict, ...]:
+        """Host-only durable replay queue, never a subject-facing memory."""
+        path = self._intent_path()
+        if not path.is_file():
+            return ()
+        with sqlite3.connect(path, timeout=30) as db:
+            rows = db.execute(
+                "SELECT event_id,request_json FROM doctor_action_intents "
+                "WHERE status='pending' ORDER BY rowid"
+            ).fetchall()
+        return tuple(
+            {"event_id": event_id, **json.loads(request)}
+            for event_id, request in rows
+        )
+
+    def recover_pending_actions(self) -> tuple[dict, ...]:
+        """Replay only previously authorized, durably reserved action IDs."""
+        return tuple(
+            self.act(item["op"], event_id=item["event_id"], **item["args"])
+            for item in self.pending_action_intents()
+        )
+
     def act(self, op: str, *, event_id: str, **args):
         """Bounded physical action plus deduplicated first-person Doctor ingress."""
         if op not in _ACTION_DOMAINS:
             raise PermissionError("Action unavailable through Doctor's subject port")
         if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
             raise ValueError("Stable bounded action identity required")
+        with self._locked_action_intent(op, event_id, args):
+            return self._act_reserved(op, event_id, args)
+
+    def _act_reserved(self, op: str, event_id: str, args: dict):
+        """Execute only while the durable cross-process intent lock is held."""
         # Return old *admitted* experiences on a retry even when daily time
         # has changed since the original action. Never regenerate a subjective
         # result from the new world state for an old source receipt.
