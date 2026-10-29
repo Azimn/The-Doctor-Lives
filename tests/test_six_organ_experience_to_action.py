@@ -165,15 +165,30 @@ world_path, brain_path, mode = sys.argv[1:]
 world = SpatialHabitat(world_path)
 doctor = PretoriusBrainPort(brain_path)
 bridge = DoctorHomeBridge(doctor, SubjectPort(world), authorized=True)
-invalid_id, valid_id = "rejected-nonadjacent", "recoverable-center"
+same_domain = mode.startswith("same_domain_")
+invalid_id = "foreign-same-domain" if same_domain else "rejected-nonadjacent"
+valid_id = "recoverable-bench" if same_domain else "recoverable-center"
+destination = "station:bench" if same_domain else "station:center"
 
-if mode == "crash":
-    try:
-        bridge.act("walk", event_id=invalid_id, station="station:bench")
-    except Exception as exc:
-        assert "not adjacent" in str(exc), repr(exc)
+if mode in ("crash", "same_domain_crash"):
+    if same_domain:
+        # A real Laboratory action already owns this ID in the SAME table.
+        # Its destination is different from the bridge's requested walk.
+        subject = SubjectPort(world)
+        subject.act("walk", event_id=invalid_id, station="station:center")
+        try:
+            bridge.act("walk", event_id=invalid_id, station="station:bench")
+        except RuntimeError as exc:
+            assert "Mismatched embodied movement receipt" in str(exc), repr(exc)
+        else:
+            raise AssertionError("Foreign same-domain receipt was accepted")
     else:
-        raise AssertionError("The impossible walk was accepted")
+        try:
+            bridge.act("walk", event_id=invalid_id, station="station:bench")
+        except Exception as exc:
+            assert "not adjacent" in str(exc), repr(exc)
+        else:
+            raise AssertionError("The impossible walk was accepted")
 
     def die_after_world(frame, source, **kwargs):
         with world._open() as db:
@@ -186,14 +201,14 @@ if mode == "crash":
         os._exit(76)
 
     bridge._admit_verified = die_after_world
-    bridge.act("walk", event_id=valid_id, station="station:center")
+    bridge.act("walk", event_id=valid_id, station=destination)
     raise AssertionError("The process did not reach its crash boundary")
-elif mode == "recover":
+elif mode in ("recover", "same_domain_recover"):
     pending = bridge.pending_action_intents()
     assert len(pending) == 1, pending
     assert pending[0] == {
         "event_id": valid_id, "op": "walk",
-        "args": {"station": "station:center"},
+        "args": {"station": destination},
     }, pending
     recovered = bridge.recover_pending_actions()
     assert len(recovered) == 1, recovered
@@ -208,7 +223,7 @@ elif mode == "recover":
         assert db.execute(
             "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
             (invalid_id,),
-        ).fetchone()[0] == 0
+        ).fetchone()[0] == (1 if same_domain else 0)
     source = "laboratory-home:action:" + receipt[0]
     memories = [m for m in doctor.brain.store.memories(False)
                 if m["source"] == source]
@@ -756,6 +771,70 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
                 ("recoverable-center",),
             ).fetchone()[0], 1)
+
+    def test_same_domain_foreign_walk_does_not_poison_cold_recovery(self):
+        """A foreign valid walk receipt cannot bind an unrelated bridge intent."""
+        root = Path(self.tmp.name)
+        world_path, brain_path = root / "world.sqlite3", root / "brain"
+
+        def child(mode):
+            return subprocess.run(
+                [sys.executable, "-c", _POISON_QUEUE_CHILD,
+                 str(world_path), str(brain_path), mode],
+                cwd=Path(__file__).resolve().parents[1],
+                capture_output=True, text=True, timeout=120, check=False,
+            )
+
+        crashed = child("same_domain_crash")
+        self.assertEqual(
+            crashed.returncode, 76,
+            f"Wrong crash boundary: {crashed.stderr}\\n{crashed.stdout}",
+        )
+        with self.world._open() as db:
+            foreign = db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("foreign-same-domain",),
+            ).fetchall()
+            valid = db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("recoverable-bench",),
+            ).fetchall()
+        self.assertEqual(len(foreign), 1)
+        self.assertEqual(len(valid), 1)
+        foreign_source = "laboratory-home:action:" + foreign[0][0]
+        valid_source = "laboratory-home:action:" + valid[0][0]
+        cold = PretoriusBrainPort(brain_path)
+        self.assertFalse(any(
+            m["source"] in (foreign_source, valid_source)
+            for m in cold.brain.store.memories(False)
+        ))
+        pending_bridge = DoctorHomeBridge(cold, self.subject, authorized=True)
+        self.assertEqual(pending_bridge.pending_action_intents(), (
+            {"event_id": "recoverable-bench", "op": "walk",
+             "args": {"station": "station:bench"}},
+        ))
+        resumed = child("same_domain_recover")
+        self.assertEqual(
+            resumed.returncode, 0,
+            f"Cold recovery blocked: {resumed.stderr}\\n{resumed.stdout}",
+        )
+        result = json.loads(resumed.stdout)
+        self.assertEqual(result["source"], valid_source)
+        self.assertEqual(result["recovered"], 1)
+        self.assertEqual(result["pending_after"], 0)
+        reopened = PretoriusBrainPort(brain_path)
+        memories = reopened.brain.store.memories(False)
+        self.assertEqual(sum(
+            m["source"] == valid_source for m in memories
+        ), 1)
+        self.assertFalse(any(m["source"] == foreign_source for m in memories))
+        self.assertEqual(pending_bridge.pending_action_intents(), ())
+        with self.world._open() as db:
+            for event_id in ("foreign-same-domain", "recoverable-bench"):
+                self.assertEqual(db.execute(
+                    "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
+                    (event_id,),
+                ).fetchone()[0], 1)
 
     def test_cold_process_exit_after_world_before_brain_recovery(self):
         self._assert_cold_process_recovery(
