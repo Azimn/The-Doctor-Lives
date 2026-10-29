@@ -55,6 +55,25 @@ def _safe_members(root: Path) -> dict[str, Path]:
 
 
 
+
+def _verify_original_laboratory(world: Path) -> None:
+    """Use the original Laboratory's full world and domain-ledger verifier.
+
+    SpatialHabitat.backup_to verifies the source's spatial chain and every
+    installed original domain ledger before copying and verifying the copy.
+    Its temporary verification copy is never an authority or a restored world.
+    """
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+
+    try:
+        with tempfile.TemporaryDirectory(prefix=".doctor-lab-proof-") as temp:
+            SpatialHabitat(world).backup_to(Path(temp) / "verified-world.sqlite3")
+    except Exception as exc:
+        raise RuntimeError(
+            "Original Laboratory world/ledger verification failed"
+        ) from exc
+
+
 def _validate_authority_binding(brain: Path, world: Path, journal: Path) -> None:
     """Fail closed when lived action evidence or host intents belong elsewhere.
 
@@ -62,6 +81,8 @@ def _validate_authority_binding(brain: Path, world: Path, journal: Path) -> None
     describe the SAME original physical history. This is an archive-only
     cross-check, never an alternative source of memory or world authority.
     """
+    _verify_original_laboratory(world)
+
     from .lab_home_bridge import (
         _ACTION_DOMAINS, _EVENT_PAYLOAD_COLUMNS, _hash,
         DoctorHomeBridge,
