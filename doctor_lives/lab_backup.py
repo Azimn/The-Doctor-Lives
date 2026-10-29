@@ -67,7 +67,13 @@ def _verify_original_laboratory(world: Path) -> None:
 
     try:
         with tempfile.TemporaryDirectory(prefix=".doctor-lab-proof-") as temp:
-            SpatialHabitat(world).backup_to(Path(temp) / "verified-world.sqlite3")
+            # The Laboratory opens SQLite in WAL mode. Verify a private copy
+            # so its -wal/-shm sidecars never mutate a sealed archive.
+            candidate = Path(temp) / "candidate-world.sqlite3"
+            shutil.copyfile(world, candidate)
+            SpatialHabitat(candidate).backup_to(
+                Path(temp) / "verified-world.sqlite3"
+            )
     except Exception as exc:
         raise RuntimeError(
             "Original Laboratory world/ledger verification failed"
