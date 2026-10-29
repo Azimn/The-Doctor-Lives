@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import sqlite3
 
 from .experience_to_action import _source_read_page
 from .lab_home_bridge import DoctorHomeBridge, _row
@@ -146,6 +147,53 @@ def propose_noesis_work(
     )
 
 
+def verify_noesis_work_replay(
+    bridge: DoctorHomeBridge, *, event_id: str, action: str,
+) -> str:
+    """Authenticate BOTH prior Doctor intent and a bound original-Noesis choice.
+
+    A real Laboratory receipt proves a physical event, not that Pretorius
+    selected or performed it. This read-only guard must run before replay
+    can create a fresh bridge reservation or first-person autobiography.
+    """
+    from .lab_home_bridge import _stable
+    from .noesis_situated_choice import VERSION, OUTCOME_VERSION
+
+    path = bridge._intent_path()
+    if not path.is_file():
+        raise PermissionError("No preexisting Doctor-owned work reservation")
+    with sqlite3.connect(path, timeout=30) as db:
+        row = db.execute(
+            "SELECT request_json,status FROM doctor_action_intents WHERE event_id=?",
+            (event_id,),
+        ).fetchone()
+    if (row is None or row[0] != _stable({"op": action, "args": {}})
+            or row[1] not in ("pending", "complete")):
+        raise PermissionError("No matching preexisting Doctor-owned work reservation")
+
+    with bridge.doctor.brain.store.connect() as db:
+        rows = db.execute(
+            "SELECT id,selected_action,policy_version,state_pressure_json "
+            "FROM policy_decisions WHERE trigger='noesis_situated_choice'"
+        ).fetchall()
+    matching = []
+    for decision in rows:
+        evidence = json.loads(decision["state_pressure_json"])
+        if evidence.get("motor_event_id") != event_id:
+            continue
+        if (decision["selected_action"] != action
+                or decision["policy_version"] not in (VERSION, OUTCOME_VERSION)
+                or evidence.get("version") != decision["policy_version"]
+                or evidence.get("selector_authority") != "original_noesis"
+                or evidence.get("physical_authority") != "none"
+                or evidence.get("motor_authorization") != "authorized"):
+            raise PermissionError("Invalid original-Noesis work binding")
+        matching.append(decision["id"])
+    if len(matching) != 1:
+        raise PermissionError("No unique original-Noesis decision bound to work receipt")
+    return matching[0]
+
+
 def execute_noesis_work(
     bridge: DoctorHomeBridge, *, decision_id: str,
     event_id: str, authorized_world_action: bool = False,
@@ -176,6 +224,8 @@ def execute_noesis_work(
             or evidence.get("version") != rows[0]["policy_version"]
             or rows[0]["policy_version"] not in (VERSION, OUTCOME_VERSION)):
         raise PermissionError("Original Noesis decision has invalid action evidence")
+    if evidence.get("motor_event_id") not in (None, event_id):
+        raise PermissionError("Original Noesis decision already bound to another work ID")
 
     # Idempotent existing world receipt may be retried after a crash/restart
     # even when the physical condition has already changed.
@@ -187,6 +237,10 @@ def execute_noesis_work(
             envelope, _ = _row(db, "rhythm_events", prior[0])
             if envelope.get("op") != action:
                 raise PermissionError("World receipt was recorded for another action")
+            if verify_noesis_work_replay(
+                bridge, event_id=event_id, action=action,
+            ) != decision_id:
+                raise PermissionError("World receipt belongs to another Noesis decision")
             return {"action": action, "decision_id": decision_id,
                     "world": bridge.act(action, event_id=event_id)}
 
@@ -197,5 +251,30 @@ def execute_noesis_work(
     now = bridge.observe()
     if now["memory_id"] != evidence.get("observation_memory_id"):
         raise PermissionError("Original Noesis decision is stale after world change")
+
+    # Persist the exact event-ID binding in the EXISTING canonical Noesis
+    # policy row BEFORE the original Laboratory can commit a physical event.
+    # A crash after the world commit can then prove the Doctor's prior choice.
+    store = bridge.doctor.brain.store
+    with store.transaction() as db:
+        saved = db.execute(
+            "SELECT state_pressure_json FROM policy_decisions WHERE id=? "
+            "AND trigger='noesis_situated_choice'", (decision_id,),
+        ).fetchone()
+        if saved is None:
+            raise PermissionError("Original Noesis decision disappeared")
+        bound = json.loads(saved["state_pressure_json"])
+        if bound.get("motor_event_id") not in (None, event_id):
+            raise PermissionError("Original Noesis decision bound to another work ID")
+        if (bound.get("selector_authority") != "original_noesis"
+                or bound.get("version") != rows[0]["policy_version"]):
+            raise PermissionError("Original Noesis decision evidence changed")
+        bound["motor_event_id"] = event_id
+        bound["motor_authorization"] = "authorized"
+        db.execute(
+            "UPDATE policy_decisions SET state_pressure_json=? WHERE id=?",
+            (json.dumps(bound, sort_keys=True), decision_id),
+        )
+        store.bump_state_version(db)
     return {"action": action, "decision_id": decision_id,
             "world": bridge.act(action, event_id=event_id)}
