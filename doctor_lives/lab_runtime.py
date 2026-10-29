@@ -185,7 +185,9 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         from pretorius_lab.habitat_v2 import SpatialHabitat
         from pretorius_lab.subject_port import SubjectPort
         from .organs import SixOrganRuntime
-        from .noesis_lab_work import propose_noesis_work, execute_noesis_work
+        from .noesis_lab_work import (
+            propose_noesis_work, execute_noesis_work, verify_noesis_work_replay,
+        )
 
         runtime = SixOrganRuntime.open(state)
         bridge = runtime.bind_laboratory(
@@ -232,6 +234,12 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
             action = prior.get("op")
             if action not in ("repair", "experiment") or prior.get("args") != {}:
                 raise RuntimeError("Work event ID belongs to non-work rhythm action")
+            # A hash-valid world event is NOT proof that Pretorius performed it.
+            # Deny foreign same-domain receipts before bridge.act could create
+            # a fresh intent and misattribute another actor's lived event.
+            verify_noesis_work_replay(
+                bridge, event_id=event_id, action=action,
+            )
             replay = bridge.act(action, event_id=event_id)
             runtime.checkpoint()
             subject_frames.append(replay["subject"])
