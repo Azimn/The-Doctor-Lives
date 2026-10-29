@@ -54,6 +54,107 @@ def _safe_members(root: Path) -> dict[str, Path]:
     return members
 
 
+
+def _validate_authority_binding(brain: Path, world: Path, journal: Path) -> None:
+    """Fail closed when lived action evidence or host intents belong elsewhere.
+
+    Per-file digests cannot establish that independently valid SQLite files
+    describe the SAME original physical history. This is an archive-only
+    cross-check, never an alternative source of memory or world authority.
+    """
+    from .lab_home_bridge import (
+        _ACTION_DOMAINS, _EVENT_PAYLOAD_COLUMNS, _hash,
+        DoctorHomeBridge,
+    )
+
+    def read_only(path: Path):
+        return sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)
+
+    with read_only(brain) as mind, read_only(world) as physical, read_only(journal) as intents:
+        world_tables = {
+            row[0] for row in physical.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        receipts_by_hash = {}
+        receipts_by_id = {}
+        for table in sorted(set(_ACTION_DOMAINS.values())):
+            if table not in world_tables:
+                continue
+            column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
+            for event_id, raw, event_hash in physical.execute(
+                "SELECT event_id," + column + ",event_hash FROM " + table
+            ):
+                try:
+                    payload = json.loads(raw)
+                    if _hash(payload) != event_hash:
+                        raise ValueError("event digest differs")
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError("Laboratory action receipt is not authentic") from exc
+                if event_hash in receipts_by_hash or event_id in receipts_by_id:
+                    raise RuntimeError("Duplicate Laboratory action receipt identity")
+                receipts_by_hash[event_hash] = (table, event_id, payload)
+                receipts_by_id[event_id] = (table, event_hash, payload)
+
+        admitted = set()
+        for table in ("memories", "events"):
+            present = mind.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (table,),
+            ).fetchone()
+            if present is None:
+                raise RuntimeError("Canonical BrainStore action history is unavailable")
+            for (source,) in mind.execute(
+                "SELECT source FROM " + table +
+                " WHERE source LIKE 'laboratory-home:action:%'"
+            ):
+                digest = source[len("laboratory-home:action:"):]
+                if digest not in receipts_by_hash:
+                    raise RuntimeError(
+                        "BrainStore lived action belongs to a different Laboratory world"
+                    )
+                admitted.add(digest)
+
+        if intents.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='doctor_action_intents'"
+        ).fetchone() is None:
+            raise RuntimeError("Host action-intent journal schema is unavailable")
+        matched_receipt = False
+        for event_id, request_json, status in intents.execute(
+            "SELECT event_id,request_json,status FROM doctor_action_intents"
+        ):
+            try:
+                request = json.loads(request_json)
+                op, args = request["op"], request["args"]
+                if op not in _ACTION_DOMAINS or not isinstance(args, dict):
+                    raise ValueError("Invalid action intent")
+            except (TypeError, ValueError, KeyError) as exc:
+                raise RuntimeError("Malformed host action-intent record") from exc
+            receipt = receipts_by_id.get(event_id)
+            if receipt is None:
+                if status != "pending":
+                    raise RuntimeError("Completed host action has no Laboratory receipt")
+                continue  # pre-world pending intent is legitimate, not world proof
+            table, digest, payload = receipt
+            if table != _ACTION_DOMAINS[op]:
+                raise RuntimeError("Host action intent belongs to another world domain")
+            try:
+                DoctorHomeBridge._check_action_proof(op, args, payload)
+            except RuntimeError as exc:
+                raise RuntimeError("Host action intent does not match world receipt") from exc
+            if status == "complete" and digest not in admitted:
+                raise RuntimeError("Completed host action lacks canonical lived memory")
+            matched_receipt = True
+
+        # A never-used brain/world pair has no persistent mutual binding in
+        # this schema. Refuse to certify it as a coherent archival unit.
+        if not admitted and not matched_receipt:
+            raise RuntimeError(
+                "No authenticated brain/world action or world/intent receipt binds authorities"
+            )
+
+
 def backup(state: Path, world: Path, destination: Path) -> dict:
     """Require quiescent local writers; lock all three SQLite authorities.
 
@@ -96,6 +197,11 @@ def backup(state: Path, world: Path, destination: Path) -> dict:
                     if before != after:
                         raise RuntimeError("Non-SQLite state changed during backup")
                 files[name] = {"sha256": _digest(target), "bytes": target.stat().st_size}
+            _validate_authority_binding(
+                staging / "brain" / "brain.sqlite3",
+                staging / "world.sqlite3",
+                staging / "action-intents.sqlite3",
+            )
         manifest = {"schema": SCHEMA,
                     "created_utc": datetime.now(timezone.utc).isoformat(),
                     "files": files,
@@ -143,6 +249,10 @@ def restore(archive: Path, state: Path, world: Path) -> dict:
             raise RuntimeError("Backup member digest mismatch")
         if source.suffix == ".sqlite3":
             _check_db(source)
+    _validate_authority_binding(
+        actual["brain/brain.sqlite3"], actual["world.sqlite3"],
+        actual["action-intents.sqlite3"],
+    )
     try:
         state.mkdir(parents=True)
         for name, source in sorted(actual.items()):
