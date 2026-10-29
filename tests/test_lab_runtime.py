@@ -377,6 +377,129 @@ with _exclusive_host(Path(sys.argv[1])):
         self.assertTrue(woke["subject_frames"])
         self.assertEqual(self.world.verify()["verified"], True)
 
+    def test_sleep_world_commit_crash_replay_and_historical_room_change(self):
+        # Kill a REAL child after the original rhythm receipt is committed,
+        # before the original BrainStore can admit its first-person memory.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        for index, station in enumerate(("station:hall", "station:bedroom")):
+            bridge.act("walk", event_id=f"sleep-crash-approach-{index}",
+                       station=station)
+        runtime.checkpoint()
+        self.assertEqual(bridge.subject.embodied.verify()["station"],
+                         "station:bedroom")
+        minute_before = self.world.verify()["minute"]
+        crash_script = """
+import os
+import sys
+from pathlib import Path
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from doctor_lives.lab_runtime import sleep_laboratory
+
+def die_after_world_commit(self, frame, source, **kwargs):
+    with self.world._open() as db:
+        row = db.execute(
+            "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+            ("operator-sleep-crash",),
+        ).fetchone()
+    assert row and source == "laboratory-home:action:" + row[0]
+    assert not any(m["source"] == source
+                   for m in self.doctor.brain.store.memories(False))
+    os._exit(79)
+
+DoctorHomeBridge._admit_verified = die_after_world_commit
+sleep_laboratory(Path(sys.argv[1]), Path(sys.argv[2]),
+                 event_id="operator-sleep-crash")
+raise AssertionError("Sleep did not reach the post-world crash boundary")
+"""
+        crashed = subprocess.run(
+            [sys.executable, "-c", crash_script, str(self.state),
+             str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(crashed.returncode, 79, crashed.stderr)
+        self.assertEqual(crashed.stdout, "")
+        self.assertEqual(self.world.verify()["minute"] - minute_before, 480)
+
+        def sleep_cli(event_id):
+            return subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli", "--state",
+                 str(self.state), "lab-sleep", "--world",
+                 str(self.world_path), "--event-id", event_id],
+                capture_output=True, text=True, timeout=25,
+            )
+
+        with self.world._open() as db:
+            rows = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("operator-sleep-crash",),
+            ).fetchall()
+        self.assertEqual(len(rows), 1)
+        source = "laboratory-home:action:" + rows[0][0]
+        def sleep_memories():
+            return [m for m in PretoriusBrainPort(self.state).brain.store.memories(False)
+                    if m["source"] == source]
+        self.assertEqual(sleep_memories(), [])
+
+        recovered = sleep_cli("operator-sleep-crash")
+        self.assertEqual(recovered.returncode, 0, recovered.stderr)
+        report = json.loads(recovered.stdout)
+        self.assertEqual(report["status"], "already_admitted")
+        self.assertEqual(report["recovered"], 1)
+        self.assertEqual(len(report["subject_frames"]), 1)
+        self.assertIn("slept for the night", report["subject_frames"][0]["inner"])
+        self.assertEqual(len(sleep_memories()), 1)
+        self.assertEqual(sleep_memories()[0]["evidence_class"],
+                         "lived_runtime_memory")
+
+        # A second cold restart must not repeat the physical sleep, memory,
+        # or subjective frame, and must not claim another recovery.
+        second = sleep_cli("operator-sleep-crash")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        second_report = json.loads(second.stdout)
+        self.assertEqual(second_report["status"], "already_admitted")
+        self.assertEqual(second_report["recovered"], 0)
+        self.assertEqual(len(second_report["subject_frames"]), 1)
+        self.assertEqual(self.world.verify()["minute"] - minute_before, 480)
+        self.assertEqual(len(sleep_memories()), 1)
+
+        # The body has genuinely left the bedroom. An authenticated old ID
+        # must replay, but a NEW sleep ID still fails the bedroom condition.
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="sleep-crash-leave-bedroom",
+                   station="station:hall")
+        runtime.checkpoint()
+        self.assertEqual(bridge.subject.embodied.verify()["station"],
+                         "station:hall")
+        before = self._receipt_and_observation_counts()
+        historical = sleep_cli("operator-sleep-crash")
+        self.assertEqual(historical.returncode, 0, historical.stderr)
+        self.assertEqual(json.loads(historical.stdout)["status"],
+                         "already_admitted")
+        self.assertEqual(len(json.loads(historical.stdout)["subject_frames"]), 1)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+        self.assertEqual(len(sleep_memories()), 1)
+        denied = sleep_cli("operator-sleep-new-outside-bedroom")
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("requires the actual Laboratory bedroom", denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+        with self.assertRaisesRegex(RuntimeError, "already reserved"):
+            bridge.act("walk", event_id="operator-sleep-crash",
+                       station="station:center")
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                ("operator-sleep-crash",),
+            ).fetchone()[0], 1)
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
