@@ -241,6 +241,23 @@ class DoctorHomeBridge:
         # result from the new world state for an old source receipt.
         with self.world._open() as db:
             table = _ACTION_DOMAINS[op]
+            # Action IDs identify host intents across every Laboratory domain,
+            # not merely within the table chosen by the current operation.
+            # This rejects already-committed cross-domain reuse. The shipping
+            # host must still serialize concurrent writers across processes.
+            existing_tables = {
+                row[0] for row in db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            for other_table in sorted(set(_ACTION_DOMAINS.values()) - {table}):
+                if other_table in existing_tables and db.execute(
+                    "SELECT 1 FROM " + other_table + " WHERE event_id=? LIMIT 1",
+                    (event_id,),
+                ).fetchone():
+                    raise RuntimeError(
+                        "Action event ID already belongs to another Laboratory action domain"
+                    )
             column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
             known = db.execute(
                 "SELECT " + column + ",event_hash FROM " + table +

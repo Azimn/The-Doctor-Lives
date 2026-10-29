@@ -389,6 +389,54 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
             m["source"] == source for m in final_brain.brain.store.memories(False)
         ), 1)
 
+    def test_cross_domain_event_id_collision_denied_without_side_effect(self):
+        """A durable action ID must not execute in a second domain table."""
+        first = self.bridge.act(
+            "walk", event_id="cross-domain-embodied", station="station:center",
+        )
+        self.assertEqual(first["status"], "admitted")
+        before = self.subject.verify()
+        memories_before = len(self.port.brain.store.memories(False))
+        with self.assertRaisesRegex(RuntimeError, "another Laboratory action domain"):
+            self.bridge.act(
+                "advance", event_id="cross-domain-embodied", minutes=30,
+            )
+        self.assertEqual(self.subject.verify(), before)
+        self.assertEqual(len(self.port.brain.store.memories(False)), memories_before)
+        with self.world._open() as db:
+            self.assertIsNone(db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("cross-domain-embodied",),
+            ).fetchone())
+        replay = self.bridge.act(
+            "walk", event_id="cross-domain-embodied", station="station:center",
+        )
+        self.assertEqual(replay["status"], "already_admitted")
+        self.assertEqual(replay["memory_id"], first["memory_id"])
+
+        rhythm = self.bridge.act(
+            "advance", event_id="cross-domain-rhythm", minutes=30,
+        )
+        self.assertEqual(rhythm["status"], "admitted")
+        before = self.subject.verify()
+        memories_before = len(self.port.brain.store.memories(False))
+        with self.assertRaisesRegex(RuntimeError, "another Laboratory action domain"):
+            self.bridge.act(
+                "walk", event_id="cross-domain-rhythm", station="station:bench",
+            )
+        self.assertEqual(self.subject.verify(), before)
+        self.assertEqual(len(self.port.brain.store.memories(False)), memories_before)
+        with self.world._open() as db:
+            self.assertIsNone(db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("cross-domain-rhythm",),
+            ).fetchone())
+        replay = self.bridge.act(
+            "advance", event_id="cross-domain-rhythm", minutes=30,
+        )
+        self.assertEqual(replay["status"], "already_admitted")
+        self.assertEqual(replay["memory_id"], rhythm["memory_id"])
+
     def test_cold_process_exit_after_world_before_brain_recovery(self):
         self._assert_cold_process_recovery(
             boundary="world_commit", exit_code=73,
