@@ -857,6 +857,69 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         self.assertIn("No unique original-Noesis decision", denied.stderr)
         self.assertEqual(self._receipt_and_observation_counts(), stable)
 
+    def test_cli_work_denies_pending_non_noesis_action_before_recovery(self):
+        # An authentic Doctor intent may exist without an original Noesis
+        # decision. lab-work must not recover it as self-selected work.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="pending-foreign-center",
+                   station="station:center")
+        bridge.act("walk", event_id="pending-foreign-bench",
+                   station="station:bench")
+        runtime.checkpoint()
+        event_id = "pending-bridge-not-noesis"
+        child = r"""
+import os
+import sys
+from pathlib import Path
+from doctor_lives.organs import SixOrganRuntime
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from pretorius_lab.subject_port import SubjectPort
+from pretorius_lab.habitat_v2 import SpatialHabitat
+state, world, event_id = sys.argv[1:]
+runtime = SixOrganRuntime.open(Path(state))
+bridge = runtime.bind_laboratory(
+    SubjectPort(SpatialHabitat(Path(world))), authorized=True,
+)
+original = DoctorHomeBridge._admit_verified
+def die_after_world(self, frame, source, **kwargs):
+    if source.startswith("laboratory-home:action:"):
+        os._exit(79)
+    return original(self, frame, source, **kwargs)
+DoctorHomeBridge._admit_verified = die_after_world
+bridge.act("experiment", event_id=event_id)
+raise AssertionError("Expected physical-world-to-memory crash")
+"""
+        died = subprocess.run(
+            [sys.executable, "-c", child, str(self.state),
+             str(self.world_path), event_id],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(died.returncode, 79, died.stderr)
+        self.assertTrue(self._has_work_intent(event_id))
+        stable = self._receipt_and_observation_counts()
+        with self.world._open() as db:
+            receipt = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()
+        self.assertIsNotNone(receipt)
+        denied = self._work_cli(event_id)
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("No unique original-Noesis decision", denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        port = PretoriusBrainPort(self.state)
+        self.assertFalse([
+            m for m in port.brain.store.memories(False)
+            if m["source"] == "laboratory-home:action:" + receipt[0]
+        ])
+        self.assertTrue(self._has_work_intent(event_id))
+
     def test_cli_noesis_work_crash_after_world_before_memory_cold_recovers(self):
         # Exercise the actual shipping CLI seam, not only a bridge unit test.
         # A fresh process must reconcile the original physical receipt with
