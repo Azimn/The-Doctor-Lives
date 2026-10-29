@@ -281,7 +281,37 @@ class DoctorHomeBridge:
             try:
                 yield
             except BaseException:
-                db.execute("ROLLBACK")  # durable pending reservation remains
+                # A rejected pre-world action must not poison startup replay.
+                # Keep the journal lock while consulting the original world's
+                # durable receipts. Only a PROVEN absence across all known
+                # physical action domains permits removal of this reservation.
+                # If the world cannot be inspected, fail closed: leave pending.
+                try:
+                    with self.world._open() as world_db:
+                        tables = {
+                            row[0] for row in world_db.execute(
+                                "SELECT name FROM sqlite_master WHERE type='table'"
+                            )
+                        }
+                        has_receipt = any(
+                            world_db.execute(
+                                "SELECT 1 FROM " + table +
+                                " WHERE event_id=? LIMIT 1", (event_id,),
+                            ).fetchone() is not None
+                            for table in sorted(set(_ACTION_DOMAINS.values()) & tables)
+                        )
+                    if has_receipt:
+                        db.execute("ROLLBACK")  # uncertain post-world admission
+                    else:
+                        db.execute(
+                            "DELETE FROM doctor_action_intents "
+                            "WHERE event_id=? AND request_json=? AND status='pending'",
+                            (event_id, payload),
+                        )
+                        db.execute("COMMIT")  # no physical event to recover
+                except Exception:
+                    if db.in_transaction:
+                        db.execute("ROLLBACK")  # preserve uncertain intent
                 raise
             else:
                 db.execute(
