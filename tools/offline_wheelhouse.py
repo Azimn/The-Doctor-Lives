@@ -103,7 +103,7 @@ def main() -> int:
     args = parser.parse_args()
     action = seal if args.command == "seal" else verify
     result = action(args.wheelhouse, args.doctor_sha, args.lab_sha)
-    print(json.dumps({"status": args.command + "ed", "schema": result["schema"],
+    print(json.dumps({"status": {"seal": "sealed", "verify": "verified"}[args.command], "schema": result["schema"],
                       "wheel_count": len(result["wheels"]),
                       "doctor_source_sha": result["doctor_source_sha"],
                       "laboratory_source_sha": result["laboratory_source_sha"]}, sort_keys=True))
