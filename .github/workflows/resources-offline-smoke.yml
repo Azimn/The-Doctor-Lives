@@ -1,0 +1,24 @@
+name: Resource candidate offline smoke
+on:
+  push:
+    paths:
+      - "resources/**"
+      - ".github/workflows/resources-offline-smoke.yml"
+  pull_request:
+    paths:
+      - "resources/**"
+      - ".github/workflows/resources-offline-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  isolated-source-smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Standard-library source snapshot and behavior tests
+        run: |
+          python3 --version
+          python3 -m unittest discover -s resources/tests -p 'test_*.py' -v
+          python3 -m json.tool resources/sources.lock.json > /dev/null
