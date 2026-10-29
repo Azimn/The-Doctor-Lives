@@ -40,6 +40,19 @@ def run_laboratory(
     from .organs import SixOrganRuntime
 
     stop = stop if stop is not None else threading.Event()
+    # A cancellation already delivered by the CLI signal handler must not
+    # produce a new Laboratory LOOK receipt or a lived observation.
+    if stop.is_set():
+        clock = engineer_time()
+        return {
+            "schema": "doctor-laboratory-offline-run.v1",
+            "status": "interrupted",
+            "recovered": 0,
+            "subject_frames": [],
+            "pulses": 0,
+            "elapsed_seconds": 0.0,
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        }
     runtime = SixOrganRuntime.open(state)
     bridge = runtime.bind_laboratory(
         SubjectPort(SpatialHabitat(world)), authorized=True,
@@ -47,9 +60,12 @@ def run_laboratory(
     recovered = bridge.recover_pending_actions()
     if bridge.pending_action_intents():
         raise RuntimeError("Unreconciled Laboratory action; host startup denied")
-    observed = bridge.observe()
     subject_frames = [item["subject"] for item in recovered]
-    subject_frames.append(observed["subject"])
+    # Reconciliation may finish after an interrupt. Never start a fresh
+    # observation when cancellation arrived during that recovery window.
+    if not stop.is_set():
+        observed = bridge.observe()
+        subject_frames.append(observed["subject"])
     pulses = 0
     started = time.monotonic()
     deadline = started + duration_seconds
