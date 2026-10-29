@@ -5,6 +5,7 @@ script is an external test harness, not a new production host or memory store.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -172,6 +173,99 @@ def main():
         assert sum(m["source"] == source for m in
                    PretoriusBrainPort(brain_path).brain.store.memories(False)) == 1
 
+        # Independent QA R5 control: a valid brain A with an admitted,
+        # authenticated action must NEVER be archived against a different,
+        # independently valid original Laboratory world B and its journal.
+        foreign_world_path = root / "foreign-world.sqlite3"
+        foreign_brain_path = root / "foreign-brain"
+        foreign_world = SpatialHabitat.create(foreign_world_path)
+        HomeLife(foreign_world).initialize()
+        DailyRhythm(foreign_world).initialize()
+        foreign_port = PretoriusBrainPort(foreign_brain_path, neural_config=config)
+        from doctor_lives.lab_home_bridge import DoctorHomeBridge
+        foreign_bridge = DoctorHomeBridge(
+            foreign_port, SubjectPort(foreign_world), authorized=True,
+        )
+        foreign_bridge.act(
+            "walk", event_id="foreign-world-walk", station="station:center",
+        )
+        with foreign_world._open() as foreign_db:
+            foreign_hash = foreign_db.execute(
+                "SELECT event_hash FROM embodied_events WHERE event_id=?",
+                ("foreign-world-walk",),
+            ).fetchone()[0]
+        assert foreign_hash != rows[0][0]
+        assert any(
+            m["source"] == "laboratory-home:action:" + foreign_hash
+            for m in foreign_port.brain.store.memories(False)
+        )
+        foreign_archive = root / "foreign-archive"
+        assert json.loads(_run([
+            console, "--state", str(foreign_brain_path), "lab-backup",
+            "--world", str(foreign_world_path), "--output", str(foreign_archive),
+        ]).stdout)["status"] == "backed_up"
+
+        mixed_backup = root / "forbidden-mixed-backup"
+        mixed_backup_attempt = subprocess.run([
+            console, "--state", str(brain_path), "lab-backup",
+            "--world", str(foreign_world_path), "--output", str(mixed_backup),
+        ], capture_output=True, text=True, timeout=120)
+        assert mixed_backup_attempt.returncode != 0
+        assert not mixed_backup_attempt.stdout and not mixed_backup.exists()
+
+        # Make a valid A/A archive AFTER A's lived memory was admitted.
+        admitted_archive = root / "admitted-archive"
+        assert json.loads(_run([
+            console, "--state", str(brain_path), "lab-backup",
+            "--world", str(world_path), "--output", str(admitted_archive),
+        ]).stdout)["status"] == "backed_up"
+        mixed_archive = root / "mixed-valid-digests"
+        shutil.copytree(admitted_archive, mixed_archive)
+        manifest_path = mixed_archive / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for name in ("world.sqlite3", "action-intents.sqlite3"):
+            shutil.copyfile(foreign_archive / name, mixed_archive / name)
+            member = mixed_archive / name
+            manifest["files"][name] = {
+                "sha256": hashlib.sha256(member.read_bytes()).hexdigest(),
+                "bytes": member.stat().st_size,
+            }
+        manifest_path.write_text(
+            json.dumps(manifest, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        mixed_brain = root / "mixed-restored-brain"
+        mixed_world = root / "mixed-restored-world.sqlite3"
+        mixed_restore_attempt = subprocess.run([
+            console, "--state", str(mixed_brain), "lab-restore",
+            "--world", str(mixed_world), "--archive", str(mixed_archive),
+        ], capture_output=True, text=True, timeout=120)
+        assert mixed_restore_attempt.returncode != 0
+        assert not mixed_restore_attempt.stdout
+        assert not mixed_brain.exists() and not mixed_world.exists()
+        assert not Path(str(mixed_world) + ".doctor-action-intents.sqlite3").exists()
+
+        # Existing restored authorities are never overwritten, even by a
+        # completely valid coherent archive.
+        original_brain_digest = hashlib.sha256(
+            (restored_brain / "brain.sqlite3").read_bytes()
+        ).hexdigest()
+        original_world_digest = hashlib.sha256(
+            restored_world.read_bytes()
+        ).hexdigest()
+        existing_restore_attempt = subprocess.run([
+            console, "--state", str(restored_brain), "lab-restore",
+            "--world", str(restored_world), "--archive", str(admitted_archive),
+        ], capture_output=True, text=True, timeout=120)
+        assert existing_restore_attempt.returncode != 0
+        assert not existing_restore_attempt.stdout
+        assert hashlib.sha256(
+            (restored_brain / "brain.sqlite3").read_bytes()
+        ).hexdigest() == original_brain_digest
+        assert hashlib.sha256(
+            restored_world.read_bytes()
+        ).hexdigest() == original_world_digest
+
         # Clean-wheel CLI must not silently mint an absent world or brain.
         missing = root / "absent-world.sqlite3"
         denied = subprocess.run(
@@ -245,6 +339,9 @@ def main():
                           "restored_crash_recovered": 1,
                           "restored_second_restart": 0,
                           "corrupt_archive_denied": True,
+                          "mixed_authority_backup_denied": True,
+                          "mixed_authority_restore_denied": True,
+                          "existing_restore_denied": True,
                           "full_size_4096_original_neurons": 4096,
                           "full_size_4096_recovered": 1,
                           "full_size_4096_second_restart": 0}, sort_keys=True))
