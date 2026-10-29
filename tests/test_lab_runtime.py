@@ -767,6 +767,118 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         self.assertIn("Stable bounded Laboratory work action ID", malformed.stderr)
         self.assertEqual(self._receipt_and_observation_counts(), stable)
 
+
+    def test_cli_noesis_work_crash_after_world_before_memory_cold_recovers(self):
+        # Exercise the actual shipping CLI seam, not only a bridge unit test.
+        # A fresh process must reconcile the original physical receipt with
+        # exactly one first-person memory and no second Noesis decision.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="crash-work-to-center",
+                   station="station:center")
+        bridge.act("walk", event_id="crash-work-to-bench",
+                   station="station:bench")
+        bridge.act("experiment", event_id="crash-work-real-wear")
+        runtime.checkpoint()
+        event_id = "crash-work-native-noesis-001"
+        child = r"""
+import os
+import sys
+from pathlib import Path
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from doctor_lives.lab_runtime import work_laboratory
+from pretorius_lab.habitat_v2 import SpatialHabitat
+
+state, world_path, event_id = sys.argv[1:]
+world = SpatialHabitat(world_path)
+original = DoctorHomeBridge._admit_verified
+def die_after_physical_commit(self, frame, source, **kwargs):
+    if source.startswith("laboratory-home:action:"):
+        with world._open() as db:
+            row = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()
+        assert row is not None
+        assert source == "laboratory-home:action:" + row[0]
+        os._exit(79)
+    return original(self, frame, source, **kwargs)
+DoctorHomeBridge._admit_verified = die_after_physical_commit
+work_laboratory(Path(state), Path(world_path), event_id=event_id)
+raise AssertionError("The action-to-memory crash boundary was not reached")
+"""
+        died = subprocess.run(
+            [sys.executable, "-c", child, str(self.state),
+             str(self.world_path), event_id],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(died.returncode, 79, died.stderr)
+        with self.world._open() as db:
+            receipt = db.execute(
+                "SELECT event_hash,envelope FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()
+            self.assertIsNotNone(receipt)
+            self.assertEqual(json.loads(receipt[1])["op"], "repair")
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        port = PretoriusBrainPort(self.state)
+        source = "laboratory-home:action:" + receipt[0]
+        self.assertFalse([
+            m for m in port.brain.store.memories(False)
+            if m["source"] == source
+        ])
+        with port.brain.store.connect() as db:
+            decisions_before = db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0]
+        self.assertEqual(decisions_before, 1)
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        pending = bridge.pending_action_intents()
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0]["event_id"], event_id)
+        self.assertEqual(pending[0]["op"], "repair")
+
+        resumed = self._work_cli(event_id)
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        report = json.loads(resumed.stdout)
+        self.assertEqual(report["recovered"], 1)
+        self.assertEqual(report["status"], "already_admitted")
+        self.assertEqual(report["selection"], "historical_world_receipt_replay")
+        self.assertEqual(report["action"], "repair")
+        self.assertEqual(len(report["subject_frames"]), 1)
+        port = PretoriusBrainPort(self.state)
+        lived = [m for m in port.brain.store.memories(False)
+                 if m["source"] == source]
+        self.assertEqual(len(lived), 1)
+        self.assertEqual(lived[0]["evidence_class"], "lived_runtime_memory")
+        self.assertEqual(lived[0]["text"], report["subject_frames"][0]["inner"])
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        with port.brain.store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0], decisions_before)
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        self.assertEqual(bridge.pending_action_intents(), ())
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
