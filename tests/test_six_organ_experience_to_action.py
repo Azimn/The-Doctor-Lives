@@ -7,6 +7,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import os
+import sqlite3
 import subprocess
 import sys
 
@@ -835,6 +836,24 @@ class VerifiedExperienceToActionTests(unittest.TestCase):
                     "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
                     (event_id,),
                 ).fetchone()[0], 1)
+
+    def test_missing_authoritative_action_table_preserves_uncertain_intent(self):
+        """An absent receipt table is not proof the world action never happened."""
+        with self.world._open() as db:
+            db.execute("DROP TABLE embodied_events")
+        with self.assertRaises(sqlite3.OperationalError):
+            self.bridge.act(
+                "walk", event_id="uncertain-missing-world-table",
+                station="station:center",
+            )
+        self.assertEqual(self.bridge.pending_action_intents(), (
+            {"event_id": "uncertain-missing-world-table", "op": "walk",
+             "args": {"station": "station:center"}},
+        ))
+        self.assertFalse(any(
+            "uncertain-missing-world-table" in m["source"]
+            for m in self.port.brain.store.memories(False)
+        ))
 
     def test_cold_process_exit_after_world_before_brain_recovery(self):
         self._assert_cold_process_recovery(
