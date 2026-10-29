@@ -120,24 +120,42 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         bridge = runtime.bind_laboratory(
             SubjectPort(SpatialHabitat(world)), authorized=True,
         )
+        # Capture identities before replay so a recovered sleep is presented
+        # only once. The bridge remains the sole durable intent authority.
+        pending_before = bridge.pending_action_intents()
         recovered = bridge.recover_pending_actions()
         if bridge.pending_action_intents():
             raise RuntimeError("Unreconciled Laboratory action; sleep denied")
-        if bridge.subject.embodied.verify()["station"] != "station:bedroom":
+        if len(recovered) != len(pending_before):
+            raise RuntimeError("Laboratory recovery identity count changed")
+
+        # A historical receipt is allowed to replay after Pretorius has
+        # genuinely walked elsewhere. This lookup grants NO authority: act()
+        # must still authenticate the original receipt, action identity, and
+        # canonical lived memory. A NEW sleep remains bedroom-only.
+        with bridge.world._open() as db:
+            historical_sleep = db.execute(
+                "SELECT 1 FROM rhythm_events WHERE event_id=? LIMIT 1",
+                (event_id,),
+            ).fetchone() is not None
+        if (not historical_sleep
+                and bridge.subject.embodied.verify()["station"] != "station:bedroom"):
             raise RuntimeError(
                 "Physical sleep requires the actual Laboratory bedroom"
             )
         result = bridge.act("sleep", event_id=event_id)
         runtime.checkpoint()
         clock = engineer_time()
+        subject_frames = [
+            item["subject"] for intent, item in zip(pending_before, recovered)
+            if intent["event_id"] != event_id
+        ]
+        subject_frames.append(result["subject"])
         return {
             "schema": "doctor-laboratory-offline-sleep.v1",
             "status": result["status"],
             "recovered": len(recovered),
-            "subject_frames": [
-                *(item["subject"] for item in recovered),
-                result["subject"],
-            ],
+            "subject_frames": subject_frames,
             "physical_sleep_minutes": 480,
             "clock": {"utc": clock.utc_iso, "beat": clock.beat},
         }
