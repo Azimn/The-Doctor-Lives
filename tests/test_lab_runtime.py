@@ -76,15 +76,66 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
         self.assertEqual(len(observations), 1)
         self.assertEqual(observations[0]["evidence_class"], "lived_runtime_memory")
 
+    def _receipt_and_observation_counts(self):
+        with self.world._open() as db:
+            embodied = db.execute("SELECT COUNT(*) FROM embodied_events").fetchone()[0]
+            rhythm = db.execute("SELECT COUNT(*) FROM rhythm_events").fetchone()[0]
+        port = PretoriusBrainPort(self.state)
+        observations = sum(
+            memory["source"].startswith("laboratory-home:observe:")
+            for memory in port.brain.store.memories(False)
+        )
+        return embodied, rhythm, observations
+
+    def test_sigterm_immediately_after_handler_install_does_not_observe(self):
+        # Deliver a real OS SIGTERM immediately after the CLI registers its
+        # handler. This avoids a scheduler-dependent kill-before-handler race.
+        script = """
+import os
+import signal
+import sys
+from doctor_lives.cli import main
+
+original_signal = signal.signal
+fired = False
+def install(signum, handler):
+    global fired
+    previous = original_signal(signum, handler)
+    if signum == signal.SIGTERM and not fired:
+        fired = True
+        os.kill(os.getpid(), signal.SIGTERM)
+    return previous
+signal.signal = install
+raise SystemExit(main(sys.argv[1:]))
+"""
+        before = self._receipt_and_observation_counts()
+        proc = subprocess.run(
+            [sys.executable, "-c", script, "--state", str(self.state),
+             "lab-run", "--world", str(self.world_path),
+             "--seconds", "1", "--interval-seconds", "0.1"],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        report = json.loads(proc.stdout)
+        self.assertEqual(report["status"], "interrupted")
+        self.assertEqual(report["pulses"], 0)
+        self.assertEqual(report["recovered"], 0)
+        self.assertEqual(report["subject_frames"], [])
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
         stop.set()
+        before = self._receipt_and_observation_counts()
         report = run_laboratory(
             self.state, self.world_path, duration_seconds=1.0,
             interval_seconds=0.1, stop=stop,
         )
         self.assertEqual(report["status"], "interrupted")
         self.assertEqual(report["pulses"], 0)
+        self.assertEqual(report["recovered"], 0)
+        self.assertEqual(report["subject_frames"], [])
+        self.assertEqual(self._receipt_and_observation_counts(), before)
         for args in (("--seconds", "0"),
                      ("--seconds", "0.5", "--interval-seconds", "0"),
                      ("--seconds", "nan")):
