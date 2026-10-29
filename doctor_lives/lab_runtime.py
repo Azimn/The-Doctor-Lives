@@ -96,6 +96,53 @@ def run_laboratory(
         )
 
 
+
+def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
+    """Operator-requested, original-Lab physical sleep, never a Doctor goal.
+
+    The original Laboratory must place the body in its actual bedroom first.
+    A caller supplies one stable action ID; replay cannot advance the world
+    again. This advances Laboratory *simulated* time, not wall-clock soak time.
+    The next lab-run is the explicit wake/resume operation.
+    """
+    with _exclusive_host(state, world):
+        if not (state / "brain.sqlite3").is_file() or not (
+            state / "pretorius_recurrent.npz"
+        ).is_file():
+            raise FileNotFoundError(
+                "Existing canonical Doctor BrainStore and neural checkpoint required"
+            )
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+        from .organs import SixOrganRuntime
+
+        runtime = SixOrganRuntime.open(state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(world)), authorized=True,
+        )
+        recovered = bridge.recover_pending_actions()
+        if bridge.pending_action_intents():
+            raise RuntimeError("Unreconciled Laboratory action; sleep denied")
+        if bridge.subject.embodied.verify()["station"] != "station:bedroom":
+            raise RuntimeError(
+                "Physical sleep requires the actual Laboratory bedroom"
+            )
+        result = bridge.act("sleep", event_id=event_id)
+        runtime.checkpoint()
+        clock = engineer_time()
+        return {
+            "schema": "doctor-laboratory-offline-sleep.v1",
+            "status": result["status"],
+            "recovered": len(recovered),
+            "subject_frames": [
+                *(item["subject"] for item in recovered),
+                result["subject"],
+            ],
+            "physical_sleep_minutes": 480,
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        }
+
+
 def _run_laboratory_session(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,
