@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - doctor_lives/experience_to_action.py
+      - doctor_lives/lab_home_bridge.py
       - doctor_lives/noesis_situated_choice.py
       - doctor_lives/noesis_consequences.py
       - doctor_lives/noesis_lab_work.py
       - doctor_lives/cognition.py
       - doctor_lives/organs.py
       - tests/test_six_organ_experience_to_action.py
+      - tests/test_lab_home_bridge.py
       - tests/test_six_organ_noesis_experience.py
       - tests/test_six_organ_noesis_consequences.py
       - docs/experiments/NOESIS_OUTCOME_LEARNING_PREREG_2026-10-28.md
