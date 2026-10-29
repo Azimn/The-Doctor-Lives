@@ -92,6 +92,59 @@ def main():
         before = PretoriusBrainPort(brain_path)
         assert not any(m["source"] == source for m in before.brain.store.memories(False))
 
+        # R5: snapshot the actual post-world/pre-brain crash, including the
+        # pending action journal, and restore into a second clean state/world.
+        # No action ID is passed to the installed CLI during recovery.
+        archive = root / "quiescent-backup"
+        backup_result = json.loads(_run([
+            console, "--state", str(brain_path), "lab-backup",
+            "--world", str(world_path), "--output", str(archive),
+        ]).stdout)
+        assert backup_result["status"] == "backed_up"
+        assert (archive / "brain" / "pretorius_recurrent.npz").is_file()
+        assert (archive / "action-intents.sqlite3").is_file()
+        restored_brain = root / "restored-brain"
+        restored_world = root / "restored-world.sqlite3"
+        restore_result = json.loads(_run([
+            console, "--state", str(restored_brain), "lab-restore",
+            "--world", str(restored_world), "--archive", str(archive),
+        ]).stdout)
+        assert restore_result["status"] == "restored"
+        restored_command = [
+            console, "--state", str(restored_brain), "lab-start",
+            "--world", str(restored_world),
+        ]
+        restored_first = json.loads(_run(restored_command).stdout)
+        assert restored_first["recovered"] == 1
+        assert len(restored_first["subject_frames"]) == 1
+        restored_memories = [
+            m for m in PretoriusBrainPort(restored_brain).brain.store.memories(False)
+            if m["source"] == source
+        ]
+        assert len(restored_memories) == 1
+        assert restored_memories[0]["text"] == restored_first["subject_frames"][0]["inner"]
+        assert restored_memories[0]["evidence_class"] == "lived_runtime_memory"
+        assert json.loads(_run(restored_command).stdout)["recovered"] == 0
+        with SpatialHabitat(restored_world)._open() as restored_db:
+            assert restored_db.execute(
+                "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
+                ("wheel-crash-walk",),
+            ).fetchone()[0] == 1
+
+        # Corrupt the backed-up neural checkpoint: integrity verification must
+        # refuse to create any replacement mind or physical world.
+        corrupt = root / "corrupt-backup"
+        shutil.copytree(archive, corrupt)
+        with (corrupt / "brain" / "pretorius_recurrent.npz").open("ab") as out:
+            out.write(b"tampered")
+        bad_brain, bad_world = root / "bad-brain", root / "bad-world.sqlite3"
+        rejected = subprocess.run([
+            console, "--state", str(bad_brain), "lab-restore",
+            "--world", str(bad_world), "--archive", str(corrupt),
+        ], capture_output=True, text=True, timeout=120)
+        assert rejected.returncode != 0 and not rejected.stdout
+        assert not bad_brain.exists() and not bad_world.exists()
+
         command = [console, "--state", str(brain_path), "lab-start",
                    "--world", str(world_path)]
         first = _run(command)
@@ -188,6 +241,10 @@ def main():
                           "recovered_on_restart": 1,
                           "recovered_on_second_restart": 0,
                           "missing_authority_denied": True,
+                          "journal_backup_restored": True,
+                          "restored_crash_recovered": 1,
+                          "restored_second_restart": 0,
+                          "corrupt_archive_denied": True,
                           "full_size_4096_original_neurons": 4096,
                           "full_size_4096_recovered": 1,
                           "full_size_4096_second_restart": 0}, sort_keys=True))
