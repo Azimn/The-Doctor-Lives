@@ -700,6 +700,8 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         self.assertEqual(row["selected_action"], "repair")
         audit = json.loads(row["state_pressure_json"])
         self.assertEqual(audit["selector_authority"], "original_noesis")
+        self.assertEqual(audit["motor_event_id"], "noesis-live-work-001")
+        self.assertEqual(audit["motor_authorization"], "authorized")
         self.assertIn(wear["memory_id"], audit["used_outcome_memory_ids"])
 
         # Move away in the ORIGINAL world and cold-replay the same stable ID.
@@ -767,6 +769,92 @@ raise AssertionError("Sleep did not reach the post-world crash boundary")
         self.assertIn("Stable bounded Laboratory work action ID", malformed.stderr)
         self.assertEqual(self._receipt_and_observation_counts(), stable)
 
+
+    def test_cli_work_denies_foreign_same_domain_world_receipt(self):
+        # A real Laboratory action by another actor is physical evidence,
+        # NOT proof that Pretorius selected or performed that action.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="foreign-setup-center",
+                   station="station:center")
+        bridge.act("walk", event_id="foreign-setup-bench",
+                   station="station:bench")
+        runtime.checkpoint()
+        external = SubjectPort(SpatialHabitat(self.world_path))
+        external.act("experiment", event_id="foreign-same-domain-work")
+        with self.world._open() as db:
+            receipt = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("foreign-same-domain-work",),
+            ).fetchone()
+        self.assertIsNotNone(receipt)
+        stable = self._receipt_and_observation_counts()
+        port = PretoriusBrainPort(self.state)
+        with port.brain.store.connect() as db:
+            choices_before = db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0]
+        denied = self._work_cli("foreign-same-domain-work")
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("No preexisting Doctor-owned work reservation",
+                      denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        port = PretoriusBrainPort(self.state)
+        self.assertFalse([
+            m for m in port.brain.store.memories(False)
+            if m["source"] == "laboratory-home:action:" + receipt[0]
+        ])
+        with port.brain.store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0], choices_before)
+        self.assertFalse(bridge._intent_path().is_file() and
+                         self._has_work_intent("foreign-same-domain-work"))
+
+    def _has_work_intent(self, event_id):
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        bridge = SixOrganRuntime.open(self.state).bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        path = bridge._intent_path()
+        if not path.is_file():
+            return False
+        with sqlite3.connect(path) as db:
+            return db.execute(
+                "SELECT 1 FROM doctor_action_intents WHERE event_id=?",
+                (event_id,),
+            ).fetchone() is not None
+
+    def test_cli_work_denies_doctor_action_without_noesis_decision(self):
+        # An authentic DoctorHomeBridge intent alone does not turn an
+        # operator-directed action into a self-selected Noesis work decision.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="bridge-only-center",
+                   station="station:center")
+        bridge.act("walk", event_id="bridge-only-bench",
+                   station="station:bench")
+        bridge.act("experiment", event_id="bridge-only-experiment")
+        runtime.checkpoint()
+        self.assertTrue(self._has_work_intent("bridge-only-experiment"))
+        stable = self._receipt_and_observation_counts()
+        denied = self._work_cli("bridge-only-experiment")
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("No unique original-Noesis decision", denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
 
     def test_cli_noesis_work_crash_after_world_before_memory_cold_recovers(self):
         # Exercise the actual shipping CLI seam, not only a bridge unit test.
