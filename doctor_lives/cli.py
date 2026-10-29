@@ -90,38 +90,42 @@ def main(argv=None) -> int:
                 signal.signal(signum, handler)
         return 0
     if a.cmd == "lab-start":
-        # Explicit local operator entrypoint. The world and the original
-        # neural checkpoint must already exist; never invent either on typo.
-        if not a.world.is_file():
-            raise FileNotFoundError("Existing authoritative Laboratory world required")
-        if not (a.state / "brain.sqlite3").is_file() or not (
-            a.state / "pretorius_recurrent.npz"
-        ).is_file():
-            raise FileNotFoundError("Existing canonical Doctor BrainStore and neural checkpoint required")
-        from pretorius_lab.habitat_v2 import SpatialHabitat
-        from pretorius_lab.subject_port import SubjectPort
-        from .engineer_time import engineer_time
-        from .organs import SixOrganRuntime
-
-        # All six functional ports wrap the SAME original brain. This host
-        # only resumes actions previously authorized and durably reserved.
-        # It never chooses a new goal or physical action on behalf of Noesis.
-        runtime = SixOrganRuntime.open(a.state)
-        bridge = runtime.bind_laboratory(
-            SubjectPort(SpatialHabitat(a.world)), authorized=True,
-        )
-        recovered = bridge.recover_pending_actions()
-        if bridge.pending_action_intents():
-            raise RuntimeError("Unreconciled Laboratory action; startup denied")
-        clock = engineer_time()
-        emit({
-            "schema": "doctor-laboratory-offline-start.v1",
-            "status": "ready",
-            "recovered": len(recovered),
-            "subject_frames": [item["subject"] for item in recovered],
-            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
-        })
-        return 0
+        from .lab_runtime import _exclusive_host
+        # The start/recovery entrypoint must hold BOTH host leases, just like
+        # lab-run and lab-sleep. Never open a shared authority first.
+        with _exclusive_host(a.state, a.world):
+            # Explicit local operator entrypoint. The world and the original
+            # neural checkpoint must already exist; never invent either on typo.
+            if not a.world.is_file():
+                raise FileNotFoundError("Existing authoritative Laboratory world required")
+            if not (a.state / "brain.sqlite3").is_file() or not (
+                a.state / "pretorius_recurrent.npz"
+            ).is_file():
+                raise FileNotFoundError("Existing canonical Doctor BrainStore and neural checkpoint required")
+            from pretorius_lab.habitat_v2 import SpatialHabitat
+            from pretorius_lab.subject_port import SubjectPort
+            from .engineer_time import engineer_time
+            from .organs import SixOrganRuntime
+    
+            # All six functional ports wrap the SAME original brain. This host
+            # only resumes actions previously authorized and durably reserved.
+            # It never chooses a new goal or physical action on behalf of Noesis.
+            runtime = SixOrganRuntime.open(a.state)
+            bridge = runtime.bind_laboratory(
+                SubjectPort(SpatialHabitat(a.world)), authorized=True,
+            )
+            recovered = bridge.recover_pending_actions()
+            if bridge.pending_action_intents():
+                raise RuntimeError("Unreconciled Laboratory action; startup denied")
+            clock = engineer_time()
+            emit({
+                "schema": "doctor-laboratory-offline-start.v1",
+                "status": "ready",
+                "recovered": len(recovered),
+                "subject_frames": [item["subject"] for item in recovered],
+                "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+            })
+            return 0
     brain=PretoriusBrain(a.state)
     if a.cmd=="init": brain.save(); emit(brain.status())
     elif a.cmd=="think": emit(brain.think(a.trigger))
