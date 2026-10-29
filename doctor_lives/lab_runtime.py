@@ -6,7 +6,10 @@ subjective experience. The original Laboratory remains the world authority.
 """
 from __future__ import annotations
 
+import errno
+from contextlib import contextmanager
 import math
+import os
 from pathlib import Path
 import threading
 import time
@@ -14,7 +17,62 @@ import time
 from .engineer_time import engineer_time
 
 
+@contextmanager
+def _exclusive_host(state: Path):
+    """One cooperative Laboratory host per canonical BrainStore, across processes.
+
+    The lock file is deliberately persistent: unlinking it while another
+    process holds an OS lock would allow a second inode and a second host.
+    The operating system releases the byte/range lock on process death.
+    This protects cooperating lab-run processes, not arbitrary privileged
+    writers or external Laboratory/BrainStore entrypoints.
+    """
+    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_BINARY", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(state / ".laboratory-host.lock", flags, 0o600)
+    with os.fdopen(fd, "r+b") as handle:
+        acquired = False
+        try:
+            if os.name == "nt":
+                import msvcrt
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquired = True
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                raise RuntimeError(
+                    "Canonical Doctor Laboratory host already active"
+                ) from exc
+            raise
+        try:
+            yield
+        finally:
+            if acquired:
+                if os.name == "nt":
+                    import msvcrt
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def run_laboratory(
+    state: Path, world: Path, *, duration_seconds: float,
+    interval_seconds: float, stop: threading.Event | None = None,
+) -> dict:
+    """Run with an OS-backed nonblocking lease on the ONE canonical state."""
+    with _exclusive_host(state):
+        return _run_laboratory_session(
+            state, world, duration_seconds=duration_seconds,
+            interval_seconds=interval_seconds, stop=stop,
+        )
+
+
+def _run_laboratory_session(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,
 ) -> dict:
