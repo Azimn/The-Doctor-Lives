@@ -97,6 +97,12 @@ def read_soak_log(path: Path) -> dict:
                         or len(set(work_ids)) != len(work_ids)
                         or ids.intersection(work_ids)):
                     raise ValueError("Duplicate physical work identity in soak")
+                for field in ("pulses", "recovered", "abandoned", "subject_frame_count"):
+                    if type(record.get(field)) is not int or record[field] < 0:
+                        raise ValueError("Invalid measured Laboratory activity count")
+                if any(re.fullmatch(r"[A-Za-z0-9_-]{1,80}", key) is None
+                       for key in work_ids):
+                    raise ValueError("Invalid physical work event identity")
                 ids.update(work_ids)
                 record["sha256"] = digest
                 entries.append(record)
@@ -108,6 +114,9 @@ def read_soak_log(path: Path) -> dict:
              _timestamp(entries[0]["started_utc"])).total_seconds() if entries else 0.0)
     continuous = bool(entries and all(x["status"] == "completed" for x in entries)
                       and all(g <= MAX_GAP_SECONDS for g in gaps))
+    pulse_count = sum(x["pulses"] for x in entries)
+    subject_frame_count = sum(x["subject_frame_count"] for x in entries)
+    activity_observed = bool(pulse_count and subject_frame_count and ids)
     return {
         "schema": "doctor-laboratory-soak-evidence.v1",
         "segments": len(entries),
@@ -115,14 +124,85 @@ def read_soak_log(path: Path) -> dict:
         "wall_span_seconds": round(span, 3),
         "largest_gap_seconds": round(max(gaps, default=0.0), 3),
         "continuous": continuous,
+        "elapsed_24h_candidate": bool(continuous and active_total >= QUALIFY_SECONDS
+                                      and span >= QUALIFY_SECONDS),
+        # A clock-only run with no actual cognitive pulse, first-person world
+        # observation, or original-Noesis physical work is NOT an R5 soak.
+        # This is still only a candidate, not independent source acceptance.
         "qualified_24h_candidate": bool(continuous and active_total >= QUALIFY_SECONDS
-                                         and span >= QUALIFY_SECONDS),
+                                         and span >= QUALIFY_SECONDS
+                                         and activity_observed),
+        "pulses": pulse_count,
+        "subject_frame_count": subject_frame_count,
+        "activity_observed": activity_observed,
         "world_epoch": epoch,
         "last_sha256": previous,
         "work_event_ids": len(ids),
         "source_lab_pin_expected": LAB_SOURCE_PIN,
         "independent_source_attestation": False,
     }
+
+
+
+def verify_soak_sources(state: Path, world: Path, evidence: Path) -> dict:
+    """Read-only original-Laboratory and canonical-Noesis work reconciliation.
+
+    A self-hashed engineering log cannot certify its own world events.
+    The original Laboratory, Doctor action journal, policy and lived memories
+    must independently agree. This is source validation, not a second brain,
+    independent external attestation, or acceptance of the 24-hour R5 gate.
+    """
+    from .lab_home_bridge import _row
+    from .noesis_lab_work import verify_noesis_work_replay
+    from .organs import SixOrganRuntime
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+    from pretorius_lab.subject_port import SubjectPort
+
+    state, world, evidence = Path(state), Path(world), Path(evidence)
+    report = read_soak_log(evidence)
+    if not report["segments"]:
+        raise RuntimeError("No completed original-Laboratory soak segments")
+    with _exclusive_host(state, world):
+        habitat = SpatialHabitat(world)
+        if habitat.verify()["world_epoch"] != report["world_epoch"]:
+            raise RuntimeError("Soak evidence world epoch differs from original Laboratory")
+        runtime = SixOrganRuntime.open(state)
+        bridge = runtime.bind_laboratory(SubjectPort(habitat), authorized=True)
+        bridge.subject.rhythm.verify()
+        event_ids = []
+        with evidence.open("r", encoding="utf-8") as stream:
+            for line in stream:
+                event_ids.extend(json.loads(line)["work_event_ids"])
+        verified = 0
+        with habitat._open() as db:
+            for event_id in event_ids:
+                receipt, digest = _row(db, "rhythm_events", event_id)
+                action = receipt.get("op")
+                if (action not in ("experiment", "repair")
+                        or receipt.get("station") != "station:bench"
+                        or receipt.get("args") != {}
+                        or not isinstance(receipt.get("subject"), dict)
+                        or not isinstance(receipt["subject"].get("inner"), str)):
+                    raise PermissionError("Soak work event is not authenticated bench work")
+                verify_noesis_work_replay(bridge, event_id=event_id, action=action)
+                matching = [
+                    m for m in bridge.doctor.brain.store.memories(False)
+                    if m["source"] == "laboratory-home:action:" + digest
+                ]
+                if (len(matching) != 1
+                        or matching[0]["evidence_class"] != "lived_runtime_memory"
+                        or matching[0]["external"]
+                        or matching[0]["text"] != receipt["subject"]["inner"]):
+                    raise PermissionError("Soak work lacks matching lived Doctor memory")
+                verified += 1
+        return {
+            **report,
+            "original_world_epoch_verified": True,
+            "original_noesis_work_events_verified": verified,
+            # A reviewer must still independently examine a real elapsed
+            # 86,400-second log, other life tasks, books and continuity.
+            "independent_source_attestation": False,
+        }
 
 
 def _validate_evidence_location(state: Path, world: Path, evidence: Path) -> None:
