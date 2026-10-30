@@ -56,6 +56,7 @@ jobs:
       - name: Verify 30 intentions and all paraphrases
         run: |
           python -m unittest discover -s tests -p test_verify_semantics.py -v
+          python -m unittest discover -s tests -p test_local_ollama_transport.py -v
           python -m unittest discover -s tests -p test_chatgpt_semantics.py -v
           python scripts/verify_semantics.py --out /tmp/m5-semantic-evidence.json
       - name: Preserve semantic mapping results
