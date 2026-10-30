@@ -965,6 +965,32 @@ raise AssertionError("Expected physical-world-to-memory crash")
         ])
         self.assertTrue(self._has_work_intent(event_id))
 
+        # An alternate shipping entrypoint must not launder the same pending
+        # operator-directed work into Doctor's first-person autobiography.
+        for command in ("lab-start", "lab-run", "lab-sleep"):
+            with self.subTest(command=command):
+                argv = [
+                    sys.executable, "-m", "doctor_lives.cli", "--state",
+                    str(self.state), command, "--world", str(self.world_path),
+                ]
+                if command == "lab-run":
+                    argv += ["--seconds", "0.3", "--interval-seconds", "0.1"]
+                if command == "lab-sleep":
+                    argv += ["--event-id", "unrelated-sleep"]
+                other = subprocess.run(
+                    argv, capture_output=True, text=True, timeout=25,
+                )
+                self.assertNotEqual(other.returncode, 0)
+                self.assertEqual(other.stdout, "")
+                self.assertIn("No unique original-Noesis decision", other.stderr)
+                self.assertEqual(self._receipt_and_observation_counts(), stable)
+                port = PretoriusBrainPort(self.state)
+                self.assertFalse([
+                    m for m in port.brain.store.memories(False)
+                    if m["source"] == "laboratory-home:action:" + receipt[0]
+                ])
+                self.assertTrue(self._has_work_intent(event_id))
+
     def test_cli_noesis_work_crash_after_world_before_memory_cold_recovers(self):
         # Exercise the actual shipping CLI seam, not only a bridge unit test.
         # A fresh process must reconcile the original physical receipt with
@@ -1075,6 +1101,79 @@ raise AssertionError("The action-to-memory crash boundary was not reached")
             SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
         )
         self.assertEqual(bridge.pending_action_intents(), ())
+
+    def test_all_shipping_entrypoints_refuse_ghost_pre_world_intent(self):
+        # Real child process dies after the original Doctor intent journal
+        # commits, but BEFORE any original Laboratory physical act. Restart
+        # must not invent the missing action, memory, or subjective frame.
+        event_id = "pre-world-crash-walk"
+        child = r"""
+import os
+import sys
+from pathlib import Path
+from doctor_lives.organs import SixOrganRuntime
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from pretorius_lab.subject_port import SubjectPort
+from pretorius_lab.habitat_v2 import SpatialHabitat
+state, world, event_id = sys.argv[1:]
+runtime = SixOrganRuntime.open(Path(state))
+bridge = runtime.bind_laboratory(
+    SubjectPort(SpatialHabitat(Path(world))), authorized=True,
+)
+def die_before_world(self, op, event_id, args):
+    os._exit(83)
+DoctorHomeBridge._act_reserved = die_before_world
+bridge.act("walk", event_id=event_id, station="station:hall")
+raise AssertionError("Expected process termination before physical action")
+"""
+        stable = self._receipt_and_observation_counts()
+        died = subprocess.run(
+            [sys.executable, "-c", child, str(self.state),
+             str(self.world_path), event_id],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(died.returncode, 83, died.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        bridge = SixOrganRuntime.open(self.state).bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        pending = bridge.pending_action_intents()
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0]["event_id"], event_id)
+        self.assertEqual(pending[0]["op"], "walk")
+        with self.world._open() as db:
+            self.assertIsNone(db.execute(
+                "SELECT 1 FROM embodied_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone())
+
+        for command in ("lab-start", "lab-run", "lab-sleep", "lab-work"):
+            with self.subTest(command=command):
+                argv = [
+                    sys.executable, "-m", "doctor_lives.cli", "--state",
+                    str(self.state), command, "--world", str(self.world_path),
+                ]
+                if command == "lab-run":
+                    argv += ["--seconds", "0.3", "--interval-seconds", "0.1"]
+                elif command in ("lab-sleep", "lab-work"):
+                    argv += ["--event-id", "new-opportunity-after-crash"]
+                denied = subprocess.run(
+                    argv, capture_output=True, text=True, timeout=25,
+                )
+                self.assertNotEqual(denied.returncode, 0)
+                self.assertEqual(denied.stdout, "")
+                self.assertIn("automatic physical replay denied", denied.stderr)
+                self.assertEqual(self._receipt_and_observation_counts(), stable)
+                self.assertEqual(bridge.pending_action_intents(), pending)
+                with self.world._open() as db:
+                    self.assertIsNone(db.execute(
+                        "SELECT 1 FROM embodied_events WHERE event_id=?",
+                        (event_id,),
+                    ).fetchone())
+        # Fail-closed pending reservation requires later explicit operator
+        # reconciliation. It must never become a new motor command on restart.
 
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
