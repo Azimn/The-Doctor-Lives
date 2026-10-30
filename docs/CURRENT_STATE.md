@@ -1,5 +1,14 @@
 # CURRENT STATE: The Doctor Lives
 
+## M5 ChatGPT-authored stand-in and semantic donor harvest, October 30, 2026
+
+On the existing combined `integration/m5` (M4 plus PR #98), [`878fbae`](https://github.com/Azimn/The-Doctor-Lives/commit/878fbae9c60b4d41c93e531e825f1efc589949a1) added a *test-only* ChatGPT-authored candidate corpus fed through original `InferencePort` and actual pinned Laboratory. It is not a ChatGPT API or live Ollama substitution. Five of six hypothetical ideas grounded in existing operator actions; one remained a wish. The original Noesis, not the fixture, chose one physical/operator task; independent receipt, one lived memory and one cold restart were verified in [CI 41068903914](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41068903914) and [CI 41069141705](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41069141705).
+
+Initial new natural-language semantic checks were **7/10**, with diary writing, returning to interrupted work and hiding pages misclassified. The frozen fixture preceded the targeted semantic fixes at [`b92ac12`](https://github.com/Azimn/The-Doctor-Lives/commit/b92ac12ab7894041d91957e60c4eb787ca3ff978), now **10/10**. The original 90-utterance judge remained 88/90 correct and 58/60 paraphrase-consistent. The follow-on 20-seed, 180-original-decision donor audit found CASCADE 0 changes, household feasibility 0, habit 60, but **no proven superior physical outcomes**, so all remain OFF. Original BrainStore and offline Windows/Laboratory regression tests passed on `b92ac12`; see PROGRESS and DONOR_HARVEST for exact run links.
+
+The branch also has later independent R3 loopback transport work at `a503452702184a34f549758a0e97078ebad99232`. Verify that head's CI before claiming full current-branch acceptance. The owner prioritizes functional integration and has deferred separate security hardening to documented technical debt. The initial QA redirect finding was a local 302 destination-bypass control, not evidence of Internet exfiltration. No production main merge, external API key, new brain/organ, donor promotion or release tag occurred. R1-R6 complete release gates remain open.
+
+
 ## Active M5 + PR #98 reconciliation, October 30, 2026
 
 `integration/m5` now contains a real two-parent merge of existing M5 `eed7720` and draft PR #98 `13007ce`: [merge `be3e1e0`](https://github.com/Azimn/The-Doctor-Lives/commit/be3e1e0024abd78027ea30a36b38903132e4ad5d). The subsequent [`fc8df09`](https://github.com/Azimn/The-Doctor-Lives/commit/fc8df096d07aee80d60901758b5addccb4111ca3) preserves the existing model import-inventory regression while recognizing M4/M5's loopback-only research adapters. M5 retains its broader M2 motor-ID/no-reuse validation in preference to the narrower PR98 version. Source Laboratory is still pinned at `6e49795752835d64fa6fd63d16359669a1ca2ba7`. Production `main` and original PR #98 have not been merged or modified.
