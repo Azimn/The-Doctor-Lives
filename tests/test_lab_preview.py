@@ -7,11 +7,29 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from doctor_lives import lab_preview
 from doctor_lives.lab_preview import initialize_preview
 
 
 class RefusalTests(unittest.TestCase):
+    def test_kernel_publish_refuses_competing_empty_destination(self):
+        # This is the exact POSIX race missed by Path.exists() + rename().
+        # It runs without any Laboratory import, including on cold installs.
+        with tempfile.TemporaryDirectory() as root:
+            staging = Path(root) / "staged"
+            staging.mkdir()
+            (staging / "brain.sqlite3").write_bytes(b"new canonical brain")
+            destination = Path(root) / "claimed"
+            destination.mkdir()  # Competing process wins before publication.
+            with self.assertRaises(FileExistsError):
+                lab_preview._publish_noreplace(staging, destination)
+            self.assertTrue(staging.is_dir())
+            self.assertEqual((staging / "brain.sqlite3").read_bytes(),
+                             b"new canonical brain")
+            self.assertEqual(list(destination.iterdir()), [])
+
     def test_existing_workspace_is_never_reseeded(self):
         with tempfile.TemporaryDirectory() as root:
             destination = Path(root) / "inhabited"
@@ -48,6 +66,26 @@ class OriginalLaboratoryGenesisTests(unittest.TestCase):
                 self.assertIn('"status": "ready"', result.stdout)
             with self.assertRaises(FileExistsError):
                 initialize_preview(destination)
+
+    def test_competing_empty_workspace_at_publish_is_never_clobbered(self):
+        # Deterministically create the competing directory AFTER full genesis
+        # and the final existence check, at the actual publication boundary.
+        with tempfile.TemporaryDirectory() as root:
+            destination = Path(root) / "contested"
+            real_publish = lab_preview._publish_noreplace
+
+            def competitor_wins(staging, target):
+                self.assertEqual(target, destination)
+                target.mkdir()
+                return real_publish(staging, target)
+
+            with patch("doctor_lives.lab_preview._publish_noreplace",
+                       side_effect=competitor_wins):
+                with self.assertRaises(FileExistsError):
+                    initialize_preview(destination)
+            self.assertTrue(destination.is_dir())
+            self.assertEqual(list(destination.iterdir()), [])
+            self.assertFalse(list(Path(root).glob(".pretorius-preview-*")))
 
     def test_failed_world_genesis_leaves_no_published_authority(self):
         from unittest.mock import patch
