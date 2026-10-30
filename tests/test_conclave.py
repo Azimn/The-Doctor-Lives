@@ -192,6 +192,38 @@ class ConclaveKernelTests(unittest.TestCase):
         self.assertEqual(_add_figures((1, 1, 2, 2), (1, 2, 2, 1)),
                          (2, 1, 2, 1))
         self.assertEqual(len(GEOMANCY_NAMES), 16)
+        self.assertEqual(len(set(GEOMANCY_NAMES.values())), 16)
+        patterns = {
+            "Via": (1, 1, 1, 1),
+            "Populus": (2, 2, 2, 2),
+            "Conjunctio": (2, 1, 1, 2),
+            "Carcer": (1, 2, 2, 1),
+            "Fortuna Major": (2, 2, 1, 1),
+            "Fortuna Minor": (1, 1, 2, 2),
+            "Acquisitio": (2, 1, 2, 1),
+            "Amissio": (1, 2, 1, 2),
+            "Laetitia": (1, 2, 2, 2),
+            "Tristitia": (2, 2, 2, 1),
+            "Puella": (1, 2, 1, 1),
+            "Puer": (1, 1, 2, 1),
+            "Albus": (2, 2, 1, 2),
+            "Rubeus": (2, 1, 2, 2),
+            "Caput Draconis": (2, 1, 1, 1),
+            "Cauda Draconis": (1, 1, 1, 2),
+        }
+        self.assertEqual(
+            {name: dots for dots, name in GEOMANCY_NAMES.items()},
+            patterns,
+        )
+        # A valid Judge must have an even number of single dots.
+        allowed_judges = {"Via", "Populus", "Conjunctio", "Carcer",
+                          "Fortuna Major", "Fortuna Minor",
+                          "Acquisitio", "Amissio"}
+        self.assertEqual(
+            {name for dots, name in GEOMANCY_NAMES.items()
+             if sum(dot == 1 for dot in dots) % 2 == 0},
+            allowed_judges,
+        )
 
     def test_states_are_audit_history_not_deletions(self):
         r = self.kernel.interpret(self.stimulus, spokes=("brunian-memory",))[0]
