@@ -42,7 +42,7 @@ jobs:
       - name: Original-world Windows process leases, cold restart, sleep and elapsed observation
         shell: pwsh
         run: |
-          python -m unittest discover -s tests -p test_lab_runtime.py -v -k cross_platform_two_authority -k elapsed_host_resumes_same_brain -k elapsed_work_interval_rejected -k operator_sleep_is_physical_idempotent_and_wake_is_real
+          python -m unittest discover -s tests -p test_lab_runtime.py -v -k cross_platform_two_authority -k elapsed_host_resumes_same_brain -k human_subject_transcript -k elapsed_work_interval_rejected -k operator_sleep_is_physical_idempotent_and_wake_is_real
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows canonical evidence checkout and deliberate active-evidence tamper negatives
         shell: pwsh
