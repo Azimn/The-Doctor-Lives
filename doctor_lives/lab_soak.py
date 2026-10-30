@@ -10,6 +10,7 @@ from hashlib import sha256
 import json
 import math
 import os
+import re
 from pathlib import Path
 import threading
 import time
@@ -64,7 +65,9 @@ def read_soak_log(path: Path) -> dict:
                         or _digest(record) != digest
                         or record["sequence"] != number
                         or record["lab_source_pin_expected"] != LAB_SOURCE_PIN
-                        or record["status"] not in ("completed", "interrupted")):
+                        or record["status"] not in ("completed", "interrupted")
+                        or not isinstance(record.get("beat"), str)
+                        or re.fullmatch(r"@[0-9]{3}", record["beat"]) is None):
                     raise ValueError("Soak record chain or schema mismatch")
                 start, end = _timestamp(record["started_utc"]), _timestamp(record["ended_utc"])
                 wall = (end - start).total_seconds()
@@ -190,6 +193,7 @@ def soak_laboratory(
                     "ended_utc": ended_utc,
                     "active_seconds": float(result["elapsed_seconds"]),
                     "status": result["status"],
+                    "beat": result["clock"]["beat"],
                     "world_epoch": SpatialHabitat(world).verify()["world_epoch"],
                     "pulses": result["pulses"],
                     "recovered": result["recovered"],
