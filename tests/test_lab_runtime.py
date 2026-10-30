@@ -79,6 +79,110 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
         self.assertEqual(len(observations), 1)
         self.assertEqual(observations[0]["evidence_class"], "lived_runtime_memory")
 
+    def test_elapsed_bench_opportunities_use_noesis_and_real_receipts(self):
+        # The host cannot choose a motor action or move to the bench.
+        off = self._cli(
+            "--seconds", "0.45", "--interval-seconds", "0.1",
+            "--work-every-seconds", "0.15",
+        )
+        self.assertEqual(off.returncode, 0, off.stderr)
+        self.assertEqual(json.loads(off.stdout)["work_events"], [])
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events "
+                "WHERE op IN ('experiment','repair')"
+            ).fetchone()[0], 0)
+
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="elapsed-setup-center",
+                   station="station:center")
+        bridge.act("walk", event_id="elapsed-setup-bench",
+                   station="station:bench")
+        # A real physical preparatory experiment supplies authenticated wear.
+        wear = bridge.act("experiment", event_id="elapsed-setup-wear")
+        self.assertEqual(wear["status"], "admitted")
+        runtime.checkpoint()
+
+        session = self._cli(
+            "--seconds", "3.0", "--interval-seconds", "0.15",
+            "--work-every-seconds", "0.45",
+        )
+        self.assertEqual(session.returncode, 0, session.stderr)
+        report = json.loads(session.stdout)
+        events = report["work_events"]
+        self.assertGreaterEqual(len(events), 2)
+        self.assertEqual(events[0]["action"], "repair")
+        self.assertTrue(all(e["selection"] == "original_noesis"
+                            and e["status"] == "admitted" for e in events))
+        self.assertEqual(len({e["event_id"] for e in events}), len(events))
+        self.assertTrue(all(e["event_id"].startswith("elapsed-work-")
+                            for e in events))
+        self.assertGreaterEqual(len(report["subject_frames"]), len(events))
+        self.assertNotIn("neural_scores", session.stdout)
+        self.assertNotIn("world_epoch", session.stdout)
+
+        port = PretoriusBrainPort(self.state)
+        memories = port.brain.store.memories(False)
+        with port.brain.store.connect() as brain_db:
+            policy = [
+                (row["selected_action"],
+                 json.loads(row["state_pressure_json"]))
+                for row in brain_db.execute(
+                    "SELECT selected_action,state_pressure_json "
+                    "FROM policy_decisions "
+                    "WHERE trigger='noesis_situated_choice'"
+                )
+            ]
+        with self.world._open() as db:
+            for event in events:
+                rows = db.execute(
+                    "SELECT event_hash,envelope FROM rhythm_events "
+                    "WHERE event_id=?", (event["event_id"],),
+                ).fetchall()
+                self.assertEqual(len(rows), 1)
+                self.assertEqual(json.loads(rows[0][1])["op"], event["action"])
+                lived = [
+                    m for m in memories
+                    if m["source"] == "laboratory-home:action:" + rows[0][0]
+                ]
+                self.assertEqual(len(lived), 1)
+                self.assertEqual(lived[0]["evidence_class"],
+                                 "lived_runtime_memory")
+                decisions = [
+                    action for action, audit in policy
+                    if audit.get("motor_event_id") == event["event_id"]
+                ]
+                self.assertEqual(decisions, [event["action"]])
+
+        cold = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(cold.returncode, 0, cold.stderr)
+        self.assertEqual(json.loads(cold.stdout)["recovered"], 0)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events "
+                "WHERE event_id LIKE 'elapsed-work-%'"
+            ).fetchone()[0], len(events))
+
+    def test_elapsed_work_interval_rejected_before_world_or_memory(self):
+        before = self._receipt_and_observation_counts()
+        for bad in ("0", "nan", "inf", "9"):
+            rejected = self._cli(
+                "--seconds", "0.5", "--interval-seconds", "0.1",
+                "--work-every-seconds", bad,
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertEqual(rejected.stdout, "")
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+
     def _receipt_and_observation_counts(self):
         with self.world._open() as db:
             embodied = db.execute("SELECT COUNT(*) FROM embodied_events").fetchone()[0]
