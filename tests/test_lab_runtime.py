@@ -964,6 +964,12 @@ raise AssertionError("Expected physical-world-to-memory crash")
             if m["source"] == "laboratory-home:action:" + receipt[0]
         ])
         self.assertTrue(self._has_work_intent(event_id))
+        # A world-committed receipt must NEVER be discarded as an uncommitted
+        # reservation, even when its Noesis authorship is unqualified.
+        with self.assertRaisesRegex(RuntimeError, "physical world receipt"):
+            bridge.abandon_proven_uncommitted_intent(event_id, "experiment", {})
+        self.assertTrue(self._has_work_intent(event_id))
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
 
         # An alternate shipping entrypoint must not launder the same pending
         # operator-directed work into Doctor's first-person autobiography.
