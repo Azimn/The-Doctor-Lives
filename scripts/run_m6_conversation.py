@@ -194,7 +194,7 @@ def actual_life(root:Path, *, model:str|None) -> dict:
                       "day":3})
         turns.append({"origin":"pretorius","turn_id":offline["turn_id"],"text":offline["text"],
                       "model_called":False,"tokens":0,"latency_ms":0,
-                      "claims":offline["claims"],"day":3})
+                      "claims":offline["claims"],"day":3,"beat":offline["beat"]})
     recap=channel.absence(3)
     initial_digest=channel.doctor.brain.store.digest()
     bad=admit_model_draft("I fixed the lamp last night.",channel.verified_claims())
