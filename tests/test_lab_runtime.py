@@ -1184,6 +1184,81 @@ raise AssertionError("Expected crash before durable bridge reservation")
                 ("noesis-after-pre-intent-crash",),
             ).fetchone()[0], 1)
 
+        # Cross-entrypoint negative: this ID was bound to a genuine Noesis
+        # work decision before the bridge could create ANY intent. It must
+        # not be recycled as an unrelated physical walk or bedroom sleep.
+        # Move with fresh IDs in the real world so the sleep attempt is
+        # physically eligible, rather than merely rejected for wrong room.
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        for index, station in enumerate((
+            "station:center", "station:hall", "station:bedroom",
+        )):
+            bridge.act("walk", event_id=f"orphan-bedroom-route-{index}",
+                       station=station)
+        runtime.checkpoint()
+        self.assertEqual(bridge.subject.embodied.verify()["station"],
+                         "station:bedroom")
+        self.assertFalse(bridge.abandoned_action_intent(orphan))
+        self.assertIsNone(bridge.existing_action_intent(orphan))
+        unchanged = self._receipt_and_observation_counts()
+        minute = DailyRhythm(self.world).verify()["minute"]
+        with PretoriusBrainPort(self.state).brain.store.connect() as db:
+            policy_count = db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0]
+        with self.assertRaisesRegex(PermissionError,
+                                    "already bound to an original-Noesis work decision"):
+            bridge.act("walk", event_id=orphan, station="station:hall")
+        sleep_denied = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-sleep", "--world", str(self.world_path),
+             "--event-id", orphan],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertNotEqual(sleep_denied.returncode, 0)
+        self.assertEqual(sleep_denied.stdout, "")
+        self.assertIn("already bound to an original-Noesis work decision",
+                      sleep_denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), unchanged)
+        self.assertEqual(DailyRhythm(self.world).verify()["minute"], minute)
+        self.assertIsNone(bridge.existing_action_intent(orphan))
+        with PretoriusBrainPort(self.state).brain.store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0], policy_count)
+        with self.world._open() as db:
+            for table in ("embodied_events", "rhythm_events"):
+                self.assertIsNone(db.execute(
+                    "SELECT 1 FROM " + table + " WHERE event_id=?", (orphan,),
+                ).fetchone())
+
+        # Both unrelated legitimate paths remain usable with fresh IDs.
+        fresh_sleep = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-sleep", "--world", str(self.world_path),
+             "--event-id", "sleep-after-orphan-work"],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(fresh_sleep.returncode, 0, fresh_sleep.stderr)
+        self.assertEqual(json.loads(fresh_sleep.stdout)["status"], "admitted")
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                ("sleep-after-orphan-work",),
+            ).fetchone()[0], 1)
+        cold = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(cold.returncode, 0, cold.stderr)
+        self.assertIsNone(bridge.existing_action_intent(orphan))
+
     def test_pre_world_noesis_crash_retires_id_and_fresh_work_survives_restart(self):
         # Original Noesis binds a work ID; the child exits after durable
         # Doctor reservation but before the authoritative physical action.
