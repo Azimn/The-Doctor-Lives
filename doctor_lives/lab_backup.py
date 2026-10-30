@@ -6,9 +6,10 @@ It never interprets or reconstructs memories. No cloud service is involved.
 """
 from __future__ import annotations
 
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 from datetime import datetime, timezone
 from hashlib import sha256
+import gc
 import json
 from pathlib import Path, PurePosixPath
 import shutil
@@ -29,14 +30,14 @@ def _digest(path: Path) -> str:
 
 
 def _check_db(path: Path) -> None:
-    with sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True) as db:
+    with closing(sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)) as db:
         if db.execute("PRAGMA integrity_check").fetchone() != ("ok",):
             raise RuntimeError("SQLite integrity check failed")
 
 
 def _copy_sqlite(source: Path, target: Path) -> None:
-    with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as db:
-        with sqlite3.connect(target) as dest:
+    with closing(sqlite3.connect(f"file:{source}?mode=ro", uri=True)) as db:
+        with closing(sqlite3.connect(target)) as dest:
             db.backup(dest)
     _check_db(target)
 
@@ -65,15 +66,29 @@ def _verify_original_laboratory(world: Path) -> None:
     """
     from pretorius_lab.habitat_v2 import SpatialHabitat
 
+    def verify_copy(candidate: Path, destination: Path) -> str | None:
+        # The pinned Laboratory's backup_to verifies every installed domain
+        # ledger, but some of its "with sqlite3.connect(...)" blocks commit
+        # without closing connections. On Windows those handles prevent
+        # deleting the private proof copy. Return only the failure text so
+        # exception tracebacks cannot retain a connection during cleanup.
+        try:
+            SpatialHabitat(candidate).backup_to(destination)
+        except Exception as exc:
+            return f"{type(exc).__name__}: {exc}"
+        return None
+
     try:
         with tempfile.TemporaryDirectory(prefix=".doctor-lab-proof-") as temp:
-            # The Laboratory opens SQLite in WAL mode. Verify a private copy
-            # so its -wal/-shm sidecars never mutate a sealed archive.
+            # Verify a private copy, never the sealed archive itself.
             candidate = Path(temp) / "candidate-world.sqlite3"
             shutil.copyfile(world, candidate)
-            SpatialHabitat(candidate).backup_to(
-                Path(temp) / "verified-world.sqlite3"
-            )
+            failure = verify_copy(candidate, Path(temp) / "verified-world.sqlite3")
+            # This is resource cleanup, not a verification bypass. All
+            # original Laboratory checks must have completed successfully.
+            gc.collect()
+            if failure is not None:
+                raise RuntimeError(f"Laboratory verifier rejected world: {failure}")
     except Exception as exc:
         raise RuntimeError(
             "Original Laboratory world/ledger verification failed"
@@ -97,7 +112,7 @@ def _validate_authority_binding(brain: Path, world: Path, journal: Path) -> None
     def read_only(path: Path):
         return sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)
 
-    with read_only(brain) as mind, read_only(world) as physical, read_only(journal) as intents:
+    with closing(read_only(brain)) as mind, closing(read_only(world)) as physical, closing(read_only(journal)) as intents:
         world_tables = {
             row[0] for row in physical.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
