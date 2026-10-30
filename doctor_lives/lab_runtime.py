@@ -463,7 +463,10 @@ def _run_laboratory_session(
                 from .noesis_lab_work import (
                     _feasible_work, propose_noesis_work, execute_noesis_work,
                 )
-                if _feasible_work(bridge):
+                # Off-bench means no work opportunity, not a host error.
+                # This is a physical precondition, never automatic navigation.
+                if (bridge.subject.embodied.verify()["station"] == "station:bench"
+                        and _feasible_work(bridge)):
                     proposal = propose_noesis_work(
                         bridge, outcome_learning_enabled=True,
                     )
