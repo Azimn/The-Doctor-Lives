@@ -289,6 +289,39 @@ class SoakEvidenceTests(unittest.TestCase):
         with self.assertRaises((RuntimeError, PermissionError)):
             verify_soak_sources(self.state, self.world, self.log)
 
+    def test_authentic_pre_soak_noesis_receipt_cannot_be_reused_as_soak_work(self):
+        from doctor_lives.organs import SixOrganRuntime
+        from doctor_lives.lab_runtime import work_laboratory
+        from pretorius_lab.subject_port import SubjectPort
+
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world)), authorized=True,
+        )
+        bridge.act("walk", event_id="pre-soak-center", station="station:center")
+        bridge.act("walk", event_id="pre-soak-bench", station="station:bench")
+        bridge.act("experiment", event_id="pre-soak-apparatus-wear")
+        runtime.checkpoint()
+        original = work_laboratory(
+            self.state, self.world, event_id="pre-soak-real-noesis-work",
+        )
+        self.assertEqual(original["selection"], "original_noesis")
+        # The real action, original motor binding and lived memory all exist.
+        # Their presence alone must not credit work to a later soak window.
+        soak_laboratory(
+            self.state, self.world, self.log, target_seconds=0.25,
+            segment_seconds=0.25, interval_seconds=0.1,
+        )
+        record = json.loads(self.log.read_text(encoding="utf-8"))
+        self.assertEqual(record["work_event_ids"], [])
+        record["work_event_ids"] = ["pre-soak-real-noesis-work"]
+        record.pop("sha256")
+        record["sha256"] = _digest(record)
+        self.log.write_text(json.dumps(record) + "\n", encoding="utf-8")
+        self.assertEqual(read_soak_log(self.log)["work_event_ids"], 1)
+        with self.assertRaises(PermissionError):
+            verify_soak_sources(self.state, self.world, self.log)
+
     def test_rehashed_clock_only_24h_is_not_qualified_life(self):
         # This is deliberately NOT a real 24-hour test. A privileged writer
         # can rehash a fabricated engineering log; no world, neural activity
