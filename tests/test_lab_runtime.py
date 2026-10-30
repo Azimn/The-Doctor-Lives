@@ -131,6 +131,19 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM embodied_events"
             ).fetchone()[0], before)
 
+    def test_invalid_local_model_cli_fails_before_real_world_receipts(self):
+        before = self._receipt_and_observation_counts()
+        for args in (
+            ("--human", "--local-render-model", "http://remote.example"),
+            ("--local-render-model", "qwen3:14b"),
+        ):
+            with self.subTest(args=args):
+                denied = self._cli("--seconds", "0.3",
+                                   "--interval-seconds", "0.1", *args)
+                self.assertNotEqual(denied.returncode, 0)
+                self.assertEqual(denied.stdout, "")
+                self.assertEqual(self._receipt_and_observation_counts(), before)
+
     def test_elapsed_bench_opportunities_use_noesis_and_real_receipts(self):
         # The host cannot choose a motor action or move to the bench.
         off = self._cli(
