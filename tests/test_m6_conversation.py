@@ -253,6 +253,40 @@ class ActualConversationTests(unittest.TestCase):
                        (reply["text"], reply["turn_id"]))
         self.assertGreater(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
 
+    def test_source_judge_denies_unsourced_model_on_speech_even_if_persisted(self):
+        from copy import deepcopy
+        from unittest.mock import patch
+        from scripts.verify_conversation import (
+            ConversationJudgmentError, verify_source_ledger,
+        )
+        self._seed_hostile_unfulfilled_wish()
+        with patch.object(self.channel, "_local_model", return_value={
+                "called": True, "tokens": 7, "latency_ms": 1.0,
+                "draft": "Please tell me more about the violet moon."}):
+            reply = self.channel.respond(
+                "What possibilities do you have?", model="local-test",
+                turn_id="pretorius_model_speech_judge_001")
+        report = {
+            "source_brain": str(self.root / "subject/brain/brain.sqlite3"),
+            "source_world": str(self.root / "subject/world.sqlite3"),
+            "turns": [{"origin": "pretorius", "turn_id": reply["turn_id"],
+                       "text": reply["text"], "claims": reply["claims"],
+                       "model_called": True}],
+            "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
+        }
+        self.assertGreater(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
+        forged = reply["text"] + "\\nI repaired the lamp."
+        with self.channel.doctor.brain.store.transaction() as db:
+            db.execute("UPDATE operator_conversation_turns SET text=? WHERE turn_id=?",
+                       (forged, reply["turn_id"]))
+            db.execute("UPDATE memories SET text=? WHERE id=?",
+                       ("My outgoing message to the operator: " + forged[:1200],
+                        reply["source_memory_id"]))
+        poisoned = deepcopy(report)
+        poisoned["turns"][0]["text"] = forged
+        with self.assertRaises(ConversationJudgmentError):
+            verify_source_ledger(poisoned)
+
     def test_hostile_stored_wish_terminal_and_localhost_are_inert(self):
         import json
         import socket
