@@ -5,7 +5,7 @@ Target: `integration/m1`. Production `main` is unchanged at verified starting SH
 ## Integration checklist
 - [x] Verify `main` HEAD and start integration branch at draft PR #89 `61814d22077b37dc177e2e26a32d6b8bd400deaf`.
 - [x] Incorporate PR #96 at `0a704a634d1c1a3e4cfbff2b2a7abd06ad525d33`.
-- [ ] Incorporate PR #97 at `fcbde54f7d681ad110a0e59879ae7c74bc717db5`.
+- [x] Incorporate PR #97 at `fcbde54f7d681ad110a0e59879ae7c74bc717db5`.
 - [ ] Incorporate PR #98 at `f734a1d73b52eeec4c1f00c7e36344c730ce06e1`.
 - [ ] Pass complete `python -m unittest discover -s tests -v` suite.
 - [ ] Pass pinned real-Laboratory bridge and historical parity jobs.

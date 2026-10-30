@@ -16,6 +16,9 @@ on:
       - doctor_lives/affectus_lab_pilot.py
       - doctor_lives/six_organ_book_task.py
       - tests/test_six_organ_book_task.py
+      - doctor_lives/autobiographical_book_preference.py
+      - doctor_lives/lab_endogenous_book_task.py
+      - tests/test_six_organ_autobiographical_book_preference.py
       - doctor_lives/virtual_world_port.py
       - doctor_lives/environment_port.py
       - tools/six_organ_laboratory_parity_witness.py
@@ -88,6 +91,11 @@ jobs:
         run: |
           python -c "from pretorius_lab.embodied_access import EmbodiedAccess; print('Pinned Laboratory verified')"
           python -m unittest discover -s tests -p test_six_organ_book_task.py -v
+      - name: Test autobiographical memory as a causal input to real-book choice
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_autobiographical_book_preference.py -v
       - name: Ensure original Doctor core regression still passes
         run: |
           python -m unittest discover -s tests -p test_cognition.py -v
