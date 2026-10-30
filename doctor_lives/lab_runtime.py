@@ -10,6 +10,7 @@ import errno
 from contextlib import contextmanager
 import math
 import os
+import secrets
 from pathlib import Path
 import threading
 import time
@@ -87,12 +88,14 @@ def _exclusive_host(state: Path, world: Path | None = None):
 def run_laboratory(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,
+    work_interval_seconds: float | None = None,
 ) -> dict:
-    """Run with an OS-backed nonblocking lease on the ONE canonical state."""
+    """Run with one brain/world lease; optional host-offered Noesis work."""
     with _exclusive_host(state, world):
         return _run_laboratory_session(
             state, world, duration_seconds=duration_seconds,
             interval_seconds=interval_seconds, stop=stop,
+            work_interval_seconds=work_interval_seconds,
         )
 
 
@@ -181,6 +184,15 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         bridge = runtime.bind_laboratory(
             SubjectPort(SpatialHabitat(world)), authorized=True,
         )
+        # A crash may leave an original-Noesis work motor binding BEFORE
+        # any Doctor action intent exists. Reject its reuse as sleep before
+        # recovering unrelated pending actions or creating a new reservation.
+        # The bridge independently enforces this for every non-work action.
+        from .noesis_lab_work import prior_noesis_motor_binding
+        if prior_noesis_motor_binding(bridge, event_id):
+            raise PermissionError(
+                "Laboratory action ID already bound to an original-Noesis work decision"
+            )
         # The world may contain a genuine sleep by another actor. Check
         # PREEXISTING Doctor ownership before recovery or bridge.act could
         # manufacture an intent and launder that event into autobiography.
@@ -254,6 +266,7 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         from .organs import SixOrganRuntime
         from .noesis_lab_work import (
             propose_noesis_work, execute_noesis_work, verify_noesis_work_replay,
+            prior_noesis_motor_binding,
         )
 
         runtime = SixOrganRuntime.open(state)
@@ -325,6 +338,17 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
                 "clock": {"utc": clock.utc_iso, "beat": clock.beat},
             }
 
+        # A killed child may have bound Noesis before reserving the bridge
+        # intent, or may have left a proven-uncommitted tombstone on restart.
+        # Neither case may create a second policy choice for the same ID.
+        if bridge.abandoned_action_intent(event_id):
+            raise RuntimeError(
+                "Laboratory action ID permanently abandoned before world commit"
+            )
+        if prior_noesis_motor_binding(bridge, event_id):
+            raise PermissionError(
+                "Work event ID already bound to an original-Noesis decision"
+            )
         # Reuse the already-tested Noesis choice and original Lab motor bridge.
         # Neither the CLI nor the scheduler supplies an action preference.
         proposal = propose_noesis_work(
@@ -352,17 +376,24 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
 def _run_laboratory_session(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,
+    work_interval_seconds: float | None = None,
 ) -> dict:
-    """Recover pending receipts, observe once, then pulse at real clock intervals.
+    """Recover, observe, pulse, and optionally offer native Noesis bench work.
 
-    This is a bounded host session, not proof of autonomous physical initiative
-    or a 24-hour soak. Reopening the same authorities provides a wake/resume
-    opportunity; sleep scheduling and external process exclusion remain open.
+    Each scheduled work opportunity presents all physically feasible bench
+    actions to the ORIGINAL Noesis. The host never chooses the action, moves
+    the body to the bench, or authors an enduring goal. This is externally
+    offered work, not independent self-initiation or a 24-hour soak.
     """
     if not (math.isfinite(duration_seconds) and 0.1 <= duration_seconds <= 3600):
         raise ValueError("duration_seconds must be finite and between 0.1 and 3600")
     if not (math.isfinite(interval_seconds) and 0.05 <= interval_seconds <= duration_seconds):
         raise ValueError("interval_seconds must be finite and between 0.05 and duration")
+    if work_interval_seconds is not None and not (
+        math.isfinite(work_interval_seconds)
+        and 0.05 <= work_interval_seconds <= duration_seconds
+    ):
+        raise ValueError("work_interval_seconds must be finite and between 0.05 and duration")
     if not world.is_file():
         raise FileNotFoundError("Existing authoritative Laboratory world required")
     if not (state / "brain.sqlite3").is_file() or not (
@@ -385,6 +416,7 @@ def _run_laboratory_session(
             "recovered": 0,
             "subject_frames": [],
             "pulses": 0,
+            "work_events": [],
             "elapsed_seconds": 0.0,
             "clock": {"utc": clock.utc_iso, "beat": clock.beat},
         }
@@ -404,25 +436,67 @@ def _run_laboratory_session(
         if observed is not None:
             subject_frames.append(observed["subject"])
     pulses = 0
+    work_events = []
     started = time.monotonic()
     deadline = started + duration_seconds
     next_pulse = started + interval_seconds
+    next_work = (
+        started + work_interval_seconds
+        if work_interval_seconds is not None else None
+    )
     try:
         while not stop.is_set():
             now = time.monotonic()
             if now >= deadline:
                 break
-            if stop.wait(max(0.0, min(next_pulse, deadline) - now)):
+            next_due = min(
+                next_pulse, deadline,
+                next_work if next_work is not None else deadline,
+            )
+            if stop.wait(max(0.0, next_due - now)):
                 break
             now = time.monotonic()
             if now >= deadline:
                 break
-            runtime.noesis.pulse(1)
-            runtime.checkpoint()
-            pulses += 1
-            next_pulse += interval_seconds
-            if next_pulse <= now:
-                next_pulse = now + interval_seconds
+            if next_work is not None and now >= next_work:
+                # The host offers work, never chooses or navigates for him.
+                from .noesis_lab_work import (
+                    _feasible_work, propose_noesis_work, execute_noesis_work,
+                )
+                # Off-bench means no work opportunity, not a host error.
+                # This is a physical precondition, never automatic navigation.
+                if (bridge.subject.embodied.verify()["station"] == "station:bench"
+                        and _feasible_work(bridge)):
+                    proposal = propose_noesis_work(
+                        bridge, outcome_learning_enabled=True,
+                    )
+                    if stop.is_set():
+                        break
+                    event_id = "elapsed-work-" + secrets.token_hex(16)
+                    executed = execute_noesis_work(
+                        bridge, decision_id=proposal.decision_id,
+                        event_id=event_id, authorized_world_action=True,
+                    )
+                    runtime.checkpoint()
+                    subject_frames.append(executed["world"]["subject"])
+                    work_events.append({
+                        "event_id": event_id,
+                        "action": executed["action"],
+                        "status": executed["world"]["status"],
+                        "selection": "original_noesis",
+                    })
+                # Skip missed opportunities after slow real-world operations.
+                next_work = time.monotonic() + work_interval_seconds
+            if stop.is_set():
+                break
+            now = time.monotonic()
+            if now >= next_pulse and now < deadline:
+                runtime.noesis.pulse(1)
+                runtime.checkpoint()
+                pulses += 1
+                next_pulse = max(
+                    next_pulse + interval_seconds, now + interval_seconds,
+                )
     finally:
         runtime.checkpoint()
     clock = engineer_time()
@@ -433,6 +507,7 @@ def _run_laboratory_session(
         "abandoned": len(abandoned),
         "subject_frames": subject_frames,
         "pulses": pulses,
+        "work_events": work_events,
         "elapsed_seconds": round(time.monotonic() - started, 3),
         "clock": {"utc": clock.utc_iso, "beat": clock.beat},
     }
