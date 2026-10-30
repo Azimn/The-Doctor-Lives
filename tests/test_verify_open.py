@@ -174,9 +174,14 @@ class JudgeTests(unittest.TestCase):
         path=self.root/"case-0"/"world.sqlite3.operator-work.sqlite3"
         with sqlite3.connect(path) as c:
             event=json.loads(c.execute("SELECT payload_json FROM operator_events WHERE event_id='act-0-2'").fetchone()[0])
+            old_hash=sha256(stable(event).encode()).hexdigest()
             event["state_after"]=event["state_before"]
+            new_hash=sha256(stable(event).encode()).hexdigest()
             c.execute("UPDATE operator_events SET payload_json=?,event_hash=? WHERE event_id='act-0-2'",
-                      (stable(event),sha256(stable(event).encode()).hexdigest()))
+                      (stable(event),new_hash))
+        with sqlite3.connect(self.root/"case-0"/"brain/brain.sqlite3") as c:
+            c.execute("UPDATE memories SET source=? WHERE source=?",
+                      ("laboratory-home:action:"+new_hash,"laboratory-home:action:"+old_hash))
         self.rejects("a")
 
     def _state_change_is_sufficient(self,path):
