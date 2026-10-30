@@ -1,0 +1,37 @@
+name: Pretorius original Laboratory Windows host and lease smoke
+
+on:
+  pull_request:
+    paths:
+      - doctor_lives/lab_runtime.py
+      - doctor_lives/cli.py
+      - tests/test_lab_runtime.py
+      - .github/workflows/pretorius-windows-host.yml
+  workflow_dispatch:
+
+jobs:
+  pinned-original-lab-windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the existing Doctor and original Laboratory from local sources
+        shell: pwsh
+        run: |
+          python -m pip install -e .
+          python -m pip install -e ./donor-laboratory
+          python -c "from pretorius_lab.subject_port import SubjectPort; print('Pinned original Laboratory imported on Windows')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Real Windows process leases, cold restart, sleep and elapsed observation
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_lab_runtime.py -v -k cross_platform_two_authority -k elapsed_host_resumes_same_brain -k elapsed_work_interval_rejected -k operator_sleep_is_physical_idempotent_and_wake_is_real
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
