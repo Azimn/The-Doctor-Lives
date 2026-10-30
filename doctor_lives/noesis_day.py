@@ -25,6 +25,15 @@ class DailyChoice:
     options: tuple[str, ...]
 
 
+def physical_args(action: str) -> dict:
+    """The Laboratory source authorizes 10 to 240 minute time increments.
+
+    A neutral one-hour simulation quantum is not an action preference; only
+    original Noesis decides whether any physical time passage will occur.
+    """
+    return {"minutes": 60} if action == "advance" else {}
+
+
 def real_affordances(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     """Enumerate the ORIGINAL world physics, never a host-supplied task list."""
     from pretorius_lab.daily_rhythm import OPERATIONS, transition
@@ -37,11 +46,11 @@ def real_affordances(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     physical = bridge.subject.rhythm.audit_state()
     possible = []
     # The source-defined operations, not the harness's preferred sequence.
-    for op in sorted(OPERATIONS - {"look", "advance"}):
+    for op in sorted(OPERATIONS - {"look"}):
         if op not in NEURAL_AFFORDANCE_MAP:
             continue
         try:
-            transition(physical, op, {}, station)
+            transition(physical, op, physical_args(op), station)
         except (Conflict, LabError):
             continue
         possible.append(op)
@@ -132,7 +141,7 @@ def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
         db.execute("UPDATE policy_decisions SET state_pressure_json=? WHERE id=?",
                    (json.dumps(updated, sort_keys=True), choice.policy_id))
         store.bump_state_version(db)
-    actual = bridge.act(choice.action, event_id=event_id)
+    actual = bridge.act(choice.action, event_id=event_id, **physical_args(choice.action))
     if actual["status"] not in ("admitted", "already_admitted"):
         raise RuntimeError("Actual Laboratory action not source-admitted")
     return {"policy_decision_id": choice.policy_id, "action": choice.action,
