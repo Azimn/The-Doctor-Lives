@@ -126,7 +126,7 @@ class OperatorConversation:
             if source.startswith("laboratory-home:action:"):
                 key = source.rsplit(":",1)[-1]
                 if self._receipt_verified(key):
-                    verified.append({"text":mem["text"],"source":"lived",
+                    verified.append({"status":"verified","text":mem["text"],"source":"lived",
                                      "evidence_key":source,"memory_id":mem["id"],
                                      "tick":mem["created_tick"]})
         # A wish is explicitly hypothetical, sourced from its one BrainStore
@@ -139,7 +139,7 @@ class OperatorConversation:
             except sqlite3.OperationalError:
                 wishes=[]
         for wish in wishes:
-            verified.append({"text":"I wished to " + str(wish[1]).removeprefix("I wish to ").rstrip(".") + ".",
+            verified.append({"status":"verified","text":"I wished to " + str(wish[1]).removeprefix("I wish to ").rstrip(".") + ".",
                              "source":"wish","evidence_key":"wish:"+wish[0],
                              "tick":int(wish[2])})
         return verified
@@ -289,7 +289,7 @@ class OperatorConversation:
                  model_tokens,model_latency_ms,beat,created_utc,simulation_day)
                 VALUES (?, 'pretorius', ?, ?, ?, 0, 0, 0, ?, ?, ?)""",
                 (key,event["memory_id"],reply,json.dumps([{
-                    "text":reply,"source":"lived",
+                    "status":"verified","text":reply,"source":"lived",
                     "evidence_key":"laboratory-home:action:"+receipt_hash,
                     "memory_id":event["memory_id"]}],sort_keys=True),
                  clock.beat,clock.utc_iso,day))
