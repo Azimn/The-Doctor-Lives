@@ -175,9 +175,10 @@ def _inspect_trial(root, item, lab_root):
         before, after = event.get("state_before"), event.get("state_after")
         if not HEX.fullmatch(str(before)) or not HEX.fullmatch(str(after)):
             fail("a", "receipt does not attest to actual physical state transition")
-        if p["affordance_key"] == previous.get("op") and (before == after
-                or before == previous.get("before")):
-            fail("a", "repeated action with no verified new state")
+        if before == after:
+            fail("a", "action without verified physical state change")
+        if p["affordance_key"] == previous.get("op") and before == previous.get("before"):
+            fail("a", "repeated identical action against unchanged state")
         previous = {"op": p["affordance_key"], "before": before}
         if p["affordance_key"] == novel_key:
             first_used = n if first_used is None else first_used
