@@ -26,7 +26,8 @@ NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist",
                          "clean": "persist", "light": "explore",
                          "extinguish": "avoid", "brew_tea": "connect",
                          "prepare_meal": "persist", "eat": "avoid",
-                         "rest": "avoid", "sleep": "avoid"}
+                         "rest": "avoid", "sleep": "avoid",
+                         "advance": "persist"}
 MEMORY_WEIGHT = 0.60
 NEURAL_WEIGHT = 0.20
 # Bounded, grammar-specific instruction comprehension, not unrestricted LLM text
