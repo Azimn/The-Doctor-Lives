@@ -118,3 +118,24 @@ def stable_choice_rank(total: float, affordance_key: str, intention: str) -> tup
     if not isinstance(total,(int,float)) or not math.isfinite(total):
         raise ValueError("Invalid scored proposal")
     return (float(total),str(affordance_key),str(intention).casefold())
+
+
+def bounded_native_contrast(native: dict[str,float], tendency: str) -> float:
+    """Bounded, interpretable causal contribution from one native Noesis readout.
+
+    A common approximately uniform floor is not a reason to prefer an action.
+    Subtract the native minimum, and normalize at no more than a 0.005 span
+    denominator so tiny floating-point perturbations are never amplified
+    indefinitely. This is a post-null corrective research candidate, not a
+    retrospective change to the original preregistered M4 result.
+    """
+    if set(native)!=set(ACTIONS) or tendency not in native:
+        raise ValueError("Original Noesis ten-action distribution required")
+    values=[float(native[a]) for a in ACTIONS]
+    if any(not math.isfinite(value) for value in values):
+        raise ValueError("Native neural action scores must be finite")
+    low, high=min(values),max(values)
+    span=high-low
+    if span < 1e-8:
+        return 0.0
+    return min(0.12,0.12*(float(native[tendency])-low)/max(0.005,span))

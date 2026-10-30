@@ -12,6 +12,7 @@ import sqlite3
 import tempfile
 from doctor_lives import Experience
 from doctor_lives.causal_audit import CausalAuditHarness, AuditIntervention
+from doctor_lives.semantic_intentions import bounded_native_contrast
 
 class FullRecurrentWeightAudit(CausalAuditHarness):
     @staticmethod
@@ -124,7 +125,7 @@ def collect(root: Path):
                     raise ValueError("Invalid semantic category at native Noesis boundary")
                 ranked={}
                 for pid,c in components.items():
-                    ranked[pid]=(float(scores[c["tendency"]])+
+                    ranked[pid]=(bounded_native_contrast(scores,c["tendency"])+
                                  float(c["familiarity"])+float(c["novelty"])+
                                  float(c["history"])+
                                  sum(float(v) for v in c.get("donor_components",{}).values()))

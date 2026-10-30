@@ -2,7 +2,7 @@
 import unittest
 from scripts.verify_semantics import evaluate, verify_report, MIN_INVARIANCE
 from doctor_lives.semantic_intentions import (
-    LocalOllamaEmbeddings, semantic_category, semantic_scores, fallback_scores, stable_choice_rank)
+    LocalOllamaEmbeddings, semantic_category, semantic_scores, fallback_scores, stable_choice_rank, bounded_native_contrast)
 
 class SemanticIntentionContract(unittest.TestCase):
     def test_thirty_intentions_and_sixty_paraphrases(self):
@@ -27,6 +27,17 @@ class SemanticIntentionContract(unittest.TestCase):
             with self.subTest(endpoint=endpoint), self.assertRaises(ValueError):
                 LocalOllamaEmbeddings("nomic-embed-text",endpoint)
 
+
+    def test_native_contrast_has_bounded_nonzero_policy_influence(self):
+        from doctor_lives.neural import ACTIONS
+        native={a:0.1 for a in ACTIONS}
+        self.assertEqual(bounded_native_contrast(native,"explore"),0.0)
+        native["create"]=0.112
+        self.assertGreater(bounded_native_contrast(native,"create"),0.11)
+        self.assertEqual(bounded_native_contrast(native,"avoid"),0.0)
+        self.assertLessEqual(bounded_native_contrast(native,"create"),0.12)
+        with self.assertRaises(ValueError):
+            bounded_native_contrast({"create":0.1},"create")
 
     def test_proposal_identity_never_tiebreaks_semantic_preferences(self):
         self.assertGreater(stable_choice_rank(0.4,"archive","Explore the archive"),

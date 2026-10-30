@@ -19,7 +19,7 @@ from .open_inference import InferencePort
 from .open_lab_bridge import OperatorWork
 from .store import new_id, utc_now
 from .neural import ACTIONS
-from .semantic_intentions import semantic_scores, LocalOllamaEmbeddings, stable_choice_rank
+from .semantic_intentions import semantic_scores, LocalOllamaEmbeddings, stable_choice_rank, bounded_native_contrast
 
 _STOP={"i","might","would","like","to","a","the","my","of","and","an","in",
        "want","could","for","about","with","do","on","be","try","some","at"}
@@ -185,7 +185,7 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
             for mem in used_memories[:12]:
                 history+=0.005*len(words(row["text"])&words(mem["text"]))
         history=min(history,0.03)
-        neural_component=base
+        neural_component=bounded_native_contrast(native,tendency)
         score=neural_component+familiarity+novelty+history
         donor_names=tuple(n.strip() for n in os.environ.get("PRETORIUS_M5_DONORS","").split(",") if n.strip())
         from .m5_donors import contributions as m5_contributions
@@ -194,6 +194,7 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         contributions[row["proposal_id"]]={"neural":neural_component,
             "familiarity":familiarity,"novelty":novelty,"history":history,
             "total":score,"tendency":tendency,"similarity":scores[tendency],
+            "native_raw_action_score":base,"native_span":max(native.values())-min(native.values()),
             "tie_key":str(key)+"|"+str(row["text"]).casefold(),
             "donor_components":donor_values}
         candidates[row["proposal_id"]]=(score,row)
