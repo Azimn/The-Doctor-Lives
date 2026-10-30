@@ -121,6 +121,60 @@ def main():
         for _ in range(2):
             actual = json.loads(_run(preview_start).stdout)
             assert actual["status"] == "ready" and actual["abandoned"] == 0
+        # The installed 4,096-neuron preview must survive a complete offline
+        # backup/restore into a new, clean workspace, not merely two starts.
+        preview_archive = root / "operator-preview-backup"
+        saved = json.loads(_run([
+            console, "--state", str(preview_state), "lab-backup",
+            "--world", str(preview_world), "--output", str(preview_archive),
+        ]).stdout)
+        assert saved["status"] == "backed_up"
+        restored_preview = root / "operator-preview-restored"
+        restored_preview_state = restored_preview / "state"
+        restored_preview_world = restored_preview / "laboratory.sqlite3"
+        restored = json.loads(_run([
+            console, "--state", str(restored_preview_state), "lab-restore",
+            "--world", str(restored_preview_world), "--archive",
+            str(preview_archive),
+        ]).stdout)
+        assert restored["status"] == "restored"
+        restored_start = json.loads(_run([
+            console, "--state", str(restored_preview_state), "lab-start",
+            "--world", str(restored_preview_world),
+        ]).stdout)
+        assert restored_start["status"] == "ready"
+        assert restored_start["abandoned"] == 0
+        assert SpatialHabitat(restored_preview_world).verify()["world_epoch"] == (
+            preview_genesis["world_epoch"]
+        )
+        with np.load(restored_preview_state / "pretorius_recurrent.npz",
+                     allow_pickle=False) as checkpoint:
+            assert json.loads(str(checkpoint["cfg_json"].item()))["neurons"] == 4096
+
+        # A competing empty backup destination must never be overwritten
+        # between the final check and the actual directory publication.
+        from unittest.mock import patch
+        from doctor_lives import lab_backup
+        contested_backup = root / "competing-empty-backup"
+        real_publish = lab_backup._publish_noreplace
+
+        def competing_publisher(staging, destination):
+            assert destination == contested_backup
+            destination.mkdir()
+            return real_publish(staging, destination)
+
+        with patch("doctor_lives.lab_backup._publish_noreplace",
+                   side_effect=competing_publisher):
+            try:
+                lab_backup.backup(preview_state, preview_world, contested_backup)
+            except FileExistsError:
+                pass
+            else:
+                raise AssertionError("Backup replaced a competing empty directory")
+        assert contested_backup.is_dir()
+        assert list(contested_backup.iterdir()) == []
+        assert not list(root.glob(".doctor-backup-*"))
+
         no_reseed = subprocess.run([
             console, "preview-init", "--workspace", str(preview),
         ], capture_output=True, text=True, timeout=120)
