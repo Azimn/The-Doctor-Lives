@@ -24,6 +24,8 @@ RESEARCH_ONLY = {
     "neural_robustness.py": {"subprocess"},
 }
 
+REVIEWED_OPERATOR_GLOSS = {"local_subject_gloss.py": {"http"}}
+
 MODEL_PROVIDER_ROOTS = {
     "urllib", "requests", "httpx", "http", "openai", "anthropic",
     "ollama", "transformers", "subprocess", "litellm", "llama_cpp",
@@ -56,11 +58,30 @@ def run() -> dict:
         content = file.read_text("utf-8")
         root = ast.parse(content, filename=str(file))
         found = imports(root) & MODEL_PROVIDER_ROOTS
-        if found != RESEARCH_ONLY.get(file.name, set()):
+        expected = RESEARCH_ONLY.get(file.name, REVIEWED_OPERATOR_GLOSS.get(file.name, set()))
+        if found != expected:
             raise AssertionError(
                 f"Unreviewed model/process/network import in {file.name}: "
-                f"{sorted(found)}; expected {sorted(RESEARCH_ONLY.get(file.name, set()))}"
+                f"{sorted(found)}; expected {sorted(expected)}"
             )
+        if file.name == "local_subject_gloss.py":
+            # Only this operator-only adapter may use a network import, and
+            # only for a literal fixed-loopback Ollama POST. This does not
+            # authorize an alternative subjective renderer or provider URL.
+            calls = [node for node in ast.walk(root)
+                     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)]
+            connections = [node for node in calls if node.func.attr == "HTTPConnection"]
+            requests = [node for node in calls if node.func.attr == "request"]
+            def literal(node):
+                return node.value if isinstance(node, ast.Constant) else None
+            if (len(connections) != 1 or len(connections[0].args) < 2
+                    or [literal(a) for a in connections[0].args[:2]]
+                    != ["127.0.0.1", 11434]
+                    or len(requests) != 1 or len(requests[0].args) < 2
+                    or [literal(a) for a in requests[0].args[:2]]
+                    != ["POST", "/api/generate"]):
+                raise AssertionError("Operator gloss must use only fixed-loopback Ollama")
+            audits[file.name] = "fixed-loopback operator gloss only; not a subject renderer"
         if file.name in AUTHORIZED_LOCAL_MODULES:
             if found:
                 raise AssertionError("Production subject modules may not directly access provider")

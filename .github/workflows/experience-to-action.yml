@@ -1,0 +1,107 @@
+name: Pretorius verified experience to physical action
+
+on:
+  pull_request:
+    paths:
+      - doctor_lives/experience_to_action.py
+      - doctor_lives/cli.py
+      - doctor_lives/local_subject_gloss.py
+      - doctor_lives/lab_runtime.py
+      - doctor_lives/lab_soak.py
+      - tests/test_lab_soak.py
+      - tests/test_lab_runtime.py
+      - tools/offline_wheelhouse.py
+      - tests/test_offline_wheelhouse.py
+      - doctor_lives/lab_backup.py
+      - pyproject.toml
+      - tests/wheel_lab_start_smoke.py
+      - doctor_lives/lab_home_bridge.py
+      - doctor_lives/noesis_situated_choice.py
+      - doctor_lives/noesis_consequences.py
+      - doctor_lives/noesis_lab_work.py
+      - doctor_lives/cognition.py
+      - doctor_lives/organs.py
+      - tests/test_six_organ_experience_to_action.py
+      - tests/test_lab_home_bridge.py
+      - tests/test_six_organ_noesis_experience.py
+      - tests/test_six_organ_noesis_consequences.py
+      - docs/experiments/NOESIS_OUTCOME_LEARNING_PREREG_2026-10-28.md
+      - docs/experiments/NOESIS_SITUATED_CHOICE_PREREG_2026-10-28.md
+      - docs/experiments/EXPERIENCE_TO_ACTION_PREREG_2026-10-28.md
+      - .github/workflows/experience-to-action.yml
+  workflow_dispatch:
+
+jobs:
+  pinned-real-laboratory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install unchanged Doctor dependencies
+        run: python -m pip install -e .
+      - name: Prove actual pinned Lab is present; do not count skipped tests
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.subject_port import SubjectPort; from pretorius_lab.book_library import BookLibrary; print('Actual source-pinned Laboratory loaded')"
+      - name: Run real work-outcome learning arms
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_experience_to_action.py -v
+      - name: Verify ORIGINAL Noesis selects between competing feasible physical actions
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_noesis_experience.py -v
+      - name: Verify Noesis learns from real action consequences without a manual
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_noesis_consequences.py -v
+      - name: Preserve earlier autobiographical book preference controls
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_autobiographical_book_preference.py -v
+      - name: Preserve original authenticated Laboratory bridge
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_lab_home_bridge.py -v
+
+      - name: Exercise bounded offline real-time Laboratory host against original world
+        env:
+          PYTHONPATH: donor-laboratory
+        run: python -m unittest discover -s tests -p test_lab_runtime.py -v
+      - name: Verify real-elapsed soak, restart and tamper controls in pinned Laboratory
+        env:
+          PYTHONPATH: donor-laboratory
+        run: python -m unittest discover -s tests -p test_lab_soak.py -v
+      - name: Verify wheelhouse tamper and source-pin negative controls
+        run: python -m unittest discover -s tests -p test_offline_wheelhouse.py -v
+      - name: Build Doctor, original pinned Laboratory and dependency wheels
+        run: python -m pip wheel --wheel-dir "$RUNNER_TEMP/pretorius-wheels" . ./donor-laboratory
+      - name: Seal and verify complete wheelhouse against actual checked-out sources
+        run: |
+          DOCTOR_SOURCE_SHA="$(git rev-parse HEAD)"
+          LAB_SOURCE_SHA="$(git -C donor-laboratory rev-parse HEAD)"
+          test "$LAB_SOURCE_SHA" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+          python tools/offline_wheelhouse.py seal --wheelhouse "$RUNNER_TEMP/pretorius-wheels" --doctor-sha "$DOCTOR_SOURCE_SHA" --lab-sha "$LAB_SOURCE_SHA"
+          python tools/offline_wheelhouse.py verify --wheelhouse "$RUNNER_TEMP/pretorius-wheels" --doctor-sha "$DOCTOR_SOURCE_SHA" --lab-sha "$LAB_SOURCE_SHA"
+          python -m venv "$RUNNER_TEMP/pretorius-wheel-venv"
+          "$RUNNER_TEMP/pretorius-wheel-venv/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/pretorius-wheels" "the-doctor-lives[laboratory]==0.5.0rc2"
+      - name: Exercise installed console in clean external directory after world-commit crash
+        env:
+          PYTHONPATH: ""
+        run: |
+          cd "$RUNNER_TEMP"
+          PATH="$RUNNER_TEMP/pretorius-wheel-venv/bin:$PATH" "$RUNNER_TEMP/pretorius-wheel-venv/bin/python" "$GITHUB_WORKSPACE/tests/wheel_lab_start_smoke.py"
