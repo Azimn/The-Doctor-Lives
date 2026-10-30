@@ -150,7 +150,8 @@ def _reject_host_commands(opportunities):
 
 def _authored_goal(meta, policies, thoughts, restart):
     """Check original policy + thought and an unchanged durable goal envelope."""
-    keys = ("six_organ_endogenous_book_goal_v1", "six_organ_native_rest_intention_v1")
+    keys = ("six_organ_endogenous_book_goal_v1", "six_organ_native_rest_intention_v1",
+            "pretorius_day_noesis_goal_v1")
     goals = []
     for key in keys:
         raw = meta.get(key)
@@ -164,8 +165,19 @@ def _authored_goal(meta, policies, thoughts, restart):
             pid, tid = goal["origin_policy_id"], goal["origin_thought_id"]
             policy = policies[pid]
             thought = next(t for t in thoughts if t["id"] == tid)
-            if (policy["selected_action"] not in ("explore", "avoid")
-                    or thought["generated_by"] != "neural_policy:" + pid):
+            if key == "pretorius_day_noesis_goal_v1":
+                evidence = json.loads(policy["state_pressure_json"])
+                if (goal.get("schema") != "pretorius.native-day-goal.v1"
+                        or goal.get("phase") not in ("active", "complete")
+                        or policy["trigger"] != "noesis_situated_choice"
+                        or policy["selected_action"] != goal.get("selected_action")
+                        or thought["generated_by"] != "noesis_situated_choice:" + pid
+                        or thought.get("text") != goal.get("intention")
+                        or evidence.get("selector_authority") != "original_noesis"
+                        or evidence.get("physical_authority") != "none"):
+                    continue
+            elif (policy["selected_action"] not in ("explore", "avoid")
+                  or thought["generated_by"] != "neural_policy:" + pid):
                 continue
             goals.append((key, goal))
         except (KeyError, ValueError, TypeError, StopIteration):
