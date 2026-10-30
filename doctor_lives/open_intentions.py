@@ -63,9 +63,14 @@ def mental_context(bridge, work:OperatorWork,cycle:int,*,memory_enabled=True):
     past=[m["text"] for m in brain.store.memories(False)
           if m["active"] and m["evidence_class"]=="lived_runtime_memory"
           and m["source"].startswith("laboratory-home:action:")]
+    with brain.store.connect() as db:
+        pending=[r[0] for r in db.execute(
+            "SELECT text FROM open_wishes WHERE status='unfulfilled' "
+            "ORDER BY first_cycle DESC LIMIT 5")]
     afforded=work.affordances(cycle)
     context={"situation":immediate["text"],"needs":needs,
              "memories":past[:8] if memory_enabled else [],
+             "unfulfilled_wishes":pending if memory_enabled else [],
              "affordances":[{"description":a["description"],
                              "label":a["goal_type"]} for a in afforded],
              "current_day":1+(cycle-1)//3}
