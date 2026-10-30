@@ -19,7 +19,7 @@ from .open_inference import InferencePort
 from .open_lab_bridge import OperatorWork
 from .store import new_id, utc_now
 from .neural import ACTIONS
-from .semantic_intentions import semantic_scores, LocalOllamaEmbeddings
+from .semantic_intentions import semantic_scores, LocalOllamaEmbeddings, stable_choice_rank
 
 _STOP={"i","might","would","like","to","a","the","my","of","and","an","in",
        "want","could","for","about","with","do","on","be","try","some","at"}
@@ -194,11 +194,13 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         contributions[row["proposal_id"]]={"neural":neural_component,
             "familiarity":familiarity,"novelty":novelty,"history":history,
             "total":score,"tendency":tendency,"similarity":scores[tendency],
+            "tie_key":str(key)+"|"+str(row["text"]).casefold(),
             "donor_components":donor_values}
         candidates[row["proposal_id"]]=(score,row)
     selected=None
     if candidates:
-        top_id,(value,_) = max(candidates.items(),key=lambda kv:(kv[1][0],kv[0]))
+        top_id,(value,_) = max(candidates.items(),key=lambda kv:
+            stable_choice_rank(kv[1][0],kv[1][1]["affordance_key"],kv[1][1]["text"]))
         if value>0.01:
             selected=top_id
     # The policy can DECLINE all. A decline never writes a motor receipt.

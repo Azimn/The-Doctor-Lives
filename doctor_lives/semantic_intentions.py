@@ -107,3 +107,14 @@ def semantic_scores(text: str, embeddings: LocalOllamaEmbeddings|None=None) -> d
 def semantic_category(text: str, embeddings: LocalOllamaEmbeddings|None=None) -> str:
     scores=semantic_scores(text,embeddings)
     return max(ACTIONS,key=lambda name:(scores[name],-ACTIONS.index(name)))
+
+
+def stable_choice_rank(total: float, affordance_key: str, intention: str) -> tuple:
+    """Stable tie rule independent of random proposal UUIDs.
+
+    The engine does not turn arbitrary event identity into a preference. An
+    identical duplicate proposal retains its first original proposal order.
+    """
+    if not isinstance(total,(int,float)) or not math.isfinite(total):
+        raise ValueError("Invalid scored proposal")
+    return (float(total),str(affordance_key),str(intention).casefold())

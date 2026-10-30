@@ -48,7 +48,7 @@ def collect(root: Path):
         cs=row["contributions"]
         if not isinstance(cs,dict) or not cs:
             continue
-        no_bonus=max(cs,key=lambda k:(cs[k]["total"]-cs[k]["novelty"],k))
+        no_bonus=max(cs,key=lambda k:(cs[k]["total"]-cs[k]["novelty"],cs[k]["tie_key"]))
         changed+=int(row["selected_proposal_id"]!=no_bonus)
         scored+=1
 

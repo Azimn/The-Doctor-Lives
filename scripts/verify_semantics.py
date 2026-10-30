@@ -81,9 +81,11 @@ def verify_report(report):
             for field in ("neural","novelty","history","familiarity","total"):
                 if not isinstance(c.get(field),(float,int)):
                     raise ValueError("Missing real component " + field)
+            if not isinstance(c.get("tie_key"),str) or not c["tie_key"]:
+                raise ValueError("Missing deterministic proposal tie key")
             if abs(c["novelty"]) > 0.051:
                 raise ValueError("Novelty exceeded bounded family cap")
-        unbonused=max(contributions.items(),key=lambda x:(x[1]["total"]-x[1]["novelty"],x[0]))[0]
+        unbonused=max(contributions.items(),key=lambda x:(x[1]["total"]-x[1]["novelty"],x[1]["tie_key"]))[0]
         actual=row.get("selected_proposal_id")
         changed += int(actual != unbonused)
         total += 1

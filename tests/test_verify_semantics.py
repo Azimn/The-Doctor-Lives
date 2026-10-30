@@ -2,7 +2,7 @@
 import unittest
 from scripts.verify_semantics import evaluate, verify_report, MIN_INVARIANCE
 from doctor_lives.semantic_intentions import (
-    LocalOllamaEmbeddings, semantic_category, semantic_scores, fallback_scores)
+    LocalOllamaEmbeddings, semantic_category, semantic_scores, fallback_scores, stable_choice_rank)
 
 class SemanticIntentionContract(unittest.TestCase):
     def test_thirty_intentions_and_sixty_paraphrases(self):
@@ -27,10 +27,17 @@ class SemanticIntentionContract(unittest.TestCase):
             with self.subTest(endpoint=endpoint), self.assertRaises(ValueError):
                 LocalOllamaEmbeddings("nomic-embed-text",endpoint)
 
+
+    def test_proposal_identity_never_tiebreaks_semantic_preferences(self):
+        self.assertGreater(stable_choice_rank(0.4,"archive","Explore the archive"),
+                           stable_choice_rank(0.4,"archive","Examine the shelves"))
+        with self.assertRaises(ValueError):
+            stable_choice_rank(float("nan"),"archive","Unknown")
+
     def test_no_faked_ablation_or_uncapped_novelty(self):
         base={"selected_proposal_id":"a","contributions":{
-            "a":{"neural":0.1,"novelty":0.0,"familiarity":0.0,"history":0.0,"total":0.1},
-            "b":{"neural":0.1,"novelty":0.1,"familiarity":0.0,"history":0.0,"total":0.2}}}
+            "a":{"neural":0.1,"novelty":0.0,"familiarity":0.0,"history":0.0,"total":0.1,"tie_key":"a|observe"},
+            "b":{"neural":0.1,"novelty":0.1,"familiarity":0.0,"history":0.0,"total":0.2,"tie_key":"b|create"}}}
         with self.assertRaisesRegex(ValueError,"cap"):
             verify_report({"decisions":[base],"recurrent_lesion":{"seeds":20,
                 "executed_with_causal_audit_harness":True}})

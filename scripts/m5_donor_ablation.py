@@ -18,10 +18,10 @@ from doctor_lives.lab_home_bridge import DoctorHomeBridge
 from doctor_lives.open_lab_bridge import OperatorWork
 from doctor_lives.m5_donors import DONORS,contributions
 
-def _choice(scores, threshold=0.01):
+def _choice(scores, tie_keys, threshold=0.01):
     if not scores:
         return None
-    name=max(scores,key=lambda k:(scores[k],k))
+    name=max(scores,key=lambda k:(scores[k],tie_keys[k]))
     return name if scores[name]>threshold else None
 
 def audit_one(root:Path,seed:int,work_root:Path):
@@ -51,12 +51,13 @@ def audit_one(root:Path,seed:int,work_root:Path):
         on_context=off.get("contributions") or {}
         if set(original_scores)!=set(on_context):
             raise ValueError("Original decision lacks complete neural/novelty evidence")
-        off_selected=_choice(original_scores)
+        stable_keys={k:v["tie_key"] for k,v in on_context.items()}
+        off_selected=_choice(original_scores,stable_keys)
         if off_selected!=off.get("selected_proposal_id"):
             raise ValueError("Reconstructed existing Noesis choice differs from source")
         simple={p:(float(c["familiarity"])+float(c["novelty"])+float(c["history"]))
                 for p,c in on_context.items()}
-        simple_selected=_choice(simple,threshold=-1.0)
+        simple_selected=_choice(simple,stable_keys,threshold=-1.0)
         cycle=proposals[next(iter(original_scores))]["cycle"]
         current={c["affordance_key"]:c for c in pairs[1][2].affordances(cycle)}
         for donor in DONORS:
@@ -67,7 +68,7 @@ def audit_one(root:Path,seed:int,work_root:Path):
                 if cap is not None:
                     add=contributions(pairs[1][1],pairs[1][2],proposal,cap,cycle,(donor,))
                     adjusted[pid]+=add[donor]
-            adjusted_selected=_choice(adjusted)
+            adjusted_selected=_choice(adjusted,stable_keys)
             counts[donor]["recorded_decisions"]+=1
             counts[donor]["on_off_choice_flips"]+=int(adjusted_selected!=off_selected)
             counts[donor]["off_simple_disagreements"]+=int(off_selected!=simple_selected)
