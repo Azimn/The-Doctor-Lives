@@ -256,7 +256,7 @@ def main(argv=None):
     report["tested_models"]=["model_off"] if args.model_off else ["model_off","local_ollama"]
     if args.report:
         args.report.write_text(json.dumps(report,sort_keys=True,indent=2)+"\n")
-    result=verify(report,model_off_only=args.model_off)
+    result=verify(report,model_off_only=args.model_off,require_source=True)
     print(json.dumps({"judge":result,"life_cycles":len(report["life_cycles"]),
                      "source_world":report["source_world"],
                      "model_used":args.model is not None},sort_keys=True))

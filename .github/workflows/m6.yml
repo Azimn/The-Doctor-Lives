@@ -41,7 +41,7 @@ jobs:
           PYTHONPATH: donor-laboratory:.
         run: |
           python scripts/run_m6_conversation.py --root /tmp/m6-offline --model-off --report /tmp/m6-offline-report.json
-          python scripts/verify_conversation.py --report /tmp/m6-offline-report.json --model-off-only
+          python scripts/verify_conversation.py --report /tmp/m6-offline-report.json --model-off-only --require-source
       - name: Original M2, M4 and preregistered semantic judge contracts
         env:
           PYTHONPATH: donor-laboratory:.
@@ -91,7 +91,7 @@ jobs:
           NO_REMOTE_INFERENCE: '1'
         run: |
           python scripts/run_m6_conversation.py --root /tmp/m6-live --model qwen2.5:0.5b --report /tmp/m6-live-report.json
-          python scripts/verify_conversation.py --report /tmp/m6-live-report.json
+          python scripts/verify_conversation.py --report /tmp/m6-live-report.json --require-source
       - name: Upload original-world receipts, model calls and conversations
         if: always()
         uses: actions/upload-artifact@v4

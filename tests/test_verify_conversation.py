@@ -69,6 +69,10 @@ class ConversationJudgeNegatives(unittest.TestCase):
             with self.subTest(field=field),self.assertRaises(ConversationJudgmentError):
                 verify(x)
 
+    def test_report_is_not_its_own_source_authority(self):
+        with self.assertRaises(ConversationJudgmentError):
+            verify(fixture(), require_source=True)
+
     def test_20_paired_seed_necessity(self):
         x=fixture();x["operator_influence"]["seeds"]=19
         with self.assertRaises(ConversationJudgmentError):
