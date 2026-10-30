@@ -4,6 +4,7 @@ from __future__ import annotations
 import gc
 import importlib.util
 import json
+import os
 import re
 from pathlib import Path
 import subprocess
@@ -126,6 +127,94 @@ class SoakEvidenceTests(unittest.TestCase):
                 target_seconds=0.2, segment_seconds=0.2, interval_seconds=0.1,
             )
         self.assertFalse((self.state / "soak.jsonl").exists())
+
+    def test_reserved_world_sidecars_denied_without_look_or_mutation(self):
+        # The world lock is persistent authority, not an engineering log.
+        world_lock = self.world.with_name(
+            self.world.name + ".laboratory-host.lock"
+        )
+        world_lock.write_bytes(b"original-world-lock-sentinel")
+        with SpatialHabitat(self.world)._open() as db:
+            before_receipts = {
+                table: db.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
+                for table in ("embodied_events", "rhythm_events")
+            }
+        before_memories = len(
+            PretoriusBrainPort(self.state).brain.store.memories(False)
+        )
+        before_world = self.world.read_bytes()
+        before_lock = world_lock.read_bytes()
+        suffixes = (
+            "-wal", "-shm", "-journal", "-stmtjrnl",
+            "-super-journal", "-mj012345", ".laboratory-host.lock",
+        )
+        for suffix in suffixes:
+            with self.subTest(suffix=suffix):
+                candidate = self.world.with_name(self.world.name + suffix)
+                prior = candidate.read_bytes() if candidate.exists() else None
+                with self.assertRaises(ValueError):
+                    soak_laboratory(
+                        self.state, self.world, candidate,
+                        target_seconds=0.2, segment_seconds=0.2,
+                        interval_seconds=0.1,
+                    )
+                self.assertEqual(
+                    candidate.read_bytes() if candidate.exists() else None, prior
+                )
+        self.assertEqual(self.world.read_bytes(), before_world)
+        self.assertEqual(world_lock.read_bytes(), before_lock)
+        with SpatialHabitat(self.world)._open() as db:
+            after_receipts = {
+                table: db.execute("SELECT COUNT(*) FROM " + table).fetchone()[0]
+                for table in ("embodied_events", "rhythm_events")
+            }
+        self.assertEqual(after_receipts, before_receipts)
+        self.assertEqual(
+            len(PretoriusBrainPort(self.state).brain.store.memories(False)),
+            before_memories,
+        )
+        self.assertFalse(self.log.exists())
+
+        # A normal external log still permits real elapsed observation.
+        result = soak_laboratory(
+            self.state, self.world, self.log,
+            target_seconds=0.2, segment_seconds=0.2,
+            interval_seconds=0.1,
+        )
+        self.assertEqual(result["status"], "target_reached")
+        self.assertEqual(read_soak_log(self.log)["segments"], 1)
+
+    def test_world_lock_aliases_and_hardlinks_denied_before_host(self):
+        world_lock = self.world.with_name(
+            self.world.name + ".laboratory-host.lock"
+        )
+        world_lock.write_bytes(b"world-lock-must-remain-unchanged")
+        before_world = self.world.read_bytes()
+        before_lock = world_lock.read_bytes()
+        # This evidence path is not itself reserved, but its companion .lock
+        # would overwrite the original world's persistent host lock.
+        collision = self.world.with_name(
+            self.world.name + ".laboratory-host"
+        )
+        with self.assertRaises(ValueError):
+            soak_laboratory(
+                self.state, self.world, collision,
+                target_seconds=0.2, segment_seconds=0.2,
+                interval_seconds=0.1,
+            )
+        alias = Path(self.temp.name) / "alias-of-world-lock.jsonl"
+        os.link(world_lock, alias)
+        self.addCleanup(lambda: alias.unlink(missing_ok=True))
+        with self.assertRaises(ValueError):
+            soak_laboratory(
+                self.state, self.world, alias,
+                target_seconds=0.2, segment_seconds=0.2,
+                interval_seconds=0.1,
+            )
+        self.assertEqual(self.world.read_bytes(), before_world)
+        self.assertEqual(world_lock.read_bytes(), before_lock)
+        self.assertFalse(collision.exists())
+        self.assertFalse(self.log.exists())
 
     def test_preexisting_stop_never_creates_world_look(self):
         stop = threading.Event()
