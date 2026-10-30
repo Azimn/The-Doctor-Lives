@@ -1,6 +1,7 @@
 """Actual pinned-Laboratory offline soak evidence and restart controls."""
 from __future__ import annotations
 
+import gc
 import importlib.util
 import json
 from pathlib import Path
@@ -26,6 +27,7 @@ class SoakEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
+        self.addCleanup(gc.collect)
         root = Path(self.temp.name)
         self.state = root / "doctor"
         self.world = root / "world.sqlite3"
