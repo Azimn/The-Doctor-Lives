@@ -102,12 +102,27 @@ def verify_source_ledger(report: dict) -> dict:
         require(type(turn.get("model_called")) is bool
                 and turn["model_called"] == bool(stored["model_called"]),
                 "Reported model state differs from persisted outgoing turn")
-        if "day" in turn:
-            require(turn["day"] == stored["simulation_day"],
-                    "Reported simulation day differs from canonical turn")
-        if "beat" in turn:
-            require(turn["beat"] == stored["beat"],
-                    "Reported Swatch time differs from canonical turn")
+        # The report is not measurement authority. A failed local-model
+        # attempt can persist model_called=1 with zero generated tokens.
+        # Match the original measurements before accepting real-model evidence.
+        require(type(turn.get("tokens")) is int
+                and turn["tokens"] >= 0
+                and turn["tokens"] == stored["model_tokens"],
+                "Reported model tokens differ from canonical BrainStore turn")
+        require(type(turn.get("latency_ms")) in (int, float)
+                and 0 <= turn["latency_ms"] < float("inf")
+                and turn["latency_ms"] == stored["model_latency_ms"],
+                "Reported model latency differs from canonical BrainStore turn")
+        require(type(turn.get("day")) is int
+                and turn["day"] == stored["simulation_day"],
+                "Reported simulation day is missing or differs from canonical turn")
+        require(isinstance(turn.get("beat"), str)
+                and turn["beat"] == stored["beat"]
+                and len(turn["beat"]) == 4
+                and turn["beat"].startswith("@")
+                and turn["beat"][1:].isascii()
+                and turn["beat"][1:].isdigit(),
+                "Reported Swatch time is missing or differs from canonical turn")
         speech = stored["text"]
         # No active terminal controls or counterfeit source headings in
         # Pretorius-facing speech, including the persisted-speech path.
