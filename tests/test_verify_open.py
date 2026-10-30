@@ -31,16 +31,20 @@ class JudgeTests(unittest.TestCase):
             (folder/"world.sqlite3").touch()
             lab=db(folder/"world.sqlite3.operator-work.sqlite3","""
                 CREATE TABLE operator_events(event_id TEXT,op TEXT,payload_json TEXT,event_hash TEXT);
-                CREATE TABLE operator_affordances(affordance_key TEXT,introduced_cycle INTEGER);
+                CREATE TABLE operator_affordances(affordance_key TEXT,introduced_cycle INTEGER,description TEXT);
             """)
-            lab.execute("INSERT INTO operator_affordances VALUES('novel:archive',2)")
+            lab.execute("INSERT INTO operator_affordances VALUES(?,?,?)",("novel:archive",2,"append a finding to the newly opened archive"))
             mind=db(folder/"brain/brain.sqlite3","""
                 CREATE TABLE policy_decisions(id TEXT,trigger TEXT,selected_action TEXT,
                   state_pressure_json TEXT,neural_checkpoint_sha256 TEXT);
                 CREATE TABLE open_proposals(proposal_id TEXT,cycle INTEGER,source TEXT,
                   text TEXT,affordance_key TEXT,goal_type TEXT);
                 CREATE TABLE open_wishes(proposal_id TEXT);
-                CREATE TABLE memories(id TEXT,source TEXT);
+                CREATE TABLE memories(id TEXT,source TEXT,evidence_class TEXT,external INTEGER,active INTEGER);
+                CREATE TABLE open_prompt_evidence(cycle INTEGER,context_json TEXT,context_sha256 TEXT);
+            """)
+            intents=db(folder/"world.sqlite3.doctor-action-intents.sqlite3", """
+                CREATE TABLE doctor_action_intents(event_id TEXT,request_json TEXT,status TEXT);
             """)
             cycles=[]
             for cycle in (1,2,3):
@@ -64,11 +68,23 @@ class JudgeTests(unittest.TestCase):
                              (pid,"noesis_open_choice",op,stable(audit),"f"*64))
                 event={"event_id":eid,"op":op,"state_before":sha256(str(cycle).encode()).hexdigest(),
                        "state_after":sha256(str(cycle+1).encode()).hexdigest()}
+                event_hash=sha256(stable(event).encode()).hexdigest()
                 lab.execute("INSERT INTO operator_events VALUES(?,?,?,?)",
-                            (eid,op,stable(event),sha256(stable(event).encode()).hexdigest()))
+                            (eid,op,stable(event),event_hash))
+                intents.execute("INSERT INTO doctor_action_intents VALUES(?,?,?)",
+                                (eid,stable({"op":op,"args":{}}),"complete"))
+                mind.execute("INSERT INTO memories VALUES(?,?,?,?,?)",
+                             ("memory-"+eid,"laboratory-home:action:"+event_hash,
+                              "lived_runtime_memory",0,1))
+                prompt={"affordances":[] if cycle==1 else
+                        [{"description":"append a finding to the newly opened archive"}]}
+                raw=stable(prompt)
+                mind.execute("INSERT INTO open_prompt_evidence VALUES(?,?,?)",
+                             (cycle,raw,sha256(raw.encode()).hexdigest()))
                 cycles.append({"cycle":cycle,"day":f"day-{cycle}","proposal_ids":keys,
                                "selected_proposal_id":keys[0],"decision_id":pid,"event_id":eid})
-            lab.commit();mind.commit();lab.close();mind.close()
+            lab.commit();mind.commit();intents.commit()
+            lab.close();mind.close();intents.close()
             manifest={"seed":seed,"lab_pin":LAB_PIN,"cycles":cycles,
                       "novelty":{"key":"novel:archive","introduced_cycle":2},
                       "prompted_before_novelty":False,
