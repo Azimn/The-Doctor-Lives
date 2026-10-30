@@ -23,9 +23,11 @@ The ordinary JSON output is operator-only diagnostics, not Doctor memory. `--hum
 Use the same state/world paths after stopping or restarting. For durable backup and recovery:
 
 ```console
-doctor-lives --state ./pretorius-alone/state lab-backup --world ./pretorius-alone/laboratory.sqlite3 --output ./pretorius-backup.zip
+doctor-lives --state ./pretorius-alone/state lab-backup --world ./pretorius-alone/laboratory.sqlite3 --output ./pretorius-backup
+doctor-lives --state ./pretorius-restored/state lab-restore --world ./pretorius-restored/laboratory.sqlite3 --archive ./pretorius-backup
+doctor-lives --state ./pretorius-restored/state lab-start --world ./pretorius-restored/laboratory.sqlite3
 ```
 
-Restore using the existing `lab-restore` instructions to a separate clean destination, never over the live workspace. The still-outstanding 24-hour operational soak must run for at least 86,400 genuine elapsed seconds on continuously running local hardware or an appropriately isolated self-hosted runner, then pass `lab-soak-verify` against original-world action and canonical BrainStore evidence. Short CI and fast-forward time do not count. No soak has been started by this initializer.
+The backup is a **directory containing a manifest and verified files**, not a ZIP archive. Stop the live host and all other state writers before backing up. Publication uses the same atomic no-replace primitive as preview genesis, so a competing empty backup directory cannot be overwritten. Restore only to a **separate, absent** brain/world/action-journal destination, never over the live workspace. Verify the restored world epoch and cold start before retiring the original. The installed-wheel smoke now checks a full 4,096-neuron preview backup, restore and cold start, as well as competing-destination refusal. These short controls are not the 24-hour soak. The still-outstanding 24-hour operational soak must run for at least 86,400 genuine elapsed seconds on continuously running local hardware or an appropriately isolated self-hosted runner, then pass `lab-soak-verify` against original-world action and canonical BrainStore evidence. Short CI and fast-forward time do not count. No soak has been started by this initializer.
 
 The authoritative Laboratory source currently pinned by this campaign is `6e49795752835d64fa6fd63d16359669a1ca2ba7`. Production main is unchanged. The preview does not claim three uncoached activities or release acceptance.
