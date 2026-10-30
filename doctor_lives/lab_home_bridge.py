@@ -376,6 +376,60 @@ class DoctorHomeBridge:
             raise RuntimeError("Invalid Doctor-owned Laboratory action reservation")
         return {"event_id": event_id, **request, "status": row[1]}
 
+    def abandon_proven_uncommitted_intent(
+        self, event_id: str, op: str, args: dict,
+    ) -> bool:
+        """Drop only a pending reservation with NO physical receipt anywhere.
+
+        Used by the cooperative shipping host after a killed process between
+        durable intent reservation and original Laboratory world commit.
+        Check every known authoritative domain under an IMMEDIATE journal
+        transaction before deletion. Never erase a committed action or a
+        reservation whose physical outcome is uncertain.
+        """
+        if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+            raise ValueError("Stable bounded Laboratory action identity required")
+        if op not in _ACTION_DOMAINS or type(args) is not dict:
+            raise PermissionError("Unknown Laboratory action intent")
+        path = self._intent_path()
+        if not path.is_file():
+            raise RuntimeError("Missing durable Laboratory action journal")
+        with sqlite3.connect(path, isolation_level=None, timeout=30) as db:
+            db.execute("PRAGMA busy_timeout=30000")
+            db.execute("PRAGMA synchronous=FULL")
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT request_json,status FROM doctor_action_intents "
+                "WHERE event_id=?", (event_id,),
+            ).fetchone()
+            if (row is None or row[0] != _stable({"op": op, "args": args})
+                    or row[1] != "pending"):
+                raise RuntimeError("Pending Doctor intent identity changed")
+            with self.world._open() as world_db:
+                for table in sorted(set(_ACTION_DOMAINS.values())):
+                    exists = world_db.execute(
+                        "SELECT 1 FROM sqlite_master "
+                        "WHERE type='table' AND name=?", (table,),
+                    ).fetchone()
+                    if not exists:
+                        if table == _ACTION_DOMAINS[op]:
+                            raise RuntimeError("Missing authoritative receipt table")
+                        continue
+                    if world_db.execute(
+                        "SELECT 1 FROM " + table + " WHERE event_id=? LIMIT 1",
+                        (event_id,),
+                    ).fetchone():
+                        raise RuntimeError(
+                            "Cannot abandon intent with a physical world receipt"
+                        )
+            db.execute(
+                "DELETE FROM doctor_action_intents "
+                "WHERE event_id=? AND request_json=? AND status='pending'",
+                (event_id, row[0]),
+            )
+            db.execute("COMMIT")
+        return True
+
     def pending_action_intents(self) -> tuple[dict, ...]:
         """Host-only durable replay queue, never a subject-facing memory."""
         path = self._intent_path()
