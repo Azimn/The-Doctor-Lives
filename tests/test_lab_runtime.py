@@ -1109,6 +1109,81 @@ raise AssertionError("The action-to-memory crash boundary was not reached")
         self.assertEqual(bridge.pending_action_intents(), ())
 
 
+    def test_noesis_binding_before_intent_crash_cannot_rebind_same_id(self):
+        # Second crash window: canonical Noesis policy is bound, but the
+        # world-side intent has not even been created. No tombstone can be
+        # inferred from a nonexistent journal; the original policy must veto.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        bridge.act("walk", event_id="pre-intent-center", station="station:center")
+        bridge.act("walk", event_id="pre-intent-bench", station="station:bench")
+        runtime.checkpoint()
+        orphan = "noesis-pre-intent-bound"
+        child = r"""
+import os
+import sys
+from pathlib import Path
+from doctor_lives.lab_home_bridge import DoctorHomeBridge
+from doctor_lives.lab_runtime import work_laboratory
+def die_before_intent(self, op, event_id, args):
+    os._exit(84)
+DoctorHomeBridge._locked_action_intent = die_before_intent
+work_laboratory(Path(sys.argv[1]), Path(sys.argv[2]), event_id=sys.argv[3])
+raise AssertionError("Expected crash before durable bridge reservation")
+"""
+        died = subprocess.run(
+            [sys.executable, "-c", child, str(self.state),
+             str(self.world_path), orphan],
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(died.returncode, 84, died.stderr)
+        self.assertFalse(self._has_work_intent(orphan))
+        with self.world._open() as db:
+            self.assertIsNone(db.execute(
+                "SELECT 1 FROM rhythm_events WHERE event_id=?", (orphan,),
+            ).fetchone())
+        with PretoriusBrainPort(self.state).brain.store.connect() as db:
+            records = [
+                json.loads(row[0]) for row in db.execute(
+                    "SELECT state_pressure_json FROM policy_decisions "
+                    "WHERE trigger='noesis_situated_choice'"
+                )
+            ]
+        self.assertEqual(sum(
+            item.get("motor_event_id") == orphan for item in records
+        ), 1)
+        stable = self._receipt_and_observation_counts()
+        started = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
+        self.assertEqual(json.loads(started.stdout)["abandoned"], 0)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        denied = self._work_cli(orphan)
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("already bound to an original-Noesis decision", denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        with PretoriusBrainPort(self.state).brain.store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0], len(records))
+        fresh = self._work_cli("noesis-after-pre-intent-crash")
+        self.assertEqual(fresh.returncode, 0, fresh.stderr)
+        self.assertEqual(json.loads(fresh.stdout)["selection"], "original_noesis")
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                ("noesis-after-pre-intent-crash",),
+            ).fetchone()[0], 1)
+
     def test_pre_world_noesis_crash_retires_id_and_fresh_work_survives_restart(self):
         # Original Noesis binds a work ID; the child exits after durable
         # Doctor reservation but before the authoritative physical action.
