@@ -59,7 +59,7 @@ def _inert_model_quote(value: str) -> str:
     It does not elevate model commentary to a source-verified claim.
     """
     return (json.dumps(value, ensure_ascii=True)
-            .replace("[", r"\\u005b").replace("]", r"\\u005d"))
+            .replace("[", r"\u005b").replace("]", r"\u005d"))
 
 
 def admit_model_draft(draft: str, verified_claims: list[dict]) -> GuardResult:
