@@ -25,6 +25,9 @@ RESEARCH_ONLY = {
 }
 
 REVIEWED_OPERATOR_GLOSS = {"local_subject_gloss.py": {"http"}}
+# M4/M5 opt-in research adapters are separate from the subject renderer.
+REVIEWED_LOCAL_RESEARCH = {"open_inference.py": {"urllib"},
+                           "semantic_intentions.py": {"urllib"}}
 
 MODEL_PROVIDER_ROOTS = {
     "urllib", "requests", "httpx", "http", "openai", "anthropic",
@@ -58,12 +61,30 @@ def run() -> dict:
         content = file.read_text("utf-8")
         root = ast.parse(content, filename=str(file))
         found = imports(root) & MODEL_PROVIDER_ROOTS
-        expected = RESEARCH_ONLY.get(file.name, REVIEWED_OPERATOR_GLOSS.get(file.name, set()))
+        expected = RESEARCH_ONLY.get(file.name, REVIEWED_OPERATOR_GLOSS.get(
+            file.name, REVIEWED_LOCAL_RESEARCH.get(file.name, set())))
         if found != expected:
             raise AssertionError(
                 f"Unreviewed model/process/network import in {file.name}: "
                 f"{sorted(found)}; expected {sorted(expected)}"
             )
+        if file.name in REVIEWED_LOCAL_RESEARCH:
+            # Existing M4 proposer and M5 embeddings are research-only.
+            # Require the literal loopback allowlist and their sole Ollama
+            # route, not an arbitrary URL/provider or subject-renderer bypass.
+            route = ("/api/generate" if file.name == "open_inference.py"
+                     else "/api/embed")
+            required = ('url=urlsplit(endpoint)', 'url.scheme!="http"',
+                        'url.hostname not in ("localhost","127.0.0.1","::1")',
+                        'url.username', 'url.password', 'url.query',
+                        'url.fragment', 'url.path.strip("/")', route)
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Name)]
+            if (not all(part in content for part in required)
+                    or sum(n.func.id == "urlopen" for n in calls) != 1
+                    or sum(n.func.id == "Request" for n in calls) != 1):
+                raise AssertionError("Unreviewed local research provider route")
+            audits[file.name] = "audited loopback-only research adapter, not renderer"
         if file.name == "local_subject_gloss.py":
             # Only this operator-only adapter may use a network import, and
             # only for a literal fixed-loopback Ollama POST. This does not
