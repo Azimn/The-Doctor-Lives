@@ -12,6 +12,7 @@ unverified unless they are exact copies of source-backed safe claims.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import re
 
 # Include additional common M6 verbs absent from the donor's original list.
@@ -49,6 +50,18 @@ def has_asserted_firsthand_claim(value: str) -> bool:
         "",value,flags=re.I)
     return bool(_FIRSTHAND.search(neutral))
 
+def _inert_model_quote(value: str) -> str:
+    """Return untrusted model prose as printable, visibly quoted data.
+
+    Reuse the existing local_subject_gloss boundary's ASCII JSON quoting.
+    This escapes terminal control codes, bidi/line separators and source-like
+    square-bracket headings before any terminal or localhost UI sees them.
+    It does not elevate model commentary to a source-verified claim.
+    """
+    return (json.dumps(value, ensure_ascii=True)
+            .replace("[", r"\\u005b").replace("]", r"\\u005d"))
+
+
 def admit_model_draft(draft: str, verified_claims: list[dict]) -> GuardResult:
     """Model may quote exact independently verified sentences, not mint events.
 
@@ -67,11 +80,13 @@ def admit_model_draft(draft: str, verified_claims: list[dict]) -> GuardResult:
         if part in sources:
             kept.append(part); claims.append(dict(sources[part]))
         elif has_asserted_firsthand_claim(part) or _FIRST_PERSON.search(part):
-            blocked.append(part)
+            blocked.append(_inert_model_quote(part))
         else:
-            # Neither model analysis nor free-language narration becomes
-            # evidence about Pretorius's private historical existence.
-            unverified.append(part)
+            # Untrusted model text is always quoted and inert, even when it
+            # does not assert a first-person episode. It may contain terminal
+            # controls, bidi markers or a forged verified-source heading.
+            unverified.append(_inert_model_quote(part))
     if unverified:
-        kept.append("Unverified local-model commentary: " + " ".join(unverified)[:350])
+        kept.append("Unverified local-model commentary (quoted, not evidence): "
+                    + " ".join(unverified)[:350])
     return GuardResult(" ".join(kept),tuple(claims),tuple(blocked),tuple(unverified))
