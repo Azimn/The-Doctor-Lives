@@ -30,7 +30,7 @@ class ProviderNeutralContracts(unittest.TestCase):
         self.assertEqual(p,DeterministicFallback().propose(context))
         self.assertTrue(3<=len(p)<=8)
         self.assertTrue(all(isinstance(t,str) and t.strip() for t in p))
-        self.assertTrue(any("I wish" in t or "I would like" in t for t in p))
+        self.assertTrue(any(t.startswith(("I wish", "I would like", "I wonder")) for t in p))
 
     def test_novel_free_text_is_only_grounded_when_real_capability_exists(self):
         affordances=[{"affordance_key":"document_read","description":"read the research document",
