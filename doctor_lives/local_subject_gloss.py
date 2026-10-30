@@ -15,6 +15,12 @@ _MAX_INPUT = 2048
 _MAX_OUTPUT = 500
 
 
+def valid_local_model(model: str) -> bool:
+    """Only a local Ollama model identifier, never a URL or filesystem path."""
+    return (isinstance(model, str) and _MODEL.fullmatch(model) is not None
+            and "://" not in model and "//" not in model)
+
+
 def local_interpretation(frames: list[dict], model: str) -> str | None:
     """Best-effort optional Ollama gloss, never authoritative first-person text.
 
@@ -23,7 +29,7 @@ def local_interpretation(frames: list[dict], model: str) -> str | None:
     the loopback boundary. A missing/failed local server leaves the verified
     transcript untouched.
     """
-    if not isinstance(model, str) or not _MODEL.fullmatch(model):
+    if not valid_local_model(model):
         raise ValueError("Invalid local model identifier")
     if not isinstance(frames, list):
         raise ValueError("Trusted subject frames required")
