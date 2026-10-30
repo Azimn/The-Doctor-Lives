@@ -26,6 +26,7 @@ DEFAULTS = (
     ("document_read","read the research document", "read_document","research.txt","study"),
     ("document_notes","write notes about the research document","write_notes","notes.txt","reflect"),
     ("daily_journal","append an observation to my daily journal","append_journal","journal.txt","journal"),
+    ("catalog_findings","catalogue an interesting artifact in my findings ledger","append_journal","catalog.txt","catalog"),
     ("operator_message","send a message to my operator's inbox","send_operator_message","inbox.txt","correspond"),
     ("operator_reply","read a reply from my operator's inbox","read_operator_reply","replies.txt","read"),
 )
@@ -104,8 +105,17 @@ class OperatorWork:
         valid=[]
         for row in rows:
             self._target(row["target"])
-            # Reading replies is not possible until there is an actual reply,
-            # never generate a reply from the model or the host as an outcome.
+            # A note ABOUT a document needs a previously lived, source-backed
+            # document reading, not just a model claiming that it read one.
+            if row["verb"]=="write_notes":
+                with self._connect() as db:
+                    reads=[v[0] for v in db.execute(
+                        "SELECT event_hash FROM operator_events WHERE op='document_read'")]
+                with self.bridge.doctor.brain.store.connect() as db:
+                    lived={v[0] for v in db.execute(
+                        "SELECT source FROM memories WHERE evidence_class='lived_runtime_memory'")}
+                if not any("laboratory-home:action:"+h in lived for h in reads):
+                    continue
             if row["verb"]=="read_operator_reply" and not (self.workspace/row["target"]).exists():
                 continue
             valid.append(row)
@@ -162,9 +172,16 @@ class OperatorWork:
                 state=self._state(target,int(cap["uses"]))
                 source_text=" ".join(proposal["text"].split())[:180]
                 if cap["verb"] in ("write_notes","append_journal","send_operator_message"):
-                    addition=source_text+"\n"
+                    if cap["verb"]=="write_notes":
+                        document=(self.workspace/"research.txt").read_text(encoding="utf-8")
+                        addition=("My notes on the actual document: "+
+                                  " ".join(document.split())[:240]+
+                                  ". My intention: "+source_text+"\n")
+                        perceived="I wrote notes about the source document."
+                    else:
+                        addition=source_text+"\n"
+                        perceived="I wrote: "+source_text
                     next_text=text+addition
-                    perceived="I wrote: "+source_text
                 else:
                     next_text=text
                     perceived="I read: "+(" ".join(text[-600:].split()) if text else "There is no reply.")
