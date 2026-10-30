@@ -259,6 +259,71 @@ class OperatorConversation:
                            absence_days=day if "what have you been doing" in text.casefold() else None)
         return reply
 
+    def record_initiative_receipt(self, event_id: str, *, day: int) -> dict:
+        """Publish an ALREADY completed original-Noesis outgoing message.
+
+        This cannot authorize an action. It reads an original world receipt
+        and checks the one original policy before displaying anything.
+        """
+        if type(day) is not int or day < 1:
+            raise ValueError("Valid simulated day required")
+        source=self.work.receipt(event_id)
+        if source is None:
+            raise PermissionError("Missing original-world operator message receipt")
+        event,event_hash=source
+        if event["op"]!="operator_message" or "decision_id" not in event:
+            raise PermissionError("Not an authenticated operator message action")
+        with self.doctor.brain.store.connect() as db:
+            policy=db.execute(
+                "SELECT trigger,selected_action,state_pressure_json FROM policy_decisions WHERE id=?",
+                (event["decision_id"],)).fetchone()
+        if policy is None:
+            raise PermissionError("No original Noesis decision")
+        audit=json.loads(policy["state_pressure_json"])
+        if (policy["trigger"]!="noesis_open_choice"
+                or policy["selected_action"]!="operator_message"
+                or audit.get("selector_authority")!="original_noesis"
+                or audit.get("motor_event_id")!=event_id
+                or audit.get("motor_authorization")!="authorized"
+                or audit.get("proposal_id")!=event["proposal_id"]):
+            raise PermissionError("Not a source-verified Noesis-origin message")
+        key="initiative_"+event_id
+        original=next((r for r in self.history() if r["turn_id"]==key),None)
+        if original:
+            return {"initiated":True,"already_recorded":True,
+                    "turn_id":key,"noesis_decision_id":event["decision_id"],
+                    "event_id":event_id}
+        daily=[t for t in self.history() if t["role"]=="pretorius"
+               and t["simulation_day"]==day
+               and t["turn_id"].startswith("initiative_")]
+        if len(daily)>=2:
+            raise RuntimeError("More than two source-backed outgoing messages in a day")
+        matching=[m for m in self.doctor.brain.store.memories(False)
+                  if m["source"]=="laboratory-home:action:"+event_hash
+                  and m["evidence_class"]=="lived_runtime_memory"]
+        if len(matching)!=1:
+            raise PermissionError("Message has no single canonical lived outcome")
+        reply=" ".join(event["subject"]["inner"].split())
+        if reply != matching[0]["text"]:
+            raise PermissionError("Spoken message does not match original lived receipt")
+        clock=engineer_time()
+        with self.doctor.brain.store.transaction() as db:
+            db.execute("""INSERT INTO operator_conversation_turns
+                (turn_id,role,source_memory_id,text,claims_json,model_called,
+                 model_tokens,model_latency_ms,beat,created_utc,simulation_day)
+                VALUES (?, 'pretorius', ?, ?, ?, 0, 0, 0, ?, ?, ?)""",
+                (key,matching[0]["id"],reply,json.dumps([{
+                    "status":"verified","text":reply,"source":"lived",
+                    "evidence_key":"laboratory-home:action:"+event_hash,
+                    "memory_id":matching[0]["id"]}],sort_keys=True),
+                 clock.beat,clock.utc_iso,day))
+            self.doctor.brain.store.bump_state_version(db)
+        self.doctor.save()
+        return {"initiated":True,"turn_id":key,
+                "noesis_decision_id":event["decision_id"],"event_id":event_id,
+                "reason":"original_noesis_selected_operator_message",
+                "source":"laboratory-home:action:"+event_hash}
+
     def offer_initiative(self, cycle: int, *, day: int) -> dict:
         """Offer, do not command: Noesis may select any currently viable work."""
         from .open_inference import DeterministicFallback
@@ -278,24 +343,4 @@ class OperatorConversation:
             return {"initiated":False,"reason":"original_noesis_chose_other",
                     "chosen":chosen["selected_affordance"]}
         event=authorized_open_action(self.bridge,self.work,chosen,cycle)
-        source,receipt_hash=self.work.receipt(event["event_id"])
-        assert receipt_hash == event["receipt_hash"]
-        reply=" ".join(source["subject"]["inner"].split())
-        clock=engineer_time()
-        key="initiative_"+event["event_id"]
-        with self.doctor.brain.store.transaction() as db:
-            db.execute("""INSERT INTO operator_conversation_turns
-                (turn_id,role,source_memory_id,text,claims_json,model_called,
-                 model_tokens,model_latency_ms,beat,created_utc,simulation_day)
-                VALUES (?, 'pretorius', ?, ?, ?, 0, 0, 0, ?, ?, ?)""",
-                (key,event["memory_id"],reply,json.dumps([{
-                    "status":"verified","text":reply,"source":"lived",
-                    "evidence_key":"laboratory-home:action:"+receipt_hash,
-                    "memory_id":event["memory_id"]}],sort_keys=True),
-                 clock.beat,clock.utc_iso,day))
-            self.doctor.brain.store.bump_state_version(db)
-        self.doctor.save()
-        return {"initiated":True,"turn_id":key,
-                "noesis_decision_id":chosen["decision_id"],"event_id":event["event_id"],
-                "reason":"original_noesis_selected_operator_message",
-                "source":"laboratory-home:action:"+receipt_hash}
+        return self.record_initiative_receipt(event["event_id"],day=day)

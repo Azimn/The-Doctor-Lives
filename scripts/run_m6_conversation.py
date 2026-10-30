@@ -129,10 +129,23 @@ def actual_life(root:Path, *, model:str|None) -> dict:
                    if m["source"].startswith("laboratory-home:action:")]
             operator_not_laundered=(len(before)==len(after))
         for j in range(3):
+            # The host offers opportunities but never selects his action.
+            # Stop offering after two already receipted outgoing messages.
+            sent_today=len([t for t in channel.history()
+                            if t["role"]=="pretorius" and t["simulation_day"]==day
+                            and t["turn_id"].startswith("initiative_")])
+            if sent_today>=2:
+                details.append({"day":day,"opportunity":"withheld_at_rate_limit"})
+                break
             cycle=(day-1)*3+j+1
             row=run_cycle(channel.doctor,channel.bridge,channel.work,cycle,
                           memory_enabled=True,provider="fallback",model=None)
             details.append(row)
+            if row["event_id"]:
+                checked=channel.work.receipt(row["event_id"])
+                if checked and checked[0]["op"]=="operator_message":
+                    initiated=channel.record_initiative_receipt(row["event_id"],day=day)
+                    details.append({"initiative":initiated,"day":day})
         turn=channel.submit(question,request_id="operator_day_"+str(day),
                             day=day,model=model if day in (1,3) else None)
         turns.append({"origin":"operator","text":question,"day":day})
@@ -166,8 +179,10 @@ def actual_life(root:Path, *, model:str|None) -> dict:
     per_day=[]
     for day in range(1,4):
         event=channel.offer_initiative(9+day,day=day)
-        per_day.append(int(event.get("initiated",False)))
         details.append({"initiative":event,"day":day})
+        per_day.append(len([t for t in channel.history()
+                            if t["role"]=="pretorius" and t["simulation_day"]==day
+                            and t["turn_id"].startswith("initiative_")]))
     # Model-off truth control even in the live-Ollama run.
     offline=channel.respond("What have you genuinely done?",model=None,
                             turn_id="pretorius_offline_truth_01",day=3)
@@ -202,6 +217,9 @@ def actual_life(root:Path, *, model:str|None) -> dict:
                       "messages_total":sum(per_day)},
         "life_cycles":details,
         "conversation_history":channel.history(),
+        "verified_initiative_receipts":[t for t in channel.history()
+                                       if t["role"]=="pretorius"
+                                       and t["turn_id"].startswith("initiative_")],
         "model_load":{"calls":sum(t["model_called"] for t in turns if t["origin"]=="pretorius"),
                       "tokens":sum(t["tokens"] for t in turns if t["origin"]=="pretorius"),
                       "latency_ms":sum(t["latency_ms"] for t in turns if t["origin"]=="pretorius"),
