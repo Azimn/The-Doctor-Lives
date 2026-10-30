@@ -88,10 +88,15 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
         self.assertEqual(off.returncode, 0, off.stderr)
         self.assertEqual(json.loads(off.stdout)["work_events"], [])
         with self.world._open() as db:
-            self.assertEqual(db.execute(
-                "SELECT COUNT(*) FROM rhythm_events "
-                "WHERE op IN ('experiment','repair')"
-            ).fetchone()[0], 0)
+            rhythm = [
+                json.loads(row[0]) for row in db.execute(
+                    "SELECT envelope FROM rhythm_events"
+                )
+            ]
+            self.assertFalse(any(
+                event.get("op") in ("experiment", "repair")
+                for event in rhythm
+            ))
 
         from doctor_lives.organs import SixOrganRuntime
         from pretorius_lab.subject_port import SubjectPort
