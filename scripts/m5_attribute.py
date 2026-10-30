@@ -21,6 +21,16 @@ class FullRecurrentWeightAudit(CausalAuditHarness):
             brain.neural.W.data.fill(0.0)
             brain.save()
 
+class WeightsOnlyAudit(CausalAuditHarness):
+    """Isolate the recurrent W contribution without zeroing motor readouts."""
+    @staticmethod
+    def _apply_static_lesions(brain, disabled):
+        ordinary=set(disabled)-{"recurrent_policy"}
+        CausalAuditHarness._apply_static_lesions(brain,ordinary)
+        if "recurrent_policy" in disabled:
+            brain.neural.W.data.fill(0.0)
+            brain.save()
+
 def collect(root: Path):
     rows=[]
     for seed in range(6400,6420):
@@ -53,9 +63,12 @@ def collect(root: Path):
         scored+=1
 
     native_changed=0
+    weights_only_native_changed=0
+    weights_only_open_changed=0
     open_changed=0
     open_case_traces=[]
     score_l1=[]
+    weights_only_score_l1=[]
     with tempfile.TemporaryDirectory(prefix="m5-recurrent-audit-") as work:
         for seed in range(6400,6420):
             obj=FullRecurrentWeightAudit(root/f"seed-{seed}"/"brain",Path(work)/str(seed))
@@ -66,6 +79,14 @@ def collect(root: Path):
                 "recurrent_policy",("recurrent_policy",)))
             native_changed+=int(row["comparison"]["selected_action_diverged"])
             score_l1.append(float(row["comparison"]["action_score_l1"]))
+            weights_only=WeightsOnlyAudit(root/f"seed-{seed}"/"brain",
+                                          Path(work)/f"weights-only-{seed}")
+            weights_row=weights_only.run_pair(probe,AuditIntervention(
+                "recurrent_weights_only",("recurrent_policy",)))
+            weights_only_native_changed+=int(
+                weights_row["comparison"]["selected_action_diverged"])
+            weights_only_score_l1.append(float(
+                weights_row["comparison"]["action_score_l1"]))
 
             # Additional same-source candidate replay. These are the last
             # originally proposed free-language options, not host-authored
@@ -86,11 +107,16 @@ def collect(root: Path):
             if not isinstance(components,dict) or not components:
                 raise ValueError("No source-stored proposal contributions for lesion")
             candidates=[]
-            for condition in ("open-intact","open-recurrence-neutral"):
-                clone=obj._clone_seed(f"{condition}-{seed}")
+            for condition in ("open-intact","open-recurrence-neutral",
+                              "open-weights-only-neutral"):
+                audit=weights_only if condition=="open-weights-only-neutral" else obj
+                clone=audit._clone_seed(f"{condition}-{seed}")
                 port=PretoriusBrainPort(clone)
                 if condition=="open-recurrence-neutral":
                     FullRecurrentWeightAudit._apply_static_lesions(
+                        port.brain,{"recurrent_policy"})
+                elif condition=="open-weights-only-neutral":
+                    WeightsOnlyAudit._apply_static_lesions(
                         port.brain,{"recurrent_policy"})
                 NoesisOrgan(port).deliberate(host_trigger="m5_recurrent_counterfactual")
                 scores=port.brain.neural.action_scores()
@@ -105,9 +131,12 @@ def collect(root: Path):
                 chosen=max(ranked,key=lambda pid:(ranked[pid],components[pid]["tie_key"]))
                 candidates.append(chosen if ranked[chosen]>0.01 else None)
             open_changed+=int(candidates[0]!=candidates[1])
+            weights_only_open_changed+=int(candidates[0]!=candidates[2])
             open_case_traces.append({"seed":seed,"intact_proposal_id":candidates[0],
                                      "neutralized_proposal_id":candidates[1],
-                                     "changed":candidates[0]!=candidates[1]})
+                                     "weights_only_proposal_id":candidates[2],
+                                     "changed":candidates[0]!=candidates[1],
+                                     "weights_only_changed":candidates[0]!=candidates[2]})
     return {"schema":"pretorius.m5-attribution.v1","decisions":rows,
             "summary":{"selections_with_proposal_scores":scored,
                        "novelty_removed_choice_flips":changed},
@@ -116,9 +145,12 @@ def collect(root: Path):
                                 "recurrent_weights_neutralized":True,
                                 "native_cognitive_choice_flips":native_changed,
                                 "native_policy_score_l1_mean":sum(score_l1)/20,
+                                "weights_only_native_choice_flips":weights_only_native_changed,
+                                "weights_only_native_score_l1_mean":sum(weights_only_score_l1)/20,
                                 "recorded_proposal_replay_choice_flips":open_changed,
+                                "weights_only_proposal_replay_choice_flips":weights_only_open_changed,
                                 "recorded_proposal_replay_trials":open_case_traces,
-                                "note":"The native lesion and recorded-proposal replay are cloned-state causal probes, NOT new physical-world outcome trials."}}
+                                "note":"Separates recurrent W-only from W+motor lesions. Both native probes and recorded-proposal choice replays are cloned-state experiments, NOT new physical-world outcomes."}}
 
 def main():
     p=argparse.ArgumentParser()
