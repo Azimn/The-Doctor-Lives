@@ -96,6 +96,7 @@ def run_laboratory(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,
     work_interval_seconds: float | None = None,
+    activity_sink=None,
 ) -> dict:
     """Run with one brain/world lease; optional host-offered Noesis work."""
     with _exclusive_host(state, world):
@@ -103,6 +104,7 @@ def run_laboratory(
             state, world, duration_seconds=duration_seconds,
             interval_seconds=interval_seconds, stop=stop,
             work_interval_seconds=work_interval_seconds,
+            activity_sink=activity_sink,
         )
 
 
@@ -384,6 +386,7 @@ def _run_laboratory_session(
     state: Path, world: Path, *, duration_seconds: float,
     interval_seconds: float, stop: threading.Event | None = None,
     work_interval_seconds: float | None = None,
+    activity_sink=None,
 ) -> dict:
     """Recover, observe, pulse, and optionally offer native Noesis bench work.
 
@@ -480,11 +483,54 @@ def _run_laboratory_session(
                     if stop.is_set():
                         break
                     event_id = "elapsed-work-" + secrets.token_hex(16)
+                    if activity_sink is not None:
+                        activity_sink({
+                            "phase": "selected", "event_id": event_id,
+                            "action": proposal.action,
+                            "decision_id": proposal.decision_id,
+                            "selection": "original_noesis",
+                            "physical_consequence": None, "memory_write": None,
+                        })
                     executed = execute_noesis_work(
                         bridge, decision_id=proposal.decision_id,
                         event_id=event_id, authorized_world_action=True,
                     )
                     runtime.checkpoint()
+                    if activity_sink is not None:
+                        # The ledger cannot authenticate itself. Reopen actual
+                        # original Laboratory and canonical brain under the
+                        # existing host leases before calling an effect complete.
+                        import hashlib
+                        from .lab_home_bridge import _row
+                        from .noesis_lab_work import verify_noesis_work_replay
+                        with bridge.world._open() as db:
+                            original, receipt_hash = _row(db, "rhythm_events", event_id)
+                        verified_policy = verify_noesis_work_replay(
+                            bridge, event_id=event_id, action=executed["action"])
+                        memory = [
+                            m for m in bridge.doctor.brain.store.memories(False)
+                            if m["source"] == "laboratory-home:action:" + receipt_hash
+                        ]
+                        if (original.get("op") != executed["action"]
+                                or len(memory) != 1 or memory[0]["external"]
+                                or memory[0]["evidence_class"] != "lived_runtime_memory"
+                                or original.get("subject", {}).get("inner") != memory[0]["text"]):
+                            raise PermissionError("No source-authenticated work and memory")
+                        activity_sink({
+                            "phase": "completed", "event_id": event_id,
+                            "action": executed["action"],
+                            "selection": "original_noesis",
+                            "policy_decision_id": verified_policy,
+                            "original_world_receipt_sha256": receipt_hash,
+                            "original_world_receipt_utc": original.get("utc"),
+                            "memory_id": memory[0]["id"],
+                            "memory_text_sha256": hashlib.sha256(
+                                memory[0]["text"].encode("utf-8")).hexdigest(),
+                            "memory_text": memory[0]["text"],
+                            "canonical_memory_source": memory[0]["source"],
+                            "source_checked_on_host": True,
+                            "independent_source_attestation": False,
+                        })
                     subject_frames.append(executed["world"]["subject"])
                     work_events.append({
                         "event_id": event_id,

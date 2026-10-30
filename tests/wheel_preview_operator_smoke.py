@@ -74,6 +74,14 @@ def main():
                 out, err = resumed.communicate(timeout=45)
                 assert resumed.returncode == 0, (out, err)
                 assert json.loads(invoke(console, "preview-status", "--workspace", str(workspace)).stdout)["run_index"] == 2
+                from doctor_lives.preview_ledger import read_activity_ledger
+                history = read_activity_ledger(workspace)
+                assert [item["event"] for item in history].count("operator_start") == 1
+                assert [item["event"] for item in history].count("operator_resume") == 1
+                assert [item["event"] for item in history].count("operator_stop") == 2
+                assert history[0]["external_input"] is True
+                assert history[-1]["external_input"] is True
+                assert all(not x["source_attestation_independent"] for x in history)
             finally:
                 if resumed.poll() is None:
                     resumed.kill()

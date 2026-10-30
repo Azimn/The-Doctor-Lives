@@ -27,6 +27,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Verify ledger integrity and external-input controls in source tests
+        shell: bash
+        if: runner.os == 'Linux'
+        run: python -m unittest discover -s tests -p test_preview_ledger.py -v
+      - name: Verify ledger integrity and external-input controls on Windows
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          python -m unittest discover -s tests -p test_preview_ledger.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build actual Doctor and original Laboratory wheels
         run: python -m pip wheel --wheel-dir ${{ runner.temp }}/preview-wheels . ./donor-laboratory
       - name: Install wheels into clean virtual environment (Linux)

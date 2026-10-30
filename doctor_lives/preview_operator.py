@@ -15,6 +15,7 @@ import time
 
 from .lab_preview import initialize_preview
 from .lab_runtime import _exclusive_lock, run_laboratory
+from .preview_ledger import append_activity, read_activity_ledger
 
 
 def _utc() -> str:
@@ -142,6 +143,20 @@ def run(workspace: Path, *, resume: bool = False) -> int:
             "last_action_origin": None if previous is None else previous.get("last_action_origin"),
             "operator_initiated": True, "uncoached_three_task_life_proven": False,
         }
+        # A previous foreground process may have been killed without a final
+        # record. Mark that gap rather than invent a successful continuation.
+        old = read_activity_ledger(workspace)
+        if old and old[-1]["event"] not in ("operator_stop",):
+            append_activity(workspace, event="unexpected_termination", external_input=False,
+                            fields={"previous_sequence": old[-1]["sequence"],
+                                    "unfinished_doctor_goal_resumed": False})
+        append_activity(workspace, event="operator_resume" if resume else "operator_start",
+                        external_input=True,
+                        fields={"run_index": run_index, "operator_supplied_goal": None})
+        append_activity(workspace, event="host_observation_started",
+                        external_input=False,
+                        fields={"chosen_by": "host_scheduler",
+                                "uncoached_doctor_activity": False})
         _write_status(workspace, report)
         _response({"status": "running", "workspace": str(workspace), "pid": os.getpid()})
         # A laboratory observation is a host opportunity, NOT a self-chosen
@@ -152,6 +167,10 @@ def run(workspace: Path, *, resume: bool = False) -> int:
                     workspace / "state", workspace / "laboratory.sqlite3",
                     duration_seconds=1.0, interval_seconds=0.25,
                     work_interval_seconds=0.5,
+                    activity_sink=lambda item: append_activity(
+                        workspace, event="noesis_work_" + item["phase"],
+                        external_input=False,
+                        fields={**item, "host_offered_opportunity": True}),
                 )
                 if result["work_events"]:
                     action = result["work_events"][-1]
@@ -164,6 +183,13 @@ def run(workspace: Path, *, resume: bool = False) -> int:
         finally:
             if request.exists() and not request.is_symlink():
                 request.unlink()
+                append_activity(workspace, event="host_observation_interrupted",
+                                external_input=False,
+                                fields={"reason": "operator_request",
+                                        "unfinished_doctor_goal_resumed": False})
+                append_activity(workspace, event="operator_stop",
+                                external_input=True,
+                                fields={"request_received": True})
                 report["status"] = "stopped"
                 report["current_activity"] = "interrupted_by_operator"
                 report["last_heartbeat"] = _utc()
