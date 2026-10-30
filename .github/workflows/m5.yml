@@ -97,6 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -p test_verify_open.py -v
+          python -m unittest discover -s tests -p test_m5_donors.py -v
           python -m unittest discover -s tests -p test_lab_runtime.py -v
           python scripts/run_m4_open.py --run /tmp/m5-open --lab-root donor-laboratory --provider fallback
           python scripts/verify_open.py --run /tmp/m5-open --lab-root donor-laboratory
