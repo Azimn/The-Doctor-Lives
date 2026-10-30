@@ -159,66 +159,68 @@ def verify_soak_sources(state: Path, world: Path, evidence: Path) -> dict:
     from pretorius_lab.subject_port import SubjectPort
 
     state, world, evidence = Path(state), Path(world), Path(evidence)
-    report = read_soak_log(evidence)
-    if not report["segments"]:
-        raise RuntimeError("No completed original-Laboratory soak segments")
-    with _exclusive_host(state, world):
-        habitat = SpatialHabitat(world)
-        if habitat.verify()["world_epoch"] != report["world_epoch"]:
-            raise RuntimeError("Soak evidence world epoch differs from original Laboratory")
-        runtime = SixOrganRuntime.open(state)
-        bridge = runtime.bind_laboratory(SubjectPort(habitat), authorized=True)
-        bridge.subject.rhythm.verify()
-        event_ids = []
-        with evidence.open("r", encoding="utf-8") as stream:
-            for line in stream:
-                segment = json.loads(line)
-                start = _timestamp(segment["started_utc"])
-                end = _timestamp(segment["ended_utc"])
-                event_ids.extend((event_id, start, end)
-                                 for event_id in segment["work_event_ids"])
-        verified = 0
-        with habitat._open() as db:
-            for event_id, start, end in event_ids:
-                receipt, digest = _row(db, "rhythm_events", event_id)
-                # The original Laboratory records its own UTC commit time.
-                # A genuine receipt from BEFORE the soak cannot be recycled
-                # into an otherwise hash-valid engineering segment.
-                raw_utc = receipt.get("utc")
-                try:
-                    committed = datetime.fromisoformat(
-                        raw_utc.replace("Z", "+00:00"))
-                except (AttributeError, TypeError, ValueError) as exc:
-                    raise PermissionError("Original work receipt has no UTC commit") from exc
-                if (committed.tzinfo is None or committed.utcoffset().total_seconds() != 0
-                        or not start <= committed <= end):
-                    raise PermissionError("World work receipt predates or postdates soak segment")
-                action = receipt.get("op")
-                if (action not in ("experiment", "repair")
-                        or receipt.get("station") != "station:bench"
-                        or receipt.get("args") != {}
-                        or not isinstance(receipt.get("subject"), dict)
-                        or not isinstance(receipt["subject"].get("inner"), str)):
-                    raise PermissionError("Soak work event is not authenticated bench work")
-                verify_noesis_work_replay(bridge, event_id=event_id, action=action)
-                matching = [
-                    m for m in bridge.doctor.brain.store.memories(False)
-                    if m["source"] == "laboratory-home:action:" + digest
-                ]
-                if (len(matching) != 1
-                        or matching[0]["evidence_class"] != "lived_runtime_memory"
-                        or matching[0]["external"]
-                        or matching[0]["text"] != receipt["subject"]["inner"]):
-                    raise PermissionError("Soak work lacks matching lived Doctor memory")
-                verified += 1
-        return {
-            **report,
-            "original_world_epoch_verified": True,
-            "original_noesis_work_events_verified": verified,
-            # A reviewer must still independently examine a real elapsed
-            # 86,400-second log, other life tasks, books and continuity.
-            "independent_source_attestation": False,
-        }
+    _validate_evidence_location(state, world, evidence)
+    with _exclusive_lock(evidence.with_name(evidence.name + ".lock"), "Soak evidence"):
+        report = read_soak_log(evidence)
+        if not report["segments"]:
+            raise RuntimeError("No completed original-Laboratory soak segments")
+        with _exclusive_host(state, world):
+            habitat = SpatialHabitat(world)
+            if habitat.verify()["world_epoch"] != report["world_epoch"]:
+                raise RuntimeError("Soak evidence world epoch differs from original Laboratory")
+            runtime = SixOrganRuntime.open(state)
+            bridge = runtime.bind_laboratory(SubjectPort(habitat), authorized=True)
+            bridge.subject.rhythm.verify()
+            event_ids = []
+            with evidence.open("r", encoding="utf-8") as stream:
+                for line in stream:
+                    segment = json.loads(line)
+                    start = _timestamp(segment["started_utc"])
+                    end = _timestamp(segment["ended_utc"])
+                    event_ids.extend((event_id, start, end)
+                                     for event_id in segment["work_event_ids"])
+            verified = 0
+            with habitat._open() as db:
+                for event_id, start, end in event_ids:
+                    receipt, digest = _row(db, "rhythm_events", event_id)
+                    # The original Laboratory records its own UTC commit time.
+                    # A genuine receipt from BEFORE the soak cannot be recycled
+                    # into an otherwise hash-valid engineering segment.
+                    raw_utc = receipt.get("utc")
+                    try:
+                        committed = datetime.fromisoformat(
+                            raw_utc.replace("Z", "+00:00"))
+                    except (AttributeError, TypeError, ValueError) as exc:
+                        raise PermissionError("Original work receipt has no UTC commit") from exc
+                    if (committed.tzinfo is None or committed.utcoffset().total_seconds() != 0
+                            or not start <= committed <= end):
+                        raise PermissionError("World work receipt predates or postdates soak segment")
+                    action = receipt.get("op")
+                    if (action not in ("experiment", "repair")
+                            or receipt.get("station") != "station:bench"
+                            or receipt.get("args") != {}
+                            or not isinstance(receipt.get("subject"), dict)
+                            or not isinstance(receipt["subject"].get("inner"), str)):
+                        raise PermissionError("Soak work event is not authenticated bench work")
+                    verify_noesis_work_replay(bridge, event_id=event_id, action=action)
+                    matching = [
+                        m for m in bridge.doctor.brain.store.memories(False)
+                        if m["source"] == "laboratory-home:action:" + digest
+                    ]
+                    if (len(matching) != 1
+                            or matching[0]["evidence_class"] != "lived_runtime_memory"
+                            or matching[0]["external"]
+                            or matching[0]["text"] != receipt["subject"]["inner"]):
+                        raise PermissionError("Soak work lacks matching lived Doctor memory")
+                    verified += 1
+            return {
+                **report,
+                "original_world_epoch_verified": True,
+                "original_noesis_work_events_verified": verified,
+                # A reviewer must still independently examine a real elapsed
+                # 86,400-second log, other life tasks, books and continuity.
+                "independent_source_attestation": False,
+            }
 
 
 def _validate_evidence_location(state: Path, world: Path, evidence: Path) -> None:
