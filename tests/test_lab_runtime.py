@@ -1194,7 +1194,8 @@ raise AssertionError("Expected crash before durable bridge reservation")
             SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
         )
         for index, station in enumerate((
-            "station:center", "station:hall", "station:bedroom",
+            "station:center", "station:threshold",
+            "station:hall", "station:bedroom",
         )):
             bridge.act("walk", event_id=f"orphan-bedroom-route-{index}",
                        station=station)
