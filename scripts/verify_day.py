@@ -405,13 +405,31 @@ def judge(bundle: Path, lab_root: Path, *, baseline=False):
         failures[exc.code] = str(exc)
         ablation = None
     try:
-        if (not any(a["action"] in ("rest", "sleep") for a in actions)
-                and not data.get("verified_need_conflict")):
-            reject("f", "neither original-Noesis rest nor proven needs conflict")
-        if data.get("verified_need_conflict") and not any(
-            p["trigger"] == "six_organ_lab_cycle" for p in policies.values()
-        ):
-            reject("f", "conflicting needs claimed without original six-organ cognitive evidence")
+        actual_rest = any(a["action"] in ("rest", "sleep") for a in actions)
+        conflict = False
+        with db_open(world) as db:
+            if "rhythm_meta" in _tables(db):
+                row = db.execute(
+                    "SELECT value FROM rhythm_meta WHERE key='state'"
+                ).fetchone()
+                if row is not None:
+                    physical = json.loads(row[0])
+                    competing = sum(
+                        type(physical.get(key)) in (int, float)
+                        and physical[key] >= 4
+                        for key in ("fatigue", "thirst", "hunger")
+                    )
+                    source_noesis_competition = any(
+                        len(set(json.loads(p["state_pressure_json"])
+                                .get("neural_affordance_map", {}).values())) >= 2
+                        and json.loads(p["state_pressure_json"])
+                        .get("selector_authority") == "original_noesis"
+                        for p in policies.values()
+                        if p["trigger"] == "noesis_situated_choice"
+                    )
+                    conflict = competing >= 2 and source_noesis_competition
+        if not (actual_rest or conflict):
+            reject("f", "neither Noesis-selected rest nor verified competing bodily pressures with Noesis arbitration")
     except DayEvidenceError as exc:
         failures[exc.code] = str(exc)
     if not baseline:
