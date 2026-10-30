@@ -13,15 +13,50 @@ def emit(value):
     print(json.dumps(value,indent=2,sort_keys=True,default=str))
 
 
+def emit_laboratory(value, *, human=False):
+    """Render only authenticated first-person frames from a trusted host result.
+
+    The JSON report remains the default machine interface. Human mode has no
+    input file, provider override, model hook, or access to world/brain
+    diagnostics. In particular, never serialize the rest of the host report.
+    """
+    if not human:
+        emit(value)
+        return
+    allowed = {
+        "doctor-laboratory-offline-start.v1",
+        "doctor-laboratory-offline-run.v1",
+        "doctor-laboratory-offline-sleep.v1",
+        "doctor-laboratory-offline-work.v1",
+    }
+    if not isinstance(value, dict) or value.get("schema") not in allowed:
+        raise RuntimeError("Unrecognized trusted Laboratory subject report")
+    clock, frames = value.get("clock"), value.get("subject_frames")
+    if (not isinstance(clock, dict) or not isinstance(clock.get("beat"), str)
+            or len(clock["beat"]) != 4 or clock["beat"][0] != "@"
+            or not clock["beat"][1:].isdigit() or not isinstance(frames, list)):
+        raise RuntimeError("Malformed trusted Laboratory subject report")
+    lines = [clock["beat"]]
+    for frame in frames:
+        if not isinstance(frame, dict) or not isinstance(frame.get("inner"), str):
+            raise RuntimeError("Missing source-qualified first-person frame")
+        if not frame["inner"].strip():
+            raise RuntimeError("Empty source-qualified first-person frame")
+        lines.append(frame["inner"])
+    if not frames:
+        lines.append("(No new first-person account.)")
+    print("\n\n".join(lines))
+
+
 def parser() -> argparse.ArgumentParser:
     p=argparse.ArgumentParser(prog="doctor-lives")
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
-    x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True)
-    x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body")
-    x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely")
-    x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action")
+    x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
+    x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
+    x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
+    x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
     x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
     x=sp.add_parser("lab-restore"); x.add_argument("--world", type=Path, required=True); x.add_argument("--archive", type=Path, required=True)
     x=sp.add_parser("ingest"); x.add_argument("text"); x.add_argument("--source",default="world"); x.add_argument("--kind",default="observation"); x.add_argument("--actor"); x.add_argument("--external",action="store_true"); x.add_argument("--valence",type=float,default=0.0); x.add_argument("--arousal",type=float,default=0.0); x.add_argument("--threat",type=float,default=0.0); x.add_argument("--novelty",type=float,default=0.0); x.add_argument("--authority",type=float,default=0.0); x.add_argument("--autonomy",type=float,default=0.0)
@@ -67,11 +102,11 @@ def main(argv=None) -> int:
         return 0
     if a.cmd == "lab-sleep":
         from .lab_runtime import sleep_laboratory
-        emit(sleep_laboratory(a.state, a.world, event_id=a.event_id))
+        emit_laboratory(sleep_laboratory(a.state, a.world, event_id=a.event_id), human=a.human)
         return 0
     if a.cmd == "lab-work":
         from .lab_runtime import work_laboratory
-        emit(work_laboratory(a.state, a.world, event_id=a.event_id))
+        emit_laboratory(work_laboratory(a.state, a.world, event_id=a.event_id), human=a.human)
         return 0
     if a.cmd == "lab-run":
         import signal
@@ -86,11 +121,11 @@ def main(argv=None) -> int:
             previous[signum] = signal.getsignal(signum)
             signal.signal(signum, request_stop)
         try:
-            emit(run_laboratory(
+            emit_laboratory(run_laboratory(
                 a.state, a.world, duration_seconds=a.seconds,
                 interval_seconds=a.interval_seconds, stop=stop,
                 work_interval_seconds=a.work_every_seconds,
-            ))
+            ), human=a.human)
         finally:
             for signum, handler in previous.items():
                 signal.signal(signum, handler)
@@ -123,14 +158,14 @@ def main(argv=None) -> int:
             from .lab_runtime import _recover_shipping_actions
             _, recovered, abandoned = _recover_shipping_actions(bridge)
             clock = engineer_time()
-            emit({
+            emit_laboratory({
                 "schema": "doctor-laboratory-offline-start.v1",
                 "status": "ready",
                 "recovered": len(recovered),
                 "abandoned": len(abandoned),
                 "subject_frames": [item["subject"] for item in recovered],
                 "clock": {"utc": clock.utc_iso, "beat": clock.beat},
-            })
+            }, human=a.human)
             return 0
     brain=PretoriusBrain(a.state)
     if a.cmd=="init": brain.save(); emit(brain.status())
