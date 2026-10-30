@@ -71,6 +71,6 @@ jobs:
           name: m2-actual-day-evidence
           path: |
             /tmp/m2-day-result.json
-            /tmp/m2-autonomous-day/result.json
-            /tmp/m2-autonomous-day/day.json
+            /tmp/m2-autonomous-day/
+          retention-days: 14
           if-no-files-found: warn
