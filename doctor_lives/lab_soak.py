@@ -141,6 +141,12 @@ def soak_laboratory(
     ):
         raise ValueError("Work interval exceeds segment")
     state, world, evidence = Path(state), Path(world), Path(evidence)
+    canonical_state = state.resolve()
+    canonical_world = world.resolve()
+    canonical_evidence = evidence.resolve()
+    if (canonical_evidence == canonical_world or canonical_evidence == canonical_state
+            or canonical_state in canonical_evidence.parents):
+        raise ValueError("Engineering soak evidence must be outside both canonical authorities")
     if evidence.exists() and evidence.is_symlink():
         raise RuntimeError("Symlinked soak evidence is forbidden")
     evidence.parent.mkdir(parents=True, exist_ok=True)
