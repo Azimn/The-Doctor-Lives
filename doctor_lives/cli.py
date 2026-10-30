@@ -66,6 +66,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
+    x=sp.add_parser("preview-init", help="Create one new experimental original-Laboratory workspace without overwriting an inhabited state"); x.add_argument("--workspace",type=Path,required=True)
     x=sp.add_parser("chat", help="Two-way source-verified local operator conversation"); x.add_argument("--world",type=Path,required=True); x.add_argument("--text",default=None); x.add_argument("--request-id",default=None); x.add_argument("--day",type=int,default=1); x.add_argument("--local-model",default=None)
     x=sp.add_parser("chat-serve", help="Loopback-only local HTML conversation client"); x.add_argument("--world",type=Path,required=True); x.add_argument("--port",type=int,default=8766); x.add_argument("--local-model",default=None)
     x=sp.add_parser("chat-opportunity", help="Offer Noesis a genuine opportunity to initiate a message"); x.add_argument("--world",type=Path,required=True); x.add_argument("--cycle",type=int,required=True); x.add_argument("--day",type=int,required=True)
@@ -98,6 +99,10 @@ def main(argv=None) -> int:
         from .local_subject_gloss import valid_local_model
         if not a.human or not valid_local_model(a.local_render_model):
             raise ValueError("Local model requires --human and a valid identifier")
+    if a.cmd == "preview-init":
+        from .lab_preview import initialize_preview
+        emit(initialize_preview(a.workspace))
+        return 0
     if a.cmd in ("chat", "chat-serve", "chat-opportunity"):
         from .operator_conversation import OperatorConversation
         from .lab_runtime import _exclusive_host
