@@ -32,6 +32,10 @@ jobs:
           python -m unittest discover -s tests -p test_m6_conversation.py -v
       - name: Independent 40-family frozen semantic corpus
         run: python scripts/verify_m6_semantics.py | tee /tmp/m6-semantic-heldout.json
+      - name: Measure each donor call path on actual original-Noesis decisions and source-backed targeted cases
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: python scripts/m6_donor_coverage.py --out /tmp/m6-donor-coverage.json
       - name: No model original M6 dialogue and causal judges
         env:
           PYTHONPATH: donor-laboratory:.
