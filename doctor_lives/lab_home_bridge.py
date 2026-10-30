@@ -266,6 +266,19 @@ class DoctorHomeBridge:
         or an independent world authority. All cooperating callers must use
         this bridge; a privileged external Laboratory writer is not covered.
         """
+        # A killed child may have committed a canonical Noesis work motor
+        # binding before it ever reached this journal. Such an ID cannot be
+        # recycled by sleep, walking, or another non-work action, even when
+        # neither a Doctor intent nor an aborted-ID tombstone exists. Query
+        # the ONE BrainStore before taking the world journal lock to retain
+        # the established policy-to-journal lock ordering. This is a trusted
+        # cooperative-host boundary, not a privileged-writer transaction.
+        if op not in ("experiment", "repair"):
+            from .noesis_lab_work import prior_noesis_motor_binding
+            if prior_noesis_motor_binding(self, event_id):
+                raise PermissionError(
+                    "Laboratory action ID already bound to an original-Noesis work decision"
+                )
         payload = _stable({"op": op, "args": args})
         with sqlite3.connect(
             self._intent_path(), isolation_level=None, timeout=30,
