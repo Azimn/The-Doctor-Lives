@@ -5,6 +5,9 @@ script is an external test harness, not a new production host or memory store.
 """
 from __future__ import annotations
 
+from contextlib import closing
+import gc
+
 import hashlib
 import json
 import os
@@ -41,7 +44,7 @@ def _crash(world_path: Path, brain_path: Path):
     bridge = DoctorHomeBridge(doctor, SubjectPort(world), authorized=True)
 
     def die_after_original_world_commit(frame, source, **kwargs):
-        with world._open() as db:
+        with closing(world._open()) as db:
             row = db.execute(
                 "SELECT event_hash FROM embodied_events WHERE event_id=?",
                 ("wheel-crash-walk",),
@@ -84,7 +87,7 @@ def main():
         crashed = _run([sys.executable, __file__, "--crash", str(world_path),
                         str(brain_path)], expected=79)
         assert not crashed.stdout, "Crash child emitted unexpected output"
-        with world._open() as db:
+        with closing(world._open()) as db:
             rows = db.execute(
                 "SELECT event_hash FROM embodied_events WHERE event_id=?",
                 ("wheel-crash-walk",),
@@ -127,7 +130,7 @@ def main():
         assert restored_memories[0]["text"] == restored_first["subject_frames"][0]["inner"]
         assert restored_memories[0]["evidence_class"] == "lived_runtime_memory"
         assert json.loads(_run(restored_command).stdout)["recovered"] == 0
-        with SpatialHabitat(restored_world)._open() as restored_db:
+        with closing(SpatialHabitat(restored_world)._open()) as restored_db:
             assert restored_db.execute(
                 "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
                 ("wheel-crash-walk",),
@@ -166,7 +169,7 @@ def main():
         assert memories[0]["evidence_class"] == "lived_runtime_memory"
         second = json.loads(_run(command).stdout)
         assert second["recovered"] == 0
-        with world._open() as db:
+        with closing(world._open()) as db:
             assert db.execute(
                 "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
                 ("wheel-crash-walk",),
@@ -190,7 +193,7 @@ def main():
         foreign_bridge.act(
             "walk", event_id="foreign-world-walk", station="station:center",
         )
-        with foreign_world._open() as foreign_db:
+        with closing(foreign_world._open()) as foreign_db:
             foreign_hash = foreign_db.execute(
                 "SELECT event_hash FROM embodied_events WHERE event_id=?",
                 ("foreign-world-walk",),
@@ -221,7 +224,7 @@ def main():
                 foreign_archive / "action-intents.sqlite3",
                 Path(str(damaged_world) + ".doctor-action-intents.sqlite3"),
             )
-            with sqlite3.connect(damaged_world) as damaged_db:
+            with closing(sqlite3.connect(damaged_world)) as damaged_db:
                 damaged_db.execute(
                     "UPDATE meta SET value=? WHERE key=?",
                     (json.dumps(replacement), damaged_field),
@@ -229,6 +232,7 @@ def main():
                 assert damaged_db.execute(
                     "PRAGMA integrity_check"
                 ).fetchone() == ("ok",)
+                damaged_db.commit()
             try:
                 SpatialHabitat(damaged_world).verify()
             except Conflict:
@@ -253,7 +257,7 @@ def main():
             # the main database before copying bytes into the sealed archive.
             # Copying only a WAL-mode main file without checkpointing would
             # silently restore the original valid metadata.
-            with sqlite3.connect(damaged_world) as source_db:
+            with closing(sqlite3.connect(damaged_world)) as source_db:
                 checkpoint = source_db.execute(
                     "PRAGMA wal_checkpoint(TRUNCATE)"
                 ).fetchone()
@@ -273,6 +277,10 @@ def main():
                     raise AssertionError(
                         "Corrupt world did not survive SQLite snapshot"
                     )
+                # The pinned Laboratory verifies using sqlite3 context
+                # managers that do not close on Windows. Reclaim their
+                # unreferenced connections before removing the proof copy.
+                gc.collect()
             damaged_manifest = damaged_archive / "manifest.json"
             data = json.loads(damaged_manifest.read_text(encoding="utf-8"))
             data["files"]["world.sqlite3"] = {
@@ -383,7 +391,7 @@ def main():
             expected=79,
         )
         assert not full_crashed.stdout
-        with full_world._open() as db:
+        with closing(full_world._open()) as db:
             full_rows = db.execute(
                 "SELECT event_hash FROM embodied_events WHERE event_id=?",
                 ("wheel-crash-walk",),
@@ -410,7 +418,7 @@ def main():
         assert full_memories[0]["evidence_class"] == "lived_runtime_memory"
         assert full_memories[0]["text"] == full_first["subject_frames"][0]["inner"]
         assert json.loads(_run(full_command).stdout)["recovered"] == 0
-        with full_world._open() as db:
+        with closing(full_world._open()) as db:
             assert db.execute(
                 "SELECT COUNT(*) FROM embodied_events WHERE event_id=?",
                 ("wheel-crash-walk",),
@@ -420,6 +428,10 @@ def main():
             for m in PretoriusBrainPort(full_brain_path).brain.store.memories(False)
         ) == 1
 
+        # The original Laboratory uses transactional SQLite context managers
+        # rather than explicit closes. Do not mask Windows handle leaks by
+        # disabling TemporaryDirectory cleanup; reclaim unreferenced handles.
+        gc.collect()
         print(json.dumps({"result": "PASS", "installed_console": True,
                           "original_lab_world_actions": 1,
                           "verified_lived_memories": 1,
