@@ -18,6 +18,14 @@ Communications should fit the simulation's nineteenth-century setting. Mail is a
 
 An item should have a sender, intended recipient, writing and delivery times, an in-world source or location, and a clear provenance record. The Doctor encounters the delivered artifact through ordinary Laboratory perception and reading, not through raw system metadata. He is free to read later, disregard a pamphlet, reply after reflection, or write without being prompted. His decisions, relationships, and recollections may be affected by what he actually receives and does.
 
+## Agency is the governing principle
+
+**Delivery is not attention; attention is not reading; reading is not consent to reply.** These are separate in-world possibilities. A letter can arrive without Pretorius noticing it, be noticed but left unopened, be opened and read without a response, or be answered much later or never. He may choose to initiate contact on his own terms. No outside sender, including the operator, is entitled to an answer.
+
+His available time, interests, priorities, relationships, temperament, and current activity should shape these choices rather than an automatic inbox-processing rule. A lack of reply is a valid simulation outcome, not a task failure, though correspondents may reasonably react to it within the fiction. A delivery record may exist for engineering purposes, but his memory must reflect only what he actually perceived or did, not what silently entered a queue.
+
+To evaluate this later, test unread letters during sustained work, letters read without response, voluntary delayed replies, and correspondence initiated without an operator prompt. Do not optimize success as messages answered or response speed; that would turn agency back into compliance.
+
 ## Phase One addendum: Parcels and physical deliveries
 
 The postal channel should eventually carry **objects and packages**, not just written messages. A parcel is a delivered physical world object: it arrives through the same historically paced mail flow, can have packaging, markings, a sender, and contents, and can be opened, examined, stored, or ignored by Pretorius. Its contents must become available only through appropriate in-world interaction, rather than appearing directly in his inventory or cognition.
