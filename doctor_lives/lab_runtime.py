@@ -181,6 +181,15 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         bridge = runtime.bind_laboratory(
             SubjectPort(SpatialHabitat(world)), authorized=True,
         )
+        # A crash may leave an original-Noesis work motor binding BEFORE
+        # any Doctor action intent exists. Reject its reuse as sleep before
+        # recovering unrelated pending actions or creating a new reservation.
+        # The bridge independently enforces this for every non-work action.
+        from .noesis_lab_work import prior_noesis_motor_binding
+        if prior_noesis_motor_binding(bridge, event_id):
+            raise PermissionError(
+                "Laboratory action ID already bound to an original-Noesis work decision"
+            )
         # The world may contain a genuine sleep by another actor. Check
         # PREEXISTING Doctor ownership before recovery or bridge.act could
         # manufacture an intent and launder that event into autobiography.
