@@ -120,12 +120,13 @@ def main(argv=None) -> int:
                 SubjectPort(SpatialHabitat(a.world)), authorized=True,
             )
             from .lab_runtime import _recover_shipping_actions
-            _, recovered = _recover_shipping_actions(bridge)
+            _, recovered, abandoned = _recover_shipping_actions(bridge)
             clock = engineer_time()
             emit({
                 "schema": "doctor-laboratory-offline-start.v1",
                 "status": "ready",
                 "recovered": len(recovered),
+                "abandoned": len(abandoned),
                 "subject_frames": [item["subject"] for item in recovered],
                 "clock": {"utc": clock.utc_iso, "beat": clock.beat},
             })
