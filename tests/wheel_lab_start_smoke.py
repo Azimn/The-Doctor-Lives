@@ -98,6 +98,37 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="pretorius-wheel-smoke-") as temp:
         root = Path(temp)
+        # Operator P0: prove the installed, non-editable offline wheel itself
+        # creates the ONE canonical brain and original Laboratory from scratch.
+        # This is genesis, not Pretorius's lived experience or an R4 goal.
+        preview = root / "operator-preview"
+        preview_genesis = json.loads(_run([
+            console, "preview-init", "--workspace", str(preview),
+        ]).stdout)
+        assert preview_genesis["schema"] == "doctor-laboratory-experimental-genesis.v1"
+        assert not preview_genesis["release_accepted"]
+        assert not preview_genesis["subject_experienced_initialization"]
+        assert not preview_genesis["three_task_autonomy_proven"]
+        assert not preview_genesis["books_installed"]
+        preview_state = preview / "state"
+        preview_world = preview / "laboratory.sqlite3"
+        assert preview_state.joinpath("brain.sqlite3").is_file()
+        assert preview_state.joinpath("pretorius_recurrent.npz").is_file()
+        preview_start = [
+            console, "--state", str(preview_state), "lab-start",
+            "--world", str(preview_world),
+        ]
+        for _ in range(2):
+            actual = json.loads(_run(preview_start).stdout)
+            assert actual["status"] == "ready" and actual["abandoned"] == 0
+        no_reseed = subprocess.run([
+            console, "preview-init", "--workspace", str(preview),
+        ], capture_output=True, text=True, timeout=120)
+        assert no_reseed.returncode != 0 and not no_reseed.stdout
+        assert SpatialHabitat(preview_world).verify()["world_epoch"] == (
+            preview_genesis["world_epoch"]
+        )
+
         world_path, brain_path = root / "world.sqlite3", root / "brain"
         world = SpatialHabitat.create(world_path)
         HomeLife(world).initialize()
