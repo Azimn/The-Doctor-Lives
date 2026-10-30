@@ -154,16 +154,16 @@ def main():
         # A competing empty backup destination must never be overwritten
         # between the final check and the actual directory publication.
         from unittest.mock import patch
-        from doctor_lives import lab_backup
+        from doctor_lives import lab_backup, lab_preview
         contested_backup = root / "competing-empty-backup"
-        real_publish = lab_backup._publish_noreplace
+        real_publish = lab_preview._publish_noreplace
 
         def competing_publisher(staging, destination):
             assert destination == contested_backup
             destination.mkdir()
             return real_publish(staging, destination)
 
-        with patch("doctor_lives.lab_backup._publish_noreplace",
+        with patch("doctor_lives.lab_preview._publish_noreplace",
                    side_effect=competing_publisher):
             try:
                 lab_backup.backup(preview_state, preview_world, contested_backup)
