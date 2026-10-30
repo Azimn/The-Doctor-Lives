@@ -172,11 +172,27 @@ def verify_soak_sources(state: Path, world: Path, evidence: Path) -> dict:
         event_ids = []
         with evidence.open("r", encoding="utf-8") as stream:
             for line in stream:
-                event_ids.extend(json.loads(line)["work_event_ids"])
+                segment = json.loads(line)
+                start = _timestamp(segment["started_utc"])
+                end = _timestamp(segment["ended_utc"])
+                event_ids.extend((event_id, start, end)
+                                 for event_id in segment["work_event_ids"])
         verified = 0
         with habitat._open() as db:
-            for event_id in event_ids:
+            for event_id, start, end in event_ids:
                 receipt, digest = _row(db, "rhythm_events", event_id)
+                # The original Laboratory records its own UTC commit time.
+                # A genuine receipt from BEFORE the soak cannot be recycled
+                # into an otherwise hash-valid engineering segment.
+                raw_utc = receipt.get("utc")
+                try:
+                    committed = datetime.fromisoformat(
+                        raw_utc.replace("Z", "+00:00"))
+                except (AttributeError, TypeError, ValueError) as exc:
+                    raise PermissionError("Original work receipt has no UTC commit") from exc
+                if (committed.tzinfo is None or committed.utcoffset().total_seconds() != 0
+                        or not start <= committed <= end):
+                    raise PermissionError("World work receipt predates or postdates soak segment")
                 action = receipt.get("op")
                 if (action not in ("experiment", "repair")
                         or receipt.get("station") != "station:bench"
