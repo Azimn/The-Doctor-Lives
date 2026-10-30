@@ -8,6 +8,7 @@ import os
 import sys
 import shutil
 import tempfile
+import gc
 from pathlib import Path
 
 
@@ -85,11 +86,19 @@ def initialize_preview(workspace: str | Path) -> dict:
 
         brain = PretoriusBrain(state)
         brain.save()
-        SixOrganRuntime.open(state)  # Same original brain, not a new selector.
+        verified_runtime = SixOrganRuntime.open(state)  # Same original brain, not a new selector.
         if not (state / "brain.sqlite3").is_file() or not (
             state / "pretorius_recurrent.npz"
         ).is_file():
             raise RuntimeError("Incomplete canonical brain or recurrent checkpoint")
+        # Original Laboratory domain verifiers use `with sqlite3.Connection`,
+        # which commits but does not explicitly close SQLite handles. On
+        # Windows, an unreachable reader can still deny the directory rename.
+        # Release all temporary genesis/verification objects and collect any
+        # connection cycles before the atomic no-replace publication. This
+        # never changes the persisted canonical world or neural checkpoint.
+        del verified_runtime, brain, world
+        gc.collect()
         if destination.exists() or destination.is_symlink():
             raise FileExistsError(f"Preview workspace appeared during genesis: {destination}")
         _publish_noreplace(staging, destination)

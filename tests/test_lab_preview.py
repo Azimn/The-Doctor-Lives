@@ -87,6 +87,53 @@ class OriginalLaboratoryGenesisTests(unittest.TestCase):
             self.assertEqual(list(destination.iterdir()), [])
             self.assertFalse(list(Path(root).glob(".pretorius-preview-*")))
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows directory-lock regression")
+    def test_windows_five_independent_clean_genesis_processes(self):
+        # Each CLI process starts with a new world+brain, without retries.
+        # The original Lab's verification readers must not pin the staging
+        # directory when the initializer atomically publishes it on Windows.
+        import json
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+
+        with tempfile.TemporaryDirectory() as root:
+            for attempt in range(1, 6):
+                workspace = Path(root) / f"cold-genesis-{attempt}"
+                created = subprocess.run(
+                    [sys.executable, "-m", "doctor_lives.cli",
+                     "preview-init", "--workspace", str(workspace)],
+                    capture_output=True, text=True, timeout=180,
+                )
+                self.assertEqual(
+                    created.returncode, 0,
+                    f"clean genesis attempt {attempt}: {created.stderr}",
+                )
+                genesis = json.loads(created.stdout)
+                self.assertEqual(genesis["status"], "ready_for_operator_start")
+                self.assertFalse(genesis["release_accepted"])
+                self.assertEqual(
+                    SpatialHabitat(workspace / "laboratory.sqlite3").verify()[
+                        "world_epoch"
+                    ], genesis["world_epoch"],
+                )
+                started = subprocess.run(
+                    [sys.executable, "-m", "doctor_lives.cli",
+                     "--state", str(workspace / "state"),
+                     "lab-start", "--world",
+                     str(workspace / "laboratory.sqlite3")],
+                    capture_output=True, text=True, timeout=180,
+                )
+                self.assertEqual(
+                    started.returncode, 0,
+                    f"cold start attempt {attempt}: {started.stderr}",
+                )
+                self.assertEqual(json.loads(started.stdout)["status"], "ready")
+                print(
+                    f"WINDOWS_CLEAN_GENESIS_RECEIPT attempt={attempt}/5 "
+                    f"world_epoch={genesis['world_epoch']} "
+                    f"genesis=ready_for_operator_start cold_start=ready",
+                    flush=True,
+                )
+
     def test_failed_world_genesis_leaves_no_published_authority(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as root:
