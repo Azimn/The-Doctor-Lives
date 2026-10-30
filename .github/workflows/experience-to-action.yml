@@ -5,6 +5,7 @@ on:
     paths:
       - doctor_lives/experience_to_action.py
       - doctor_lives/cli.py
+      - doctor_lives/local_subject_gloss.py
       - doctor_lives/lab_runtime.py
       - doctor_lives/lab_soak.py
       - tests/test_lab_soak.py
