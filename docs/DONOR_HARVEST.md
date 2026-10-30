@@ -49,3 +49,15 @@ The nonactuating first completed M5 candidate run is [M5 CI 41006397303](https:/
 | Household receipt-linked habit history | **42** | 0 | 42 | **OFF**, unverified outcome benefit |
 
 These data demonstrate a nonzero counterfactual influence for the habit modifier, but no measured advantage over the simple baseline. The sampled M4 operator task set does not include the original physical household task categories, so `household_grounded` has zero influence by design in this experiment. A full 20-seed paired physical-household outcome evaluation remains unresolved. Original donor suites remain in source branches, and M5 includes scoped adapted contract tests; do not describe this as a completed one-for-one original-test transplant.
+
+## Latest corrected semantic-policy matched harvest
+
+The later [M5 post-null source run 41007830836](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41007830836), exact candidate `c1efde65474eb4e3518607f2e2cffd92cab19f4c`, preserves all 180 real original-Noesis decision receipts across 20 seeds. The bounded original-native contrast is now a measurable selector input, and 14 of 180 donor-OFF choices disagree with the simple same-information policy. This **does not** establish superiority: different choices need independent world outcomes.
+
+| Candidate | On versus OFF changes, 180 | On versus simple baseline disagreements, 180 | Donor default |
+| --- | ---: | ---: | --- |
+| CASCADE commitment | **0** | **14** | **OFF** |
+| Household grounded action preflight | **0** | **14** | **OFF** |
+| Household source-backed habit | **41** | **55** | **OFF** |
+
+The equal-information simple baseline disagrees with donor-off on 14/180 across all rows. The habit's additional 41 changes are trace-dependent, but their usefulness is not known. Source-world on/off outcome studies remain an unfulfilled criterion; no donor has earned a default promotion. These newer numbers supersede the *behavioral observations* of the preceding M5 audit, while the older original historical study and exact run numbers remain archived as real prior observations.

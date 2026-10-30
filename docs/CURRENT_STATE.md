@@ -35,3 +35,11 @@ In a completed 20-seed M5 source-backed CI run [41006397303](https://github.com/
 The M5 donor ablation reported CASCADE **0/180**, grounded household **0/180**, habit history **42/180** choice differences versus donor-off. Those are nonactuating counterfactual ranking changes, not verified additional world outcomes. See `docs/DONOR_HARVEST.md` for the equal-information simple baseline and decision.
 
 The latest M5 execution status must be determined from the exact-head GitHub Actions workflow results; do not treat this earlier measured passing run as a blanket certification of later changes. The new pinned seventeen-book and shipping-entrypoint workflows must pass before release qualification.
+
+## M5 updated causal-result disposition
+
+[Exact-source CI 41007830836](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41007830836) passed the original M2 judge, original M4 fallback judge, M5 semantics attribution and 20-seed donor comparisons. The post-null bounded original-neural contrast produces a different profile from the earlier phase: **34/180** decisions sensitive to removing novelty; native W-plus-motor readout lesion **10/20** different native cognitive choices and **13/20** different same-source free-intention candidate replays. Recurrent-W-only lesion changes **0/20** in both native cognition and candidate replays. Hence the *overall native motor readout* matters in the candidate score, but the recurrent weights alone were not necessary in this test.
+
+The donor comparison now shows CASCADE 0/180 choice changes, household physical grounding 0/180, habit trace 41/180, with zero verified additional physical outcomes. All remain explicitly OFF. Local 768-dimensional Ollama embedding smoke passed; 58/60 paraphrase invariance is measured on the deterministic fallback, not the full model-on embedding pathway. The absolute evidence is limited to the experiments' sources, not new artificial-general-intelligence, human equivalence or consciousness claims.
+
+The historical earlier M5 numbers retained above are *source-specific checkpoints*, not alternative current success claims. Full latest-head 17-full-text book CI and any subsequent documentation-only push must be checked separately for actual green status before promotion.

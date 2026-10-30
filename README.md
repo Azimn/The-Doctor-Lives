@@ -1,6 +1,6 @@
 ## M5 isolated integration (draft, not production)
 
-The active candidate is [integration/m5](https://github.com/Azimn/The-Doctor-Lives/tree/integration/m5), based on the latest fully green M4 source commit `1406668dd2dce7585acd6ea80bad1b3406b42032`. **Main is unchanged and PR #102 remains draft.** See [CURRENT_STATE](docs/CURRENT_STATE.md), [DONOR_HARVEST](docs/DONOR_HARVEST.md), and `PROGRESS.md`.
+The active candidate is [integration/m5](https://github.com/Azimn/The-Doctor-Lives/tree/integration/m5), based on the latest fully green M4 source commit `1406668dd2dce7585acd6ea80bad1b3406b42032`. **Main is unchanged and PR #102 remains draft.** See [CURRENT_STATE](docs/CURRENT_STATE.md), [DONOR_HARVEST](docs/DONOR_HARVEST.md), [post-null causal amendment](docs/M5_SEMANTIC_CAUSAL_AMENDMENT.md), and `PROGRESS.md`.
 
 M5 reconciles PR #98's independently source-receipted elapsed Laboratory work, replaces intention-to-action hashing with local meaning-based mapping and optional loopback Ollama embeddings, records capped novelty versus neural contributions, and tests the existing BrainStore through adversarial CLI ingress. CASCADE commitment, grounded-household and receipt habit candidate adapters are available OFF by default because none has established an improvement over a same-information simple baseline. Conclave and Phantasmagorium remain design-only organoids.
 
