@@ -161,9 +161,7 @@ class JudgeTests(unittest.TestCase):
             event["state_after"]=event["state_before"]
             c.execute("UPDATE operator_events SET payload_json=?,event_hash=? WHERE event_id='act-0-2'",
                       (stable(event),sha256(stable(event).encode()).hexdigest()))
-        # A source receipt need not be forged to prove unchanged state.
-        # Force an identical preceding label to activate loop detection.
-        self.rejects("a") if False else self.assertFalse(self._state_change_is_sufficient(path))
+        self.rejects("a")
 
     def _state_change_is_sufficient(self,path):
         with sqlite3.connect(path) as c:
