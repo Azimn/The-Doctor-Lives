@@ -59,6 +59,76 @@ def verify_source_ledger(report: dict) -> dict:
                WHERE trigger='noesis_open_choice'""")}
         turns = [dict(r) for r in db.execute(
             "SELECT * FROM operator_conversation_turns ORDER BY rowid")]
+    # Reports are not speech authority. Bind every reported outgoing turn to
+    # its original BrainStore row, and check the row against its independent
+    # claim ledger and original speech memory. This is read-only.
+    canonical_turns = {row["turn_id"]: row for row in turns}
+    reported_ids = set()
+    for turn in report["turns"]:
+        if turn.get("origin") != "pretorius":
+            continue
+        turn_id = turn.get("turn_id")
+        require(isinstance(turn_id, str) and turn_id
+                and turn_id not in reported_ids
+                and turn_id in canonical_turns,
+                "Reported outgoing speech lacks a unique canonical turn ID")
+        reported_ids.add(turn_id)
+        stored = canonical_turns[turn_id]
+        require(stored["role"] == "pretorius",
+                "Reported Pretorius turn belongs to a different speaker")
+        try:
+            stored_claims = json.loads(stored["claims_json"])
+        except (ValueError, TypeError):
+            raise ConversationJudgmentError("Invalid persisted outgoing claim ledger")
+        require(isinstance(stored_claims, list)
+                and turn.get("claims") == stored_claims,
+                "Reported claims differ from canonical BrainStore turn claims")
+        require(isinstance(turn.get("text"), str)
+                and turn["text"] == stored["text"],
+                "Reported outgoing speech differs from canonical BrainStore turn")
+        require(type(turn.get("model_called")) is bool
+                and turn["model_called"] == bool(stored["model_called"]),
+                "Reported model state differs from persisted outgoing turn")
+        if "day" in turn:
+            require(turn["day"] == stored["simulation_day"],
+                    "Reported simulation day differs from canonical turn")
+        if "beat" in turn:
+            require(turn["beat"] == stored["beat"],
+                    "Reported Swatch time differs from canonical turn")
+        speech = stored["text"]
+        # No active terminal controls or counterfeit source headings in
+        # Pretorius-facing speech, including the persisted-speech path.
+        require("[Verified first-person account]" not in speech
+                and all((ord(ch) >= 32 and not 127 <= ord(ch) <= 159)
+                        or ch == "\\n" for ch in speech)
+                and not any(ch in speech for ch in
+                            ("\\u2028", "\\u2029", "\\u202a", "\\u202b",
+                             "\\u202c", "\\u202d", "\\u202e", "\\u2066",
+                             "\\u2067", "\\u2068", "\\u2069")),
+                "Persisted outgoing speech contains active controls or forged source heading")
+        source_memory = memories.get(stored["source_memory_id"])
+        require(source_memory is not None,
+                "Outgoing turn has no original BrainStore speech source")
+        if turn_id.startswith("initiative_"):
+            require(len(stored_claims) == 1
+                    and stored_claims[0].get("source") == "lived"
+                    and speech == stored_claims[0].get("text")
+                    and source_memory["text"] == speech
+                    and source_memory["evidence_class"] == "lived_runtime_memory",
+                    "Initiative speech differs from authentic lived action")
+        else:
+            expected = (" ".join(claim["text"] for claim in stored_claims)
+                        if stored_claims else
+                        "I have no verified firsthand actions to report.")
+            require(speech == expected or
+                    (bool(stored["model_called"])
+                     and speech.startswith(expected + "\\n")),
+                    "Persisted outgoing speech differs from sourced deterministic reply")
+            require(source_memory["source"] == "pretorius:conversation-speech"
+                    and source_memory["evidence_class"] == "external_statement"
+                    and source_memory["text"] ==
+                        "My outgoing message to the operator: " + speech[:1200],
+                    "Persisted outgoing speech differs from original reported-speech memory")
     outbox = Path(str(world)+".operator-work.sqlite3")
 
     def authenticated(source: str) -> bool:
