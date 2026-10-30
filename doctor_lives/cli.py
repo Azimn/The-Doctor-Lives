@@ -119,9 +119,8 @@ def main(argv=None) -> int:
             bridge = runtime.bind_laboratory(
                 SubjectPort(SpatialHabitat(a.world)), authorized=True,
             )
-            recovered = bridge.recover_pending_actions()
-            if bridge.pending_action_intents():
-                raise RuntimeError("Unreconciled Laboratory action; startup denied")
+            from .lab_runtime import _recover_shipping_actions
+            _, recovered = _recover_shipping_actions(bridge)
             clock = engineer_time()
             emit({
                 "schema": "doctor-laboratory-offline-start.v1",
