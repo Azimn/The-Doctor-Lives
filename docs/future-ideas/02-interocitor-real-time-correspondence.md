@@ -24,6 +24,14 @@ He can initiate an exchange, reply, postpone responding, stop talking, or choose
 
 The apparatus must not silently merge real-world participants with fabricated village residents. Each correspondent needs an internally coherent presented identity and an accurate underlying provenance record. Communication passes through the project's existing subject-native perception and memory boundaries, preserving first-person experience without falsifying the world's history.
 
+## Agency: a conversation is an invitation, not a command
+
+**Real-time delivery must not create a real-time response obligation.** The Interocitor is an optional object in Pretorius's world, not a privileged channel that interrupts or controls him. An incoming message may arrive without his noticing; he may see the machine signal and ignore it; he may read the words and choose not to answer. He may respond immediately, after a delay, at another time, or never. He can also initiate a conversation himself, end one, or leave the device unused while pursuing other commitments.
+
+Separate message **arrival**, **in-world notification**, **perception**, **reading**, **decision**, and **outgoing reply**. External text transport must never mark an unread message as personally known, inject an obligatory conversational turn, or treat no response as a system error. An optional retained transcript may preserve delivery facts for the host, while Pretorius only recalls the portion he encountered through his subject-native experience.
+
+When this proposal is eventually evaluated, deliberately interrupt tempting conversations with meaningful Laboratory work, allow messages to go unanswered, check that silence has no forced recovery script, and test voluntary re-engagement. Success means choices and continuity consistent with his circumstances, not maximum uptime, engagement, or reply rate.
+
 ## Scope and future possibilities
 
 **Phase Two's deliverable, when approved, is text conversation only.** Audio could be explored as a later enhancement; moving images are an even more speculative possibility, not a target. This is not a requirement to add phone calls, video chat, modern computer interfaces, general Internet access, or new social simulation systems.
