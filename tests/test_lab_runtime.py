@@ -376,6 +376,77 @@ with _exclusive_host(Path(sys.argv[1])):
         self.assertEqual(json.loads(resumed.stdout)["status"], "completed")
 
 
+    def test_cross_platform_two_authority_lease_and_killed_holder_recovery(self):
+        """Real OS process locks both authorities, including on Windows.
+
+        No signal-handler assumptions: a killed holder must release both
+        sidecar byte-range locks. Neither contender may create world LOOKs
+        or an alternate BrainStore before it is authorized.
+        """
+        ready = Path(self.temp.name) / "both-leases-ready"
+        holder_script = """
+import sys
+import time
+from pathlib import Path
+from doctor_lives.lab_runtime import _exclusive_host
+with _exclusive_host(Path(sys.argv[1]), Path(sys.argv[2])):
+    Path(sys.argv[3]).write_text("ready", encoding="utf-8")
+    time.sleep(30)
+"""
+        holder = subprocess.Popen(
+            [sys.executable, "-c", holder_script, str(self.state),
+             str(self.world_path), str(ready)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        before = self._receipt_and_observation_counts()
+        try:
+            deadline = time.monotonic() + 15
+            while not ready.is_file() and time.monotonic() < deadline:
+                if holder.poll() is not None:
+                    self.fail("Lease holder failed: " + holder.stderr.read())
+                time.sleep(0.05)
+            self.assertTrue(ready.is_file(), "Both authority leases were not acquired")
+            self.assertIsNone(holder.poll())
+
+            same = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+            self.assertNotEqual(same.returncode, 0)
+            self.assertEqual(same.stdout, "")
+            self.assertIn("host already active", same.stderr)
+
+            alternate = Path(self.temp.name) / "empty-contender"
+            alternate.mkdir()
+            different_brain = subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli", "--state",
+                 str(alternate), "lab-start", "--world", str(self.world_path)],
+                capture_output=True, text=True, timeout=25,
+            )
+            self.assertNotEqual(different_brain.returncode, 0)
+            self.assertEqual(different_brain.stdout, "")
+            self.assertIn("world host already active", different_brain.stderr)
+            self.assertFalse((alternate / "brain.sqlite3").exists())
+            self.assertEqual(self._receipt_and_observation_counts(), before)
+        finally:
+            if holder.poll() is None:
+                holder.kill()
+            holder.communicate(timeout=15)
+
+        cold = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(cold.returncode, 0, cold.stderr)
+        self.assertEqual(json.loads(cold.stdout)["status"], "ready")
+        self.assertEqual(json.loads(cold.stdout)["recovered"], 0)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+        resumed = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(json.loads(resumed.stdout)["status"], "completed")
+        self.assertGreater(
+            self._receipt_and_observation_counts()[2], before[2],
+            "Cold resume must create a real source-backed observation",
+        )
+
     def test_hardlinked_world_is_denied_without_holder_and_recovers(self):
         # Fail closed even when no competing lease exists. Do not silently
         # admit a world inode whose sidecar can be bypassed by another name.
