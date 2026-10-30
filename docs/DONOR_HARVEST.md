@@ -37,3 +37,15 @@ For CASCADE: source `docs/experiments/CASCADE_PERSISTENT_COMMITMENT_EVIDENCE.md`
 This milestone's standard is *incremental attributable superiority*, not just positive engineering cases. CASCADE's simple controller ties, grounded task feasibility is equally good when supplied to a simple controller, and the measured cue habit does worse than the recency predictor. Therefore the three candidates are importable/inspectable but disabled by default. A later independently authored outcome suite might reverse these verdicts, but only with new evidence, not by rescaling a donor bonus or changing the gate.
 
 Important limitations: the 20-seed M5 counterfactual audit reconstructs choice rankings from actual preserved decisions; it does not replay each alternative action into an identically initialized physical world. Full paired donor-on/off source-replayed *outcomes* are a remaining acceptance gate. The original tests remain cited and auditable on their pinned source branches. No claims of an external human response or a newly installed organoid are made.
+
+## M5 exact source-backed 20-seed ablation results
+
+The nonactuating first completed M5 candidate run is [M5 CI 41006397303](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41006397303), at source commit `f956f5d5df3b8c0a5042613db0d11b45d387ac64`. A dedicated CausalAuditHarness-based clone pairs the same original 20 independent Pretorius BrainStores. The resulting 180 originally recorded Noesis decisions were reconstructed, donor modifiers applied counterfactually, and a simple no-neural ranking using the same available familiarity, novelty and history supplied. No world action is executed in this counterfactual stage, so changes of selection cannot be called task success.
+
+| Port, original donor | M5 donor-on vs donor-off selection changes /180 | Donor-off vs simple control disagreements /180 | Donor-on vs simple disagreements /180 | Keep decision |
+| --- | ---: | ---: | ---: | --- |
+| CASCADE commitment pressure | **0** | 0 | 0 | **OFF** |
+| Household physically grounded preflight | **0** | 0 | 0 | **OFF** as action preference; keep source world preflight available |
+| Household receipt-linked habit history | **42** | 0 | 42 | **OFF**, unverified outcome benefit |
+
+These data demonstrate a nonzero counterfactual influence for the habit modifier, but no measured advantage over the simple baseline. The sampled M4 operator task set does not include the original physical household task categories, so `household_grounded` has zero influence by design in this experiment. A full 20-seed paired physical-household outcome evaluation remains unresolved. Original donor suites remain in source branches, and M5 includes scoped adapted contract tests; do not describe this as a completed one-for-one original-test transplant.

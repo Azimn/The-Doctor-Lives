@@ -25,3 +25,13 @@
 An isolated development success is not permission to promote `main`. All existing M2/M4 judges, the new semantic judge, full BrainStore CI, source-backed default-entrypoint tests, and new donor evidence must pass at the final exact M5 head. Donor superiority requires verifiable **behavioral/outcome** advantages over equal-information simple controls, not merely a new neural score, a permitted action, a test fixture or nicer prose.
 
 The six primary organs remain unevenly graduated. Conclave and Phantasmagorium are planned auxiliary organoids, not deployed runtime modules. Keep independent first-person provenance, authorized Laboratory receipts and subject-visible versus engineer-private state separation. Preserve UTC ISO timestamps for source ordering, with Swatch @beats for project-facing displays where clocks are surfaced.
+
+## Executed semantic and neural attribution checkpoint
+
+The original semantic judge was written before the semantic mapper: 30 intentions, 3 phrasings each, 60 discriminating paraphrase comparisons. The deterministic semantic fallback maps **58/60 paraphrases to the same category (96.67% invariance)** and **88/90 utterances to their preregistered expected class (97.78% accuracy)**. The predeclared gate was 90% for both metrics. This is **not** yet a measured embedding-model accuracy result.
+
+In a completed 20-seed M5 source-backed CI run [41006397303](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41006397303), source clone analysis recorded **12/180** selected M4 intentions changing when the bounded novelty contribution was removed; counterfactually neutralizing the cloned recurrent motor and weights changed **8/20** matched native *cognitive* choices, mean native score L1 **0.02395957**. The lesion has not yet established a change to the *open intention action* itself on matched physical rollouts. No default host action grants or world receipts are removed. All three donor adapters remain OFF unless explicitly enabled for research.
+
+The M5 donor ablation reported CASCADE **0/180**, grounded household **0/180**, habit history **42/180** choice differences versus donor-off. Those are nonactuating counterfactual ranking changes, not verified additional world outcomes. See `docs/DONOR_HARVEST.md` for the equal-information simple baseline and decision.
+
+The latest M5 execution status must be determined from the exact-head GitHub Actions workflow results; do not treat this earlier measured passing run as a blanket certification of later changes. The new pinned seventeen-book and shipping-entrypoint workflows must pass before release qualification.
