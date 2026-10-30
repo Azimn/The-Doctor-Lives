@@ -412,7 +412,12 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
                 capture_output=True, text=True, timeout=120,
             )
 
-        before = self.subject.embodied.verify()["revision"]
+        before_station = self.subject.embodied.verify()["station"]
+        with self.world._open() as db:
+            before_moves = sum(
+                json.loads(row[0])["kind"] == "move"
+                for row in db.execute("SELECT envelope FROM embodied_events")
+            )
         created = cli("--steps", "1")
         self.assertEqual(created.returncode, 0, created.stderr)
         first = json.loads(created.stdout)
@@ -423,13 +428,23 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         self.assertFalse(first["natural_language_goal_authorship_proven"])
         self.assertFalse(first["uncoached_three_task_life_proven"])
         self.assertEqual(first["cloud_calls"], 0)
-        self.assertEqual(self.subject.embodied.verify()["revision"], before)
+        self.assertEqual(self.subject.embodied.verify()["station"], before_station)
+        with self.world._open() as db:
+            self.assertEqual(sum(
+                json.loads(row[0])["kind"] == "move"
+                for row in db.execute("SELECT envelope FROM embodied_events")
+            ), before_moves)
 
         denied = cli("--steps", "3")
         self.assertEqual(denied.returncode, 0, denied.stderr)
         self.assertEqual(json.loads(denied.stdout)["status"],
                          "authorization_required")
-        self.assertEqual(self.subject.embodied.verify()["revision"], before)
+        self.assertEqual(self.subject.embodied.verify()["station"], before_station)
+        with self.world._open() as db:
+            self.assertEqual(sum(
+                json.loads(row[0])["kind"] == "move"
+                for row in db.execute("SELECT envelope FROM embodied_events")
+            ), before_moves)
 
         completed = cli("--steps", "24", "--allow-world-actions")
         self.assertEqual(completed.returncode, 0, completed.stderr)
