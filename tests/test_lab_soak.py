@@ -285,7 +285,7 @@ class SoakEvidenceTests(unittest.TestCase):
         first.pop("sha256")
         first["sha256"] = _digest(first)
         lines[0] = json.dumps(first, sort_keys=True)
-        self.log.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+        self.log.write_text("\n".join(lines) + "\n", encoding="utf-8")
         with self.assertRaises((RuntimeError, PermissionError)):
             verify_soak_sources(self.state, self.world, self.log)
 
@@ -307,7 +307,7 @@ class SoakEvidenceTests(unittest.TestCase):
             "lab_source_pin_expected": "6e49795752835d64fa6fd63d16359669a1ca2ba7",
         }
         row["sha256"] = _digest(row)
-        self.log.write_text(json.dumps(row) + "\\n", encoding="utf-8")
+        self.log.write_text(json.dumps(row) + "\n", encoding="utf-8")
         report = read_soak_log(self.log)
         self.assertTrue(report["elapsed_24h_candidate"])
         self.assertFalse(report["activity_observed"])
@@ -318,7 +318,7 @@ class SoakEvidenceTests(unittest.TestCase):
         row["pulses"] = -1
         row.pop("sha256")
         row["sha256"] = _digest(row)
-        self.log.write_text(json.dumps(row) + "\\n", encoding="utf-8")
+        self.log.write_text(json.dumps(row) + "\n", encoding="utf-8")
         with self.assertRaises(RuntimeError):
             read_soak_log(self.log)
 
