@@ -378,6 +378,51 @@ with _exclusive_host(Path(sys.argv[1])):
         self.assertTrue(woke["subject_frames"])
         self.assertEqual(self.world.verify()["verified"], True)
 
+    def test_sleep_denies_foreign_same_domain_receipt_without_claiming_memory(self):
+        # A real sleep receipt proves a physical event, not Doctor ownership.
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        for index, station in enumerate(("station:hall", "station:bedroom")):
+            bridge.act("walk", event_id=f"foreign-sleep-approach-{index}",
+                       station=station)
+        runtime.checkpoint()
+        self.assertEqual(bridge.subject.embodied.verify()["station"],
+                         "station:bedroom")
+        SubjectPort(SpatialHabitat(self.world_path)).act(
+            "sleep", event_id="foreign-same-domain-sleep")
+        with self.world._open() as db:
+            receipt = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                ("foreign-same-domain-sleep",),
+            ).fetchone()
+        self.assertIsNotNone(receipt)
+        self.assertIsNone(bridge.existing_action_intent(
+            "foreign-same-domain-sleep"))
+        before = self._receipt_and_observation_counts()
+        minute_before = DailyRhythm(self.world).verify()["minute"]
+        denied = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-sleep", "--world",
+             str(self.world_path), "--event-id", "foreign-same-domain-sleep"],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        self.assertIn("No matching preexisting Doctor-owned sleep reservation",
+                      denied.stderr)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+        self.assertEqual(DailyRhythm(self.world).verify()["minute"], minute_before)
+        self.assertIsNone(bridge.existing_action_intent(
+            "foreign-same-domain-sleep"))
+        self.assertFalse([
+            m for m in PretoriusBrainPort(self.state).brain.store.memories(False)
+            if m["source"] == "laboratory-home:action:" + receipt[0]
+        ])
+
     def test_sleep_world_commit_crash_replay_and_historical_room_change(self):
         # Kill a REAL child after the original rhythm receipt is committed,
         # before the original BrainStore can admit its first-person memory.

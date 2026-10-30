@@ -349,6 +349,33 @@ class DoctorHomeBridge:
                 )
                 db.execute("COMMIT")
 
+    def existing_action_intent(self, event_id: str) -> dict | None:
+        """Read a PREEXISTING Doctor reservation without manufacturing one.
+
+        A physical Laboratory receipt proves an action happened, not its
+        author. Historical replay must check Doctor's durable reservation
+        before act() could create an otherwise absent intent.
+        """
+        if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+            raise ValueError("Stable bounded action identity required")
+        path = self._intent_path()
+        if not path.is_file():
+            return None
+        with sqlite3.connect(path, timeout=30) as db:
+            row = db.execute(
+                "SELECT request_json,status FROM doctor_action_intents "
+                "WHERE event_id=?", (event_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        request = json.loads(row[0])
+        if (not isinstance(request, dict) or set(request) != {"op", "args"}
+                or type(request["op"]) is not str
+                or type(request["args"]) is not dict
+                or row[1] not in ("pending", "complete")):
+            raise RuntimeError("Invalid Doctor-owned Laboratory action reservation")
+        return {"event_id": event_id, **request, "status": row[1]}
+
     def pending_action_intents(self) -> tuple[dict, ...]:
         """Host-only durable replay queue, never a subject-facing memory."""
         path = self._intent_path()

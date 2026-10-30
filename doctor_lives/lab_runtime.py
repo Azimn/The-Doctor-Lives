@@ -105,6 +105,9 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
     again. This advances Laboratory *simulated* time, not wall-clock soak time.
     The next lab-run is the explicit wake/resume operation.
     """
+    from .lab_home_bridge import _SAFE_ID
+    if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+        raise ValueError("Stable bounded Laboratory sleep action ID required")
     with _exclusive_host(state, world):
         if not (state / "brain.sqlite3").is_file() or not (
             state / "pretorius_recurrent.npz"
@@ -120,6 +123,21 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         bridge = runtime.bind_laboratory(
             SubjectPort(SpatialHabitat(world)), authorized=True,
         )
+        # The world may contain a genuine sleep by another actor. Check
+        # PREEXISTING Doctor ownership before recovery or bridge.act could
+        # manufacture an intent and launder that event into autobiography.
+        with bridge.world._open() as db:
+            historical_sleep = db.execute(
+                "SELECT 1 FROM rhythm_events WHERE event_id=? LIMIT 1",
+                (event_id,),
+            ).fetchone() is not None
+        if historical_sleep:
+            owned = bridge.existing_action_intent(event_id)
+            if (owned is None or owned["op"] != "sleep"
+                    or owned["args"] != {}):
+                raise RuntimeError(
+                    "No matching preexisting Doctor-owned sleep reservation"
+                )
         # Capture identities before replay so a recovered sleep is presented
         # only once. The bridge remains the sole durable intent authority.
         pending_before = bridge.pending_action_intents()
@@ -133,11 +151,6 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         # genuinely walked elsewhere. This lookup grants NO authority: act()
         # must still authenticate the original receipt, action identity, and
         # canonical lived memory. A NEW sleep remains bedroom-only.
-        with bridge.world._open() as db:
-            historical_sleep = db.execute(
-                "SELECT 1 FROM rhythm_events WHERE event_id=? LIMIT 1",
-                (event_id,),
-            ).fetchone() is not None
         if (not historical_sleep
                 and bridge.subject.embodied.verify()["station"] != "station:bedroom"):
             raise RuntimeError(
