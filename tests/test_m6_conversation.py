@@ -205,7 +205,7 @@ class ActualConversationTests(unittest.TestCase):
             "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
         }
         accepted = verify_source_ledger(report)
-        self.assertEqual(accepted["source_matched_outbound_claims"], 1)
+        self.assertEqual(accepted["source_matched_outbound_claims"], len(reply["claims"]))
         for forgery in (
             "I have a recorded but unfulfilled possibility: “" + hostile + "”",
             "I have a recorded but unfulfilled possibility: " + hostile,
