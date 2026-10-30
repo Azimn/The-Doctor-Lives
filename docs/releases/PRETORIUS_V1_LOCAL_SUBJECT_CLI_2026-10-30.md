@@ -23,11 +23,21 @@ $doctor = ".\.pretorius\Scripts\doctor-lives.exe"
 & $doctor --state .\brain lab-run --world .\world.sqlite3 --seconds 60 --interval-seconds 5 --human
 ```
 
-`--human` prints the Swatch Internet Time `@000` to `@999` and **only** the `inner` text of source-qualified first-person subject frames returned by the trusted Laboratory host. If no new frame exists, the console explicitly reports `(No new first-person account.)`; it does not invent Pretorius dialogue. The default without `--human` remains machine-readable JSON with UTC/ISO-8601 and diagnostic fields for the operator. Human mode does not accept a caller-supplied frame, arbitrary tool JSON, renderer prompt, external model or source override.
+`--human` prints the Swatch Internet Time `@000` to `@999` and **only** the `inner` text of source-qualified first-person subject frames returned by the trusted Laboratory host. If no new frame exists, the console explicitly reports `(No new first-person account.)`; it does not invent Pretorius dialogue. The default without `--human` remains machine-readable JSON with UTC/ISO-8601 and diagnostic fields for the operator. Human mode does not accept a caller-supplied frame, arbitrary tool JSON, renderer prompt, remote model endpoint or source override. An optional fixed-loopback Ollama interpretation can be requested separately; it is explicitly unverified and never replaces the source-backed first-person frame.
 
 To offer repeated real-elapsed-time bench opportunities, add `--work-every-seconds 15` to `lab-run`. The original recurrent Noesis chooses among physically feasible work offers. The host never chooses an action or walks Pretorius to the bench. `lab-work --world .\world.sqlite3 --event-id <unique-id> --human` offers one opportunity only if he is physically at the bench. `lab-sleep --world .\world.sqlite3 --event-id <stable-id> --human` requires his body in the actual bedroom. Reuse a stable ID only to replay the same authorized action, never for a new action. Sleep advances Laboratory simulated time, **not** real elapsed soak time.
 
 A Ctrl+C interruption of `lab-run` requests orderly stop and checkpoint. A killed process is recovered by the next `lab-start`, which reconciles original-world receipts and durable action reservations before admitting lived memory. This is a cooperative local process boundary, not protection from privileged Python or direct database tampering.
+
+## Optional local-model interpretation (not Pretorius's voice)
+
+For an installed local Ollama service listening on the standard loopback endpoint `127.0.0.1:11434`, the existing source-only CLI can append a clearly marked operator interpretation:
+
+```powershell
+& $doctor --state .\\brain lab-run --world .\\world.sqlite3 --seconds 60 --interval-seconds 5 --human --local-render-model qwen3:14b
+```
+
+The source-verified first-person account always prints first, unchanged. The local model receives **only** bounded first-person `inner` text, never world receipts, BrainStore identifiers, neural scores or engineering diagnostics. Its output is labeled `Unverified local-model interpretation; not lived memory`, is never written to memory and cannot authorize a physical action. No remote URLs, API keys or cloud dependencies are accepted. If Ollama is absent, times out or returns malformed output, the same verified account is printed with an availability note. A cold start with no authenticated new frame never calls a model. Omit `--local-render-model` for the original deterministic zero-model experience. This is a renderer substitution control, not proof of cognition or a completed full-model acceptance matrix.
 
 ## Backup and recovery
 
