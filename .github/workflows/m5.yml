@@ -49,10 +49,15 @@ jobs:
           python scripts/run_m4_open.py --run /tmp/m5-open --lab-root donor-laboratory --provider fallback
           python scripts/verify_open.py --run /tmp/m5-open --lab-root donor-laboratory
           python scripts/verify_day.py --run /tmp/m5-open/fallback-day --lab-root donor-laboratory
+          python scripts/m5_attribute.py --run /tmp/m5-open --out /tmp/m5-attribution.json
+          python scripts/verify_semantics.py --report /tmp/m5-attribution.json --out /tmp/m5-semantics-full.json
       - name: Preserve source ledgers
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: m5-source-ledgers
-          path: /tmp/m5-open/
+          path: |
+            /tmp/m5-open/
+            /tmp/m5-attribution.json
+            /tmp/m5-semantics-full.json
           if-no-files-found: warn
