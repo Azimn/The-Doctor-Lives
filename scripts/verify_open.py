@@ -76,7 +76,7 @@ def _open_receipts(path):
             result[r["event_id"]] = (r["op"], event, r["event_hash"])
     return result, capabilities
 
-def _inspect_trial(root, item, lab_root):
+def _inspect_trial(root, item, lab_root, *, model_required=False):
     seed, folder = item.get("seed"), item.get("path")
     if type(seed) is not int:
         fail("a", "seed must be an integer")
@@ -105,6 +105,9 @@ def _inspect_trial(root, item, lab_root):
                   {"doctor_action_intents"}, "c") as db:
         intents = {r["event_id"]:dict(r) for r in db.execute(
             "SELECT * FROM doctor_action_intents")}
+    if model_required and sum(p.get("model_provider") == "LocalOllama"
+                              for p in proposals.values()) < 3:
+        fail("c", "local-model study has no real Ollama-generated intentions for this seed")
     types, choices, proposals_count = set(), Counter(), Counter()
     previous = {}
     seen_event_ids = set()
@@ -238,6 +241,15 @@ def _inspect_trial(root, item, lab_root):
             "SELECT goal_type FROM open_proposals"))
         lesion_choices = Counter(r["selected_action"] for r in db.execute(
             "SELECT selected_action FROM policy_decisions WHERE trigger='noesis_open_choice'"))
+        if model_required:
+            try:
+                model_lesion_count=db.execute(
+                    "SELECT count(*) FROM open_proposals WHERE model_provider='LocalOllama'"
+                ).fetchone()[0]
+            except sqlite3.Error:
+                fail("e", "paired memory lesion lacks original local inference source")
+            if model_lesion_count < 3:
+                fail("e", "memory lesion did not use the same local inference provider")
     return {"types":types,"choices":choices,"proposals":proposals_count,
             "lesion_proposals":lesion_proposals, "lesion_choices":lesion_choices,
             "seed":seed, "novel_used":first_used, "actions":len(seen_event_ids),
@@ -258,8 +270,11 @@ def verify(root: Path, lab_root: Path):
     kinds=set()
     days=set()
     count=0
+    mode=data.get("provider","fallback")
+    if mode not in ("fallback","ollama"):
+        fail("c","unknown inference mode")
     for item in trials:
-        result=_inspect_trial(root,item,lab_root)
+        result=_inspect_trial(root,item,lab_root,model_required=(mode=="ollama"))
         if result["seed"] in seen:
             fail("a","duplicate neural seed")
         seen.add(result["seed"])
