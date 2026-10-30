@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - doctor_lives/lab_runtime.py
+      - doctor_lives/lab_backup.py
       - doctor_lives/cli.py
       - doctor_lives/data/*.json
       - tests/test_lab_runtime.py
