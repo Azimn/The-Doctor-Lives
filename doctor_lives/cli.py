@@ -66,6 +66,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
+    x=sp.add_parser("chat", help="Two-way source-verified local operator conversation"); x.add_argument("--world",type=Path,required=True); x.add_argument("--text",default=None); x.add_argument("--request-id",default=None); x.add_argument("--day",type=int,default=1); x.add_argument("--local-model",default=None)
+    x=sp.add_parser("chat-serve", help="Loopback-only local HTML conversation client"); x.add_argument("--world",type=Path,required=True); x.add_argument("--port",type=int,default=8766); x.add_argument("--local-model",default=None)
+    x=sp.add_parser("chat-opportunity", help="Offer Noesis a genuine opportunity to initiate a message"); x.add_argument("--world",type=Path,required=True); x.add_argument("--cycle",type=int,required=True); x.add_argument("--day",type=int,required=True)
     x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-soak"); x.add_argument("--world", type=Path, required=True); x.add_argument("--evidence-log", type=Path, required=True); x.add_argument("--seconds", type=float, default=86400.0); x.add_argument("--segment-seconds", type=float, default=900.0); x.add_argument("--interval-seconds", type=float, default=30.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Offer Noesis real work only at a physically feasible bench")
@@ -94,6 +97,37 @@ def main(argv=None) -> int:
         from .local_subject_gloss import valid_local_model
         if not a.human or not valid_local_model(a.local_render_model):
             raise ValueError("Local model requires --human and a valid identifier")
+    if a.cmd in ("chat", "chat-serve", "chat-opportunity"):
+        from .operator_conversation import OperatorConversation
+        from .lab_runtime import _exclusive_host
+        if getattr(a,"local_model",None) is not None:
+            from .local_subject_gloss import valid_local_model
+            if not valid_local_model(a.local_model):
+                raise ValueError("Only a valid loopback Ollama model may be selected")
+        if a.cmd=="chat-serve":
+            from .operator_chat_web import serve
+            return serve(a.state,a.world,port=a.port,model=a.local_model)
+        with _exclusive_host(a.state,a.world):
+            conversation=OperatorConversation(a.state,a.world)
+            if a.cmd=="chat-opportunity":
+                emit(conversation.offer_initiative(a.cycle,day=a.day))
+                return 0
+            if a.text is not None:
+                emit(conversation.submit(a.text,request_id=a.request_id,
+                                         day=a.day,model=a.local_model))
+                return 0
+            print("Pretorius operator chat. Type /quit to exit.")
+            while True:
+                try:
+                    value=input("operator> ").strip()
+                except (EOFError,KeyboardInterrupt):
+                    break
+                if value in ("/quit","/exit"):
+                    break
+                if value:
+                    reply=conversation.submit(value,day=a.day,model=a.local_model)
+                    print(reply["text"])
+            return 0
     # The CLI is a human report, NOT a trusted physical-world provider.
     # Never hand it raw Experience construction or caller-chosen world proof.
     if a.cmd == "ingest":
