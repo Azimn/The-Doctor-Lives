@@ -211,6 +211,17 @@ class SoakEvidenceTests(unittest.TestCase):
                 target_seconds=0.2, segment_seconds=0.2,
                 interval_seconds=0.1,
             )
+        # A hardlink outside the state directory must not become a second
+        # writable name for the canonical BrainStore.
+        brain_alias = Path(self.temp.name) / "alias-of-brain.jsonl"
+        os.link(self.state / "brain.sqlite3", brain_alias)
+        self.addCleanup(lambda: brain_alias.unlink(missing_ok=True))
+        with self.assertRaises(ValueError):
+            soak_laboratory(
+                self.state, self.world, brain_alias,
+                target_seconds=0.2, segment_seconds=0.2,
+                interval_seconds=0.1,
+            )
         self.assertEqual(self.world.read_bytes(), before_world)
         self.assertEqual(world_lock.read_bytes(), before_lock)
         self.assertFalse(collision.exists())
