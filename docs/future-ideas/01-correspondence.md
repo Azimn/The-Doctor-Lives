@@ -26,6 +26,14 @@ His available time, interests, priorities, relationships, temperament, and curre
 
 To evaluate this later, test unread letters during sustained work, letters read without response, voluntary delayed replies, and correspondence initiated without an operator prompt. Do not optimize success as messages answered or response speed; that would turn agency back into compliance.
 
+## Voluntary interest in correspondence
+
+Agency also includes the positive choice to **want more contact**. Pretorius might develop a liking for exchanging letters, look forward to news from a particular correspondent, enjoy intellectual debate, seek company after isolation, or decide to share an experiment or observation. He should have the opportunity to select a recipient, compose an unsolicited letter, and send it through the ordinary postal process, even when no incoming letter is waiting for an answer. He might write frequently during one period of his life and rarely during another.
+
+Any such interest should arise from his established circumstances, memories, relationships, current goals, and competing demands, not from a fixed number of letters to send or a required "social engagement" loop. The system should provide the **opportunity and means** for self-directed correspondence without manufacturing a desire for it. Receiving a welcome reply may encourage further letters; rejection, boredom, a difficult interaction, or absorbing work may change his mind.
+
+A later evaluation can look for voluntary outgoing letters, changing preferences for correspondents or topics, and choices to favor or defer correspondence when other activities matter. It must not treat frequent writing as inherently better than infrequent writing.
+
 ## Phase One addendum: Parcels and physical deliveries
 
 The postal channel should eventually carry **objects and packages**, not just written messages. A parcel is a delivered physical world object: it arrives through the same historically paced mail flow, can have packaging, markings, a sender, and contents, and can be opened, examined, stored, or ignored by Pretorius. Its contents must become available only through appropriate in-world interaction, rather than appearing directly in his inventory or cognition.
