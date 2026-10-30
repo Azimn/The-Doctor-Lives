@@ -22,7 +22,11 @@ VERSION = "noesis-situated-choice-v0.2"
 OUTCOME_VERSION = "noesis-situated-choice-v0.3"
 # Grounded here in Noesis, not selected by the host. The existing neural motor
 # vocabulary still has ten abstract tendencies, not physical work commands.
-NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist"}
+NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist",
+                         "clean": "persist", "light": "explore",
+                         "extinguish": "avoid", "brew_tea": "connect",
+                         "prepare_meal": "persist", "eat": "avoid",
+                         "rest": "avoid", "sleep": "avoid"}
 MEMORY_WEIGHT = 0.60
 NEURAL_WEIGHT = 0.20
 # Bounded, grammar-specific instruction comprehension, not unrestricted LLM text
@@ -50,6 +54,7 @@ def select_with_original_noesis(
     learning_enabled: bool = True, neural_prior_enabled: bool = True,
     outcome_learning_enabled: bool = False,
     eligible_outcome_memory_ids: tuple[str, ...] = (),
+    author_day_goal: bool = False,
 ) -> dict[str, Any]:
     """Commit one original-brain choice and detailed engineer-only audit.
 
@@ -60,7 +65,7 @@ def select_with_original_noesis(
     page text, numeric body data or a fabricated percept.
     """
     if (type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool
-            or type(outcome_learning_enabled) is not bool):
+            or type(outcome_learning_enabled) is not bool or type(author_day_goal) is not bool):
         raise TypeError("Research lesion switches must be explicit booleans")
     if type(observation_memory_id) is not str:
         raise TypeError("An original brain observation memory ID is required")
@@ -68,7 +73,7 @@ def select_with_original_noesis(
         type(rid) is not str for rid in eligible_read_memory_ids
     ) or len(eligible_read_memory_ids) > 32 or len(set(eligible_read_memory_ids)) != len(eligible_read_memory_ids):
         raise ValueError("Bounded unique source-verified memory IDs required")
-    if type(feasible_actions) is not tuple or not feasible_actions or len(feasible_actions) > 2 or any(
+    if type(feasible_actions) is not tuple or not feasible_actions or len(feasible_actions) > len(NEURAL_AFFORDANCE_MAP) or any(
         type(a) is not str or a not in NEURAL_AFFORDANCE_MAP
         for a in feasible_actions
     ) or len(set(feasible_actions)) != len(feasible_actions):
@@ -189,6 +194,28 @@ def select_with_original_noesis(
              json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
              json.dumps(final, sort_keys=True)),
         )
+        # Construct a bounded intention from Noesis's own selected cognitive
+        # thought, in the ORIGINAL BrainStore and original policy transaction.
+        if author_day_goal:
+            key = "pretorius_day_noesis_goal_v1"
+            existing = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+            if existing is None:
+                goal = {
+                    "schema": "pretorius.native-day-goal.v1",
+                    "id": hashlib.sha256(pid.encode()).hexdigest()[:24],
+                    "origin_policy_id": pid, "origin_thought_id": tid,
+                    "observation_memory_id": observation_memory_id,
+                    "selected_action": selected_action,
+                    "intention": subject_thought, "phase": "active",
+                }
+                envelope = {
+                    "payload": goal,
+                    "sha256": hashlib.sha256(json.dumps(
+                        goal, sort_keys=True, separators=(",", ":"),
+                        ensure_ascii=False,
+                    ).encode()).hexdigest(),
+                }
+                brain.store.set_meta(key, json.dumps(envelope, sort_keys=True), db)
         brain.store.bump_state_version(db)
     return {
         "policy_decision_id": pid,
