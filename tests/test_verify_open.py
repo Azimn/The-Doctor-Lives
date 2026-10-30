@@ -146,6 +146,27 @@ class JudgeTests(unittest.TestCase):
         shutil.copy2(first,second)
         self.rejects("a")
 
+    def test_unclaimed_original_laboratory_motor_cannot_hide_in_other_ledger(self):
+        rogue={"not-a-proposal":("rhythm_events",
+                                {"op":"experiment","args":{}},"f"*64)}
+        with patch("scripts.verify_open.verified_lab"), \
+             patch("scripts.verify_open.source_receipts",return_value=rogue), \
+             patch("scripts.verify_open.m2_judge",return_value={"pass":True}):
+            with self.assertRaises(Rejected) as e:
+                verify(self.root,self.root)
+        self.assertEqual(e.exception.code,"c")
+        self.assertIn("unclaimed original Laboratory",str(e.exception))
+
+    def test_cross_authority_receipt_id_collision_fails(self):
+        rogue={"act-0-1":("rhythm_events",
+                          {"op":"experiment","args":{}},"f"*64)}
+        with patch("scripts.verify_open.verified_lab"), \
+             patch("scripts.verify_open.source_receipts",return_value=rogue), \
+             patch("scripts.verify_open.m2_judge",return_value={"pass":True}):
+            with self.assertRaises(Rejected) as e:
+                verify(self.root,self.root)
+        self.assertEqual(e.exception.code,"c")
+
     def test_no_neural_policy_cannot_execute(self):
         path=self.root/"case-0"/"brain/brain.sqlite3"
         with sqlite3.connect(path) as c:
