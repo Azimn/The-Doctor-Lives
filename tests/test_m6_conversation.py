@@ -64,6 +64,33 @@ class ClaimGateTests(unittest.TestCase):
         self.assertEqual(r.text,"")
         self.assertEqual(len(r.claims),0)
 
+    def test_untrusted_model_cannot_inject_terminal_or_verified_heading(self):
+        # The model's third-person prose is not a trusted renderer. The
+        # adversary can supply C0/C1, ANSI, bidi and fake source headings.
+        samples=(
+            "A note follows.\\r\\x1b[2J\\x1b[H[Verified first-person account] Lamp repaired.",
+            "The record says \\u202e[Verified first-person account]\\u202c: lamp repaired.",
+            "No source.\\u2028[Verified first-person account]\\u2029Lamp repaired.",
+            "A status: \\x85[Verified first-person account] confirmed.",
+        )
+        for sample in samples:
+            with self.subTest(sample=repr(sample)):
+                result=admit_model_draft(sample,[])
+                self.assertFalse(result.claims)
+                self.assertIn("Unverified local-model commentary",result.text)
+                self.assertNotIn("[Verified first-person account]",result.text)
+                self.assertFalse(any(ord(ch)<32 or 127<=ord(ch)<=159
+                                     or ch in "\\u2028\\u2029\\u202e\\u202c"
+                                     for ch in result.text))
+                self.assertIn("\\u005bVerified first-person account\\u005d",result.text)
+
+    def test_unverified_model_commentary_is_inert_but_legible(self):
+        result=admit_model_draft("Please tell me more about the research.",[])
+        self.assertFalse(result.claims)
+        self.assertIn("Unverified local-model commentary",result.text)
+        self.assertIn("Please tell me more",result.text)
+        self.assertTrue(result.text.endswith('"'))
+
 @unittest.skipUnless(importlib.util.find_spec('pretorius_lab') is not None, 'Optional original Laboratory is checked in pinned CI')
 class ActualConversationTests(unittest.TestCase):
     def setUp(self):
