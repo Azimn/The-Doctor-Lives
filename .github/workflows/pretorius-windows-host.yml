@@ -10,6 +10,7 @@ on:
       - tests/test_lab_runtime.py
       - tests/test_evidence_integrity.py
       - tests/wheel_lab_start_smoke.py
+      - docs/releases/PRETORIUS_V1_LOCAL_SUBJECT_CLI_2026-10-30.md
       - tools/offline_wheelhouse.py
       - .gitattributes
       - pyproject.toml
