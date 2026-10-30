@@ -95,6 +95,20 @@ def _verify_original_laboratory(world: Path) -> None:
         ) from exc
 
 
+
+def _verify_neural_checkpoint(path: Path) -> None:
+    """Validate original recurrent checkpoint semantics, not only its digest.
+
+    An archive manifest can be rewritten by its holder. Its SHA-256 proves
+    byte consistency, not that the neural payload is loadable. Reuse the
+    canonical recurrent substrate's own schema/shape/CSR validator before
+    publishing any restored brain or Laboratory world.
+    """
+    from .neural import PretoriusRecurrentSubstrate
+
+    PretoriusRecurrentSubstrate._validate_checkpoint_file(path)
+
+
 def _validate_authority_binding(brain: Path, world: Path, journal: Path) -> None:
     """Fail closed when lived action evidence or host intents belong elsewhere.
 
@@ -244,6 +258,7 @@ def backup(state: Path, world: Path, destination: Path) -> dict:
                 staging / "world.sqlite3",
                 staging / "action-intents.sqlite3",
             )
+            _verify_neural_checkpoint(staging / "brain" / "pretorius_recurrent.npz")
         manifest = {"schema": SCHEMA,
                     "created_utc": datetime.now(timezone.utc).isoformat(),
                     "files": files,
@@ -295,6 +310,7 @@ def restore(archive: Path, state: Path, world: Path) -> dict:
         actual["brain/brain.sqlite3"], actual["world.sqlite3"],
         actual["action-intents.sqlite3"],
     )
+    _verify_neural_checkpoint(actual["brain/pretorius_recurrent.npz"])
     try:
         state.mkdir(parents=True)
         for name, source in sorted(actual.items()):
