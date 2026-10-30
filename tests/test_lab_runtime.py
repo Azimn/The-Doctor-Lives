@@ -84,6 +84,53 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
         self.assertEqual(len(observations), 1)
         self.assertEqual(observations[0]["evidence_class"], "lived_runtime_memory")
 
+    def test_human_subject_transcript_is_real_laboratory_only(self):
+        # Human mode is the installed CLI's source-only presentation, not a
+        # second renderer, language model, or synthetic autobiographical input.
+        shown = self._cli(
+            "--seconds", "0.3", "--interval-seconds", "0.1", "--human",
+        )
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertRegex(shown.stdout.splitlines()[0], r"^@[0-9]{3}$")
+        self.assertTrue(any(
+            line.startswith(("I ", "My ", "Mine ", "Me "))
+            for line in shown.stdout.splitlines()
+        ))
+        port = PretoriusBrainPort(self.state)
+        observations = [
+            m for m in port.brain.store.memories(False)
+            if m["source"].startswith("laboratory-home:observe:")
+        ]
+        self.assertEqual(len(observations), 1)
+        self.assertEqual(observations[0]["evidence_class"], "lived_runtime_memory")
+        self.assertIn(observations[0]["text"], shown.stdout)
+        for forbidden in (
+            "world_epoch", "event_id", "memory_id", "policy_decisions",
+            "neural_scores", "source", "laboratory-home:", "utc",
+        ):
+            self.assertNotIn(forbidden, shown.stdout)
+
+        # A clean start with no pending physical receipt must NOT invent
+        # dialogue, a new LOOK, or a lived action memory to fill the screen.
+        with self.world._open() as db:
+            before = db.execute(
+                "SELECT COUNT(*) FROM embodied_events"
+            ).fetchone()[0]
+        cold = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path),
+             "--human"],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(cold.returncode, 0, cold.stderr)
+        self.assertRegex(cold.stdout.splitlines()[0], r"^@[0-9]{3}$")
+        self.assertIn("(No new first-person account.)", cold.stdout)
+        self.assertNotIn(observations[0]["text"], cold.stdout)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM embodied_events"
+            ).fetchone()[0], before)
+
     def test_elapsed_bench_opportunities_use_noesis_and_real_receipts(self):
         # The host cannot choose a motor action or move to the bench.
         off = self._cli(
