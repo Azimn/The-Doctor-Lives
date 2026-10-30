@@ -57,6 +57,70 @@ class ActualConversationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.channel.receive("I changed the story.",turn_id="operator_test_001")
 
+
+    def test_terminal_and_loopback_html_share_one_source_ingress(self):
+        import json
+        import socket
+        import subprocess
+        import sys
+        import time
+        from urllib.request import Request,urlopen
+
+        brain=self.root/"subject/brain"
+        world=self.root/"subject/world.sqlite3"
+        cmd=[sys.executable,"-m","doctor_lives.cli",
+             "--state",str(brain),"chat","--world",str(world),
+             "--text","Please tell me about your verified work.",
+             "--request-id","operator_cli_surface_001"]
+        shell=subprocess.run(cmd,capture_output=True,text=True,timeout=30)
+        self.assertEqual(shell.returncode,0,shell.stderr)
+        first=json.loads(shell.stdout)
+        self.assertFalse(first["model_called"])
+        self.assertTrue(first["turn_id"].startswith("pretorius_"))
+
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1",0))
+            port=sock.getsockname()[1]
+        process=subprocess.Popen(
+            [sys.executable,"-m","doctor_lives.cli",
+             "--state",str(brain),"chat-serve","--world",str(world),
+             "--port",str(port)],stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,text=True)
+        self.addCleanup(lambda: process.kill() if process.poll() is None else None)
+        start=time.monotonic()
+        while True:
+            if process.poll() is not None:
+                self.fail("Web entrypoint exited: "+process.stderr.read()[-2000:])
+            try:
+                with urlopen(f"http://127.0.0.1:{port}/",timeout=1) as page:
+                    self.assertIn(b"Doctor Pretorius",page.read())
+                break
+            except OSError:
+                if time.monotonic()-start>10:
+                    self.fail("Local web surface did not start")
+                time.sleep(0.15)
+        url=f"http://127.0.0.1:{port}/message"
+        raw=json.dumps({"text":"Is that true about the lamp?",
+                        "request_id":"operator_web_surface_001"}).encode()
+        def post():
+            request=Request(url,data=raw,method="POST",
+                            headers={"Content-Type":"application/json"})
+            with urlopen(request,timeout=30) as response:
+                return json.loads(response.read())
+        web=post()
+        self.assertFalse(web["model_called"])
+        self.assertEqual(web["turn_id"],post()["turn_id"])
+        self.assertEqual(len(self.channel.history()),4)
+        sources=[m for m in self.channel.doctor.brain.store.memories(False)
+                 if m["source"]=="operator:conversation"]
+        self.assertEqual(len(sources),2)
+        self.assertTrue(all(m["evidence_class"]=="external_statement"
+                            for m in sources))
+        self.assertFalse(any(m["source"].startswith("laboratory-home:action:")
+                             for m in self.channel.doctor.brain.store.memories(False)))
+        process.terminate()
+        process.wait(timeout=10)
+
     def test_model_off_reply_cold_restart_and_same_ingress(self):
         response=self.channel.submit("What have you been doing?",
                                      request_id="operator_chat_001",model=None,day=3)
