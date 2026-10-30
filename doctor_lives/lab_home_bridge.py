@@ -274,10 +274,21 @@ class DoctorHomeBridge:
         # the established policy-to-journal lock ordering. This is a trusted
         # cooperative-host boundary, not a privileged-writer transaction.
         if op not in ("experiment", "repair"):
-            from .noesis_lab_work import prior_noesis_motor_binding
-            if prior_noesis_motor_binding(self, event_id):
+            from .noesis_lab_work import inspected_noesis_motor_bindings
+            bindings = inspected_noesis_motor_bindings(self, event_id)
+            # The M2 authorized day policy also legitimately reserves actions
+            # such as advance/light/extinguish before crossing this boundary.
+            # Permit ONLY its exact authorized action, never reuse that ID for
+            # sleep, walking or any unrelated domain. A duplicate or stale
+            # canonical binding still fails closed.
+            if bindings and not (
+                len(bindings) == 1
+                and bindings[0]["selected_action"] == op
+                and bindings[0]["selector_authority"] == "original_noesis"
+                and bindings[0]["motor_authorization"] == "authorized"
+            ):
                 raise PermissionError(
-                    "Laboratory action ID already bound to an original-Noesis work decision"
+                    "Laboratory action ID bound to a different original-Noesis decision"
                 )
         payload = _stable({"op": op, "args": args})
         with sqlite3.connect(

@@ -194,17 +194,26 @@ def verify_noesis_work_replay(
     return matching[0]
 
 
-def prior_noesis_motor_binding(bridge: DoctorHomeBridge, event_id: str) -> bool:
-    """A durable original policy binding cannot be assigned a second choice."""
+def inspected_noesis_motor_bindings(bridge: DoctorHomeBridge, event_id: str) -> tuple[dict, ...]:
+    """Read every source-owned reservation of this ID, including M2 actions."""
     with bridge.doctor.brain.store.connect() as db:
         rows = db.execute(
-            "SELECT state_pressure_json FROM policy_decisions "
+            "SELECT selected_action,state_pressure_json FROM policy_decisions "
             "WHERE trigger='noesis_situated_choice'"
         ).fetchall()
-    return any(
-        json.loads(row["state_pressure_json"]).get("motor_event_id") == event_id
-        for row in rows
-    )
+    out = []
+    for row in rows:
+        audit = json.loads(row["state_pressure_json"])
+        if audit.get("motor_event_id") == event_id:
+            out.append({"selected_action":row["selected_action"],
+                        "selector_authority":audit.get("selector_authority"),
+                        "motor_authorization":audit.get("motor_authorization")})
+    return tuple(out)
+
+
+def prior_noesis_motor_binding(bridge: DoctorHomeBridge, event_id: str) -> bool:
+    """Preserve the existing no-reuse predicate for older callers."""
+    return bool(inspected_noesis_motor_bindings(bridge, event_id))
 
 
 def execute_noesis_work(
