@@ -24,10 +24,7 @@ def contributions(bridge,work,proposal,affordance,cycle,enabled=(),*,audit=None)
         audit.update({name:{"enabled":name in enabled,"entered":False,
                             "eligible":False,"contribution":0.0} for name in DONORS})
     if not enabled:
-        if audit is not None:
-        for name in DONORS:
-            audit[name]["contribution"]=values[name]
-    return values
+        return values
     store=bridge.doctor.brain.store
     text=str(proposal["text"])
     if "cascade_commitments" in enabled:
@@ -72,4 +69,7 @@ def contributions(bridge,work,proposal,affordance,cycle,enabled=(),*,audit=None)
         if count>=2:
             if audit is not None: audit["household_habit"]["eligible"]=True
             values["household_habit"]=min(CAP_PER_FAMILY,0.01*count)
+    if audit is not None:
+        for name in DONORS:
+            audit[name]["contribution"]=values[name]
     return values
