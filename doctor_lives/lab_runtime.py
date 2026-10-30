@@ -29,6 +29,13 @@ def _exclusive_lock(lock_path: Path, label: str):
         try:
             if os.name == "nt":
                 import msvcrt
+                # Windows byte-range locks must target an existing byte.
+                # Persistent sidecars start empty on a clean offline install.
+                # Initialize once; competing initializers write the same byte
+                # and still arbitrate exclusively through the OS lock below.
+                if os.fstat(handle.fileno()).st_size == 0:
+                    handle.write(b"0")
+                    handle.flush()
                 handle.seek(0)
                 msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
             else:

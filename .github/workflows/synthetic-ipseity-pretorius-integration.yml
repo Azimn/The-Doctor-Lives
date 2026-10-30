@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integration/synthetic-ipseity-subject-path
+      - integration/m5
   pull_request:
     paths:
       - doctor_lives/ipseity_integration.py

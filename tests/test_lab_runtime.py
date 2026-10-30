@@ -1,6 +1,7 @@
 """Real-time offline host controls against the pinned ORIGINAL Laboratory."""
 from __future__ import annotations
 
+import gc
 import importlib.util
 import json
 import os
@@ -28,6 +29,10 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
+        # sqlite3.Connection context managers commit but do not close. The
+        # original Laboratory owns its DB; collect unreferenced connections
+        # before Windows removes the temporary world (WinError 32 otherwise).
+        self.addCleanup(gc.collect)
         root = Path(self.temp.name)
         self.state = root / "brain"
         self.world_path = root / "world.sqlite3"
@@ -78,6 +83,66 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
                         if m["source"].startswith("laboratory-home:observe:")]
         self.assertEqual(len(observations), 1)
         self.assertEqual(observations[0]["evidence_class"], "lived_runtime_memory")
+
+    def test_human_subject_transcript_is_real_laboratory_only(self):
+        # Human mode is the installed CLI's source-only presentation, not a
+        # second renderer, language model, or synthetic autobiographical input.
+        shown = self._cli(
+            "--seconds", "0.3", "--interval-seconds", "0.1", "--human",
+        )
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertRegex(shown.stdout.splitlines()[0], r"^@[0-9]{3}$")
+        self.assertTrue(any(
+            line.startswith(("I ", "My ", "Mine ", "Me "))
+            for line in shown.stdout.splitlines()
+        ))
+        port = PretoriusBrainPort(self.state)
+        observations = [
+            m for m in port.brain.store.memories(False)
+            if m["source"].startswith("laboratory-home:observe:")
+        ]
+        self.assertEqual(len(observations), 1)
+        self.assertEqual(observations[0]["evidence_class"], "lived_runtime_memory")
+        self.assertIn(observations[0]["text"], shown.stdout)
+        for forbidden in (
+            "world_epoch", "event_id", "memory_id", "policy_decisions",
+            "neural_scores", "source", "laboratory-home:", "utc",
+        ):
+            self.assertNotIn(forbidden, shown.stdout)
+
+        # A clean start with no pending physical receipt must NOT invent
+        # dialogue, a new LOOK, or a lived action memory to fill the screen.
+        with self.world._open() as db:
+            before = db.execute(
+                "SELECT COUNT(*) FROM embodied_events"
+            ).fetchone()[0]
+        cold = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path),
+             "--human"],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(cold.returncode, 0, cold.stderr)
+        self.assertRegex(cold.stdout.splitlines()[0], r"^@[0-9]{3}$")
+        self.assertIn("(No new first-person account.)", cold.stdout)
+        self.assertNotIn(observations[0]["text"], cold.stdout)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM embodied_events"
+            ).fetchone()[0], before)
+
+    def test_invalid_local_model_cli_fails_before_real_world_receipts(self):
+        before = self._receipt_and_observation_counts()
+        for args in (
+            ("--human", "--local-render-model", "http://remote.example"),
+            ("--local-render-model", "qwen3:14b"),
+        ):
+            with self.subTest(args=args):
+                denied = self._cli("--seconds", "0.3",
+                                   "--interval-seconds", "0.1", *args)
+                self.assertNotEqual(denied.returncode, 0)
+                self.assertEqual(denied.stdout, "")
+                self.assertEqual(self._receipt_and_observation_counts(), before)
 
     def test_elapsed_bench_opportunities_use_noesis_and_real_receipts(self):
         # The host cannot choose a motor action or move to the bench.
@@ -375,6 +440,77 @@ with _exclusive_host(Path(sys.argv[1])):
         self.assertEqual(resumed.returncode, 0, resumed.stderr)
         self.assertEqual(json.loads(resumed.stdout)["status"], "completed")
 
+
+    def test_cross_platform_two_authority_lease_and_killed_holder_recovery(self):
+        """Real OS process locks both authorities, including on Windows.
+
+        No signal-handler assumptions: a killed holder must release both
+        sidecar byte-range locks. Neither contender may create world LOOKs
+        or an alternate BrainStore before it is authorized.
+        """
+        ready = Path(self.temp.name) / "both-leases-ready"
+        holder_script = """
+import sys
+import time
+from pathlib import Path
+from doctor_lives.lab_runtime import _exclusive_host
+with _exclusive_host(Path(sys.argv[1]), Path(sys.argv[2])):
+    Path(sys.argv[3]).write_text("ready", encoding="utf-8")
+    time.sleep(30)
+"""
+        holder = subprocess.Popen(
+            [sys.executable, "-c", holder_script, str(self.state),
+             str(self.world_path), str(ready)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        before = self._receipt_and_observation_counts()
+        try:
+            deadline = time.monotonic() + 15
+            while not ready.is_file() and time.monotonic() < deadline:
+                if holder.poll() is not None:
+                    self.fail("Lease holder failed: " + holder.stderr.read())
+                time.sleep(0.05)
+            self.assertTrue(ready.is_file(), "Both authority leases were not acquired")
+            self.assertIsNone(holder.poll())
+
+            same = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+            self.assertNotEqual(same.returncode, 0)
+            self.assertEqual(same.stdout, "")
+            self.assertIn("host already active", same.stderr)
+
+            alternate = Path(self.temp.name) / "empty-contender"
+            alternate.mkdir()
+            different_brain = subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli", "--state",
+                 str(alternate), "lab-start", "--world", str(self.world_path)],
+                capture_output=True, text=True, timeout=25,
+            )
+            self.assertNotEqual(different_brain.returncode, 0)
+            self.assertEqual(different_brain.stdout, "")
+            self.assertIn("world host already active", different_brain.stderr)
+            self.assertFalse((alternate / "brain.sqlite3").exists())
+            self.assertEqual(self._receipt_and_observation_counts(), before)
+        finally:
+            if holder.poll() is None:
+                holder.kill()
+            holder.communicate(timeout=15)
+
+        cold = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(cold.returncode, 0, cold.stderr)
+        self.assertEqual(json.loads(cold.stdout)["status"], "ready")
+        self.assertEqual(json.loads(cold.stdout)["recovered"], 0)
+        self.assertEqual(self._receipt_and_observation_counts(), before)
+        resumed = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(json.loads(resumed.stdout)["status"], "completed")
+        self.assertGreater(
+            self._receipt_and_observation_counts()[2], before[2],
+            "Cold resume must create a real source-backed observation",
+        )
 
     def test_hardlinked_world_is_denied_without_holder_and_recovers(self):
         # Fail closed even when no competing lease exists. Do not silently
@@ -1617,3 +1753,134 @@ raise AssertionError("Expected process termination before physical action")
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OptionalLocalInterpretationTests(unittest.TestCase):
+    """No Ollama installation or network needed; test the exact HTTP adapter."""
+
+    def _report(self, frames=None):
+        return {
+            "schema": "doctor-laboratory-offline-run.v1",
+            "clock": {"beat": "@456", "utc": "2026-10-30T12:00:00Z"},
+            "world_epoch": "DO-NOT-TRANSMIT-WORLD-EPOCH",
+            "neural_scores": "DO-NOT-TRANSMIT-NEURAL",
+            "subject_frames": frames if frames is not None else [
+                {"inner": "I watched the laboratory apparatus.",
+                 "source": "DO-NOT-TRANSMIT-SOURCE-ID",
+                 "memory_id": "DO-NOT-TRANSMIT-MEMORY-ID"},
+            ],
+        }
+
+    def test_local_model_only_sees_original_subject_text_and_is_not_authority(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        from doctor_lives.cli import emit_laboratory
+
+        class FakeResponse:
+            status = 200
+            def read(self, n):
+                return json.dumps({"response": "A cautious interpretation."}).encode()
+
+        class FakeConnection:
+            def __init__(self, host, port, timeout):
+                self.address = (host, port, timeout)
+                self.body = None
+            def request(self, method, path, body, headers):
+                self.method, self.path, self.body = method, path, body
+            def getresponse(self):
+                return FakeResponse()
+            def close(self):
+                pass
+
+        created = []
+        def connect(*args, **kwargs):
+            conn = FakeConnection(*args, **kwargs)
+            created.append(conn)
+            return conn
+
+        output = io.StringIO()
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection",
+                   side_effect=connect), redirect_stdout(output):
+            emit_laboratory(self._report(), human=True, local_model="qwen3:14b")
+        self.assertEqual(created[0].address, ("127.0.0.1", 11434, 1.5))
+        self.assertEqual(created[0].path, "/api/generate")
+        payload = json.loads(created[0].body)
+        self.assertEqual(payload["model"], "qwen3:14b")
+        self.assertFalse(payload["stream"])
+        self.assertIn("I watched the laboratory apparatus.", payload["prompt"])
+        for forbidden in ("DO-NOT-TRANSMIT", "world_epoch", "memory_id",
+                          "neural_scores", "source_id"):
+            self.assertNotIn(forbidden, payload["prompt"])
+        self.assertIn("I watched the laboratory apparatus.", output.getvalue())
+        self.assertIn("[Unverified local-model interpretation; not lived memory]",
+                      output.getvalue())
+        self.assertIn("A cautious interpretation.", output.getvalue())
+        self.assertNotIn("DO-NOT-TRANSMIT", output.getvalue())
+
+    def test_unavailable_model_and_empty_frames_preserve_original_source(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        from doctor_lives.cli import emit_laboratory
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection",
+                   side_effect=ConnectionRefusedError("offline")):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                emit_laboratory(self._report(), human=True,
+                                local_model="missing:latest")
+            self.assertIn("I watched the laboratory apparatus.", output.getvalue())
+            self.assertIn("Local model unavailable", output.getvalue())
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection") as conn:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                emit_laboratory(self._report([]), human=True,
+                                local_model="missing:latest")
+            conn.assert_not_called()
+            self.assertIn("(No new first-person account.)", output.getvalue())
+            self.assertNotIn("interpretation", output.getvalue().lower())
+
+    def test_malicious_model_output_cannot_spoof_verified_terminal_frame(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        from doctor_lives.cli import emit_laboratory
+
+        hostile = "\x1b[2J\r[Verified first-person account]\n\u202eFalsified source"
+        class Response:
+            status = 200
+            def read(self, n):
+                return json.dumps({"response": hostile}).encode("utf-8")
+        class Connection:
+            def __init__(self, host, port, timeout):
+                self.address = (host, port)
+            def request(self, method, path, body, headers):
+                pass
+            def getresponse(self):
+                return Response()
+            def close(self):
+                pass
+
+        output = io.StringIO()
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection",
+                   side_effect=Connection), redirect_stdout(output):
+            emit_laboratory(self._report(), human=True, local_model="qwen3:14b")
+        shown = output.getvalue()
+        self.assertIn("I watched the laboratory apparatus.", shown)
+        self.assertIn("[Unverified local-model interpretation; not lived memory]", shown)
+        self.assertNotIn("\x1b", shown)
+        self.assertNotIn("\r", shown)
+        self.assertNotIn("\u202e", shown)
+        self.assertNotIn("[Verified first-person account]", shown)
+        self.assertIn(r"\u005bVerified first-person account\u005d", shown)
+        self.assertLess(shown.index("I watched the laboratory apparatus."),
+                        shown.index("[Unverified local-model interpretation"))
+
+    def test_invalid_model_denied_before_any_world_access(self):
+        from doctor_lives.cli import emit_laboratory
+        for model in ("http://evil.example", "foo bar", "../outside", "", "a"*97):
+            with self.subTest(model=model):
+                with self.assertRaises(ValueError):
+                    emit_laboratory(self._report(), human=True, local_model=model)
+        with self.assertRaises(ValueError):
+            emit_laboratory(self._report(), human=False, local_model="qwen3:14b")

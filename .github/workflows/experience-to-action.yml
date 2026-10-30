@@ -1,11 +1,16 @@
 name: Pretorius verified experience to physical action
 
 on:
+  push:
+    branches: [integration/m5]
   pull_request:
     paths:
       - doctor_lives/experience_to_action.py
       - doctor_lives/cli.py
+      - doctor_lives/local_subject_gloss.py
       - doctor_lives/lab_runtime.py
+      - doctor_lives/lab_soak.py
+      - tests/test_lab_soak.py
       - tests/test_lab_runtime.py
       - tools/offline_wheelhouse.py
       - tests/test_offline_wheelhouse.py
@@ -79,6 +84,10 @@ jobs:
         env:
           PYTHONPATH: donor-laboratory
         run: python -m unittest discover -s tests -p test_lab_runtime.py -v
+      - name: Verify real-elapsed soak, restart and tamper controls in pinned Laboratory
+        env:
+          PYTHONPATH: donor-laboratory
+        run: python -m unittest discover -s tests -p test_lab_soak.py -v
       - name: Verify wheelhouse tamper and source-pin negative controls
         run: python -m unittest discover -s tests -p test_offline_wheelhouse.py -v
       - name: Build Doctor, original pinned Laboratory and dependency wheels
