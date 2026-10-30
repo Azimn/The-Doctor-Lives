@@ -20,7 +20,8 @@ import sys
 import tempfile
 
 from doctor_lives.chassis import PretoriusBrainPort
-from doctor_lives.neural import DEFAULT_CONFIG
+from doctor_lives.neural import DEFAULT_CONFIG, NeuralCheckpointError, PretoriusRecurrentSubstrate
+import numpy as np
 from pretorius_lab.daily_rhythm import DailyRhythm
 from pretorius_lab.habitat_v2 import SpatialHabitat
 from pretorius_lab.home_life import HomeLife
@@ -34,6 +35,28 @@ def _run(args, *, expected=0):
         f"stdout={completed.stdout}\nstderr={completed.stderr}"
     )
     return completed
+
+
+def _poison_recurrent_degree(path: Path) -> None:
+    """Keep a shape-valid 4,096-neuron NPZ, but make cold loading impossible."""
+    with np.load(path, allow_pickle=False) as checkpoint:
+        fields = {name: np.array(checkpoint[name], copy=True)
+                  for name in checkpoint.files}
+    cfg = json.loads(str(fields["cfg_json"].item()))
+    assert cfg["neurons"] == 4096 and cfg["avg_recurrent_degree"] > 0
+    cfg["avg_recurrent_degree"] = -1
+    fields["cfg_json"] = np.asarray(json.dumps(cfg, sort_keys=True))
+    with path.open("wb") as stream:
+        np.savez_compressed(stream, **fields)
+    # This is the precise QA counterexample: structural checks alone pass.
+    assert PretoriusRecurrentSubstrate._validate_checkpoint_file(path)["cfg"][
+        "avg_recurrent_degree"] == -1
+    try:
+        PretoriusRecurrentSubstrate.load(path)
+    except NeuralCheckpointError:
+        pass
+    else:
+        raise AssertionError("Unloadable checkpoint unexpectedly passed cold load")
 
 
 def _crash(world_path: Path, brain_path: Path):
@@ -477,6 +500,7 @@ def main():
         for failure in (
             "unrehashed-checkpoint",
             "rehashed-invalid-checkpoint",
+            "rehashed-unloadable-config",
             "mixed-valid-world-and-journal",
         ):
             invalid_archive = root / ("full-size-" + failure)
@@ -495,6 +519,8 @@ def main():
                 if failure == "unrehashed-checkpoint":
                     with checkpoint.open("ab") as stream:
                         stream.write(b"damaged-after-backup")
+                elif failure == "rehashed-unloadable-config":
+                    _poison_recurrent_degree(checkpoint)
                 else:
                     checkpoint.write_bytes(b"not a canonical recurrent checkpoint")
             if failure != "unrehashed-checkpoint":
@@ -534,6 +560,25 @@ def main():
         ], capture_output=True, text=True, timeout=120)
         assert backup_denial.returncode != 0 and not backup_denial.stdout
         assert not denied_full_backup.exists()
+
+        # Structurally valid but semantically unloadable full-size neural state
+        # must also fail in the BACKUP direction, without altering the source.
+        restored_checkpoint = full_restored_brain / "pretorius_recurrent.npz"
+        shutil.copyfile(full_archive / "brain" / "pretorius_recurrent.npz",
+                        restored_checkpoint)
+        _poison_recurrent_degree(restored_checkpoint)
+        poisoned_digest = hashlib.sha256(restored_checkpoint.read_bytes()).hexdigest()
+        intact_world_digest = hashlib.sha256(full_restored_world.read_bytes()).hexdigest()
+        denied_config_backup = root / "denied-full-size-config-backup"
+        config_backup_denial = subprocess.run([
+            console, "--state", str(full_restored_brain), "lab-backup",
+            "--world", str(full_restored_world),
+            "--output", str(denied_config_backup),
+        ], capture_output=True, text=True, timeout=120)
+        assert config_backup_denial.returncode != 0 and not config_backup_denial.stdout
+        assert not denied_config_backup.exists()
+        assert hashlib.sha256(restored_checkpoint.read_bytes()).hexdigest() == poisoned_digest
+        assert hashlib.sha256(full_restored_world.read_bytes()).hexdigest() == intact_world_digest
 
         full_command = [
             console, "--state", str(full_brain_path),
@@ -586,6 +631,8 @@ def main():
                           "full_size_4096_archive_restored": True,
                           "full_size_4096_corrupt_digest_denied": True,
                           "full_size_4096_rehashed_invalid_neural_denied": True,
+                          "full_size_4096_rehashed_unloadable_config_denied": True,
+                          "full_size_4096_unloadable_config_backup_denied": True,
                           "full_size_4096_mixed_world_denied": True,
                           "full_size_4096_invalid_neural_backup_denied": True,
                           "full_size_4096_restored_recovered": 1,
