@@ -21,12 +21,11 @@ def emit_laboratory(value, *, human=False, local_model=None):
     diagnostics. In particular, never serialize the rest of the host report.
     """
     if local_model is not None:
-        from .local_subject_gloss import local_interpretation
+        from .local_subject_gloss import local_interpretation, valid_local_model
         # Validate the identifier before any host work or local socket use.
         if not human:
             raise ValueError("Local model interpretation requires --human")
-        from .local_subject_gloss import _MODEL
-        if not isinstance(local_model, str) or not _MODEL.fullmatch(local_model):
+        if not valid_local_model(local_model):
             raise ValueError("Invalid local model identifier")
     if not human:
         emit(value)
@@ -92,8 +91,8 @@ def main(argv=None) -> int:
     a=parser().parse_args(argv)
     # Validate optional model choice before opening world or canonical brain.
     if hasattr(a, "local_render_model") and a.local_render_model is not None:
-        from .local_subject_gloss import _MODEL
-        if not a.human or not _MODEL.fullmatch(a.local_render_model):
+        from .local_subject_gloss import valid_local_model
+        if not a.human or not valid_local_model(a.local_render_model):
             raise ValueError("Local model requires --human and a valid identifier")
     # The CLI is a human report, NOT a trusted physical-world provider.
     # Never hand it raw Experience construction or caller-chosen world proof.
