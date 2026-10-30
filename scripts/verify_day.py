@@ -208,26 +208,57 @@ def _authored_goal(meta, policies, thoughts, restart):
     return matched
 
 
-def _check_ablation(ablations, policies, memories, receipts):
+def _check_ablation(ablations, bundle, lab_root):
+    """20 independent, source-backed neural-seed replicas, paired per seed."""
     if not isinstance(ablations, list) or len(ablations) < 20:
         reject("e", "fewer than 20 independent paired seeds")
-    used_seeds, with_counts, without_counts = set(), Counter(), Counter()
+    import numpy as np
+    from doctor_lives.neural import PretoriusRecurrentSubstrate
+
+    used_seeds, used_checkpoints = set(), set()
+    with_counts, without_counts = Counter(), Counter()
     changed = 0
-    memory_by_id = {m["id"]: m for m in memories}
     for pair in ablations:
         if not isinstance(pair, dict):
-            reject("e", "malformed ablation pair")
-        seed = pair.get("seed")
-        if type(seed) is not int or seed in used_seeds:
-            reject("e", "reused or noninteger ablation seed")
+            reject("e", "malformed trial evidence")
+        seed, relative = pair.get("seed"), pair.get("trial_dir")
+        if (type(seed) is not int or seed in used_seeds
+                or type(relative) is not str or not relative
+                or Path(relative).is_absolute() or ".." in Path(relative).parts):
+            reject("e", "nonindependent or unsafe neural seed trial")
         used_seeds.add(seed)
-        with_id, without_id = pair.get("with_memory"), pair.get("without_memory")
-        if with_id == without_id or with_id not in policies or without_id not in policies:
-            reject("e", "ablation missing two independent canonical decisions")
-        a, b = policies[with_id], policies[without_id]
+        trial = bundle / relative
+        if not trial.is_dir() or trial.is_symlink():
+            reject("e", "missing distinct ablation trial source " + relative)
+        world = trial / "world.sqlite3"
+        brain = trial / "brain" / "brain.sqlite3"
+        neural = trial / "brain" / "pretorius_recurrent.npz"
+        if not neural.is_file() or neural.is_symlink():
+            reject("e", "missing canonical independent neural checkpoint")
+        # Use the ORIGINAL neural checkpoint parser, not a harness label.
+        try:
+            PretoriusRecurrentSubstrate._validate_checkpoint_file(neural)
+            with np.load(neural, allow_pickle=False) as stored:
+                cfg = json.loads(str(stored["cfg_json"][0]))
+            if int(cfg["seed"]) != seed:
+                reject("e", "recorded neural seed does not match original checkpoint")
+        except (KeyError, ValueError, TypeError, OSError) as exc:
+            reject("e", "invalid independently seeded neural checkpoint: " + str(exc))
+        checkpoint = sha256(neural.read_bytes()).hexdigest()
+        if checkpoint in used_checkpoints:
+            reject("e", "reused neural checkpoint across independent seeds")
+        used_checkpoints.add(checkpoint)
+        verified_lab(lab_root, world)
+        receipts = source_receipts(world)
+        policies, _, memories, _ = brain_evidence(brain)
+        a_id, b_id = pair.get("with_memory"), pair.get("without_memory")
+        if a_id == b_id or a_id not in policies or b_id not in policies:
+            reject("e", "no distinct paired canonical Noesis decisions for seed " + str(seed))
+        a, b = policies[a_id], policies[b_id]
         if (a["trigger"] != b["trigger"] or a["trigger"] != "noesis_situated_choice"
-                or a["neural_checkpoint_sha256"] != b["neural_checkpoint_sha256"]):
-            reject("e", "ablations do not hold neural state and selector fixed")
+                or a["neural_checkpoint_sha256"] != b["neural_checkpoint_sha256"]
+                or a["neural_checkpoint_sha256"] != checkpoint):
+            reject("e", "paired selector policies do not share exact genuine neural checkpoint")
         ea, eb = json.loads(a["state_pressure_json"]), json.loads(b["state_pressure_json"])
         if (ea.get("outcome_learning_enabled") is not True
                 or eb.get("outcome_learning_enabled") is not False
@@ -235,21 +266,24 @@ def _check_ablation(ablations, policies, memories, receipts):
                 or set(json.loads(a["action_scores_json"])) != set(json.loads(b["action_scores_json"]))
                 or not ea.get("used_outcome_memory_ids")
                 or eb.get("used_outcome_memory_ids")):
-            reject("e", "memory-only ablation lacks matched native priors or lived outcome")
+            reject("e", "memory-only ablation changed neural prior, affordance or lacked outcome")
+        by_id = {m["id"]: m for m in memories}
         for mid in ea["used_outcome_memory_ids"]:
-            m = memory_by_id.get(mid)
-            if (m is None or not m["active"] or m["evidence_class"] != "lived_runtime_memory"
-                    or m["external"] or not m["source"].startswith("laboratory-home:action:")
-                    or not any(v[2] == m["source"].split(":")[-1] for v in receipts.values())):
-                reject("e", "ablation outcome not independently tied to lived Lab event")
+            mem = by_id.get(mid)
+            if (mem is None or not mem["active"]
+                    or mem["evidence_class"] != "lived_runtime_memory"
+                    or mem["external"]
+                    or not mem["source"].startswith("laboratory-home:action:")
+                    or sum(v[2] == mem["source"].split(":")[-1]
+                           for v in receipts.values()) != 1):
+                reject("e", "claimed consequence does not trace to unique original Lab receipt")
         with_counts[a["selected_action"]] += 1
         without_counts[b["selected_action"]] += 1
         changed += a["selected_action"] != b["selected_action"]
-    if not changed or with_counts == without_counts:
-        reject("e", "removing consequence memory did not change choice distribution")
+    if changed == 0 or with_counts == without_counts:
+        reject("e", "memory ablation did not alter aggregate choices across 20 neural seeds")
     return {"seeds": len(used_seeds), "paired_changes": changed,
             "with_memory": dict(with_counts), "without_memory": dict(without_counts)}
-
 
 def judge(bundle: Path, lab_root: Path, *, baseline=False):
     manifest_path = bundle / "day.json"
@@ -366,7 +400,7 @@ def judge(bundle: Path, lab_root: Path, *, baseline=False):
     except DayEvidenceError as exc:
         failures[exc.code] = str(exc)
     try:
-        ablation = _check_ablation(data.get("ablation"), policies, memories, receipts)
+        ablation = _check_ablation(data.get("ablation"), bundle, lab_root)
     except DayEvidenceError as exc:
         failures[exc.code] = str(exc)
         ablation = None
