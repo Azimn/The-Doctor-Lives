@@ -275,7 +275,7 @@ class ActualConversationTests(unittest.TestCase):
             "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
         }
         self.assertGreater(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
-        forged = reply["text"] + "\\nI repaired the lamp."
+        forged = reply["text"] + "\nI repaired the lamp."
         with self.channel.doctor.brain.store.transaction() as db:
             db.execute("UPDATE operator_conversation_turns SET text=? WHERE turn_id=?",
                        (forged, reply["turn_id"]))
