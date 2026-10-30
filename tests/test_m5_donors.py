@@ -41,6 +41,7 @@ class M5DonorSourceContracts(unittest.TestCase):
             rhythm=DailyRhythm(world)
             rhythm.initialize()
             state=rhythm.audit_state()
+            original=dict(state)
             available=physically_available(state,"station:kitchen")
             self.assertIn("tea",available["available"])
             for _ in range(3):
@@ -49,7 +50,7 @@ class M5DonorSourceContracts(unittest.TestCase):
             self.assertNotIn("tea",after["available"])
             self.assertIn("tea",after["rejected"])
             self.assertTrue(after["available"])
-            self.assertEqual(rhythm.audit_state(),available and rhythm.audit_state())
+            self.assertEqual(rhythm.audit_state(),original)
 
     def test_donors_disabled_by_default_no_extra_policy(self):
         self.assertEqual(contributions(None,None,{}, {},1),{n:0.0 for n in DONORS})
