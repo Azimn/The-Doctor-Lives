@@ -160,14 +160,14 @@ class OperatorWork:
             if evidence is None:
                 text=target.read_text(encoding="utf-8") if target.exists() else ""
                 state=self._state(target,int(cap["uses"]))
-                source_text=proposal["text"].strip().replace("\n"," ")[:240]
+                source_text=" ".join(proposal["text"].split())[:180]
                 if cap["verb"] in ("write_notes","append_journal","send_operator_message"):
                     addition=source_text+"\n"
                     next_text=text+addition
                     perceived="I wrote: "+source_text
                 else:
                     next_text=text
-                    perceived="I read: "+(text[-900:] if text else "There is no reply.")
+                    perceived="I read: "+(" ".join(text[-600:].split()) if text else "There is no reply.")
                 new_state=self._state_data(next_text,int(cap["uses"])+1)
                 event={
                     "event_id":event_id,"op":key,"verb":cap["verb"],
