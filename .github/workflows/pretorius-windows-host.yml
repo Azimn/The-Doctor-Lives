@@ -8,6 +8,7 @@ on:
       - tests/test_lab_soak.py
       - doctor_lives/lab_backup.py
       - doctor_lives/cli.py
+      - doctor_lives/local_subject_gloss.py
       - doctor_lives/data/*.json
       - tests/test_lab_runtime.py
       - tests/test_evidence_integrity.py
@@ -45,7 +46,7 @@ jobs:
       - name: Original-world Windows process leases, cold restart, sleep and elapsed observation
         shell: pwsh
         run: |
-          python -m unittest discover -s tests -p test_lab_runtime.py -v -k cross_platform_two_authority -k elapsed_host_resumes_same_brain -k human_subject_transcript -k elapsed_work_interval_rejected -k operator_sleep_is_physical_idempotent_and_wake_is_real
+          python -m unittest discover -s tests -p test_lab_runtime.py -v -k cross_platform_two_authority -k elapsed_host_resumes_same_brain -k human_subject_transcript -k elapsed_work_interval_rejected -k operator_sleep_is_physical_idempotent_and_wake_is_real -k local_model_only_sees_original -k unavailable_model_and_empty_frames -k invalid_model_denied
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows actual Laboratory soak, cold continuation and torn-log refusal
         shell: pwsh
