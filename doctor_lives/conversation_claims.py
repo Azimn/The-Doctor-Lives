@@ -21,7 +21,9 @@ _FIRSTHAND = re.compile(
     r"remember|recalled|recall|observed|witnessed|saw|seen|heard|"
     r"visited|met|inspected|opened|found|took|walked|worked|"
     r"experimented|made|built|created|sent|received|spoke|"
-    r"recorded|documented|wished|wanted|thought|remembered)\b",
+    r"recorded|documented|wished|wanted|thought|remembered|"
+    r"reviewed|revisited|touched|held|attended|entered|handed|"
+    r"told|gave|shared|showed|experienced|handled|examined)\b",
     re.I,
 )
 _FIRST_PERSON = re.compile(r"\b(?:I|my|mine|we|our)\b", re.I)
@@ -37,7 +39,15 @@ class GuardResult:
 def has_asserted_firsthand_claim(value: str) -> bool:
     if not isinstance(value, str):
         raise TypeError("Reply must be text")
-    return bool(_FIRSTHAND.search(value))
+    # The source donor's elliptical affirmative first-person answer is still
+    # a historical event claim when presented without a receipt.
+    if re.match(r"^\s*(?:yes[,.!]?[ \t]+)?I did[.!?](?:\s|$)",value,re.I):
+        return True
+    neutral = re.sub(
+        r"\bI (?:remember|recall) (?:how to|the definition|the formula|"
+        r"the meaning|the general rule|the principle)\b",
+        "",value,flags=re.I)
+    return bool(_FIRSTHAND.search(neutral))
 
 def admit_model_draft(draft: str, verified_claims: list[dict]) -> GuardResult:
     """Model may quote exact independently verified sentences, not mint events.

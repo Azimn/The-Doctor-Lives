@@ -18,6 +18,38 @@ class ClaimGateTests(unittest.TestCase):
                 self.assertFalse(result.text)
                 self.assertEqual(len(result.blocked_drafts),1)
 
+    def test_original_stage03_source_outbound_corpus(self):
+        # Verbatim donor-firsthand claim categories from
+        # research/outbound-firsthand-claim-gate-stage03-20261009,
+        # source commit 361ac5e1607b2a1a3457306fb1ad218c49328146.
+        positive=(
+            "I remember the meeting in Vienna.",
+            "I recall the sensation of the notebook's seal.",
+            "I have reviewed the baseline reconstruction fidelity.",
+            "I personally saw the clock stop.",
+            "We met near the laboratory.",
+            "I told him about the homunculi.",
+            "I did.",
+        )
+        for sample in positive:
+            with self.subTest(claim=sample):
+                self.assertTrue(has_asserted_firsthand_claim(sample))
+                result=admit_model_draft(sample,[])
+                self.assertFalse(result.claims)
+                self.assertFalse(any(x==sample for x in result.text.splitlines()))
+        harmless=(
+            "I cannot recall such a meeting.",
+            "I do not remember that event.",
+            "I will inspect the notebook tomorrow.",
+            "I remember the definition of precision.",
+            "I recall the general rule for avoiding bias.",
+            "I say I will not comply.",
+            "There is no direct proof, but we could examine it.",
+        )
+        for sample in harmless:
+            with self.subTest(non_episodic=sample):
+                self.assertFalse(has_asserted_firsthand_claim(sample))
+
     def test_verified_exact_draft_and_unverified_commentary(self):
         source={"text":"I wrote a note.","source":"lived",
                 "evidence_key":"laboratory-home:action:"+"a"*64}
