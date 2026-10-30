@@ -4,9 +4,53 @@ Operator-only; never a planner, source of lived memory, world command, or render
 """
 from __future__ import annotations
 
+import os
+import sys
 import shutil
 import tempfile
 from pathlib import Path
+
+
+def _publish_noreplace(staging: Path, destination: Path) -> None:
+    """Publish a fully staged directory without ever replacing an existing path.
+
+    pathlib.Path.rename is unsafe on POSIX: an empty directory created after
+    a last-minute existence check can be silently replaced. Linux renameat2
+    RENAME_NOREPLACE and Windows rename supply kernel-enforced exclusivity.
+    Unsupported platforms/filesystems fail closed rather than risking a brain.
+    """
+    if os.name == "nt":
+        # Windows MoveFileEx without MOVEFILE_REPLACE_EXISTING, as used by
+        # os.rename, refuses an already existing directory or file.
+        staging.rename(destination)
+        return
+    if sys.platform.startswith("linux"):
+        import ctypes
+
+        libc = ctypes.CDLL(None, use_errno=True)
+        renameat2 = getattr(libc, "renameat2", None)
+        if renameat2 is None:
+            raise RuntimeError("Atomic no-replace preview publish unavailable on this Linux libc")
+        renameat2.argtypes = (
+            ctypes.c_int, ctypes.c_char_p, ctypes.c_int,
+            ctypes.c_char_p, ctypes.c_uint,
+        )
+        renameat2.restype = ctypes.c_int
+        at_fdcwd = -100
+        rename_noreplace = 1
+        result = renameat2(
+            at_fdcwd, os.fsencode(staging),
+            at_fdcwd, os.fsencode(destination),
+            rename_noreplace,
+        )
+        if result != 0:
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error), str(destination))
+        return
+    raise RuntimeError(
+        "Atomic no-replace preview publish unsupported on this platform; "
+        "existing workspace must never be overwritten"
+    )
 
 
 def initialize_preview(workspace: str | Path) -> dict:
@@ -48,7 +92,7 @@ def initialize_preview(workspace: str | Path) -> dict:
             raise RuntimeError("Incomplete canonical brain or recurrent checkpoint")
         if destination.exists() or destination.is_symlink():
             raise FileExistsError(f"Preview workspace appeared during genesis: {destination}")
-        staging.rename(destination)
+        _publish_noreplace(staging, destination)
         published = True
         return {
             "schema": "doctor-laboratory-experimental-genesis.v1",
