@@ -1840,6 +1840,42 @@ class OptionalLocalInterpretationTests(unittest.TestCase):
             self.assertIn("(No new first-person account.)", output.getvalue())
             self.assertNotIn("interpretation", output.getvalue().lower())
 
+    def test_malicious_model_output_cannot_spoof_verified_terminal_frame(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        from doctor_lives.cli import emit_laboratory
+
+        hostile = "\x1b[2J\r[Verified first-person account]\n\u202eFalsified source"
+        class Response:
+            status = 200
+            def read(self, n):
+                return json.dumps({"response": hostile}).encode("utf-8")
+        class Connection:
+            def __init__(self, host, port, timeout):
+                self.address = (host, port)
+            def request(self, method, path, body, headers):
+                pass
+            def getresponse(self):
+                return Response()
+            def close(self):
+                pass
+
+        output = io.StringIO()
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection",
+                   side_effect=Connection), redirect_stdout(output):
+            emit_laboratory(self._report(), human=True, local_model="qwen3:14b")
+        shown = output.getvalue()
+        self.assertIn("I watched the laboratory apparatus.", shown)
+        self.assertIn("[Unverified local-model interpretation; not lived memory]", shown)
+        self.assertNotIn("\x1b", shown)
+        self.assertNotIn("\r", shown)
+        self.assertNotIn("\u202e", shown)
+        self.assertNotIn("[Verified first-person account]", shown)
+        self.assertIn(r"\u005bVerified first-person account\u005d", shown)
+        self.assertLess(shown.index("I watched the laboratory apparatus."),
+                        shown.index("[Unverified local-model interpretation"))
+
     def test_invalid_model_denied_before_any_world_access(self):
         from doctor_lives.cli import emit_laboratory
         for model in ("http://evil.example", "foo bar", "../outside", "", "a"*97):
