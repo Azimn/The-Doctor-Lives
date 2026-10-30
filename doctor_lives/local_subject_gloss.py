@@ -53,8 +53,9 @@ def local_interpretation(frames: list[dict], model: str) -> str | None:
         "options": {"temperature": 0, "num_predict": 128},
     }
     payload = json.dumps(request, ensure_ascii=False).encode("utf-8")
-    connection = http.client.HTTPConnection("127.0.0.1", 11434, timeout=1.5)
+    connection = None
     try:
+        connection = http.client.HTTPConnection("127.0.0.1", 11434, timeout=1.5)
         connection.request(
             "POST", "/api/generate", body=payload,
             headers={"Content-Type": "application/json"},
@@ -73,4 +74,5 @@ def local_interpretation(frames: list[dict], model: str) -> str | None:
     except (OSError, TimeoutError, ValueError, UnicodeError, http.client.HTTPException):
         return None
     finally:
-        connection.close()
+        if connection is not None:
+            connection.close()
