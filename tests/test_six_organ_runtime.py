@@ -18,6 +18,7 @@ from doctor_lives.organs import (
     CognitivePulse,
     SleepReplayReport,
     ORGAN_REGISTRY,
+    SensusOrgan,
     SixOrganRuntime,
 )
 
@@ -29,6 +30,16 @@ def small_config():
         input_degree=4, action_population_size=8, seed=1842,
     )
     return config
+
+
+def admitted_research_world_fixture(port, event):
+    """Explicit trusted HOST fixture, not evidence of a real world event.
+
+    Ordinary port.ingest(world/percept) must remain forbidden. A controlled
+    unit fixture may use the Sensus host-capability path to compare original
+    brain and six-organ parity on IDENTICAL fixed stimuli.
+    """
+    return port._ingest_authorized_sensus(event, organ=SensusOrgan(port))
 
 
 class SixOrganRuntimeTests(unittest.TestCase):
@@ -293,7 +304,7 @@ class SixOrganOriginalBrainParityTests(unittest.TestCase):
             root = Path(temporary)
             seed = PretoriusBrainPort(root / "seed", neural_config=small_config())
             # First write real cognition, not a fabricated state dictionary.
-            seed.ingest({
+            admitted_research_world_fixture(seed, {
                 "channel": "world",
                 "source": "lab-simulation-parity-fixture",
                 "percept": (
@@ -406,7 +417,7 @@ class SixOrganOriginalBrainParityTests(unittest.TestCase):
                 "novelty": 0.8,
                 "threat": 0.25,
             }
-            a = classic.ingest(event)
+            a = admitted_research_world_fixture(classic, event)
             b = organ.sensus.acquire_existing_percept(event, host_authorized=True)
             self.assertEqual(a["ingress"]["subject_text"], b.first_person)
             self.assertEqual(
@@ -448,7 +459,7 @@ class SixOrganOriginalBrainParityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             seed = PretoriusBrainPort(root / "seed", neural_config=small_config())
-            seed.ingest({
+            admitted_research_world_fixture(seed, {
                 "channel": "world",
                 "source": "fixture-hearing-only",
                 "percept": "I heard a distant bell. I did not see its source.",

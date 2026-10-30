@@ -370,7 +370,11 @@ class BrainAssemblyTests(unittest.TestCase):
             })
             self.assertIn("memory_id", result)
             self.assertEqual(result["ingress"]["channel"], "world")
-            self.assertTrue(result["ingress"]["subject_text"].startswith("I notice:"))
+            self.assertTrue(result["ingress"]["subject_text"].startswith(
+                "I have received an unverified report:"
+            ))
+            unverified = port.brain.store.get_memory(result["memory_id"])
+            self.assertEqual(unverified["evidence_class"], "external_statement")
             view = port.view()
             self.assertEqual(view["tick"], 1)
             saved = port.save()

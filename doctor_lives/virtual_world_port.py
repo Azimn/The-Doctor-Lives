@@ -129,10 +129,10 @@ class VirtualWorldEnvironmentPort:
                 status="already_admitted", memory_id=saved[0]["id"],
                 first_person=saved[0]["text"], source_kind=self._world_id,
             )
-        ingested = port.ingest({
+        ingested = port._ingest_verified_virtual_world({
             "channel": "world", "kind": "virtual_world_observation",
             "source": source, "percept": receipt.first_person,
-        })
+        }, environment=self, receipt=receipt)
         return EnvironmentFeedback(
             status="admitted", memory_id=ingested["memory_id"],
             first_person=ingested["ingress"]["subject_text"],

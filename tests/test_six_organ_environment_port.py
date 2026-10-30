@@ -55,6 +55,8 @@ class MockRobotProviderTests(unittest.TestCase):
         self.assertEqual(self.runtime._port.brain.store.tick, before + 1)
         memory = self.runtime._port.brain.store.get_memory(first.memory_id)
         self.assertEqual(memory["text"], self.observation.first_person)
+        # A scripted observation is not a physically witnessed fact.
+        self.assertEqual(memory["evidence_class"], "external_statement")
         self.runtime.checkpoint()
 
         reopened = SixOrganRuntime.open(self.root / "brain")
