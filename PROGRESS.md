@@ -1,3 +1,26 @@
+# M4 open intentions
+
+Base branch: integration/m2 at 8310833d9d5fb5058b0288d5681d2d6ca5a8e24a; M3 Parts A/B do not exist as completed integration branches. Work only on integration/m4. Original Lab is pinned at 6e49795752835d64fa6fd63d16359669a1ca2ba7. Main remains untouched.
+
+## Judge-first milestones
+- [x] Write scripts/verify_open.py and negative tests before any new behavioral work.
+- [ ] Measure M2 behavior under the M4 judge and log failed gates.
+- [ ] One provider-neutral inference interface, actual local Ollama, deterministic model-free fallback.
+- [ ] Model proposes 3 to 8 free-language first-person intentions, stored as source=proposed, never ground truth.
+- [ ] Real-world capability registry resolves proposals, persists wishes for ungrounded proposals.
+- [ ] Four new authorized bridge capabilities: document reading and note-taking, journal append, operator inbox send/reply read.
+- [ ] The existing native Noesis policy selects or declines, nothing else issues motor events.
+- [ ] 20 distinct neural seeds, three simulated days, six goal types, and no state-neutral loops.
+- [ ] New dynamic affordance introduced mid-run, unseen in earlier prompts, used within 8 cycles.
+- [ ] 20 paired memory-lesion trials change both proposal and choice distributions.
+- [ ] SIGKILL-restart preserves unfulfilled wishes.
+- [ ] Model-off regression still passes original M2 judge.
+- [ ] Actual local Ollama run passes strict open judge and CI green with three original source ledgers.
+
+## M4 gate
+The M2 real run did not attempt open intentions, dynamic affordance discovery, new bridge actions, or unfulfilled wish preservation. The M4 judge MUST fail the unchanged M2 system. Never claim an M4 pass from existing M2 evidence.
+
+## Historical M2 acceptance
 # M2 autonomous-day integration: exit gate PASS
 
 Branch: `integration/m2`, based on `integration/m1@0757197a762f4ba3809a56f888f3bf8d7fe4480c`. Do not touch production `main` or merge draft verification PR #102. Exact original Lab pin: `Azimn/Pretorius-Laboratory@6e49795752835d64fa6fd63d16359669a1ca2ba7`.
