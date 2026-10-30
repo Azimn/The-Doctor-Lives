@@ -121,8 +121,13 @@ def brain_evidence(path):
 
 
 def _physical_op(table, event):
+    # Source-pinned embodied/rhythm LOOKs are independently receipted
+    # *perceptions*, not physical tasks and not motor commands. Excluding
+    # these does not excuse any unclaimed work, travel or temporal action.
     if table == "embodied_events":
         return "walk" if event.get("kind") == "move" else None
+    if table == "rhythm_events" and event.get("op") == "look":
+        return None
     if table == "books_events":
         return "book" if event.get("action", {}).get("op") else None
     if table == "custody_events":
