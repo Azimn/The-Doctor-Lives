@@ -53,6 +53,8 @@ def collect(root: Path):
         scored+=1
 
     native_changed=0
+    open_changed=0
+    open_case_traces=[]
     score_l1=[]
     with tempfile.TemporaryDirectory(prefix="m5-recurrent-audit-") as work:
         for seed in range(6400,6420):
@@ -64,6 +66,48 @@ def collect(root: Path):
                 "recurrent_policy",("recurrent_policy",)))
             native_changed+=int(row["comparison"]["selected_action_diverged"])
             score_l1.append(float(row["comparison"]["action_score_l1"]))
+
+            # Additional same-source candidate replay. These are the last
+            # originally proposed free-language options, not host-authored
+            # action labels. We make one new genuine native Noesis decision
+            # under intact versus neutralized recurrent state, independently
+            # from the older generic cognitive-probe comparison. No motor
+            # authorization or Laboratory action is issued here.
+            from doctor_lives.chassis import PretoriusBrainPort
+            from doctor_lives.organs import NoesisOrgan
+            with __import__("sqlite3").connect(root/f"seed-{seed}"/"brain"/"brain.sqlite3") as db:
+                audited=db.execute(
+                    "SELECT state_pressure_json FROM policy_decisions "
+                    "WHERE trigger='noesis_open_choice' ORDER BY rowid DESC LIMIT 1").fetchone()
+            if audited is None:
+                raise ValueError("Missing exact original open-intention proposal set")
+            original_audit=json.loads(audited[0])
+            components=original_audit.get("contributions")
+            if not isinstance(components,dict) or not components:
+                raise ValueError("No source-stored proposal contributions for lesion")
+            candidates=[]
+            for condition in ("open-intact","open-recurrence-neutral"):
+                clone=obj._clone_seed(f"{condition}-{seed}")
+                port=PretoriusBrainPort(clone)
+                if condition=="open-recurrence-neutral":
+                    FullRecurrentWeightAudit._apply_static_lesions(
+                        port.brain,{"recurrent_policy"})
+                NoesisOrgan(port).deliberate(host_trigger="m5_recurrent_counterfactual")
+                scores=port.brain.neural.action_scores()
+                if any(c["tendency"] not in scores for c in components.values()):
+                    raise ValueError("Invalid semantic category at native Noesis boundary")
+                ranked={}
+                for pid,c in components.items():
+                    ranked[pid]=(float(scores[c["tendency"]])+
+                                 float(c["familiarity"])+float(c["novelty"])+
+                                 float(c["history"])+
+                                 sum(float(v) for v in c.get("donor_components",{}).values()))
+                chosen=max(ranked,key=lambda pid:(ranked[pid],components[pid]["tie_key"]))
+                candidates.append(chosen if ranked[chosen]>0.01 else None)
+            open_changed+=int(candidates[0]!=candidates[1])
+            open_case_traces.append({"seed":seed,"intact_proposal_id":candidates[0],
+                                     "neutralized_proposal_id":candidates[1],
+                                     "changed":candidates[0]!=candidates[1]})
     return {"schema":"pretorius.m5-attribution.v1","decisions":rows,
             "summary":{"selections_with_proposal_scores":scored,
                        "novelty_removed_choice_flips":changed},
@@ -72,7 +116,9 @@ def collect(root: Path):
                                 "recurrent_weights_neutralized":True,
                                 "native_cognitive_choice_flips":native_changed,
                                 "native_policy_score_l1_mean":sum(score_l1)/20,
-                                "note":"This lesion measures native cognition on cloned states; no claim of M5 action-choice flip is inferred without a paired open-intention rollout."}}
+                                "recorded_proposal_replay_choice_flips":open_changed,
+                                "recorded_proposal_replay_trials":open_case_traces,
+                                "note":"The native lesion and recorded-proposal replay are cloned-state causal probes, NOT new physical-world outcome trials."}}
 
 def main():
     p=argparse.ArgumentParser()
