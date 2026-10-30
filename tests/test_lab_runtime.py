@@ -1,6 +1,7 @@
 """Real-time offline host controls against the pinned ORIGINAL Laboratory."""
 from __future__ import annotations
 
+import gc
 import importlib.util
 import json
 import os
@@ -28,6 +29,10 @@ class OfflineLaboratoryRunTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
+        # sqlite3.Connection context managers commit but do not close. The
+        # original Laboratory owns its DB; collect unreferenced connections
+        # before Windows removes the temporary world (WinError 32 otherwise).
+        self.addCleanup(gc.collect)
         root = Path(self.temp.name)
         self.state = root / "brain"
         self.world_path = root / "world.sqlite3"
