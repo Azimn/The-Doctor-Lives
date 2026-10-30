@@ -173,6 +173,30 @@ class DayJudgeContractTests(unittest.TestCase):
     def test_complete_contract_fixture_passes(self):
         self.assertTrue(self.evaluate()["pass"], self.evaluate())
 
+    def test_lab_read_only_look_does_not_require_motor_policy(self):
+        # Real Laboratory's DailyRhythm.look() writes a hash-chained LOOK
+        # receipt even though no action was submitted to DoctorHomeBridge.
+        event = {"op": "look", "args": {}, "subject": {"inner": "I observe"}}
+        hash_value = sha256(stable(event).encode()).hexdigest()
+        self.world_db.execute(
+            "INSERT INTO rhythm_events VALUES (?,?,?)",
+            ("source-read-only-look", stable(event), hash_value),
+        )
+        self.world_db.commit()
+        self.assertTrue(self.evaluate()["pass"], self.evaluate())
+
+    def test_unclaimed_real_lab_physical_action_still_fails(self):
+        event = {"op": "experiment", "args": {}, "subject": {"inner": "I act"}}
+        hash_value = sha256(stable(event).encode()).hexdigest()
+        self.world_db.execute(
+            "INSERT INTO rhythm_events VALUES (?,?,?)",
+            ("unowned-experiment", stable(event), hash_value),
+        )
+        self.world_db.commit()
+        result = self.evaluate()
+        self.assertFalse(result["pass"])
+        self.assertIn("b", result["failures"])
+
     def test_host_feeding_next_action_cannot_pass(self):
         self.manifest["host_opportunities"] = [{"tick": 1, "next_action": "repair"}]
         self.save()
