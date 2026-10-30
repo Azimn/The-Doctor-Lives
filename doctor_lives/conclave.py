@@ -6,6 +6,7 @@ Interpretations are typed hypotheses, not experiences or verified world facts.
 """
 from __future__ import annotations
 
+from contextlib import closing
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -329,7 +330,7 @@ class Conclave:
         # observations external=False and stores them as lived_runtime_memory.
         # Unverified WORLD reports are external=True / external_statement.
         # A bare events.external flag would INVERT the trust distinction.
-        with self._store.connect() as db:
+        with closing(self._store.connect()) as db:
             row = db.execute(
                 """SELECT e.kind,e.source,e.evidence_class,e.external,m.id AS memory_id
                    FROM events AS e
@@ -427,7 +428,7 @@ class Conclave:
 
     def readings(self, context_key: str) -> tuple[Reading, ...]:
         _key(context_key, "context_key")
-        with self._store.connect() as db:
+        with closing(self._store.connect()) as db:
             rows = db.execute(
                 "SELECT * FROM conclave_readings WHERE context_key=? ORDER BY id",
                 (context_key,),
@@ -502,7 +503,7 @@ class Conclave:
 
     def conflicts(self, context_key: str) -> tuple[dict, ...]:
         _key(context_key, "context_key")
-        with self._store.connect() as db:
+        with closing(self._store.connect()) as db:
             rows = db.execute(
                 """SELECT reading_a,reading_b,conflict_type,note
                    FROM conclave_conflicts WHERE context_key=?
