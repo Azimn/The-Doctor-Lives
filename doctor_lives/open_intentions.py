@@ -158,16 +158,16 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         native_index=int.from_bytes(encoded[:4],"big")%len(ACTIONS)
         tendency=ACTIONS[native_index]
         base=float(native[tendency])
-        familiarity=0.04 if cap["uses"]>0 else 0.12
-        # Freshly discovered affordances compete on generic novelty value,
-        # without any special-case for the introduced test affordance's name.
-        novelty=0.35 if cap["introduced_cycle"]>0 and cap["uses"]==0 else 0.0
-        # Only genuinely lived original-first-person memories can affect
-        # choice, never model claims nor invented engineer rewards.
+        # Novelty and repetition valuation apply to ALL dynamically
+        # registered capabilities, never a special case for the test target.
+        # Repeated activity becomes less attractive as evidence accumulates.
+        familiarity=0.10 if cap["uses"]==0 else -0.10*min(cap["uses"],5)
+        novelty=1.00 if cap["introduced_cycle"]>0 and cap["uses"]==0 else 0.0
         history=0.0
         if memory_enabled:
             for mem in used_memories[:12]:
-                history+=0.045*len(words(row["text"])&words(mem["text"]))
+                history+=0.02*len(words(row["text"])&words(mem["text"]))
+        history=min(history,0.20)
         score=base*0.22 + familiarity + novelty + history
         candidates[row["proposal_id"]]=(score,row)
     selected=None
