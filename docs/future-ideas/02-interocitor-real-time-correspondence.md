@@ -32,6 +32,14 @@ Separate message **arrival**, **in-world notification**, **perception**, **readi
 
 When this proposal is eventually evaluated, deliberately interrupt tempting conversations with meaningful Laboratory work, allow messages to go unanswered, check that silence has no forced recovery script, and test voluntary re-engagement. Success means choices and continuity consistent with his circumstances, not maximum uptime, engagement, or reply rate.
 
+## Voluntary appetite for conversation
+
+The other side of the right to ignore the machine is the **freedom to seek it out**. Pretorius may enjoy a conversation, feel curious about a correspondent, wish to continue a prior discussion, or decide that talking to someone is more appealing than working alone. He could walk over to the Interocitor of his own accord, check whether someone is available, initiate a message, or return to an earlier exchange. His preferred frequency and style of contact may evolve as his experiences and relationships do.
+
+This is a possibility, **not a prescribed social drive or an engagement objective**. The instrument should remain available as a genuine option among his other activities. There must be no mandatory check-in schedule, artificial craving, reply quota, or hidden optimization for message count or conversation duration. Conversely, self-initiated conversation should be possible without a fresh incoming message or operator prompt.
+
+Future testing should examine whether he sometimes starts conversations for identifiable, context-dependent reasons, remembers what he intended to discuss, and can freely choose to stop or pursue another priority. Both spontaneous contact and voluntary silence count as valid outcomes.
+
 ## Scope and future possibilities
 
 **Phase Two's deliverable, when approved, is text conversation only.** Audio could be explored as a later enhancement; moving images are an even more speculative possibility, not a target. This is not a requirement to add phone calls, video chat, modern computer interfaces, general Internet access, or new social simulation systems.
