@@ -14,6 +14,7 @@ from hashlib import sha256
 from unittest.mock import patch
 
 from scripts.verify_day import judge, stable, LAB_PIN, SCHEMA
+from doctor_lives.neural import DEFAULT_CONFIG, PretoriusRecurrentSubstrate
 
 
 def sqlite_file(p, ddl):
@@ -108,6 +109,27 @@ class DayJudgeContractTests(unittest.TestCase):
         self.world_db.commit()
         self.intent_db.commit()
         self.brain_db.commit()
+        # The real judge requires a different ORIGINAL neural checkpoint and
+        # original BrainStore per seed, not twenty labels on the same policy.
+        for pair in self.ablation:
+            seed = pair["seed"]
+            directory = self.bundle / "trials" / str(seed)
+            directory.mkdir(parents=True)
+            (directory / "brain").mkdir()
+            shutil.copy2(self.world, directory / "world.sqlite3")
+            shutil.copy2(self.brain, directory / "brain" / "brain.sqlite3")
+            cfg = dict(DEFAULT_CONFIG)
+            cfg.update(neurons=128, sensory_dim=64, avg_recurrent_degree=8,
+                       input_degree=4, action_population_size=8, seed=7500 + seed)
+            neural_path = directory / "brain" / "pretorius_recurrent.npz"
+            PretoriusRecurrentSubstrate(cfg).save(neural_path)
+            checkpoint = sha256(neural_path.read_bytes()).hexdigest()
+            with sqlite3.connect(directory / "brain" / "brain.sqlite3") as d:
+                d.execute("UPDATE policy_decisions SET neural_checkpoint_sha256=?",
+                          (checkpoint,))
+            pair["trial_dir"] = "trials/" + str(seed)
+            pair["seed"] = 7500 + seed
+        self.world_db.commit()
         self.restart = {"signal": "SIGKILL", "exit_code": -9, "first_pid": 101,
                         "second_pid": 202, "before_goal": goal, "after_goal": goal,
                         "duplicate_world_receipts": 0, "duplicate_lived_memories": 0}
@@ -194,9 +216,10 @@ class DayJudgeContractTests(unittest.TestCase):
 
     def test_memory_lesion_must_change_distribution(self):
         for pair in self.ablation:
-            self.brain_db.execute("UPDATE policy_decisions SET selected_action='repair' WHERE id=?",
-                                  (pair["without_memory"],))
-        self.brain_db.commit()
+            trial = self.bundle / pair["trial_dir"] / "brain" / "brain.sqlite3"
+            with sqlite3.connect(trial) as db:
+                db.execute("UPDATE policy_decisions SET selected_action='repair' WHERE id=?",
+                           (pair["without_memory"],))
         self.assertIn("e", self.evaluate()["failures"])
 
     def test_missing_random_controller_bundle_is_not_a_successful_baseline(self):
