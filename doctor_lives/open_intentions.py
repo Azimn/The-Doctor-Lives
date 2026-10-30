@@ -187,9 +187,14 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         history=min(history,0.03)
         neural_component=base
         score=neural_component+familiarity+novelty+history
+        donor_names=tuple(n.strip() for n in os.environ.get("PRETORIUS_M5_DONORS","").split(",") if n.strip())
+        from .m5_donors import contributions as m5_contributions
+        donor_values=m5_contributions(bridge,work,row,cap,cycle,donor_names)
+        score+=sum(donor_values.values())
         contributions[row["proposal_id"]]={"neural":neural_component,
             "familiarity":familiarity,"novelty":novelty,"history":history,
-            "total":score,"tendency":tendency,"similarity":scores[tendency]}
+            "total":score,"tendency":tendency,"similarity":scores[tendency],
+            "donor_components":donor_values}
         candidates[row["proposal_id"]]=(score,row)
     selected=None
     if candidates:
