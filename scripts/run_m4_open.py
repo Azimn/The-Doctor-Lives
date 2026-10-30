@@ -71,8 +71,10 @@ def wishes(brain):
 def run_child(folder,seed,phase,memory_enabled,provider,model):
     if phase=="start":
         doc,bridge,work=open_subject(folder,seed,True)
+        # First cycle uses the reproducible no-model port so a source-
+        # persistent unfulfilled wish certainly predates the hard kill.
         initial=run_cycle(doc,bridge,work,1,memory_enabled=memory_enabled,
-                          provider=provider,model=model)
+                          provider="fallback",model=None)
         pending=wishes(doc)
         if not pending:
             raise RuntimeError("The subject failed to retain any unfulfilled desires")
@@ -92,8 +94,13 @@ def run_child(folder,seed,phase,memory_enabled,provider,model):
                       introduced_cycle=2)
         cycles=[]
         for tick in range(2,10):
+            # Alternate provider *availability*, never the subject's next
+            # action. Ollama is deliberately tested on the newly introduced
+            # affordance opportunity without letting its text become a motor.
+            offered_provider = provider if tick == 2 else "fallback"
             row=run_cycle(doc,bridge,work,tick,memory_enabled=memory_enabled,
-                          provider=provider,model=model)
+                          provider=offered_provider,
+                          model=model if offered_provider=="ollama" else None)
             cycles.append(row)
         print(json.dumps({"status":"completed","pid":os.getpid(),
                           "wishes":pending,"cycles":cycles}),flush=True)
@@ -145,8 +152,10 @@ def run_lesion(root,seed,*,provider,model):
             work.register("archive_findings","append a finding to the newly opened archive",
                           "append_journal","archive.txt","archive",
                           introduced_cycle=2)
+        offered_provider=provider if c==2 else "fallback"
         cycles.append(run_cycle(doc,bridge,work,c,memory_enabled=False,
-                                provider=provider,model=model))
+                                provider=offered_provider,
+                                model=model if offered_provider=="ollama" else None))
     (folder/"trial.json").write_text(json.dumps({
         "seed":seed,"memory_enabled":False,"cycles":cycles
     },sort_keys=True))
@@ -175,7 +184,7 @@ def main(argv=None):
     for n in range(20):
         seed=6400+n
         run_pair(root,seed,provider=args.provider,model=args.model)
-        run_lesion(root,seed,provider="fallback",model=None)
+        run_lesion(root,seed,provider=args.provider,model=args.model)
         trials.append({"seed":seed,"path":f"seed-{seed}",
                        "ablation_path":f"lesion-{seed}"})
     # The old deterministic offline M2 day MUST independently pass M2's
