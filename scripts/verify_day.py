@@ -256,8 +256,11 @@ def judge(bundle: Path, lab_root: Path, *, baseline=False):
     receipts = source_receipts(world)
     reservations = intent_rows(intents)
     policies, thoughts, memories, meta = brain_evidence(brain)
-    _reject_host_commands(data.get("host_opportunities", []))
     failures = {}
+    try:
+        _reject_host_commands(data.get("host_opportunities", []))
+    except DayEvidenceError as exc:
+        failures[exc.code] = str(exc)
     actions = []
     origins = {}
     try:
