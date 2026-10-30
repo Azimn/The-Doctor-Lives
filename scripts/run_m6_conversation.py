@@ -152,7 +152,10 @@ def actual_life(root:Path, *, model:str|None) -> dict:
         turns.append({"origin":"pretorius","text":turn["text"],
                       "model_called":turn["model_called"],"tokens":turn["model_tokens"],
                       "latency_ms":turn["model_latency_ms"],
-                      "claims":turn["claims"],"day":day,"beat":turn["beat"]})
+                      "claims":turn["claims"],"day":day,"beat":turn["beat"],
+                      "model_unverified_segments":len(turn.get("unverified_model_text",[])),
+                      "model_blocked_firsthand":len(turn.get("blocked_model_firsthand",[])),
+                      "verified_memory_share":turn.get("verified_memory_share",1.0)})
         if day==2:
             # An actual hard-kill after the first interlocution, then
             # re-open original BrainStore. A completed turn cannot duplicate.
@@ -222,10 +225,16 @@ def actual_life(root:Path, *, model:str|None) -> dict:
                                        and t["turn_id"].startswith("initiative_")],
         "model_load":{"calls":sum(t["model_called"] for t in turns if t["origin"]=="pretorius"),
                       "tokens":sum(t["tokens"] for t in turns if t["origin"]=="pretorius"),
-                      "latency_ms":sum(t["latency_ms"] for t in turns if t["origin"]=="pretorius"),
+                      "latency_ms":round(sum(t["latency_ms"] for t in turns if t["origin"]=="pretorius"),2),
+                      "source_backed_claims":sum(len(t["claims"]) for t in turns if t["origin"]=="pretorius"),
+                      "unverified_model_segments":sum(t.get("model_unverified_segments",0)
+                               for t in turns if t["origin"]=="pretorius"),
+                      "blocked_model_firsthand":sum(t.get("model_blocked_firsthand",0)
+                               for t in turns if t["origin"]=="pretorius"),
                       "verified_memory_share":sum(
                            len(t["claims"]) for t in turns if t["origin"]=="pretorius")/
-                           max(1,sum(len(t["claims"]) for t in turns if t["origin"]=="pretorius"))},
+                           max(1,sum(len(t["claims"])+t.get("model_unverified_segments",0)
+                                     for t in turns if t["origin"]=="pretorius"))},
     }
     return report
 
@@ -257,6 +266,14 @@ def main(argv=None):
     if args.report:
         args.report.write_text(json.dumps(report,sort_keys=True,indent=2)+"\n")
     result=verify(report,model_off_only=args.model_off,require_source=True)
+    for turn in [r for r in report["turns"] if r["origin"]=="pretorius"][:3]:
+        excerpt={"day":turn["day"],"beat":turn.get("beat"),
+                 "verified_text":turn["text"][:600],
+                 "evidence_links":[c["evidence_key"] for c in turn["claims"]],
+                 "model_called":turn["model_called"],
+                 "model_tokens":turn["tokens"]}
+        print("M6_TRANSCRIPT_EXCERPT="+json.dumps(excerpt,sort_keys=True))
+    print("M6_MODEL_LOAD="+json.dumps(report["model_load"],sort_keys=True))
     print(json.dumps({"judge":result,"life_cycles":len(report["life_cycles"]),
                      "source_world":report["source_world"],
                      "model_used":args.model is not None},sort_keys=True))
