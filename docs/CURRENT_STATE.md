@@ -1,5 +1,14 @@
 # CURRENT STATE: The Doctor Lives
 
+## Active M5 + PR #98 reconciliation, October 30, 2026
+
+`integration/m5` now contains a real two-parent merge of existing M5 `eed7720` and draft PR #98 `13007ce`: [merge `be3e1e0`](https://github.com/Azimn/The-Doctor-Lives/commit/be3e1e0024abd78027ea30a36b38903132e4ad5d). The subsequent [`fc8df09`](https://github.com/Azimn/The-Doctor-Lives/commit/fc8df096d07aee80d60901758b5addccb4111ca3) preserves the existing model import-inventory regression while recognizing M4/M5's loopback-only research adapters. M5 retains its broader M2 motor-ID/no-reuse validation in preference to the narrower PR98 version. Source Laboratory is still pinned at `6e49795752835d64fa6fd63d16359669a1ca2ba7`. Production `main` and original PR #98 have not been merged or modified.
+
+**Combined candidate evidence, not release acceptance:** Linux physical/host/wheelhouse [41062084909](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062084909) and complete BrainStore [41062084977](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062084977) passed on the initial merge SHA. New latest-source combined runs are [M2/M4/M5 judges](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062219862), [real M4 Ollama plus PR98 model gloss](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062219854), [PR98 Linux Laboratory](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062219883), [Windows and offline wheelhouse](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062219917), [full BrainStore](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062219845), and [original 17-book source read](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41062219850). These must be examined for actual pass/fail on one exact head; earlier results do not automatically transfer.
+
+**R1 integration is a candidate, not independently accepted. R2/R3 are incomplete candidates. R4, R5 and R6 remain NO-GO**, notably no uncoached self-originated three-task goal, no 24-hour real elapsed-time soak, and no merged-main release. No Conclave, Phantasmagorium, Calibos or new features are included. Defer unrelated security enhancements without relaxing provenance, functional integrity or preexisting tests.
+
+
 **Research snapshot:** October 30, 2026. Definitive production repository: Azimn/The-Doctor-Lives. The only canonical character is Doctor Septimus Pretorius, whose original BrainStore owns his identity, memories, relationships, thoughts, neural checkpoints and policies.
 
 ## Branch custody
