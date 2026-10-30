@@ -97,6 +97,60 @@ def run_laboratory(
 
 
 
+
+def _recover_shipping_actions(bridge):
+    """Preflight EVERY pending action before any shipping-host replay.
+
+    A durable reservation alone is not evidence that the physical world
+    committed an action. In particular, restarting after a crash between
+    reservation and world commit must not execute a ghost motor command.
+    Original-Noesis work also needs its independently bound policy decision,
+    regardless of whether startup came through lab-work, sleep, or run.
+    The caller holds both cooperative authority locks throughout this check
+    and the ensuing original bridge reconciliation.
+    """
+    from .lab_home_bridge import _ACTION_DOMAINS, _row
+    from .noesis_lab_work import verify_noesis_work_replay
+
+    pending = bridge.pending_action_intents()
+    # Validate the ENTIRE batch before admitting even the first memory.
+    with bridge.world._open() as db:
+        for item in pending:
+            op, event_id, args = item["op"], item["event_id"], item["args"]
+            table = _ACTION_DOMAINS.get(op)
+            if table is None:
+                raise PermissionError("Unknown pending Laboratory action")
+            present = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (table,),
+            ).fetchone()
+            if not present:
+                raise RuntimeError("Missing authoritative Laboratory receipt table")
+            found = db.execute(
+                "SELECT 1 FROM " + table + " WHERE event_id=? LIMIT 1",
+                (event_id,),
+            ).fetchone()
+            if found is None:
+                # Do not silently turn a merely reserved motor command into
+                # a NEW physical event on cold restart. Preserve the pending
+                # reservation for explicit reconciliation rather than guess.
+                raise RuntimeError(
+                    "Uncommitted Laboratory intent: automatic physical replay denied"
+                )
+            receipt, _ = _row(db, table, event_id)
+            bridge._check_action_proof(op, args, receipt)
+            if op in ("repair", "experiment"):
+                verify_noesis_work_replay(
+                    bridge, event_id=event_id, action=op,
+                )
+    recovered = bridge.recover_pending_actions()
+    if bridge.pending_action_intents():
+        raise RuntimeError("Unreconciled Laboratory action; host denied")
+    if len(recovered) != len(pending):
+        raise RuntimeError("Laboratory recovery identity count changed")
+    return pending, recovered
+
+
 def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
     """Operator-requested, original-Lab physical sleep, never a Doctor goal.
 
@@ -140,12 +194,7 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
                 )
         # Capture identities before replay so a recovered sleep is presented
         # only once. The bridge remains the sole durable intent authority.
-        pending_before = bridge.pending_action_intents()
-        recovered = bridge.recover_pending_actions()
-        if bridge.pending_action_intents():
-            raise RuntimeError("Unreconciled Laboratory action; sleep denied")
-        if len(recovered) != len(pending_before):
-            raise RuntimeError("Laboratory recovery identity count changed")
+        pending_before, recovered = _recover_shipping_actions(bridge)
 
         # A historical receipt is allowed to replay after Pretorius has
         # genuinely walked elsewhere. This lookup grants NO authority: act()
@@ -206,24 +255,15 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         bridge = runtime.bind_laboratory(
             SubjectPort(SpatialHabitat(world)), authorized=True,
         )
-        pending_before = bridge.pending_action_intents()
-        # A pending world-committed work action can be admitted by recovery.
-        # Verify its ORIGINAL Noesis ownership BEFORE that admission, not
-        # merely after recovery when the rhythm receipt is inspected.
+        pending_before, recovered = _recover_shipping_actions(bridge)
+        # A recovered action ID cannot be reused for a different offered task.
         for intent in pending_before:
-            if intent["event_id"] == event_id:
-                if intent["op"] not in ("repair", "experiment") or intent["args"] != {}:
-                    raise RuntimeError(
-                        "Work event ID already reserved for another Laboratory action"
-                    )
-                verify_noesis_work_replay(
-                    bridge, event_id=event_id, action=intent["op"],
+            if intent["event_id"] == event_id and (
+                intent["op"] not in ("repair", "experiment") or intent["args"] != {}
+            ):
+                raise RuntimeError(
+                    "Work event ID already reserved for another Laboratory action"
                 )
-        recovered = bridge.recover_pending_actions()
-        if bridge.pending_action_intents():
-            raise RuntimeError("Unreconciled Laboratory action; work denied")
-        if len(recovered) != len(pending_before):
-            raise RuntimeError("Laboratory recovery identity count changed")
         subject_frames = [
             item["subject"] for intent, item in zip(pending_before, recovered)
             if intent["event_id"] != event_id
@@ -345,9 +385,7 @@ def _run_laboratory_session(
     bridge = runtime.bind_laboratory(
         SubjectPort(SpatialHabitat(world)), authorized=True,
     )
-    recovered = bridge.recover_pending_actions()
-    if bridge.pending_action_intents():
-        raise RuntimeError("Unreconciled Laboratory action; host startup denied")
+    _, recovered = _recover_shipping_actions(bridge)
     subject_frames = [item["subject"] for item in recovered]
     # Reconciliation may finish after an interrupt. Never start a fresh
     # observation when cancellation arrived during that recovery window.
