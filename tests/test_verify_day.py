@@ -185,6 +185,21 @@ class DayJudgeContractTests(unittest.TestCase):
         self.world_db.commit()
         self.assertTrue(self.evaluate()["pass"], self.evaluate())
 
+    def test_source_verified_domestic_look_is_not_motor_action(self):
+        # The original SubjectPort.observe() emits BOTH rhythm and domestic
+        # read-only LOOK events; neither is a host-authored motor command.
+        self.world_db.execute(
+            "CREATE TABLE domestic_events(event_id TEXT PRIMARY KEY,envelope TEXT,event_hash TEXT)"
+        )
+        event = {"op": "look", "args": {}, "subject": {"inner": "I look"}}
+        digest = sha256(stable(event).encode()).hexdigest()
+        self.world_db.execute(
+            "INSERT INTO domestic_events VALUES (?,?,?)",
+            ("source-domestic-look", stable(event), digest),
+        )
+        self.world_db.commit()
+        self.assertTrue(self.evaluate()["pass"], self.evaluate())
+
     def test_unclaimed_real_lab_physical_action_still_fails(self):
         event = {"op": "experiment", "args": {}, "subject": {"inner": "I act"}}
         hash_value = sha256(stable(event).encode()).hexdigest()
