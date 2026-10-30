@@ -33,7 +33,7 @@ SYNONYMS = {
     "avoid": "avoid withdraw retreat escape danger risk threat fire flame noise racket away evade",
     "cooperate": "cooperate collaborate help assist coordinate together partners partnership joint shared colleague librarian teamwork",
     "dominate": "dominate command control impose authority charge dominance exert workers staff ruleover",
-    "create": "create build construct make compose write design craft prototype invention story narrative tale mechanism device new",
+    "create": "create build construct make compose write design craft prototype invention story narrative tale mechanism device new jot diary journal record sketch draft logbook",
     "persist": "persist continue finish complete persevere working work assignment task obstacles setbacks delays carryon",
     "conceal": "conceal hide disguise camouflage secret hidden reveal protect confidential mask",
     "comply": "comply obey follow adhere accept order orders instruction instructions directions requirement regulation rule request",
@@ -45,6 +45,8 @@ _SPECIAL = {
  "keep away":"avoid", "steer clear":"avoid", "draw near":"approach",
  "move closer":"approach", "not reveal":"conceal", "keep hidden":"conceal",
  "carry out":"comply", "follow the":"comply",
+ "pick up where":"persist", "left off":"persist",
+ "out of sight":"conceal",
 }
 _STOP = {"i","my","me","we","could","would","want","will","might","should",
          "shall","need","ought","to","a","the","an","this","that","of",

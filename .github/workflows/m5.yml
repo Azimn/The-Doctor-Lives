@@ -56,6 +56,7 @@ jobs:
       - name: Verify 30 intentions and all paraphrases
         run: |
           python -m unittest discover -s tests -p test_verify_semantics.py -v
+          python -m unittest discover -s tests -p test_chatgpt_semantics.py -v
           python scripts/verify_semantics.py --out /tmp/m5-semantic-evidence.json
       - name: Preserve semantic mapping results
         if: always()
@@ -96,7 +97,7 @@ jobs:
           PYTHONPATH: donor-laboratory:.
         run: |
           set -euo pipefail
-          python scripts/chatgpt_standin_probe.py --out /tmp/m5-chatgpt-standin.json
+          python scripts/chatgpt_standin_probe.py --out /tmp/m5-chatgpt-standin.json --minimum-holdout 10
       - name: Run unchanged M4 and M2 evidence gates
         env:
           PYTHONPATH: donor-laboratory:.
