@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import sqlite3
 import signal
 import subprocess
 import sys
@@ -48,7 +49,10 @@ def operator_influence(root: Path) -> dict:
         ):
             brain=harness._clone_seed(label)
             world=base.parent/(label+"-world.sqlite3")
-            shutil.copy2(base/"world.sqlite3",world)
+            # SQLite WAL may hold fresh EmbodiedAccess/Laboratory initialization.
+            # Copy via a real SQLite backup instead of copying only the main DB.
+            with sqlite3.connect(base/"world.sqlite3") as original_db, sqlite3.connect(world) as copy_db:
+                original_db.backup(copy_db)
             channel=OperatorConversation(brain,world)
             if operator_text is not None:
                 channel.receive(operator_text,turn_id="operator_interest_"+label.replace("-","_"))
