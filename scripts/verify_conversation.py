@@ -28,6 +28,19 @@ def _verified_wish_sentence(value: str) -> str:
     return "I have a recorded but unfulfilled possibility: " + quote
 
 
+def _sourced_sequence(value: str, source_texts: list[str]) -> bool:
+    """Independently parse repeated exact source sentences in model gloss."""
+    remaining = value.strip()
+    while remaining:
+        candidates = [s for s in source_texts if s
+                      and (remaining == s or remaining.startswith(s + " "))]
+        if not candidates:
+            return False
+        chosen = max(candidates, key=len)
+        remaining = remaining[len(chosen):].strip()
+    return True
+
+
 def verify_source_ledger(report: dict) -> dict:
     """Independently re-open the original BrainStore and Laboratory receipts."""
     import sqlite3
@@ -124,6 +137,24 @@ def verify_source_ledger(report: dict) -> dict:
                     (bool(stored["model_called"])
                      and speech.startswith(expected + "\n")),
                     "Persisted outgoing speech differs from sourced deterministic reply")
+            suffix = speech[len(expected):]
+            if suffix:
+                require(bool(stored["model_called"]) and suffix.startswith("\n"),
+                        "Model-off reply contains additional unsourced speech")
+                marker = "Unverified local-model commentary (quoted, not evidence): "
+                sourced_texts = [claim["text"] for claim in stored_claims]
+                for line in suffix[1:].split("\n"):
+                    if line == "(Unverified firsthand claims withheld.)":
+                        continue
+                    if marker in line:
+                        prefix, untrusted = line.split(marker, 1)
+                        require(_sourced_sequence(prefix, sourced_texts)
+                                and untrusted.startswith('"'),
+                                "Unverified model commentary lacks inert quotation")
+                    else:
+                        require(bool(line) and
+                                _sourced_sequence(line, sourced_texts),
+                                "Unsourced model text was presented without qualification")
             require(source_memory["source"] == "pretorius:conversation-speech"
                     and source_memory["evidence_class"] == "external_statement"
                     and source_memory["text"] ==
