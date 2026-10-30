@@ -23,16 +23,33 @@ class ConclaveKernelTests(unittest.TestCase):
             text="A raven flew through the cold moonlight over the garden.",
         )
 
-    def _external_event(self, id_):
+    def _event_fixture(self, id_, *, verified: bool):
+        # Mirror canonical _ingest_verified_laboratory semantics. A WORLD
+        # report is external=True, NOT a verified firsthand observation.
+        source = ("laboratory-home:observe:fixture" if verified
+                  else "laboratory-home:report:fixture")
         with self.store.transaction() as db:
             db.execute(
                 """INSERT INTO events
                 (id,tick,created_at,kind,source,payload_json,evidence_class,
                  external,confidence,parent_id)
                 VALUES(?,?,?,?,?,?,?,?,?,?)""",
-                (id_, 2, "2026-10-29T00:00:00+00:00", "world",
-                 "laboratory", "{}", "observed", 1, 1.0, None),
+                (id_, 2, "2026-10-29T00:00:00+00:00",
+                 "observation" if verified else "report", source, "{}",
+                 "lived_runtime_memory" if verified else "external_statement",
+                 0 if verified else 1, 1.0, None),
             )
+            if verified:
+                db.execute(
+                    """INSERT INTO memories
+                    (id,created_tick,updated_tick,kind,text,source,
+                     evidence_class,external,confidence,authored,base_salience,
+                     rehearsal_count,tags_json,active,source_event_id)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    ("mem:" + id_, 2, 2, "observation", "A verified perception",
+                     source, "lived_runtime_memory", 0, 1.0, 0,
+                     0.6, 0, "[]", 1, id_),
+                )
 
     def test_opt_in_requires_canonical_store(self):
         with self.assertRaises(PermissionError):
@@ -103,7 +120,12 @@ class ConclaveKernelTests(unittest.TestCase):
             self.kernel.interpret(Stimulus(
                 "world:fiction", "world_verified", "garden_1", "fire"
             ))
-        self._external_event("world:real1")
+        self._event_fixture("world:report1", verified=False)
+        with self.assertRaises(PermissionError):
+            self.kernel.interpret(Stimulus(
+                "world:report1", "world_verified", "garden_1", "fire"
+            ))
+        self._event_fixture("world:real1", verified=True)
         admitted = self.kernel.interpret(Stimulus(
             "world:real1", "world_verified", "garden_1", "fire"
         ), spokes=("agrippan-wheel",))
