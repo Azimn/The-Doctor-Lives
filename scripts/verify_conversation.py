@@ -16,13 +16,14 @@ def require(condition, explanation):
     if not condition:
         raise ConversationJudgmentError(explanation)
 
-def verify(report: dict) -> dict:
+def verify(report: dict, *, model_off_only: bool = False) -> dict:
     require(report.get("schema") == "pretorius.m6.conversation-evidence.v1", "wrong evidence schema")
     cases = report.get("turns")
     require(isinstance(cases, list) and len(cases) >= 3, "multi-turn conversation required")
     model_states = {"local_ollama", "model_off"}
-    require(set(report.get("tested_models", [])) == model_states,
-            "genuine live local Ollama and model-off trials required")
+    expected={"model_off"} if model_off_only else model_states
+    require(set(report.get("tested_models", [])) == expected,
+            "required genuine local model and model-off trial evidence missing")
     verified = 0
     utterances = 0
     for t in cases:
@@ -70,6 +71,9 @@ def verify(report: dict) -> dict:
             and influence.get("paired_shuffled_topic") is True, "paired controls missing")
     require(isinstance(influence.get("choice_variance"), (int,float)),
             "causal choice variance missing")
+    require(influence.get("different_no_message",0)>0
+            and influence.get("different_shuffled_topic",0)>0,
+            "no demonstrated operator influence against both paired controls")
     require(isinstance(influence.get("pressure_by_family"), dict)
             and len(influence["pressure_by_family"]) >= 1, "per-family policy contribution missing")
     return {
@@ -85,8 +89,10 @@ def verify(report: dict) -> dict:
 def main(argv=None):
     p=argparse.ArgumentParser()
     p.add_argument("--report", required=True, type=Path)
+    p.add_argument("--model-off-only",action="store_true")
     args=p.parse_args(argv)
-    result=verify(json.loads(args.report.read_text(encoding="utf-8")))
+    result=verify(json.loads(args.report.read_text(encoding="utf-8")),
+                  model_off_only=args.model_off_only)
     print(json.dumps(result, sort_keys=True))
 
 if __name__ == "__main__":

@@ -69,13 +69,18 @@ def mental_context(bridge, work:OperatorWork,cycle:int,*,memory_enabled=True):
         pending=[r[0] for r in db.execute(
             "SELECT text FROM open_wishes WHERE status='unfulfilled' "
             "ORDER BY first_cycle DESC LIMIT 5")]
+    reported_operator=[m for m in brain.store.memories(False)
+                       if m["active"] and m["source"]=="operator:conversation"
+                       and m["kind"]=="communication"]
     afforded=work.affordances(cycle)
     context={"situation":immediate["text"],"needs":needs,
              "memories":past[:8] if memory_enabled else [],
              "unfulfilled_wishes":pending if memory_enabled else [],
              "affordances":[{"description":a["description"],
                              "label":a["goal_type"]} for a in afforded],
-             "current_day":1+(cycle-1)//3}
+             "current_day":1+(cycle-1)//3,
+             "operator_statements":[m["text"] for m in reported_operator[:5]],
+             "operator_memory_ids":[m["id"] for m in reported_operator[:5]]}
     return context,afforded
 
 def grounding(text,affordances):
@@ -162,6 +167,13 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
     candidates={}
     contributions={}
     semantic_tendencies={}
+    operator_memories=[m for m in store.memories(False)
+                       if m["active"] and m["source"]=="operator:conversation"
+                       and m["kind"]=="communication"][:5]
+    # Semantic appraisal of independently ingressed operator statements,
+    # not commands or assertions about the actual physical world.
+    operator_signals=[semantic_scores(m["text"],embeddings=embeddings)
+                      for m in operator_memories]
     used_memories=[m for m in store.memories(False)
                    if m["active"] and m["evidence_class"]=="lived_runtime_memory"
                    and m["source"].startswith("laboratory-home:action:")]
@@ -186,17 +198,22 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
                 history+=0.005*len(words(row["text"])&words(mem["text"]))
         history=min(history,0.03)
         neural_component=bounded_native_contrast(native,tendency)
-        score=neural_component+familiarity+novelty+history
+        operator_interest=min(0.03,0.03*max(
+            (max(0.0,signal[tendency]) for signal in operator_signals),default=0.0))
+        score=neural_component+familiarity+novelty+history+operator_interest
         donor_names=tuple(n.strip() for n in os.environ.get("PRETORIUS_M5_DONORS","").split(",") if n.strip())
         from .m5_donors import contributions as m5_contributions
-        donor_values=m5_contributions(bridge,work,row,cap,cycle,donor_names)
+        donor_trace={}
+        donor_values=m5_contributions(bridge,work,row,cap,cycle,donor_names,
+                                     audit=donor_trace)
         score+=sum(donor_values.values())
         contributions[row["proposal_id"]]={"neural":neural_component,
             "familiarity":familiarity,"novelty":novelty,"history":history,
             "total":score,"tendency":tendency,"similarity":scores[tendency],
+            "operator_interest":operator_interest,
             "native_raw_action_score":base,"native_span":max(native.values())-min(native.values()),
             "tie_key":str(key)+"|"+str(row["text"]).casefold(),
-            "donor_components":donor_values}
+            "donor_components":donor_values,"donor_trace":donor_trace}
         candidates[row["proposal_id"]]=(score,row)
     selected=None
     if candidates:
@@ -218,6 +235,7 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         "contributions":contributions,
         "semantic_tendencies":semantic_tendencies,
         "semantic_provider":"LocalOllamaEmbeddings" if embeddings else "DeterministicConceptSimilarity",
+        "operator_memory_ids":[m["id"] for m in operator_memories],
         "memory_enabled":memory_enabled,
         "used_memory_ids":[m["id"] for m in used_memories[:12]] if memory_enabled else [],
     }

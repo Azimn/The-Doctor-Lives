@@ -25,7 +25,8 @@ def fixture():
                        "messages_per_day": [1,0,1]},
         "operator_influence": {"seeds": 20, "harness": "CausalAuditHarness",
             "paired_no_message": True, "paired_shuffled_topic": True,
-            "choice_variance": 0.05,
+            "choice_variance": 0.05, "different_no_message": 3,
+            "different_shuffled_topic": 2,
             "pressure_by_family": {"neural": {"mean": 0.08}}},
     }
 
