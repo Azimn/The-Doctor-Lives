@@ -103,7 +103,7 @@ def verify_source_ledger(report: dict) -> dict:
             elif source=="wish":
                 require(key.startswith("wish:") and key[5:] in wishes,
                         "Unverified wished-for intention")
-                expected="I wished to "+wishes[key[5:]].removeprefix("I wish to ").rstrip(".")+"."
+                expected="I have a recorded but unfulfilled possibility: “"+wishes[key[5:]]+"”"
                 require(claim["text"]==expected,"Claimed wish differs from recorded hypothetical")
             elif source=="operator":
                 actual=memories.get(claim.get("memory_id"))

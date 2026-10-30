@@ -139,7 +139,7 @@ class OperatorConversation:
             except sqlite3.OperationalError:
                 wishes=[]
         for wish in wishes:
-            verified.append({"status":"verified","text":"I wished to " + str(wish[1]).removeprefix("I wish to ").rstrip(".") + ".",
+            verified.append({"status":"verified","text":"I have a recorded but unfulfilled possibility: “" + str(wish[1]) + "”",
                              "source":"wish","evidence_key":"wish:"+wish[0],
                              "tick":int(wish[2])})
         return verified

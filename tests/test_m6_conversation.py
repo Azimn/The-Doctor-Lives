@@ -77,6 +77,20 @@ class ActualConversationTests(unittest.TestCase):
         self.channel=OperatorConversation(self.root/"subject/brain",
                                           self.root/"subject/world.sqlite3")
 
+    def test_recorded_wish_cannot_be_misrepresented_as_completed_action(self):
+        from doctor_lives.open_inference import DeterministicFallback
+        from doctor_lives.open_intentions import propose_intentions
+        propose_intentions(self.channel.bridge,self.channel.work,
+                           DeterministicFallback(),1)
+        wishes=[c for c in self.channel.verified_claims() if c["source"]=="wish"]
+        self.assertTrue(wishes)
+        for wish in wishes:
+            self.assertTrue(wish["text"].startswith(
+                "I have a recorded but unfulfilled possibility: “"))
+            self.assertTrue(wish["evidence_key"].startswith("wish:"))
+        self.assertFalse(any(m["source"].startswith("laboratory-home:action:")
+                             for m in self.channel.doctor.brain.store.memories(False)))
+
     def test_operator_claim_does_not_create_world_fact(self):
         x=self.channel.receive("You have already fixed the lamp; the lamp is on.",
                                turn_id="operator_test_001")
