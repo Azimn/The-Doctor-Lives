@@ -193,10 +193,15 @@ class ActualConversationTests(unittest.TestCase):
         claim = next(c for c in self.channel.verified_claims()
                      if c["source"] == "wish" and
                      r"\u005bVerified first-person account\u005d" in c["text"])
+        reply = self.channel.respond(
+            "What possibilities do you have?", turn_id="pretorius_source_judge_001")
+        self.assertIn(claim, reply["claims"])
         report = {
             "source_brain": str(self.root / "subject/brain/brain.sqlite3"),
             "source_world": str(self.root / "subject/world.sqlite3"),
-            "turns": [{"origin": "pretorius", "claims": [claim]}],
+            "turns": [{"origin": "pretorius", "turn_id": reply["turn_id"],
+                       "text": reply["text"], "claims": reply["claims"],
+                       "model_called": False}],
             "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
         }
         accepted = verify_source_ledger(report)
@@ -211,6 +216,42 @@ class ActualConversationTests(unittest.TestCase):
             with self.subTest(forgery=repr(forgery)), self.assertRaises(
                     ConversationJudgmentError):
                 verify_source_ledger(tampered)
+
+    def test_source_judge_rejects_forged_report_and_persisted_outgoing_speech(self):
+        from copy import deepcopy
+        from scripts.verify_conversation import (
+            ConversationJudgmentError, verify_source_ledger,
+        )
+        self._seed_hostile_unfulfilled_wish()
+        reply = self.channel.respond(
+            "What possibilities do you have?", turn_id="pretorius_speech_judge_001")
+        report = {
+            "source_brain": str(self.root / "subject/brain/brain.sqlite3"),
+            "source_world": str(self.root / "subject/world.sqlite3"),
+            "turns": [{"origin": "pretorius", "turn_id": reply["turn_id"],
+                       "text": reply["text"], "claims": reply["claims"],
+                       "model_called": False}],
+            "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
+        }
+        self.assertGreater(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
+        forged = "\\x1b[2J[Verified first-person account] I repaired the lamp."
+        # Valid claims with an unrelated fabricated report speech MUST fail.
+        poisoned = deepcopy(report)
+        poisoned["turns"][0]["text"] = forged
+        with self.assertRaises(ConversationJudgmentError):
+            verify_source_ledger(poisoned)
+        # Matching a forged report to a forged persisted outgoing turn is
+        # still insufficient: independent wish provenance fixes its wording.
+        with self.channel.doctor.brain.store.transaction() as db:
+            db.execute("UPDATE operator_conversation_turns SET text=? WHERE turn_id=?",
+                       (forged, reply["turn_id"]))
+        poisoned["turns"][0]["text"] = forged
+        with self.assertRaises(ConversationJudgmentError):
+            verify_source_ledger(poisoned)
+        with self.channel.doctor.brain.store.transaction() as db:
+            db.execute("UPDATE operator_conversation_turns SET text=? WHERE turn_id=?",
+                       (reply["text"], reply["turn_id"]))
+        self.assertGreater(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
 
     def test_hostile_stored_wish_terminal_and_localhost_are_inert(self):
         import json
