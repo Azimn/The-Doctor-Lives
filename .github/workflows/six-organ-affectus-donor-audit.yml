@@ -1,0 +1,39 @@
+name: Six-organ pinned Spinoza Affectus donor independent audit
+on:
+  pull_request:
+    paths:
+      - tests/test_six_organ_affectus_donor_audit.py
+      - doctor_lives/affectus_lab_pilot.py
+      - doctor_lives/organs.py
+      - .github/workflows/six-organ-affectus-donor-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pin-and-audit-donor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get frozen weather/Spinoza transition donor
+        uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: pinned-affectus-donor
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert exact reviewed source revision
+        run: |
+          test "$(git -C pinned-affectus-donor rev-parse HEAD)" = "904bf11861700739ccc03d4b0d4340ff3422a7d3"
+          test -f pinned-affectus-donor/sensus_artificialis/affectus.py
+          test -f pinned-affectus-donor/tests/test_affectus.py
+      - name: Reproduce unchanged donor fitness suite
+        env:
+          PYTHONPATH: pinned-affectus-donor
+        run: python -m unittest discover -s pinned-affectus-donor/tests -p test_affectus.py -v
+      - name: Independently audit genuine unseen next-four-tick forecast
+        env:
+          PYTHONPATH: pinned-affectus-donor
+        run: python -m unittest discover -s tests -p test_six_organ_affectus_donor_audit.py -v

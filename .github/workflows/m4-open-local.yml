@@ -1,0 +1,94 @@
+name: M4 real local-model open-day verification
+on:
+  push:
+    branches: [integration/m4, integration/m5]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-noesis-with-local-ollama:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Pin original Laboratory repository
+        run: test "$(git -C donor-laboratory rev-parse HEAD)" = 6e49795752835d64fa6fd63d16359669a1ca2ba7
+      - name: Run local model on loopback with no remote inference
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > /tmp/m4-ollama.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          ollama pull qwen2.5:0.5b
+      - name: Run 20 real-neural seeds with paired genuine Ollama and fallback cycles
+        env:
+          PYTHONPATH: donor-laboratory:.
+          NO_REMOTE_INFERENCE: '1'
+        run: |
+          set -euo pipefail
+          python scripts/run_m4_open.py --run /tmp/m4-local --lab-root donor-laboratory --provider ollama --model qwen2.5:0.5b | tee /tmp/m4-local-result.json
+      - name: Independently verify M4 provenance, local model authorship and M2 fallback
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          python scripts/verify_open.py --run /tmp/m4-local --lab-root donor-laboratory
+          python scripts/verify_day.py --run /tmp/m4-local/fallback-day --lab-root donor-laboratory
+      - name: Live Ollama regression of PR98 operator interpretation against authenticated Laboratory
+        env:
+          PYTHONPATH: donor-laboratory:.
+          NO_REMOTE_INFERENCE: '1'
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 120 -H 'Content-Type: application/json' -d '{"model":"qwen2.5:0.5b","stream":false,"prompt":"Reply with one short sentence.","options":{"num_predict":24}}' http://127.0.0.1:11434/api/generate > /tmp/m5-ollama-warm.json
+          python - <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+          brain=Path('/tmp/m4-local/seed-6400/brain')
+          world=Path('/tmp/m4-local/seed-6400/world.sqlite3')
+          assert (brain/'brain.sqlite3').is_file() and world.is_file()
+          command=[sys.executable,'-m','doctor_lives.cli','--state',str(brain),'lab-run','--world',str(world),'--seconds','0.4','--interval-seconds','0.1','--human','--local-render-model','qwen2.5:0.5b']
+          for attempt in range(3):
+              result=subprocess.run(command,capture_output=True,text=True,timeout=45)
+              assert result.returncode==0, result.stderr
+              if '[Unverified local-model interpretation; not lived memory]' in result.stdout:
+                  break
+          else:
+              raise AssertionError('Actual Ollama produced no operator gloss after three source-backed sessions')
+          assert result.stdout.splitlines()[0].startswith('@')
+          assert chr(27) not in result.stdout and chr(13) not in result.stdout
+          assert '[Local model unavailable' not in result.stdout
+          assert result.stdout.index('[Unverified local-model interpretation') > 4
+          print(json.dumps({'actual_local_model':'qwen2.5:0.5b','transport':'real Ollama loopback','subject_source':'original pinned Laboratory','operator_gloss':True,'terminal_controls':False,'attempts':attempt+1}))
+          PY
+      - name: Print five proposals and their actual grounding
+        run: |
+          python - <<'PY'
+          import sqlite3,json
+          p="/tmp/m4-local/seed-6400/brain/brain.sqlite3"
+          with sqlite3.connect(p) as db:
+              rows=db.execute("SELECT cycle,source,text,affordance_key,goal_type,grounding_note,model_provider FROM open_proposals ORDER BY cycle,rowid LIMIT 8").fetchall()
+          for row in rows:
+              print(json.dumps(dict(zip(["cycle","source","text","affordance_key","goal_type","grounding_note","provider"],row)),ensure_ascii=False))
+          PY
+      - name: Upload authentic source ledgers and model responses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m4-ollama-full-study-ledgers
+          path: |
+            /tmp/m4-local/
+            /tmp/m4-local-result.json
+          retention-days: 10
+          if-no-files-found: warn

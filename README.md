@@ -1,4 +1,30 @@
+## M5 isolated integration (draft, not production)
+
+The active candidate is [integration/m5](https://github.com/Azimn/The-Doctor-Lives/tree/integration/m5), based on the latest fully green M4 source commit `1406668dd2dce7585acd6ea80bad1b3406b42032`. **Main is unchanged and PR #102 remains draft.** See [CURRENT_STATE](docs/CURRENT_STATE.md), [DONOR_HARVEST](docs/DONOR_HARVEST.md), [post-null causal amendment](docs/M5_SEMANTIC_CAUSAL_AMENDMENT.md), and `PROGRESS.md`.
+
+M5 reconciles PR #98's independently source-receipted elapsed Laboratory work, replaces intention-to-action hashing with local meaning-based mapping and optional loopback Ollama embeddings, records capped novelty versus neural contributions, and tests the existing BrainStore through adversarial CLI ingress. CASCADE commitment, grounded-household and receipt habit candidate adapters are available OFF by default because none has established an improvement over a same-information simple baseline. Conclave and Phantasmagorium remain design-only organoids.
+
+---
+
 # The Doctor Lives
+
+## Six-organ target architecture (experimental integration branch)
+
+The [six-organ implementation guide](docs/architecture/PRETORIUS_SIX_ORGAN_IMPLEMENTATION_GUIDE.md) defines one canonical Pretorius mind with Noesis (executive cognition), Mnemosyne (subjective memory), Affectus (appraisal), Sensus (perception binding), Synthetic Ipseity (first-person subject access), and Corpus (bodily capability). Hosts, worlds, evidence authorities, audit systems and renderers remain outside those six organs.
+
+The [organ registry](docs/architecture/ORGAN_REGISTRY.md), [current migration matrix](docs/architecture/SIX_ORGAN_MIGRATION_STATUS.md), and [executable D2 interface documentation](docs/architecture/D2_SIX_ORGAN_RUNTIME_SEAMS.md) distinguish existing mechanisms, opt-in adapters, and functions still awaiting qualification. This target is under review in [PR #89](https://github.com/Azimn/The-Doctor-Lives/pull/89), and does not change the existing production entrypoint or default behavior.
+
+Use the single-brain opt-in interface on the migration branch:
+
+```python
+from doctor_lives import SixOrganRuntime
+
+runtime = SixOrganRuntime.open('state')
+assert len(runtime.organ_registry) == 6
+print(runtime.status()['qualification'])
+```
+
+These six objects share one `PretoriusBrainPort` and its existing durable brain state. No second selector, identity, world store, physical execution authority or donor identity is created. Sensus presently retains direct single-stream ingress, Affectus and Corpus are existing logical functional domains, and durable Synthetic Ipseity admission remains a separately reviewed optional mechanism. Full D3 no-bypass, endogenous cognition, donor qualification, laboratory parity, and D11 release tests remain outstanding. **Do not describe this preview as six fully implemented production organs.**
 
 ## Progress across all 34 Articles
 
@@ -9,7 +35,7 @@ The [34-Article engineering progress dashboard](docs/experiments/ARTICLES_34_PRO
 
 The Doctor Lives is the production assembly repository for Doctor Septimus Pretorius as a persistent, renderer-neutral cognitive system.
 
-The brain owns identity evidence, autobiographical continuity, relationships, concerns, prospective commitments, interoception, salience, endogenous cognition, offline replay, consolidation, recurrent state, and provenance. A language model is a renderer and cognitive organ, not the identity database. Shell, browser, scheduler, messaging, and other capabilities remain outside the brain until a chassis is attached through the stable port.
+The brain owns identity evidence, autobiographical continuity, relationships, concerns, prospective commitments, interoception, salience, endogenous cognition, offline replay, consolidation, recurrent state, and provenance. A language model may serve as a bounded computational mechanism or replaceable renderer, but it is not a seventh organ or the identity database. Shell, browser, scheduler, messaging, and other capabilities remain outside the brain until a chassis is attached through the stable port.
 
 Calibos is used as a structural donor only. No Calibos memories, private thought stream, relationships, preferences, values, or persona cartridge are imported. The enforced transplant surface is mechanism: salience, interoceptive lag, unresolved loops, sleep and replay, consolidation discipline, drift accounting, and provenance boundaries. Pretorius identity comes from pinned Pretorius evidence under `evidence/` and `doctor_lives/data/bootstrap.json`.
 

@@ -7,7 +7,10 @@ actions, but an action offer is not evidence the Doctor independently chose it.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from hashlib import sha256
+from pathlib import Path
+import sqlite3
 import json
 import re
 from typing import Any
@@ -28,6 +31,7 @@ _ACTION_DOMAINS = {
     "measure": "instrument_events", "take_book": "custody_events",
     "put_book": "custody_events",
 }
+_EVENT_PAYLOAD_COLUMNS = {"books_events": "payload", "custody_events": "payload"}
 _SAFE_ID = re.compile(r"[A-Za-z0-9_-]{1,80}\Z")
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -56,9 +60,11 @@ def _first_person_frame(value: dict) -> str:
 
 
 def _row(db, table, event_id):
-    # Table is selected only from hard-coded trusted operation mapping.
+    # Only the hard-coded trusted domain mapping selects these tables.
+    # Source books/custody store "payload"; physical/rhythm "envelope".
+    column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
     result = db.execute(
-        "SELECT envelope,event_hash FROM " + table + " WHERE event_id=?",
+        "SELECT " + column + ",event_hash FROM " + table + " WHERE event_id=?",
         (event_id,),
     ).fetchone()
     if not result:
@@ -68,6 +74,10 @@ def _row(db, table, event_id):
     if _hash(parsed) != event_hash or not _HEX.fullmatch(event_hash):
         raise RuntimeError("Laboratory event evidence is not authentic")
     return parsed, event_hash
+
+
+class _ActionReceiptMismatch(RuntimeError):
+    """Authenticated receipt belongs to a different action request."""
 
 
 class DoctorHomeBridge:
@@ -90,9 +100,43 @@ class DoctorHomeBridge:
         self.subject = subject_port
         self.world = subject_port.habitat
         self.subject.verify()
+        self._active_verified_admission = None
+        self.doctor._register_laboratory_bridge(self)
 
-    def _admit(self, frame, source, *, kind):
+    def _admit_verified(self, frame, source, *, kind, source_book_page=False):
+        """Host-only handoff after verified observation or physical action.
+
+        The active grant is one-use and never materialized as a portable
+        boolean or user-provided source label. Only the two world-verified
+        entrypoints below may call this method.
+        """
+        if self._active_verified_admission is not None:
+            raise RuntimeError("Overlapping Laboratory source admissions")
         text = _first_person_frame(frame)
+        if source_book_page:
+            text = " ".join(text.split())
+        self._active_verified_admission = (source, text)
+        try:
+            return self._admit(
+                frame, source, kind=kind, source_book_page=source_book_page,
+            )
+        finally:
+            self._active_verified_admission = None
+
+    def _admit(self, frame, source, *, kind, source_book_page=False):
+        text = _first_person_frame(frame)
+        if source_book_page:
+            # The Laboratory stores the ORIGINAL verified source bytes with
+            # print-style newlines in its book ledger. Doctor's existing
+            # world ingress intentionally normalizes all whitespace. For
+            # a verified BOOK READ only, normalize that same whitespace
+            # *before* the canonical admission equality check, so a real
+            # book's content is neither rejected nor silently rewritten.
+            # Keep original full source and independent receipt unchanged.
+            text = " ".join(text.split())
+            frame = {"inner": text, "spoken_aloud": frame["spoken_aloud"]}
+        if self._active_verified_admission != (source, text):
+            raise PermissionError("Laboratory experience was not verified by the host")
         if not source.startswith("laboratory-home:"):
             raise PermissionError("Unapproved lived Laboratory source")
         if len(source) > 225:
@@ -108,11 +152,11 @@ class DoctorHomeBridge:
             return {"status": "already_admitted",
                     "memory_id": previous[0]["id"],
                     "subject": frame}
-        outcome = self.doctor.ingest({
+        outcome = self.doctor._ingest_verified_laboratory({
             "channel": "world", "percept": text,
             "kind": kind, "source": source,
             "confidence": 1.0,
-        })
+        }, bridge=self)
         if outcome["ingress"]["subject_text"] != text:
             raise RuntimeError("Doctor ingress changed verified world wording")
         return {"status": "admitted", "memory_id": outcome["memory_id"],
@@ -138,12 +182,23 @@ class DoctorHomeBridge:
                 result[domain] = {k: records[k] for k in keys if k in records}
         return _hash(result)
 
-    def observe(self):
-        """Coherent local world perception, not a prompted account of being at home."""
+    def observe(self, *, cancelled=None):
+        """Source-backed LOOK; optionally decline before physical perception.
+
+        The offline host passes its stop predicate. This closes cancellation
+        during bridge preflight, but cannot make an unrelated Event.set()
+        atomic with the original Laboratory's SQLite LOOK transaction.
+        """
+        if cancelled is not None and cancelled():
+            return None
         before = self.subject.verify()
         initial_station = self.subject.embodied.verify()["station"]
         with self.world._open() as db:
             before_state = self._physical_stamp(db)
+        # World verification and stamp collection may take time. Recheck at
+        # the last bridge-controlled boundary before original physical LOOK.
+        if cancelled is not None and cancelled():
+            return None
         frame = self.subject.observe()
         after = self.subject.verify()
         final_station = self.subject.embodied.verify()["station"]
@@ -160,14 +215,14 @@ class DoctorHomeBridge:
             "epoch": after["world_epoch"], "station": final_station,
             "state": after_state, "text": frame["inner"],
         })
-        return self._admit(frame, source, kind="observation")
+        return self._admit_verified(frame, source, kind="observation")
 
     @staticmethod
     def _check_action_proof(op, args, event):
         """Prevent a retry from binding an old receipt to a different request."""
         if op == "walk":
             if event.get("kind") != "move" or event.get("after_station") != args.get("station"):
-                raise RuntimeError("Mismatched embodied movement receipt")
+                raise _ActionReceiptMismatch("Mismatched embodied movement receipt")
         elif op == "book":
             action = event.get("action", {})
             expected = {"op": args.get("operation"), "book_id": args.get("book_id")}
@@ -175,23 +230,297 @@ class DoctorHomeBridge:
                 if key in args:
                     expected[key] = args[key]
             if action != expected:
-                raise RuntimeError("Mismatched book operation receipt")
+                raise _ActionReceiptMismatch("Mismatched book operation receipt")
         elif op in ("take_book", "put_book"):
             action = event.get("action", {})
             expected = "take" if op == "take_book" else "put"
             if (action.get("op") != expected or
                     action.get("book_id") != args.get("book_id") or
                     (op == "put_book" and action.get("anchor_id") != args.get("anchor_id"))):
-                raise RuntimeError("Mismatched custody receipt")
+                raise _ActionReceiptMismatch("Mismatched custody receipt")
         elif op == "measure":
             if any(event.get(k) != v for k, v in {
                 "instrument": args.get("instrument"),
                 "object_id": args.get("object_id"),
                 "quantity": args.get("quantity"),
             }.items()):
-                raise RuntimeError("Mismatched instrument receipt")
+                raise _ActionReceiptMismatch("Mismatched instrument receipt")
         elif event.get("op") != op or event.get("args") != args:
-            raise RuntimeError("Mismatched domestic/rhythm receipt")
+            raise _ActionReceiptMismatch("Mismatched domestic/rhythm receipt")
+
+    def _intent_path(self) -> Path:
+        """Host action reservations live beside, never inside, the world DB."""
+        path = getattr(self.world, "path", None)
+        if not isinstance(path, (str, Path)):
+            raise RuntimeError("A durable Laboratory world path is required")
+        return Path(str(path) + ".doctor-action-intents.sqlite3")
+
+    @contextmanager
+    def _locked_action_intent(self, op: str, event_id: str, args: dict):
+        """Durably reserve an action ID, then serialize its world/brain replay.
+
+        The first committed reservation survives a killed process. A separate
+        SQLite IMMEDIATE transaction remains open across the physical action
+        and first-person admission, so competing local processes cannot both
+        pass the cross-domain preflight. This is host coordination, not memory
+        or an independent world authority. All cooperating callers must use
+        this bridge; a privileged external Laboratory writer is not covered.
+        """
+        # A killed child may have committed a canonical Noesis work motor
+        # binding before it ever reached this journal. Such an ID cannot be
+        # recycled by sleep, walking, or another non-work action, even when
+        # neither a Doctor intent nor an aborted-ID tombstone exists. Query
+        # the ONE BrainStore before taking the world journal lock to retain
+        # the established policy-to-journal lock ordering. This is a trusted
+        # cooperative-host boundary, not a privileged-writer transaction.
+        if op not in ("experiment", "repair"):
+            from .noesis_lab_work import inspected_noesis_motor_bindings
+            bindings = inspected_noesis_motor_bindings(self, event_id)
+            # The M2 authorized day policy also legitimately reserves actions
+            # such as advance/light/extinguish before crossing this boundary.
+            # Permit ONLY its exact authorized action, never reuse that ID for
+            # sleep, walking or any unrelated domain. A duplicate or stale
+            # canonical binding still fails closed.
+            if bindings and not (
+                len(bindings) == 1
+                and bindings[0]["selected_action"] == op
+                and bindings[0]["selector_authority"] == "original_noesis"
+                and bindings[0]["motor_authorization"] == "authorized"
+            ):
+                raise PermissionError(
+                    "Laboratory action ID already bound to an original-Noesis work decision or other action domain"
+                )
+        payload = _stable({"op": op, "args": args})
+        with sqlite3.connect(
+            self._intent_path(), isolation_level=None, timeout=30,
+        ) as db:
+            db.execute("PRAGMA busy_timeout=30000")
+            db.execute("PRAGMA synchronous=FULL")
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS doctor_action_intents ("
+                "event_id TEXT PRIMARY KEY, request_json TEXT NOT NULL, "
+                "status TEXT NOT NULL CHECK(status IN ('pending','complete')))"
+            )
+            # A receipt-free crash may leave a canonical Noesis motor binding.
+            # The existing world-side journal keeps a permanent ID tombstone,
+            # with no new memory authority and no schema migration.
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS doctor_aborted_action_ids ("
+                "event_id TEXT PRIMARY KEY, request_json TEXT NOT NULL)"
+            )
+            db.execute("BEGIN IMMEDIATE")
+            if db.execute(
+                "SELECT 1 FROM doctor_aborted_action_ids WHERE event_id=?",
+                (event_id,),
+            ).fetchone():
+                db.execute("ROLLBACK")
+                raise RuntimeError(
+                    "Laboratory action ID permanently abandoned before world commit"
+                )
+            row = db.execute(
+                "SELECT request_json FROM doctor_action_intents WHERE event_id=?",
+                (event_id,),
+            ).fetchone()
+            if row is not None and row[0] != payload:
+                db.execute("ROLLBACK")
+                raise RuntimeError("Action event ID already reserved for another Laboratory action domain or request")
+            if row is None:
+                db.execute(
+                    "INSERT INTO doctor_action_intents "
+                    "(event_id,request_json,status) VALUES (?,?,'pending')",
+                    (event_id, payload),
+                )
+            db.execute("COMMIT")  # durable BEFORE the Laboratory action
+            db.execute("BEGIN IMMEDIATE")  # held across world + brain admission
+            try:
+                yield
+            except BaseException:
+                # A rejected pre-world action must not poison startup replay.
+                # Keep the journal lock while consulting the original world's
+                # durable receipts. Only a PROVEN absence in the exact
+                # action's authoritative domain permits removal. A receipt
+                # in another domain proves a conflicting ID, not this action.
+                # If the world cannot be inspected, fail closed: leave pending.
+                try:
+                    with self.world._open() as world_db:
+                        table = _ACTION_DOMAINS[op]
+                        exists = world_db.execute(
+                            "SELECT 1 FROM sqlite_master "
+                            "WHERE type='table' AND name=?", (table,),
+                        ).fetchone() is not None
+                        if not exists:
+                            # A missing authoritative table may indicate a
+                            # migration or damaged world, never proven absence.
+                            raise RuntimeError("Missing Laboratory action receipt table")
+                        row = world_db.execute(
+                            "SELECT 1 FROM " + table +
+                            " WHERE event_id=? LIMIT 1", (event_id,),
+                        ).fetchone()
+                        keep_pending = row is not None
+                        if keep_pending:
+                            # Same-domain event IDs can belong to an entirely
+                            # different physical request. Authenticate the
+                            # receipt AND compare its action identity before
+                            # retaining a recoverable reservation.
+                            event, _ = _row(world_db, table, event_id)
+                            try:
+                                self._check_action_proof(op, args, event)
+                            except _ActionReceiptMismatch:
+                                keep_pending = False
+                    if keep_pending:
+                        db.execute("ROLLBACK")  # genuine/uncertain post-world action
+                    else:
+                        db.execute(
+                            "DELETE FROM doctor_action_intents "
+                            "WHERE event_id=? AND request_json=? AND status='pending'",
+                            (event_id, payload),
+                        )
+                        db.execute("COMMIT")  # no physical event to recover
+                except Exception:
+                    if db.in_transaction:
+                        db.execute("ROLLBACK")  # preserve uncertain intent
+                raise
+            else:
+                db.execute(
+                    "UPDATE doctor_action_intents SET status='complete' "
+                    "WHERE event_id=? AND request_json=?",
+                    (event_id, payload),
+                )
+                db.execute("COMMIT")
+
+    def existing_action_intent(self, event_id: str) -> dict | None:
+        """Read a PREEXISTING Doctor reservation without manufacturing one.
+
+        A physical Laboratory receipt proves an action happened, not its
+        author. Historical replay must check Doctor's durable reservation
+        before act() could create an otherwise absent intent.
+        """
+        if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+            raise ValueError("Stable bounded action identity required")
+        path = self._intent_path()
+        if not path.is_file():
+            return None
+        with sqlite3.connect(path, timeout=30) as db:
+            row = db.execute(
+                "SELECT request_json,status FROM doctor_action_intents "
+                "WHERE event_id=?", (event_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        request = json.loads(row[0])
+        if (not isinstance(request, dict) or set(request) != {"op", "args"}
+                or type(request["op"]) is not str
+                or type(request["args"]) is not dict
+                or row[1] not in ("pending", "complete")):
+            raise RuntimeError("Invalid Doctor-owned Laboratory action reservation")
+        return {"event_id": event_id, **request, "status": row[1]}
+
+    def abandon_proven_uncommitted_intent(
+        self, event_id: str, op: str, args: dict,
+    ) -> bool:
+        """Drop only a pending reservation with NO physical receipt anywhere.
+
+        Used by the cooperative shipping host after a killed process between
+        durable intent reservation and original Laboratory world commit.
+        Check every known authoritative domain under an IMMEDIATE journal
+        transaction before deletion. Never erase a committed action or a
+        reservation whose physical outcome is uncertain.
+        """
+        if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+            raise ValueError("Stable bounded Laboratory action identity required")
+        if op not in _ACTION_DOMAINS or type(args) is not dict:
+            raise PermissionError("Unknown Laboratory action intent")
+        path = self._intent_path()
+        if not path.is_file():
+            raise RuntimeError("Missing durable Laboratory action journal")
+        with sqlite3.connect(path, isolation_level=None, timeout=30) as db:
+            db.execute("PRAGMA busy_timeout=30000")
+            db.execute("PRAGMA synchronous=FULL")
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT request_json,status FROM doctor_action_intents "
+                "WHERE event_id=?", (event_id,),
+            ).fetchone()
+            if (row is None or row[0] != _stable({"op": op, "args": args})
+                    or row[1] != "pending"):
+                raise RuntimeError("Pending Doctor intent identity changed")
+            with self.world._open() as world_db:
+                for table in sorted(set(_ACTION_DOMAINS.values())):
+                    exists = world_db.execute(
+                        "SELECT 1 FROM sqlite_master "
+                        "WHERE type='table' AND name=?", (table,),
+                    ).fetchone()
+                    if not exists:
+                        if table == _ACTION_DOMAINS[op]:
+                            raise RuntimeError("Missing authoritative receipt table")
+                        continue
+                    if world_db.execute(
+                        "SELECT 1 FROM " + table + " WHERE event_id=? LIMIT 1",
+                        (event_id,),
+                    ).fetchone():
+                        raise RuntimeError(
+                            "Cannot abandon intent with a physical world receipt"
+                        )
+            # Retire the exact ID atomically with removing it from the
+            # active replay queue. Never reuse a previously bound motor ID.
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS doctor_aborted_action_ids ("
+                "event_id TEXT PRIMARY KEY, request_json TEXT NOT NULL)"
+            )
+            db.execute(
+                "INSERT INTO doctor_aborted_action_ids(event_id,request_json) "
+                "VALUES (?,?)", (event_id, row[0]),
+            )
+            removed = db.execute(
+                "DELETE FROM doctor_action_intents "
+                "WHERE event_id=? AND request_json=? AND status='pending'",
+                (event_id, row[0]),
+            ).rowcount
+            if removed != 1:
+                raise RuntimeError("Pending Doctor intent changed during abandonment")
+            db.execute("COMMIT")
+        return True
+
+    def abandoned_action_intent(self, event_id: str) -> bool:
+        """Read-only permanent retirement check in the existing world journal."""
+        if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+            raise ValueError("Stable bounded Laboratory action identity required")
+        path = self._intent_path()
+        if not path.is_file():
+            return False
+        with sqlite3.connect(path, timeout=30) as db:
+            present = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                "AND name='doctor_aborted_action_ids'"
+            ).fetchone()
+            if not present:
+                return False
+            return db.execute(
+                "SELECT 1 FROM doctor_aborted_action_ids WHERE event_id=?",
+                (event_id,),
+            ).fetchone() is not None
+
+    def pending_action_intents(self) -> tuple[dict, ...]:
+        """Host-only durable replay queue, never a subject-facing memory."""
+        path = self._intent_path()
+        if not path.is_file():
+            return ()
+        with sqlite3.connect(path, timeout=30) as db:
+            rows = db.execute(
+                "SELECT event_id,request_json FROM doctor_action_intents "
+                "WHERE status='pending' ORDER BY rowid"
+            ).fetchall()
+        return tuple(
+            {"event_id": event_id, **json.loads(request)}
+            for event_id, request in rows
+        )
+
+    def recover_pending_actions(self) -> tuple[dict, ...]:
+        """Replay only previously authorized, durably reserved action IDs."""
+        return tuple(
+            self.act(item["op"], event_id=item["event_id"], **item["args"])
+            for item in self.pending_action_intents()
+        )
 
     def act(self, op: str, *, event_id: str, **args):
         """Bounded physical action plus deduplicated first-person Doctor ingress."""
@@ -199,12 +528,36 @@ class DoctorHomeBridge:
             raise PermissionError("Action unavailable through Doctor's subject port")
         if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
             raise ValueError("Stable bounded action identity required")
+        with self._locked_action_intent(op, event_id, args):
+            return self._act_reserved(op, event_id, args)
+
+    def _act_reserved(self, op: str, event_id: str, args: dict):
+        """Execute only while the durable cross-process intent lock is held."""
         # Return old *admitted* experiences on a retry even when daily time
         # has changed since the original action. Never regenerate a subjective
         # result from the new world state for an old source receipt.
         with self.world._open() as db:
+            table = _ACTION_DOMAINS[op]
+            # Action IDs identify host intents across every Laboratory domain,
+            # not merely within the table chosen by the current operation.
+            # This rejects already-committed cross-domain reuse. The shipping
+            # host must still serialize concurrent writers across processes.
+            existing_tables = {
+                row[0] for row in db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            for other_table in sorted(set(_ACTION_DOMAINS.values()) - {table}):
+                if other_table in existing_tables and db.execute(
+                    "SELECT 1 FROM " + other_table + " WHERE event_id=? LIMIT 1",
+                    (event_id,),
+                ).fetchone():
+                    raise RuntimeError(
+                        "Action event ID already belongs to another Laboratory action domain"
+                    )
+            column = _EVENT_PAYLOAD_COLUMNS.get(table, "envelope")
             known = db.execute(
-                "SELECT envelope,event_hash FROM " + _ACTION_DOMAINS[op] +
+                "SELECT " + column + ",event_hash FROM " + table +
                 " WHERE event_id=?", (event_id,),
             ).fetchone()
         if known is not None:
@@ -238,7 +591,10 @@ class DoctorHomeBridge:
             e, cursor = _row(db, _ACTION_DOMAINS[op], event_id)
             self._check_action_proof(op, args, e)
         source = "laboratory-home:action:" + cursor
-        return self._admit(result, source, kind="observation")
+        return self._admit_verified(
+            result, source, kind="observation",
+            source_book_page=(op == "book" and args.get("operation") == "read"),
+        )
 
     def request_cognition(self, *, trigger="laboratory_home"):
         """Actual Doctor cognition is available, not a scripted second policy.

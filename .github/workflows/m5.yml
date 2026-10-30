@@ -1,0 +1,127 @@
+name: M5 semantic and source-backed integration
+on:
+  push:
+    branches: [integration/m5]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-embedding-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Install source-local embedding model without cloud APIs
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > /tmp/m5-ollama-embeddings.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull nomic-embed-text
+      - name: Exercise actual Ollama embeddings and deterministic fallback
+        run: |
+          python - <<'PY'
+          import json, math
+          from doctor_lives.semantic_intentions import LocalOllamaEmbeddings, semantic_scores, semantic_category
+          model=LocalOllamaEmbeddings("nomic-embed-text")
+          vectors=model.embed_many(["I want to examine the apparatus", "I wish to investigate the device"])
+          assert len(vectors)==2 and len(vectors[0])==len(vectors[1])>1
+          assert all(math.isfinite(n) for v in vectors for n in v)
+          sample="I wish to collaborate with the scientist"
+          scores=semantic_scores(sample,embeddings=model)
+          assert len(scores)==10 and all(math.isfinite(n) for n in scores.values())
+          assert semantic_category(sample,embeddings=model) in scores
+          assert semantic_category(sample) == "cooperate"
+          print(json.dumps({"provider":"LocalOllamaEmbeddings","model":"nomic-embed-text",
+                            "dimensions":len(vectors[0]),"local":True,
+                            "embedded_category":semantic_category(sample,embeddings=model),
+                            "fallback_category":semantic_category(sample)},sort_keys=True))
+          PY
+  semantics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Verify 30 intentions and all paraphrases
+        run: |
+          python -m unittest discover -s tests -p test_verify_semantics.py -v
+          python -m unittest discover -s tests -p test_local_ollama_transport.py -v
+          python -m unittest discover -s tests -p test_chatgpt_semantics.py -v
+          python scripts/verify_semantics.py --out /tmp/m5-semantic-evidence.json
+      - name: Preserve semantic mapping results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-semantic-results
+          path: /tmp/m5-semantic-evidence.json
+          if-no-files-found: warn
+  default-cli-ingress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Default shipping entrypoint refuses all M3 forged ingress
+        run: |
+          python -m unittest discover -s tests -p test_m5_ingress_shipping.py -v
+          python -m unittest discover -s tests -p test_d3_adversarial_actual_paths.py -v
+  source-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: ChatGPT-authored test fixture through original Noesis and actual Laboratory
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          set -euo pipefail
+          python scripts/chatgpt_standin_probe.py --out /tmp/m5-chatgpt-standin.json --minimum-holdout 10
+      - name: Run unchanged M4 and M2 evidence gates
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p test_verify_open.py -v
+          python -m unittest discover -s tests -p test_m5_donors.py -v
+          python -m unittest discover -s tests -p test_lab_runtime.py -v
+          python scripts/run_m4_open.py --run /tmp/m5-open --lab-root donor-laboratory --provider fallback
+          python scripts/verify_open.py --run /tmp/m5-open --lab-root donor-laboratory
+          python scripts/verify_day.py --run /tmp/m5-open/fallback-day --lab-root donor-laboratory
+          python scripts/m5_attribute.py --run /tmp/m5-open --out /tmp/m5-attribution.json
+          python scripts/verify_semantics.py --report /tmp/m5-attribution.json --out /tmp/m5-semantics-full.json
+          python scripts/m5_donor_ablation.py --run /tmp/m5-open --out /tmp/m5-donor-audit.json
+      - name: Preserve source ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-source-ledgers
+          path: |
+            /tmp/m5-open/
+            /tmp/m5-attribution.json
+            /tmp/m5-semantics-full.json
+            /tmp/m5-donor-audit.json
+            /tmp/m5-chatgpt-standin.json
+          if-no-files-found: warn

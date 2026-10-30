@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .cognition import PretoriusBrain
-from .ingress import project_raw_ingress
+from .ingress import IngressProjectionError, project_raw_ingress
+from .models import SubjectFrame
 from .projection import ProjectionContext
 from .subject_inquiry import (
     SubjectInquiryAuthorizationError,
@@ -56,9 +57,137 @@ class PretoriusBrainPort:
         self.brain = PretoriusBrain(state_dir, neural_config=neural_config)
         self._recollection_controller: HostRecollectionController | None = None
         self._pending_subject_inquiry: tuple[object, str, str, int] | None = None
+        # Host-only physical admission capabilities. This is intentionally
+        # NOT a public model API or an alternative memory store.
+        self._verified_laboratory_bridges: set[object] = set()
 
     def ingest(self, event: Mapping[str, Any]) -> dict[str, Any]:
-        """Project raw chassis input before it can become Pretorius's experience."""
+        """Untrusted chassis input may NOT assert firsthand physical truth.
+
+        WORLD text becomes explicitly attributed external report evidence;
+        WORLD percept fields cannot be admitted through this public entrypoint.
+        Only a separately authorized, source-backed Laboratory bridge can
+        admit actual physical lived observations.
+        """
+        return self._project_and_ingest(event, laboratory_verified=False)
+
+    def _register_laboratory_bridge(self, bridge: object) -> None:
+        """Trusted in-process host registration; NOT a security sandbox."""
+        from .lab_home_bridge import DoctorHomeBridge
+
+        if type(bridge) is not DoctorHomeBridge or bridge.doctor is not self:
+            raise PermissionError("Only a bound original Laboratory host can register")
+        if bridge.subject.habitat is not bridge.world:
+            raise PermissionError("Laboratory subject and physical world do not match")
+        bridge.subject.verify()
+        self._verified_laboratory_bridges.add(bridge)
+
+    def _ingest_verified_laboratory(self, event: Mapping[str, Any], *,
+                                    bridge: object) -> dict[str, Any]:
+        """Accept a one-use verified host handoff, never an asserted source key.
+
+        The original DoctorHomeBridge verifies actual world/percept or action
+        receipts before issuing this in-process handoff. An arbitrary caller
+        supplying a syntactically valid Laboratory source string is denied.
+        """
+        from .lab_home_bridge import DoctorHomeBridge
+
+        if (type(bridge) is not DoctorHomeBridge
+                or bridge not in self._verified_laboratory_bridges
+                or bridge.doctor is not self
+                or not isinstance(event, Mapping)
+                or event.get("channel") != "world"
+                or not isinstance(event.get("percept"), str)
+                or bridge._active_verified_admission != (
+                    event.get("source"), event.get("percept")
+                )):
+            raise PermissionError("No active, source-verified Laboratory handoff")
+        return self._project_and_ingest(event, laboratory_verified=True)
+
+    def _ingest_authorized_sensus(self, event: Mapping[str, Any], *,
+                                   organ: object) -> dict[str, Any]:
+        """Trusted host-to-Sensus boundary; not an untrusted model API.
+
+        One existing SensusOrgan tied to THIS original brain must explicitly
+        offer an already-verified percept. Host authority is a research
+        assumption here, not a cryptographic attestation.
+        """
+        from .organs import SensusOrgan
+        if (type(organ) is not SensusOrgan
+                or organ._port is not self
+                or event.get("channel") not in ("world", "tool")):
+            raise PermissionError("Percept is not from the bound Sensus host")
+        return self._project_and_ingest(
+            event, laboratory_verified=(event["channel"] == "world"),
+        )
+
+    def _ingest_verified_virtual_world(self, event: Mapping[str, Any], *,
+                                       environment: object,
+                                       receipt: object) -> dict[str, Any]:
+        """Require the bound world provider to independently verify receipt."""
+        from .virtual_world_port import (
+            VirtualWorldEnvironmentPort, VirtualWorldReceipt,
+        )
+        if (type(environment) is not VirtualWorldEnvironmentPort
+                or type(receipt) is not VirtualWorldReceipt
+                or environment._runtime._port is not self
+                or not environment._provider.verify_receipt(receipt)
+                or receipt.world_id != environment._world_id
+                or receipt.world_epoch != environment._epoch
+                or event.get("channel") != "world"
+                or event.get("percept") != receipt.first_person
+                or event.get("source") != (
+                    "virtual-world:" + receipt.world_id + ":"
+                    + receipt.world_epoch + ":" + receipt.kind + ":"
+                    + receipt.event_id
+                )):
+            raise PermissionError("Unverified virtual-world source")
+        return self._project_and_ingest(event, laboratory_verified=True)
+
+    def _ingest_mock_fixture(self, event: Mapping[str, Any], *,
+                             provider: object, observation: object) -> dict[str, Any]:
+        """Admit one explicitly synthetic sensor fixture as a REPORTED event.
+
+        This is neither a real-world attestation nor permission to actuate.
+        The typed test provider owns its finite schedule; no caller may
+        manufacture synthetic observation authority via source labels alone.
+        """
+        from .environment_port import MockRobotEnvironmentPort, MockSensorObservation
+
+        if (type(provider) is not MockRobotEnvironmentPort
+                or type(observation) is not MockSensorObservation
+                or provider._port is not self
+                or observation not in provider._observations
+                or not provider._authorized
+                or event.get("channel") != "world"
+                or event.get("percept") != observation.first_person
+                or event.get("source") != (
+                    "mock-robot-fixture:" + provider._session + ":"
+                    + observation.event_id
+                )):
+            raise PermissionError("No authenticated synthetic fixture")
+        return self._project_and_ingest(
+            event, laboratory_verified=False, mock_fixture=True,
+        )
+
+    def _project_and_ingest(self, event: Mapping[str, Any], *,
+                            laboratory_verified: bool,
+                            mock_fixture: bool = False) -> dict[str, Any]:
+        if not isinstance(event, Mapping):
+            raise TypeError("Ingest requires a typed mapping")
+        reserved = (
+            "laboratory-home:", "virtual-world:",
+            "sensus-pilot-verified:", "mock-robot-fixture:",
+        )
+        claimed = event.get("source")
+        # In particular, an untrusted report with an invented Laboratory
+        # hash must not poison an eventual REAL world receipt's idempotency
+        # key. Source namespaces belong to provider verification, not caller
+        # strings or apparent first-person wording.
+        if (not (laboratory_verified or mock_fixture)
+                and isinstance(claimed, str)
+                and claimed.strip().startswith(reserved)):
+            raise PermissionError("Reserved physical or provider source authority")
         projected = project_raw_ingress(
             event,
             context=ProjectionContext(
@@ -67,6 +196,8 @@ class PretoriusBrainPort:
                 source_state_digest=self.brain.store.digest(),
                 projection_rule_version="subject-interface-a12-port",
             ),
+            _laboratory_verified=laboratory_verified,
+            _mock_fixture=mock_fixture,
         )
         result = self.brain.ingest(projected.experience)
         result["ingress"] = {
@@ -82,6 +213,16 @@ class PretoriusBrainPort:
 
     def view(self) -> dict[str, Any]:
         return asdict(self.brain.cognitive_view())
+
+    def subject_frame(self, user_input: str | None = None) -> SubjectFrame:
+        """Host-only typed subject projection for the single Ipseity admission seam.
+
+        The returned SubjectFrame is factory-produced by the existing Doctor
+        projector. This method does NOT hand out an engineer audit or certify
+        durable awareness admission. A conforming production host must still
+        route the result through its chosen one authoritative access gate.
+        """
+        return self.brain.render_request(user_input).subject_frame
 
     def render_request(self, user_input: str | None = None) -> dict[str, Any]:
         return self.brain.render_request(user_input).to_dict()
@@ -165,6 +306,10 @@ class PretoriusBrainPort:
             "schema": "the-doctor-lives.subject-recollection.v1",
             "subject_frame": list(frame.renderer_context()),
         }
+
+    def heartbeat(self, ticks: int = 1) -> dict[str, Any]:
+        """Host-scheduled aging and endogenous thought via the existing brain."""
+        return self.brain.heartbeat(ticks)
 
     def sleep(self, ticks: int = 12) -> dict[str, Any]:
         return self.brain.sleep(ticks)

@@ -1,0 +1,88 @@
+name: M5 seventeen full-text actual Laboratory acceptance
+on:
+  push:
+    branches: [integration/m5]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  seventeen-full-text-and-source-bound-lived-readings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout immutable Laboratory book text/importer/custody source
+        uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - name: Checkout independently reviewed scene/Sensus donor
+        uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 802e459ee68950414347d5fa324484c034f57b81
+          path: donor-sensus
+      - name: Checkout independently reviewed Affectus donor
+        uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: donor-affectus
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin all donors and install actual Doctor and durable Ipseity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C donor-laboratory rev-parse HEAD)" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+          test "$(git -C donor-sensus rev-parse HEAD)" = "802e459ee68950414347d5fa324484c034f57b81"
+          test "$(git -C donor-affectus rev-parse HEAD)" = "904bf11861700739ccc03d4b0d4340ff3422a7d3"
+          git clone --quiet https://github.com/Azimn/synthetic-ipseity.git "$RUNNER_TEMP/synthetic-ipseity"
+          git -C "$RUNNER_TEMP/synthetic-ipseity" checkout --detach e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          test "$(git -C "$RUNNER_TEMP/synthetic-ipseity" rev-parse HEAD)" = "e2d1dc3978c952e59d270a29e84704c8a1fe264a"
+          python -m pip install -e "$RUNNER_TEMP/synthetic-ipseity"
+          python -m pip install -e .
+      - name: Build ALL 17 full verified text editions and physically read EACH as Pretorius
+        shell: bash
+        env:
+          PYTHONPATH: donor-laboratory:donor-sensus
+        run: |
+          set -euo pipefail
+          python tools/verify_17_full_text_lab.py \
+            --lab-source donor-laboratory \
+            --affectus-source donor-affectus \
+            --output-dir "$RUNNER_TEMP/full-text-17"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          report = json.loads((Path(os.environ["RUNNER_TEMP"]) / "full-text-17" / "acceptance.json").read_text())
+          assert report["total_full_text_books"] == 17
+          assert report["pristine_unread_world_available"] is True
+          assert report["pristine_book_count"] == 17
+          assert report["pristine_prior_world_moves"] == 0
+          assert report["physical_shelves_verified"] == 17
+          assert report["actual_host_authorized_book_reads"] == 17
+          assert report["distinct_lived_read_memories"] == 17
+          assert report["actual_second_page_issued"] == 1
+          assert report["duplicate_read_memory_count"] == 0
+          assert report["brain_restart"] and report["world_restart"]
+          assert len(report["books"]) == 17
+          assert all(v["digital_segments"] > 10 for v in report["books"].values())
+          print("Source-backed 17/17 complete books, first+last segments, authenticated real-page receipts and restart verified")
+          PY
+      - name: Upload full-text physical Laboratory fixture and source evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-six-organ-17-fulltext-lab-fixture
+          path: |
+            ${{ runner.temp }}/full-text-17/unread-17-full-text-lab.sqlite3
+            ${{ runner.temp }}/full-text-17/verified-17-full-text-backup.sqlite3
+            ${{ runner.temp }}/full-text-17/seven-import.json
+            ${{ runner.temp }}/full-text-17/ten-import.json
+            ${{ runner.temp }}/full-text-17/acceptance.json
+            ${{ runner.temp }}/full-text-17/physical-world-proof.json
+            ${{ runner.temp }}/full-text-17/catalog.json
+          retention-days: 60
+          if-no-files-found: error

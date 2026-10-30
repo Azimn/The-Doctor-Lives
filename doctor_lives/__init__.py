@@ -60,6 +60,16 @@ from .ingress import (
     project_raw_ingress,
 )
 from .cognition import PretoriusBrain
+from .organs import (
+    AcquisitionReceipt,
+    AffectiveInfluence,
+    CognitiveProposal,
+    CognitivePulse,
+    SleepReplayReport,
+    OrganDescriptor,
+    ORGAN_REGISTRY,
+    SixOrganRuntime,
+)
 from .models import (
     CognitiveView,
     EngineerAuditCapability,
@@ -103,6 +113,14 @@ from .projection import (
 )
 
 __all__ = [
+    "AcquisitionReceipt",
+    "AffectiveInfluence",
+    "CognitiveProposal",
+    "CognitivePulse",
+    "SleepReplayReport",
+    "OrganDescriptor",
+    "ORGAN_REGISTRY",
+    "SixOrganRuntime",
     "PretoriusBrain",
     "CanonicalEvidenceAuthority",
     "EvidenceIntegrityError",
