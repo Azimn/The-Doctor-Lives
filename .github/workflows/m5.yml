@@ -1,7 +1,7 @@
 name: M5 semantic and source-backed integration
 on:
   push:
-    branches: [integration/m5]
+    branches: [integration/m5, integration/m6]
   workflow_dispatch:
 permissions:
   contents: read

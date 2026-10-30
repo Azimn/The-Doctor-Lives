@@ -1,7 +1,7 @@
 name: M4 real local-model open-day verification
 on:
   push:
-    branches: [integration/m4, integration/m5]
+    branches: [integration/m4, integration/m5, integration/m6]
   workflow_dispatch:
 permissions:
   contents: read

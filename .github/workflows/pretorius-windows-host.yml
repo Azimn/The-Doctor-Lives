@@ -2,7 +2,7 @@ name: Pretorius original Laboratory Windows host and sealed offline install
 
 on:
   push:
-    branches: [integration/m5]
+    branches: [integration/m5, integration/m6]
   pull_request:
     paths:
       - doctor_lives/lab_runtime.py

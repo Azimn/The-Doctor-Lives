@@ -2,7 +2,7 @@ name: Pretorius verified experience to physical action
 
 on:
   push:
-    branches: [integration/m5]
+    branches: [integration/m5, integration/m6]
   pull_request:
     paths:
       - doctor_lives/experience_to_action.py
