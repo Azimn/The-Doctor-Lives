@@ -72,7 +72,7 @@ def parser() -> argparse.ArgumentParser:
     x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-soak"); x.add_argument("--world", type=Path, required=True); x.add_argument("--evidence-log", type=Path, required=True); x.add_argument("--seconds", type=float, default=86400.0); x.add_argument("--segment-seconds", type=float, default=900.0); x.add_argument("--interval-seconds", type=float, default=30.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Offer Noesis real work only at a physically feasible bench")
-    x=sp.add_parser("lab-soak-verify"); x.add_argument("--evidence-log", type=Path, required=True)
+    x=sp.add_parser("lab-soak-verify"); x.add_argument("--evidence-log", type=Path, required=True); x.add_argument("--world", type=Path, default=None, help="Verify every work receipt against the original Laboratory and canonical Doctor")
     x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
@@ -163,8 +163,9 @@ def main(argv=None) -> int:
         emit_laboratory(work_laboratory(a.state, a.world, event_id=a.event_id), human=a.human, local_model=a.local_render_model)
         return 0
     if a.cmd == "lab-soak-verify":
-        from .lab_soak import read_soak_log
-        emit(read_soak_log(a.evidence_log))
+        from .lab_soak import read_soak_log, verify_soak_sources
+        emit(verify_soak_sources(a.state, a.world, a.evidence_log)
+             if a.world is not None else read_soak_log(a.evidence_log))
         return 0
     if a.cmd == "lab-soak":
         import signal
