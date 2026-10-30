@@ -143,6 +143,16 @@ def _validate_evidence_location(state: Path, world: Path, evidence: Path) -> Non
         stem + ".laboratory-host.lock",
     }
     reserved_paths = [canonical_world.with_name(name) for name in reserved_names]
+    # Existing hardlinks can put a canonical brain file outside its state
+    # directory, just as they can alias a world SQLite sidecar.
+    reserved_paths.extend(
+        canonical_state / name for name in (
+            "brain.sqlite3", "brain.sqlite3-wal", "brain.sqlite3-shm",
+            "brain.sqlite3-journal", "pretorius_recurrent.npz",
+            ".laboratory-host.lock",
+        )
+    )
+    reserved_names_folded = {name.casefold() for name in reserved_names}
     reserved_identity = {
         (item.stat().st_dev, item.stat().st_ino)
         for item in reserved_paths if item.exists()
@@ -152,8 +162,10 @@ def _validate_evidence_location(state: Path, world: Path, evidence: Path) -> Non
         if resolved == canonical_state or canonical_state in resolved.parents:
             raise ValueError("Engineering soak evidence must be outside the canonical brain")
         if (resolved.parent == canonical_world.parent
-                and (resolved.name in reserved_names
-                     or resolved.name.startswith(stem + "-mj"))):
+                and (resolved.name.casefold() in reserved_names_folded
+                     or resolved.name.casefold().startswith(
+                         stem.casefold() + "-mj"
+                     ))):
             raise ValueError("Engineering soak evidence collides with a Laboratory sidecar")
         if candidate.exists():
             stat = candidate.stat()
