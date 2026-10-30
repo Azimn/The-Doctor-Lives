@@ -99,21 +99,21 @@ def run_laboratory(
 
 
 def _recover_shipping_actions(bridge):
-    """Preflight EVERY pending action before any shipping-host replay.
+    """Safely reconcile all pending intents before admitting any lived memory.
 
-    A durable reservation alone is not evidence that the physical world
-    committed an action. In particular, restarting after a crash between
-    reservation and world commit must not execute a ghost motor command.
-    Original-Noesis work also needs its independently bound policy decision,
-    regardless of whether startup came through lab-work, sleep, or run.
-    The caller holds both cooperative authority locks throughout this check
-    and the ensuing original bridge reconciliation.
+    A killed process can leave an intent with no world effect. Never execute
+    that ghost motor command on restart: prove absence across every original
+    Laboratory receipt domain, then atomically discard its pending reservation
+    using the EXISTING Doctor bridge journal. For a committed receipt, verify
+    its exact action identity and original Noesis provenance before replay.
+    The caller holds both cooperative authority locks throughout.
     """
     from .lab_home_bridge import _ACTION_DOMAINS, _row
     from .noesis_lab_work import verify_noesis_work_replay
 
     pending = bridge.pending_action_intents()
-    # Validate the ENTIRE batch before admitting even the first memory.
+    committed, uncommitted = [], []
+    # Validate the ENTIRE batch before changing any journal or autobiography.
     with bridge.world._open() as db:
         for item in pending:
             op, event_id, args = item["op"], item["event_id"], item["args"]
@@ -131,24 +131,28 @@ def _recover_shipping_actions(bridge):
                 (event_id,),
             ).fetchone()
             if found is None:
-                # Do not silently turn a merely reserved motor command into
-                # a NEW physical event on cold restart. Preserve the pending
-                # reservation for explicit reconciliation rather than guess.
-                raise RuntimeError(
-                    "Uncommitted Laboratory intent: automatic physical replay denied"
-                )
+                uncommitted.append(item)
+                continue
             receipt, _ = _row(db, table, event_id)
             bridge._check_action_proof(op, args, receipt)
             if op in ("repair", "experiment"):
                 verify_noesis_work_replay(
                     bridge, event_id=event_id, action=op,
                 )
+            committed.append(item)
+    # An absent expected receipt might still be a conflicting receipt in
+    # another domain. The bridge rechecks ALL domains while holding the
+    # existing SQLite intent transaction and refuses uncertain outcomes.
+    for item in uncommitted:
+        bridge.abandon_proven_uncommitted_intent(
+            item["event_id"], item["op"], item["args"],
+        )
     recovered = bridge.recover_pending_actions()
     if bridge.pending_action_intents():
         raise RuntimeError("Unreconciled Laboratory action; host denied")
-    if len(recovered) != len(pending):
+    if len(recovered) != len(committed):
         raise RuntimeError("Laboratory recovery identity count changed")
-    return pending, recovered
+    return tuple(committed), recovered, tuple(uncommitted)
 
 
 def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
@@ -194,7 +198,7 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
                 )
         # Capture identities before replay so a recovered sleep is presented
         # only once. The bridge remains the sole durable intent authority.
-        pending_before, recovered = _recover_shipping_actions(bridge)
+        pending_before, recovered, abandoned = _recover_shipping_actions(bridge)
 
         # A historical receipt is allowed to replay after Pretorius has
         # genuinely walked elsewhere. This lookup grants NO authority: act()
@@ -217,6 +221,7 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
             "schema": "doctor-laboratory-offline-sleep.v1",
             "status": result["status"],
             "recovered": len(recovered),
+            "abandoned": len(abandoned),
             "subject_frames": subject_frames,
             "physical_sleep_minutes": 480,
             "clock": {"utc": clock.utc_iso, "beat": clock.beat},
@@ -255,7 +260,7 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         bridge = runtime.bind_laboratory(
             SubjectPort(SpatialHabitat(world)), authorized=True,
         )
-        pending_before, recovered = _recover_shipping_actions(bridge)
+        pending_before, recovered, abandoned = _recover_shipping_actions(bridge)
         # A recovered action ID cannot be reused for a different offered task.
         for intent in pending_before:
             if intent["event_id"] == event_id and (
@@ -315,6 +320,7 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
                 "action": action,
                 "selection": "historical_world_receipt_replay",
                 "recovered": len(recovered),
+                "abandoned": len(abandoned),
                 "subject_frames": subject_frames,
                 "clock": {"utc": clock.utc_iso, "beat": clock.beat},
             }
@@ -337,6 +343,7 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
             "action": executed["action"],
             "selection": "original_noesis",
             "recovered": len(recovered),
+            "abandoned": len(abandoned),
             "subject_frames": subject_frames,
             "clock": {"utc": clock.utc_iso, "beat": clock.beat},
         }
@@ -385,7 +392,7 @@ def _run_laboratory_session(
     bridge = runtime.bind_laboratory(
         SubjectPort(SpatialHabitat(world)), authorized=True,
     )
-    _, recovered = _recover_shipping_actions(bridge)
+    _, recovered, abandoned = _recover_shipping_actions(bridge)
     subject_frames = [item["subject"] for item in recovered]
     # Reconciliation may finish after an interrupt. Never start a fresh
     # observation when cancellation arrived during that recovery window.
@@ -423,6 +430,7 @@ def _run_laboratory_session(
         "schema": "doctor-laboratory-offline-run.v1",
         "status": "interrupted" if stop.is_set() else "completed",
         "recovered": len(recovered),
+        "abandoned": len(abandoned),
         "subject_frames": subject_frames,
         "pulses": pulses,
         "elapsed_seconds": round(time.monotonic() - started, 3),
