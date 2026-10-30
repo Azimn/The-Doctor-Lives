@@ -44,8 +44,12 @@ class ShippingDefaultIngressNegatives(unittest.TestCase):
         brain=PretoriusBrain(self.state)
         record=brain.store.get_memory(receipt["memory_id"])
         self.assertIsNotNone(record)
-        self.assertNotEqual(record["evidence_class"],"lived_runtime_memory")
+        # Hearing/reading the operator message is itself lived. Its dream
+        # claim must NOT become a physically witnessed Laboratory page.
+        self.assertEqual(record["evidence_class"],"lived_runtime_memory")
+        self.assertIn("I read a message",record["text"])
         self.assertFalse(record["source"].startswith("laboratory-home:action:"))
+        self.assertFalse(record["source"].startswith("laboratory-home:observe:"))
 
     def test_privileged_telemetry_not_in_subject_renderer(self):
         self.call("init")
