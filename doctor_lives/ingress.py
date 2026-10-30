@@ -391,7 +391,12 @@ def project_raw_ingress(
         text=event.subject_text,
         source=source,
         kind=kind,
-        external=(channel is IngressChannel.WORLD and not _laboratory_verified),
+        # The canonical Experience must preserve the operator's status as a
+        # reported external statement. The temporary exp_probe alone does not
+        # determine how the BrainStore classifies a memory.
+        external=((channel is IngressChannel.WORLD and not _laboratory_verified)
+                  or (channel is IngressChannel.USER
+                      and source=="operator:conversation")),
         **kwargs,
     )
 
