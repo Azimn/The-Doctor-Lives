@@ -116,8 +116,20 @@ class OperatorWork:
                         "SELECT source FROM memories WHERE evidence_class='lived_runtime_memory'")}
                 if not any("laboratory-home:action:"+h in lived for h in reads):
                     continue
-            if row["verb"]=="read_operator_reply" and not (self.workspace/row["target"]).exists():
-                continue
+            if row["verb"] in ("read_document", "read_operator_reply"):
+                path=self.workspace/row["target"]
+                if not path.exists():
+                    continue
+                physical_hash=sha256(path.read_bytes()).hexdigest()
+                # An unchanged file has nothing NEW to read. No amount of
+                # incrementing an event counter makes rereading identical
+                # source bytes a fresh operator reply or research document.
+                with self._connect() as db:
+                    prior=[json.loads(v[0]) for v in db.execute(
+                        "SELECT payload_json FROM operator_events WHERE op=?",
+                        (row["affordance_key"],))]
+                if any(v.get("file_after_sha")==physical_hash for v in prior):
+                    continue
             valid.append(row)
         return valid
 
