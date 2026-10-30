@@ -55,6 +55,8 @@ def parser() -> argparse.ArgumentParser:
     sp.add_parser("init")
     x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
     x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
+    x=sp.add_parser("lab-soak"); x.add_argument("--world", type=Path, required=True); x.add_argument("--evidence-log", type=Path, required=True); x.add_argument("--seconds", type=float, default=86400.0); x.add_argument("--segment-seconds", type=float, default=900.0); x.add_argument("--interval-seconds", type=float, default=30.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Offer Noesis real work only at a physically feasible bench")
+    x=sp.add_parser("lab-soak-verify"); x.add_argument("--evidence-log", type=Path, required=True)
     x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
     x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
     x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
@@ -107,6 +109,32 @@ def main(argv=None) -> int:
     if a.cmd == "lab-work":
         from .lab_runtime import work_laboratory
         emit_laboratory(work_laboratory(a.state, a.world, event_id=a.event_id), human=a.human)
+        return 0
+    if a.cmd == "lab-soak-verify":
+        from .lab_soak import read_soak_log
+        emit(read_soak_log(a.evidence_log))
+        return 0
+    if a.cmd == "lab-soak":
+        import signal
+        from threading import Event
+        from .lab_soak import soak_laboratory
+        stop = Event()
+        previous = {}
+        def request_stop(signum, frame):
+            stop.set()
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            previous[signum] = signal.getsignal(signum)
+            signal.signal(signum, request_stop)
+        try:
+            emit(soak_laboratory(
+                a.state, a.world, a.evidence_log,
+                target_seconds=a.seconds, segment_seconds=a.segment_seconds,
+                interval_seconds=a.interval_seconds,
+                work_interval_seconds=a.work_every_seconds, stop=stop,
+            ))
+        finally:
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
         return 0
     if a.cmd == "lab-run":
         import signal
