@@ -1,5 +1,6 @@
 """Adapted firsthand-claim negative control from stage03 and original Lab port."""
 import gc
+import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
@@ -31,6 +32,7 @@ class ClaimGateTests(unittest.TestCase):
         self.assertEqual(r.text,"")
         self.assertEqual(len(r.claims),0)
 
+@unittest.skipUnless(importlib.util.find_spec('pretorius_lab') is not None, 'Optional original Laboratory is checked in pinned CI')
 class ActualConversationTests(unittest.TestCase):
     def setUp(self):
         from scripts.run_m4_open import open_subject
