@@ -27,6 +27,7 @@ jobs:
           PYTHONPATH: donor-laboratory:.
           NO_REMOTE_INFERENCE: '1'
         run: |
+          set -euo pipefail
           test "$(git -C donor-laboratory rev-parse HEAD)" = 6e49795752835d64fa6fd63d16359669a1ca2ba7
           python scripts/run_m4_open.py --run /tmp/m4-study --lab-root donor-laboratory --provider fallback | tee /tmp/m4-output.json
       - name: Independently verify immutable study evidence
