@@ -100,11 +100,11 @@ def verify_source_ledger(report: dict) -> dict:
         # Pretorius-facing speech, including the persisted-speech path.
         require("[Verified first-person account]" not in speech
                 and all((ord(ch) >= 32 and not 127 <= ord(ch) <= 159)
-                        or ch == "\\n" for ch in speech)
+                        or ch == "\n" for ch in speech)
                 and not any(ch in speech for ch in
-                            ("\\u2028", "\\u2029", "\\u202a", "\\u202b",
-                             "\\u202c", "\\u202d", "\\u202e", "\\u2066",
-                             "\\u2067", "\\u2068", "\\u2069")),
+                            ("\u2028", "\u2029", "\u202a", "\u202b",
+                             "\u202c", "\u202d", "\u202e", "\u2066",
+                             "\u2067", "\u2068", "\u2069")),
                 "Persisted outgoing speech contains active controls or forged source heading")
         source_memory = memories.get(stored["source_memory_id"])
         require(source_memory is not None,
@@ -122,7 +122,7 @@ def verify_source_ledger(report: dict) -> dict:
                         "I have no verified firsthand actions to report.")
             require(speech == expected or
                     (bool(stored["model_called"])
-                     and speech.startswith(expected + "\\n")),
+                     and speech.startswith(expected + "\n")),
                     "Persisted outgoing speech differs from sourced deterministic reply")
             require(source_memory["source"] == "pretorius:conversation-speech"
                     and source_memory["evidence_class"] == "external_statement"
