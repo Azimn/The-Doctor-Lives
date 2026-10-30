@@ -18,6 +18,12 @@ Communications should fit the simulation's nineteenth-century setting. Mail is a
 
 An item should have a sender, intended recipient, writing and delivery times, an in-world source or location, and a clear provenance record. The Doctor encounters the delivered artifact through ordinary Laboratory perception and reading, not through raw system metadata. He is free to read later, disregard a pamphlet, reply after reflection, or write without being prompted. His decisions, relationships, and recollections may be affected by what he actually receives and does.
 
+## Phase One addendum: Parcels and physical deliveries
+
+The postal channel should eventually carry **objects and packages**, not just written messages. A parcel is a delivered physical world object: it arrives through the same historically paced mail flow, can have packaging, markings, a sender, and contents, and can be opened, examined, stored, or ignored by Pretorius. Its contents must become available only through appropriate in-world interaction, rather than appearing directly in his inventory or cognition.
+
+This would allow modest gifts, scientific materials, books, and unexpected artifacts to enter the Laboratory through a recognizable social mechanism. A future Phase Two communication instrument could even arrive as a mysterious parcel, linking the two phases naturally. The exact item logistics and constraints remain open for later design.
+
 ## Expansion path
 
 Initially, authored letters, period-appropriate publications, and a small number of simulated correspondents can populate the postal stream. When Frankenstein Village has stable residents, routines, and a shared world timeline, its characters can send and receive correspondence through the same channel. Local notes and longer-distance post can coexist, with delivery represented as actual events in the shared simulation.
