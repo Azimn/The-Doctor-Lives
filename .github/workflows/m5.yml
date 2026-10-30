@@ -91,6 +91,12 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -e .
+      - name: ChatGPT-authored test fixture through original Noesis and actual Laboratory
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          set -euo pipefail
+          python scripts/chatgpt_standin_probe.py --out /tmp/m5-chatgpt-standin.json
       - name: Run unchanged M4 and M2 evidence gates
         env:
           PYTHONPATH: donor-laboratory:.
@@ -115,4 +121,5 @@ jobs:
             /tmp/m5-attribution.json
             /tmp/m5-semantics-full.json
             /tmp/m5-donor-audit.json
+            /tmp/m5-chatgpt-standin.json
           if-no-files-found: warn
