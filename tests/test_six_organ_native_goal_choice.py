@@ -8,6 +8,8 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -386,3 +388,85 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
                 chooser.step(authorized_world_action=True)
             self.assertEqual(self.subject.embodied.verify()["revision"],
                              before)
+
+
+    def test_offline_cli_native_goal_origin_permission_and_cold_completion(self):
+        """Shipping CLI offers a goal opportunity, never chooses a book or route.
+
+        Three separate Python processes use one BrainStore and one original
+        Laboratory. A no-permission pass may originate a native explore goal
+        but must not perform a physical action. The third process completes
+        that persisted intention only after explicit world authorization.
+        """
+        fixture = self.install_fixture()
+        path = self.root / "cli-native-mind"
+        SixOrganRuntime.open(path, neural_config=config()).checkpoint()
+        world_epoch = self.subject.verify()["world_epoch"]
+
+        def cli(*args):
+            return subprocess.run(
+                [sys.executable, "-m", "doctor_lives.cli",
+                 "--state", str(path), "lab-native",
+                 "--world", str(self.root / "lab.sqlite3"),
+                 "--affectus-source", self.affectus, *args],
+                capture_output=True, text=True, timeout=120,
+            )
+
+        before = self.subject.embodied.verify()["revision"]
+        created = cli("--steps", "1")
+        self.assertEqual(created.returncode, 0, created.stderr)
+        first = json.loads(created.stdout)
+        self.assertEqual(first["status"], "goal_created")
+        self.assertEqual(first["receipts"][0]["kind"], "read_book")
+        self.assertEqual(first["receipts"][0]["selected_tendency"], "explore")
+        self.assertTrue(first["host_selected_goal_mapping"])
+        self.assertFalse(first["natural_language_goal_authorship_proven"])
+        self.assertFalse(first["uncoached_three_task_life_proven"])
+        self.assertEqual(first["cloud_calls"], 0)
+        self.assertEqual(self.subject.embodied.verify()["revision"], before)
+
+        denied = cli("--steps", "3")
+        self.assertEqual(denied.returncode, 0, denied.stderr)
+        self.assertEqual(json.loads(denied.stdout)["status"],
+                         "authorization_required")
+        self.assertEqual(self.subject.embodied.verify()["revision"], before)
+
+        completed = cli("--steps", "24", "--allow-world-actions")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        third = json.loads(completed.stdout)
+        self.assertEqual(third["status"], "completed")
+        self.assertLessEqual(third["steps"], 24)
+        self.assertTrue(third["original_world_epoch_unchanged"])
+        self.assertEqual(self.subject.verify()["world_epoch"], world_epoch)
+        self.assertRegex(third["clock"]["beat"], r"^@[0-9]{3}$")
+        read = third["receipts"][-1]
+        self.assertEqual(read["kind"], "read_book")
+        self.assertEqual(read["goal_id"], first["receipts"][0]["goal_id"])
+        memory = SixOrganRuntime.open(path)._port.brain.store.get_memory(
+            read["memory_id"]
+        )
+        self.assertIn(fixture["pages"][0], memory["text"])
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+        with self.world._open() as db:
+            reads = [json.loads(row[0]) for row in
+                     db.execute("SELECT payload FROM books_events")]
+        self.assertEqual(sum(e["action"]["op"] == "read" for e in reads), 1)
+
+        # An absent local donor is an honest failure before any new world act.
+        missing = cli("--affectus-source", str(self.root / "absent"))
+        self.assertNotEqual(missing.returncode, 0)
+        with self.world._open() as db:
+            self.assertEqual(sum(
+                json.loads(row[0])["action"]["op"] == "read"
+                for row in db.execute("SELECT payload FROM books_events")
+            ), 1)
+        print("R4_OFFLINE_NATIVE_CLI=" + json.dumps({
+            "cold_processes": 3,
+            "goal_origin": "original_neural_explore",
+            "goal_mapping": "host_reviewed",
+            "world_permission_required": True,
+            "physical_book_read": 1,
+            "canonical_memory": True,
+            "three_uncoached_goals_proven": False,
+        }, sort_keys=True))
