@@ -1,0 +1,58 @@
+name: M5 semantic and source-backed integration
+on:
+  push:
+    branches: [integration/m5]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  semantics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Verify 30 intentions and all paraphrases
+        run: |
+          python -m unittest discover -s tests -p test_verify_semantics.py -v
+          python scripts/verify_semantics.py --out /tmp/m5-semantic-evidence.json
+      - name: Preserve semantic mapping results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-semantic-results
+          path: /tmp/m5-semantic-evidence.json
+          if-no-files-found: warn
+  source-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Run unchanged M4 and M2 evidence gates
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p test_verify_open.py -v
+          python -m unittest discover -s tests -p test_lab_runtime.py -v
+          python scripts/run_m4_open.py --run /tmp/m5-open --lab-root donor-laboratory --provider fallback
+          python scripts/verify_open.py --run /tmp/m5-open --lab-root donor-laboratory
+          python scripts/verify_day.py --run /tmp/m5-open/fallback-day --lab-root donor-laboratory
+      - name: Preserve source ledgers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-source-ledgers
+          path: /tmp/m5-open/
+          if-no-files-found: warn
