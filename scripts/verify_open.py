@@ -76,11 +76,30 @@ def _open_receipts(path):
             result[r["event_id"]] = (r["op"], event, r["event_hash"])
     return result, capabilities
 
+def _original_neural_seed(checkpoint: Path, expected_seed: int, code: str):
+    """Independently decode the actual original recurrent checkpoint, not the
+    harness's unverified seed label. A duplicated checkpoint is one subject."""
+    import numpy as np
+    from doctor_lives.neural import PretoriusRecurrentSubstrate
+    if checkpoint.is_symlink() or not checkpoint.is_file():
+        fail(code, "missing actual original-neural persisted checkpoint")
+    try:
+        PretoriusRecurrentSubstrate._validate_checkpoint_file(checkpoint)
+        with np.load(checkpoint,allow_pickle=False) as stored:
+            cfg=json.loads(str(stored["cfg_json"].item()))
+        if int(cfg["seed"]) != expected_seed:
+            fail(code,"claimed neural seed disagrees with original checkpoint")
+    except (ValueError,TypeError,KeyError,OSError) as exc:
+        fail(code,"unverifiable original neural checkpoint: "+str(exc))
+    return sha256(checkpoint.read_bytes()).hexdigest()
+
+
 def _inspect_trial(root, item, lab_root, *, model_required=False):
     seed, folder = item.get("seed"), item.get("path")
     if type(seed) is not int:
         fail("a", "seed must be an integer")
     base = _relative(root, folder, "a")
+    fingerprint = _original_neural_seed(_relative(base, "brain/pretorius_recurrent.npz", "a"), seed, "a")
     meta = _json(_relative(base, "trial.json", "a"), "a")
     if meta.get("seed") != seed or meta.get("lab_pin") != LAB_PIN:
         fail("a", "seed or Lab source not attested")
@@ -232,6 +251,7 @@ def _inspect_trial(root, item, lab_root, *, model_required=False):
     # source records. No manifest-only self-report of distribution shifts.
     ablation = _relative(root, item.get("ablation_path"), "e")
     ablation_meta = _json(_relative(ablation,"trial.json","e"),"e")
+    _original_neural_seed(_relative(ablation, "brain/pretorius_recurrent.npz", "e"), seed, "e")
     if (ablation_meta.get("seed") != seed or ablation_meta.get("memory_enabled") is not False
             or meta.get("memory_enabled") is not True):
         fail("e", "unpaired seed or wrong history lesion")
@@ -252,7 +272,7 @@ def _inspect_trial(root, item, lab_root, *, model_required=False):
                 fail("e", "memory lesion did not use the same local inference provider")
     return {"types":types,"choices":choices,"proposals":proposals_count,
             "lesion_proposals":lesion_proposals, "lesion_choices":lesion_choices,
-            "seed":seed, "novel_used":first_used, "actions":len(seen_event_ids),
+            "seed":seed, "checkpoint":fingerprint, "novel_used":first_used, "actions":len(seen_event_ids),
             "days":set(c["day"] for c in meta["cycles"])}
 
 def verify(root: Path, lab_root: Path):
@@ -263,6 +283,7 @@ def verify(root: Path, lab_root: Path):
     if not isinstance(trials,list) or len(trials)<MIN_SEEDS:
         fail("a","fewer than twenty independent seeded multi-day trials")
     seen = set()
+    checkpoints=set()
     aggregate=Counter()
     proposals=Counter()
     lesions=Counter()
@@ -275,9 +296,10 @@ def verify(root: Path, lab_root: Path):
         fail("c","unknown inference mode")
     for item in trials:
         result=_inspect_trial(root,item,lab_root,model_required=(mode=="ollama"))
-        if result["seed"] in seen:
-            fail("a","duplicate neural seed")
+        if result["seed"] in seen or result["checkpoint"] in checkpoints:
+            fail("a","duplicate actual original-neural seed or persisted neural checkpoint")
         seen.add(result["seed"])
+        checkpoints.add(result["checkpoint"])
         kinds.update(result["types"])
         aggregate.update(result["choices"])
         proposals.update(result["proposals"])
