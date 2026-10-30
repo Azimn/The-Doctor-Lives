@@ -268,7 +268,10 @@ def project_raw_ingress(
             text=subject_text,
             source=source,
             kind=str(raw.get("kind") or "communication"),
-            external=False,
+            # Operator conversation statements remain external testimony.
+            # Only the ACT OF RECEIVING the message is experienced, never
+            # the operator's asserted physical event as lived world truth.
+            external=(source=="operator:conversation"),
             **kwargs,
         )
         event = _make_event(
