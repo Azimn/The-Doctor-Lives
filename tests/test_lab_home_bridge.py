@@ -8,6 +8,8 @@ import unittest
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.lab_home_bridge import DoctorHomeBridge
 from doctor_lives.neural import DEFAULT_CONFIG
+from doctor_lives.organs import SixOrganRuntime
+from doctor_lives.models import SubjectFrame, SubjectRendererCapability
 
 
 LAB_AVAILABLE = importlib.util.find_spec("pretorius_lab") is not None
@@ -123,6 +125,58 @@ class RealDoctorHomeBridgeTests(unittest.TestCase):
         retry = actor.observe()
         self.assertEqual(retry["status"], "already_admitted")
         self.assertEqual(retry["memory_id"], seen["memory_id"])
+
+
+@unittest.skipUnless(LAB_AVAILABLE, "Pinned Pretorius-Laboratory dependency required")
+class SixOrganLaboratoryParityTests(RealDoctorHomeBridgeTests):
+    """Exercise the SAME Laboratory world and existing bridge via six organs."""
+
+    def setUp(self):
+        super().setUp()
+        self.runtime = SixOrganRuntime(self.doctor)
+        self.bridge = self.runtime.bind_laboratory(self.port, authorized=True)
+
+    def test_six_organ_world_observation_action_memory_and_restart(self):
+        with self.assertRaises(PermissionError):
+            self.runtime.bind_laboratory(self.port)
+        first = self.bridge.observe()
+        self.assertEqual(first["status"], "admitted")
+        decision = self.runtime.noesis.deliberate(host_trigger="laboratory-parity")
+        self.assertTrue(decision.selected_tendency)
+        self.assertFalse(hasattr(decision, "world_receipt"))
+        walked = self.bridge.act(
+            "walk", event_id="six-organ-go-hall", station="station:hall"
+        )
+        self.assertEqual(walked["status"], "admitted")
+        hit = self.bridge.act(
+            "walk", event_id="six-organ-hit-stool",
+            station="station:shop:private"
+        )
+        self.assertEqual(hit["subject"]["spoken_aloud"], "Ow! My foot!")
+        self.assertIn("That was aloud?", hit["subject"]["inner"])
+        self.assertNotIn("foot_soreness", hit["subject"]["inner"])
+        frame = self.runtime.synthetic_ipseity.project_subject_frame()
+        self.assertIsInstance(frame, SubjectFrame)
+        for line in SubjectRendererCapability.read(frame):
+            self.assertNotIn("world_epoch", line)
+            self.assertNotIn("foot_soreness", line)
+        tick = self.doctor.brain.store.tick
+        again = self.bridge.act(
+            "walk", event_id="six-organ-hit-stool",
+            station="station:shop:private"
+        )
+        self.assertEqual(again["status"], "already_admitted")
+        self.assertEqual(tick, self.doctor.brain.store.tick)
+        self.runtime.checkpoint()
+        reopened = SixOrganRuntime.open(self.doctor.brain.state_dir)
+        reopened_bridge = reopened.bind_laboratory(self.port, authorized=True)
+        retried = reopened_bridge.act(
+            "walk", event_id="six-organ-hit-stool",
+            station="station:shop:private"
+        )
+        self.assertEqual(retried["status"], "already_admitted")
+        self.assertEqual(retried["memory_id"], hit["memory_id"])
+
 
 
 if __name__ == "__main__":

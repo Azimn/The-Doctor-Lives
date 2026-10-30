@@ -7,6 +7,21 @@ on:
     paths:
       - doctor_lives/lab_home_bridge.py
       - tests/test_lab_home_bridge.py
+      - tests/test_six_organ_lab_comparison.py
+      - tests/test_six_organ_lab_readiness.py
+      - tests/test_six_organ_environment_port.py
+      - tests/test_six_organ_virtual_world_port.py
+      - tests/test_six_organ_noesis_corpus_pilot.py
+      - doctor_lives/noesis_corpus_pilot.py
+      - doctor_lives/affectus_lab_pilot.py
+      - doctor_lives/six_organ_book_task.py
+      - tests/test_six_organ_book_task.py
+      - doctor_lives/autobiographical_book_preference.py
+      - doctor_lives/lab_endogenous_book_task.py
+      - tests/test_six_organ_autobiographical_book_preference.py
+      - doctor_lives/virtual_world_port.py
+      - doctor_lives/environment_port.py
+      - tools/six_organ_laboratory_parity_witness.py
       - .github/workflows/doctor-home-bridge.yml
   workflow_dispatch:
 jobs:
@@ -20,6 +35,11 @@ jobs:
           repository: Azimn/Pretorius-Laboratory
           ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
           path: donor-laboratory
+      - uses: actions/checkout@v4
+        with:
+          # Historical unmodified production implementation, separate process.
+          ref: 784cff39d58a7fe46bb5e4ffc16e0284e6663c78
+          path: baseline-doctor
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -32,6 +52,50 @@ jobs:
           PYTHONPATH: donor-laboratory
         run: |
           python -m unittest discover -s tests -p test_lab_home_bridge.py -v
+      - name: Test one actual-Laboratory session through all six shared organs
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.subject_port import SubjectPort; print('Source-pinned actual Lab present')"
+          python -m unittest discover -s tests -p test_six_organ_lab_readiness.py -v
+      - name: Compare classic and six-organ behavior on pinned real Laboratory
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.subject_port import SubjectPort; print('Pinned Laboratory import confirmed')"
+          python -m unittest discover -s tests -p test_six_organ_lab_comparison.py -v
+      - name: Compare frozen production Doctor against six-organ Laboratory behavior
+        run: |
+          EXPECTED_DOCTOR_ROOT=baseline-doctor PYTHONPATH=baseline-doctor:donor-laboratory python tools/six_organ_laboratory_parity_witness.py --mode classic --output "$RUNNER_TEMP/classic.json"
+          EXPECTED_DOCTOR_ROOT=. PYTHONPATH=.:donor-laboratory python tools/six_organ_laboratory_parity_witness.py --mode six --output "$RUNNER_TEMP/six.json"
+          diff -u "$RUNNER_TEMP/classic.json" "$RUNNER_TEMP/six.json"
+      - name: Test environment substitution with pinned real Laboratory and no-actuation mock
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.subject_port import SubjectPort; print('Real Lab provider loaded')"
+          python -m unittest discover -s tests -p test_six_organ_environment_port.py -v
+      - name: Verify Lab-to-independent-virtual-world transfer, action and return
+        env:
+          PYTHONPATH: donor-laboratory
+        run: python -m unittest discover -s tests -p test_six_organ_virtual_world_port.py -v
+      - name: Verify neural-tendency Corpus actions and real Laboratory outcome feedback
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.subject_port import SubjectPort; print('Real pinned Laboratory loaded')"
+          python -m unittest discover -s tests -p test_six_organ_noesis_corpus_pilot.py -v
+      - name: Verify objective source-memory Laboratory book task against receipt ledger
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -c "from pretorius_lab.embodied_access import EmbodiedAccess; print('Pinned Laboratory verified')"
+          python -m unittest discover -s tests -p test_six_organ_book_task.py -v
+      - name: Test autobiographical memory as a causal input to real-book choice
+        env:
+          PYTHONPATH: donor-laboratory
+        run: |
+          python -m unittest discover -s tests -p test_six_organ_autobiographical_book_preference.py -v
       - name: Ensure original Doctor core regression still passes
         run: |
           python -m unittest discover -s tests -p test_cognition.py -v
