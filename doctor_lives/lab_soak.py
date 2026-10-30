@@ -120,6 +120,47 @@ def read_soak_log(path: Path) -> dict:
     }
 
 
+def _validate_evidence_location(state: Path, world: Path, evidence: Path) -> None:
+    """Deny engineering evidence and its lock from aliasing real authorities.
+
+    SQLite owns its WAL, shared-memory, rollback and master-journal siblings.
+    The original Laboratory owns the persistent world host-lock sidecar.
+    Reject reserved names even before they exist, and reject existing hardlinks
+    by file identity. Symlinks are denied separately, including parent aliases.
+    """
+    canonical_state = state.resolve()
+    canonical_world = world.resolve()
+    if evidence.is_symlink():
+        raise ValueError("Symlinked soak evidence is forbidden")
+    evidence_lock = evidence.with_name(evidence.name + ".lock")
+    if evidence_lock.is_symlink():
+        raise ValueError("Symlinked soak evidence lock is forbidden")
+
+    stem = canonical_world.name
+    reserved_names = {
+        stem, stem + "-wal", stem + "-shm", stem + "-journal",
+        stem + "-stmtjrnl", stem + "-super-journal",
+        stem + ".laboratory-host.lock",
+    }
+    reserved_paths = [canonical_world.with_name(name) for name in reserved_names]
+    reserved_identity = {
+        (item.stat().st_dev, item.stat().st_ino)
+        for item in reserved_paths if item.exists()
+    }
+    for candidate in (evidence, evidence_lock):
+        resolved = candidate.resolve()
+        if resolved == canonical_state or canonical_state in resolved.parents:
+            raise ValueError("Engineering soak evidence must be outside the canonical brain")
+        if (resolved.parent == canonical_world.parent
+                and (resolved.name in reserved_names
+                     or resolved.name.startswith(stem + "-mj"))):
+            raise ValueError("Engineering soak evidence collides with a Laboratory sidecar")
+        if candidate.exists():
+            stat = candidate.stat()
+            if (stat.st_dev, stat.st_ino) in reserved_identity:
+                raise ValueError("Engineering soak evidence hardlinks a Laboratory authority")
+
+
 def soak_laboratory(
     state: Path, world: Path, evidence: Path, *, target_seconds: float,
     segment_seconds: float = 900.0, interval_seconds: float = 30.0,
@@ -144,14 +185,7 @@ def soak_laboratory(
     ):
         raise ValueError("Work interval exceeds segment")
     state, world, evidence = Path(state), Path(world), Path(evidence)
-    canonical_state = state.resolve()
-    canonical_world = world.resolve()
-    canonical_evidence = evidence.resolve()
-    if (canonical_evidence == canonical_world or canonical_evidence == canonical_state
-            or canonical_state in canonical_evidence.parents):
-        raise ValueError("Engineering soak evidence must be outside both canonical authorities")
-    if evidence.exists() and evidence.is_symlink():
-        raise RuntimeError("Symlinked soak evidence is forbidden")
+    _validate_evidence_location(state, world, evidence)
     evidence.parent.mkdir(parents=True, exist_ok=True)
     stop = stop if stop is not None else threading.Event()
     with _exclusive_lock(evidence.with_name(evidence.name + ".lock"), "Soak evidence"):
