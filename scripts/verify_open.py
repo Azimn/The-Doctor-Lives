@@ -16,7 +16,7 @@ import re
 import sqlite3
 import sys
 
-from scripts.verify_day import LAB_PIN, stable, verified_lab, source_receipts, judge as m2_judge
+from scripts.verify_day import LAB_PIN, stable, verified_lab, source_receipts, _physical_op, judge as m2_judge
 
 SCHEMA = "pretorius.open-intentions.v1"
 MIN_SEEDS = 20
@@ -110,6 +110,8 @@ def _inspect_trial(root, item, lab_root, *, model_required=False):
     lab_receipts = source_receipts(world)
     op_receipts, capabilities = _open_receipts(
         _relative(base, "world.sqlite3.operator-work.sqlite3", "c"))
+    if set(lab_receipts) & set(op_receipts):
+        fail("c", "event identifier reused across independent Laboratory authorities")
     receipts = {**{eid: (v[1].get("op", "walk"), v[1], v[2])
                    for eid,v in lab_receipts.items()}, **op_receipts}
     with _read_db(_relative(base, "brain/brain.sqlite3", "c"),
@@ -236,6 +238,9 @@ def _inspect_trial(root, item, lab_root, *, model_required=False):
         choices[p["goal_type"]] += 1
     if set(op_receipts) != seen_event_ids or set(intents) != seen_event_ids:
         fail("c", "an unclaimed operator action or host intent escaped Noesis provenance")
+    for eid, (table, event, _) in lab_receipts.items():
+        if _physical_op(table, event) is not None and eid not in seen_event_ids:
+            fail("c", "unclaimed original Laboratory physical motor action " + eid)
     if first_used is None or not introduced <= first_used <= introduced + NOVEL_CYCLES:
         fail("b", "novel affordance not discovered and used within eight cycles")
     restart = meta.get("restart", {})
