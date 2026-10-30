@@ -568,6 +568,9 @@ def run_native_laboratory(
             runtime, subject, affectus_source=affectus_source,
             renderer=source_only_renderer, authorized=True,
         ) as session:
+            # Reconcile shipping work/sleep intents before offering a new goal.
+            # The six-organ session separately reconciles its own movement.
+            _, recovered, abandoned = _recover_shipping_actions(session.bridge)
             chooser = NativeLaboratoryGoalChooser(session, authorized=True)
             try:
                 for _ in range(steps):
@@ -597,6 +600,8 @@ def run_native_laboratory(
             "schema": "doctor-laboratory-native-goals.v1",
             "status": receipts[-1]["status"],
             "steps": len(receipts),
+            "recovered": len(recovered),
+            "abandoned": len(abandoned),
             "receipts": receipts,
             "same_original_brain": True,
             "original_world_epoch_unchanged": True,
