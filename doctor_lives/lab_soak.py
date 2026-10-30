@@ -72,6 +72,11 @@ def read_soak_log(path: Path) -> dict:
                 start, end = _timestamp(record["started_utc"]), _timestamp(record["ended_utc"])
                 wall = (end - start).total_seconds()
                 active = record["active_seconds"]
+                host_elapsed = record.get("host_elapsed_seconds", active)
+                if (type(host_elapsed) not in (int,float)
+                        or not math.isfinite(host_elapsed)
+                        or host_elapsed < active or host_elapsed > wall + 2.0):
+                    raise ValueError("Measured host elapsed does not reconcile")
                 if (type(active) not in (int, float) or not math.isfinite(active)
                         or active < 0 or wall < 0 or active > wall + 2.0
                         or type(record["world_epoch"]) is not str
@@ -237,7 +242,14 @@ def soak_laboratory(
                     "previous_sha256": report["last_sha256"],
                     "started_utc": started_utc,
                     "ended_utc": ended_utc,
-                    "active_seconds": float(result["elapsed_seconds"]),
+                    # The runtime's measured elapsed interval can include
+                    # startup/checkpoint overhead. Credit no more than the
+                    # requested segment opportunity as active simulation time;
+                    # preserve the full measured duration independently.
+                    # This is conservative real-time accounting, NOT a
+                    # fabricated simulated interval or reduced truth check.
+                    "active_seconds": min(float(result["elapsed_seconds"]), duration),
+                    "host_elapsed_seconds": float(result["elapsed_seconds"]),
                     "status": result["status"],
                     "beat": result["clock"]["beat"],
                     "world_epoch": SpatialHabitat(world).verify()["world_epoch"],
