@@ -11,6 +11,7 @@ from hashlib import sha256
 from unittest.mock import patch
 
 from scripts.verify_open import verify, Rejected, LAB_PIN, SCHEMA, stable
+from doctor_lives.neural import DEFAULT_CONFIG, PretoriusRecurrentSubstrate
 
 def db(path,ddl):
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -83,6 +84,10 @@ class JudgeTests(unittest.TestCase):
                              (cycle,raw,sha256(raw.encode()).hexdigest()))
                 cycles.append({"cycle":cycle,"day":f"day-{cycle}","proposal_ids":keys,
                                "selected_proposal_id":keys[0],"decision_id":pid,"event_id":eid})
+            cfg=dict(DEFAULT_CONFIG)
+            cfg.update(neurons=128,sensory_dim=64,avg_recurrent_degree=8,
+                       input_degree=4,action_population_size=8,seed=seed)
+            PretoriusRecurrentSubstrate(cfg).save(folder/"brain/pretorius_recurrent.npz")
             lab.commit();mind.commit();intents.commit()
             lab.close();mind.close();intents.close()
             manifest={"seed":seed,"lab_pin":LAB_PIN,"cycles":cycles,
@@ -102,6 +107,7 @@ class JudgeTests(unittest.TestCase):
             """)
             lm.execute("INSERT INTO open_proposals VALUES('x','different')")
             lm.execute("INSERT INTO policy_decisions VALUES('noesis_open_choice','another')")
+            PretoriusRecurrentSubstrate(cfg).save(lesion/"brain/pretorius_recurrent.npz")
             lm.commit();lm.close()
             (lesion/"trial.json").write_text(stable({"seed":seed,"memory_enabled":False}))
             self.items.append({"seed":seed,"path":folder.name,"ablation_path":lesion.name})
@@ -127,6 +133,18 @@ class JudgeTests(unittest.TestCase):
 
     def test_all_contract_checks_positive_synthetic_fixture(self):
         self.assertTrue(self.check()["pass"])
+
+    def test_forged_neural_seed_label_fails_against_real_checkpoint(self):
+        self.items[0]["seed"]=1842
+        self.save()
+        self.rejects("a")
+
+    def test_duplicate_original_checkpoint_is_not_twenty_seeds(self):
+        import shutil
+        first=self.root/"case-0"/"brain/pretorius_recurrent.npz"
+        second=self.root/"case-1"/"brain/pretorius_recurrent.npz"
+        shutil.copy2(first,second)
+        self.rejects("a")
 
     def test_no_neural_policy_cannot_execute(self):
         path=self.root/"case-0"/"brain/brain.sqlite3"
