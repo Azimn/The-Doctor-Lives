@@ -1740,3 +1740,98 @@ raise AssertionError("Expected process termination before physical action")
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OptionalLocalInterpretationTests(unittest.TestCase):
+    """No Ollama installation or network needed; test the exact HTTP adapter."""
+
+    def _report(self, frames=None):
+        return {
+            "schema": "doctor-laboratory-offline-run.v1",
+            "clock": {"beat": "@456", "utc": "2026-10-30T12:00:00Z"},
+            "world_epoch": "DO-NOT-TRANSMIT-WORLD-EPOCH",
+            "neural_scores": "DO-NOT-TRANSMIT-NEURAL",
+            "subject_frames": frames if frames is not None else [
+                {"inner": "I watched the laboratory apparatus.",
+                 "source": "DO-NOT-TRANSMIT-SOURCE-ID",
+                 "memory_id": "DO-NOT-TRANSMIT-MEMORY-ID"},
+            ],
+        }
+
+    def test_local_model_only_sees_original_subject_text_and_is_not_authority(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        from doctor_lives.cli import emit_laboratory
+
+        class FakeResponse:
+            status = 200
+            def read(self, n):
+                return json.dumps({"response": "A cautious interpretation."}).encode()
+
+        class FakeConnection:
+            def __init__(self, host, port, timeout):
+                self.address = (host, port, timeout)
+                self.body = None
+            def request(self, method, path, body, headers):
+                self.method, self.path, self.body = method, path, body
+            def getresponse(self):
+                return FakeResponse()
+            def close(self):
+                pass
+
+        created = []
+        def connect(*args, **kwargs):
+            conn = FakeConnection(*args, **kwargs)
+            created.append(conn)
+            return conn
+
+        output = io.StringIO()
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection",
+                   side_effect=connect), redirect_stdout(output):
+            emit_laboratory(self._report(), human=True, local_model="qwen3:14b")
+        self.assertEqual(created[0].address, ("127.0.0.1", 11434, 1.5))
+        self.assertEqual(created[0].path, "/api/generate")
+        payload = json.loads(created[0].body)
+        self.assertEqual(payload["model"], "qwen3:14b")
+        self.assertFalse(payload["stream"])
+        self.assertIn("I watched the laboratory apparatus.", payload["prompt"])
+        for forbidden in ("DO-NOT-TRANSMIT", "world_epoch", "memory_id",
+                          "neural_scores", "source_id"):
+            self.assertNotIn(forbidden, payload["prompt"])
+        self.assertIn("I watched the laboratory apparatus.", output.getvalue())
+        self.assertIn("[Unverified local-model interpretation; not lived memory]",
+                      output.getvalue())
+        self.assertIn("A cautious interpretation.", output.getvalue())
+        self.assertNotIn("DO-NOT-TRANSMIT", output.getvalue())
+
+    def test_unavailable_model_and_empty_frames_preserve_original_source(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+        from doctor_lives.cli import emit_laboratory
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection",
+                   side_effect=ConnectionRefusedError("offline")):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                emit_laboratory(self._report(), human=True,
+                                local_model="missing:latest")
+            self.assertIn("I watched the laboratory apparatus.", output.getvalue())
+            self.assertIn("Local model unavailable", output.getvalue())
+        with patch("doctor_lives.local_subject_gloss.http.client.HTTPConnection") as conn:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                emit_laboratory(self._report([]), human=True,
+                                local_model="missing:latest")
+            conn.assert_not_called()
+            self.assertIn("(No new first-person account.)", output.getvalue())
+            self.assertNotIn("interpretation", output.getvalue().lower())
+
+    def test_invalid_model_denied_before_any_world_access(self):
+        from doctor_lives.cli import emit_laboratory
+        for model in ("http://evil.example", "foo bar", "../outside", "", "a"*97):
+            with self.subTest(model=model):
+                with self.assertRaises(ValueError):
+                    emit_laboratory(self._report(), human=True, local_model=model)
+        with self.assertRaises(ValueError):
+            emit_laboratory(self._report(), human=False, local_model="qwen3:14b")
