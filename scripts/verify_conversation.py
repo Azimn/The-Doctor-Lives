@@ -127,7 +127,7 @@ def verify_source_ledger(report: dict) -> dict:
             require(source_memory["source"] == "pretorius:conversation-speech"
                     and source_memory["evidence_class"] == "external_statement"
                     and source_memory["text"] ==
-                        "My outgoing message to the operator: " + speech[:1200],
+                        ("My outgoing message to the operator: " + speech[:1200]).strip(),
                     "Persisted outgoing speech differs from original reported-speech memory")
     outbox = Path(str(world)+".operator-work.sqlite3")
 
