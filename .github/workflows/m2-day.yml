@@ -1,0 +1,40 @@
+name: M2 pinned-Laboratory day evidence gate
+on:
+  push:
+    branches:
+      - integration/m2
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  judge-contract-and-m1-negative-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify immutable real Laboratory source
+        run: test "$(git -C donor-laboratory rev-parse HEAD)" = 6e49795752835d64fa6fd63d16359669a1ca2ba7
+      - name: Install original Doctor without hosted APIs
+        run: python -m pip install -e .
+      - name: Judge adversarial contract suite
+        run: python -m unittest discover -s tests -p test_verify_day.py -v
+      - name: Execute original M1 behavior and require M2 judge to reject it
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          mkdir -p /tmp/m1-negative
+          python scripts/probe_m1_day.py --run /tmp/m1-negative --lab-root donor-laboratory | tee /tmp/m1-negative-result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m2-m1-negative
+          path: /tmp/m1-negative-result.json
+          if-no-files-found: error
