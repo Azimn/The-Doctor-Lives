@@ -288,7 +288,7 @@ class DoctorHomeBridge:
                 and bindings[0]["motor_authorization"] == "authorized"
             ):
                 raise PermissionError(
-                    "Laboratory action ID bound to a different original-Noesis decision"
+                    "Laboratory action ID already bound to an original-Noesis work decision or other action domain"
                 )
         payload = _stable({"op": op, "args": args})
         with sqlite3.connect(

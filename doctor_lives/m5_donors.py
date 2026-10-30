@@ -20,6 +20,8 @@ def contributions(bridge,work,proposal,affordance,cycle,enabled=()):
     if not set(enabled)<=set(DONORS):
         raise ValueError("Unknown donor, no silent plugin adoption")
     values={name:0.0 for name in DONORS}
+    if not enabled:
+        return values
     store=bridge.doctor.brain.store
     text=str(proposal["text"])
     if "cascade_commitments" in enabled:
