@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - doctor_lives/lab_runtime.py
+      - doctor_lives/lab_soak.py
+      - tests/test_lab_soak.py
       - doctor_lives/lab_backup.py
       - doctor_lives/cli.py
       - doctor_lives/data/*.json
@@ -44,6 +46,11 @@ jobs:
         shell: pwsh
         run: |
           python -m unittest discover -s tests -p test_lab_runtime.py -v -k cross_platform_two_authority -k elapsed_host_resumes_same_brain -k human_subject_transcript -k elapsed_work_interval_rejected -k operator_sleep_is_physical_idempotent_and_wake_is_real
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Windows actual Laboratory soak, cold continuation and torn-log refusal
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_lab_soak.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows canonical evidence checkout and deliberate active-evidence tamper negatives
         shell: pwsh
