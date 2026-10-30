@@ -16,6 +16,8 @@ doctor-lives --state ./doctor-state lab-soak --world ./laboratory.sqlite3 --evid
 
 The command holds the **same two cooperative host locks** for the entire run. It calls the existing single-brain Laboratory runtime in real-elapsed segments, with original-world LOOKs and canonical neural pulses. No physical work is invented. At a genuine bench, optional `--work-every-seconds 300` offers physical work, but original Noesis alone chooses among eligible actions. It cannot navigate Pretorius to a workbench or invent a goal. Book activity, self-originated goals and sleep/wake must be evidenced separately, not inferred from this log.
 
+Place the engineering JSONL file in an ordinary external directory, never at the Laboratory SQLite path, its `-wal`, `-shm`, `-journal`, master-journal or persistent `.laboratory-host.lock` sidecars. The companion evidence `.lock` file must also avoid these names. Hardlinks to original world, world sidecars or canonical BrainStore files are refused. The host validates these paths before opening either authority; a refused location must not cause a LOOK, physical action or lived memory. Keep the evidence file and its lock separate from both the original world and canonical mind.
+
 Each completed segment appends one fsynced, hash-chained engineering record containing UTC start/end, monotonic active seconds measured by the existing runtime, original-world epoch, pulse count, authenticated work IDs and receipt counts. The log never contains first-person text, hidden neural scores or an alternate autobiography. Swatch @beats remain in the ordinary Laboratory host report; UTC remains authoritative for ordering.
 
 ## Verify and recover
