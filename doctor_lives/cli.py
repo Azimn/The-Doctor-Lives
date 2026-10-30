@@ -13,13 +13,21 @@ def emit(value):
     print(json.dumps(value,indent=2,sort_keys=True,default=str))
 
 
-def emit_laboratory(value, *, human=False):
+def emit_laboratory(value, *, human=False, local_model=None):
     """Render only authenticated first-person frames from a trusted host result.
 
     The JSON report remains the default machine interface. Human mode has no
     input file, provider override, model hook, or access to world/brain
     diagnostics. In particular, never serialize the rest of the host report.
     """
+    if local_model is not None:
+        from .local_subject_gloss import local_interpretation
+        # Validate the identifier before any host work or local socket use.
+        if not human:
+            raise ValueError("Local model interpretation requires --human")
+        from .local_subject_gloss import _MODEL
+        if not isinstance(local_model, str) or not _MODEL.fullmatch(local_model):
+            raise ValueError("Invalid local model identifier")
     if not human:
         emit(value)
         return
@@ -46,6 +54,12 @@ def emit_laboratory(value, *, human=False):
     if not frames:
         lines.append("(No new first-person account.)")
     print("\n\n".join(lines))
+    if local_model is not None and frames:
+        note = local_interpretation(frames, local_model)
+        if note:
+            print("\n[Unverified local-model interpretation; not lived memory]\n" + note)
+        else:
+            print("\n[Local model unavailable; source-verified account unchanged.]")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -53,12 +67,12 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
-    x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
-    x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
+    x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
+    x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-soak"); x.add_argument("--world", type=Path, required=True); x.add_argument("--evidence-log", type=Path, required=True); x.add_argument("--seconds", type=float, default=86400.0); x.add_argument("--segment-seconds", type=float, default=900.0); x.add_argument("--interval-seconds", type=float, default=30.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Offer Noesis real work only at a physically feasible bench")
     x=sp.add_parser("lab-soak-verify"); x.add_argument("--evidence-log", type=Path, required=True)
-    x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
-    x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats")
+    x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
+    x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action"); x.add_argument("--human", action="store_true", help="Show only verified first-person Laboratory text and Swatch beats"); x.add_argument("--local-render-model", default=None, help="Optional localhost Ollama interpretation, labeled unverified; --human required")
     x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
     x=sp.add_parser("lab-restore"); x.add_argument("--world", type=Path, required=True); x.add_argument("--archive", type=Path, required=True)
     x=sp.add_parser("ingest"); x.add_argument("text"); x.add_argument("--source",default="world"); x.add_argument("--kind",default="observation"); x.add_argument("--actor"); x.add_argument("--external",action="store_true"); x.add_argument("--valence",type=float,default=0.0); x.add_argument("--arousal",type=float,default=0.0); x.add_argument("--threat",type=float,default=0.0); x.add_argument("--novelty",type=float,default=0.0); x.add_argument("--authority",type=float,default=0.0); x.add_argument("--autonomy",type=float,default=0.0)
@@ -76,6 +90,11 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     a=parser().parse_args(argv)
+    # Validate optional model choice before opening world or canonical brain.
+    if hasattr(a, "local_render_model") and a.local_render_model is not None:
+        from .local_subject_gloss import _MODEL
+        if not a.human or not _MODEL.fullmatch(a.local_render_model):
+            raise ValueError("Local model requires --human and a valid identifier")
     # The CLI is a human report, NOT a trusted physical-world provider.
     # Never hand it raw Experience construction or caller-chosen world proof.
     if a.cmd == "ingest":
@@ -104,11 +123,11 @@ def main(argv=None) -> int:
         return 0
     if a.cmd == "lab-sleep":
         from .lab_runtime import sleep_laboratory
-        emit_laboratory(sleep_laboratory(a.state, a.world, event_id=a.event_id), human=a.human)
+        emit_laboratory(sleep_laboratory(a.state, a.world, event_id=a.event_id), human=a.human, local_model=a.local_render_model)
         return 0
     if a.cmd == "lab-work":
         from .lab_runtime import work_laboratory
-        emit_laboratory(work_laboratory(a.state, a.world, event_id=a.event_id), human=a.human)
+        emit_laboratory(work_laboratory(a.state, a.world, event_id=a.event_id), human=a.human, local_model=a.local_render_model)
         return 0
     if a.cmd == "lab-soak-verify":
         from .lab_soak import read_soak_log
@@ -153,7 +172,7 @@ def main(argv=None) -> int:
                 a.state, a.world, duration_seconds=a.seconds,
                 interval_seconds=a.interval_seconds, stop=stop,
                 work_interval_seconds=a.work_every_seconds,
-            ), human=a.human)
+            ), human=a.human, local_model=a.local_render_model)
         finally:
             for signum, handler in previous.items():
                 signal.signal(signum, handler)
@@ -193,7 +212,7 @@ def main(argv=None) -> int:
                 "abandoned": len(abandoned),
                 "subject_frames": [item["subject"] for item in recovered],
                 "clock": {"utc": clock.utc_iso, "beat": clock.beat},
-            }, human=a.human)
+            }, human=a.human, local_model=a.local_render_model)
             return 0
     brain=PretoriusBrain(a.state)
     if a.cmd=="init": brain.save(); emit(brain.status())
