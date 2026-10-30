@@ -121,6 +121,61 @@ def main():
         for _ in range(2):
             actual = json.loads(_run(preview_start).stdout)
             assert actual["status"] == "ready" and actual["abandoned"] == 0
+        # An untouched genesis has no physical receipt binding the two
+        # authorities, so archival verification correctly refuses it.
+        # Prepare the actual original bench with explicitly operator-owned
+        # navigation and wear. The next action is NOT chosen by this harness.
+        # This is an offered Noesis action, not proof of self-initiated R4 life.
+        from doctor_lives.organs import SixOrganRuntime
+        runtime = SixOrganRuntime.open(preview_state)
+        preview_bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(preview_world)), authorized=True,
+        )
+        preview_bridge.act("walk", event_id="preview-setup-center",
+                           station="station:center")
+        preview_bridge.act("walk", event_id="preview-setup-bench",
+                           station="station:bench")
+        setup_wear = preview_bridge.act(
+            "experiment", event_id="preview-setup-real-wear",
+        )
+        assert setup_wear["status"] == "admitted"
+        runtime.checkpoint()
+        del preview_bridge, runtime
+        gc.collect()
+
+        noesis_work_id = "preview-noesis-physical-work"
+        work_report = json.loads(_run([
+            console, "--state", str(preview_state), "lab-work",
+            "--world", str(preview_world), "--event-id", noesis_work_id,
+        ]).stdout)
+        assert work_report["schema"] == "doctor-laboratory-offline-work.v1"
+        assert work_report["status"] == "admitted"
+        assert work_report["selection"] == "original_noesis"
+        assert work_report["action"] in ("repair", "experiment")
+        with closing(SpatialHabitat(preview_world)._open()) as world_db:
+            receipt = world_db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (noesis_work_id,),
+            ).fetchone()
+        assert receipt is not None
+        physical_source = "laboratory-home:action:" + receipt[0]
+        source_memories = [
+            m for m in PretoriusBrainPort(preview_state).brain.store.memories(False)
+            if m["source"] == physical_source
+        ]
+        assert len(source_memories) == 1
+        assert source_memories[0]["evidence_class"] == "lived_runtime_memory"
+        assert source_memories[0]["text"] == work_report["subject_frames"][-1]["inner"]
+        with PretoriusBrainPort(preview_state).brain.store.connect() as mind_db:
+            decision = mind_db.execute(
+                "SELECT state_pressure_json FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice' ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+        assert decision is not None
+        assert setup_wear["memory_id"] in json.loads(
+            decision[0]
+        )["used_outcome_memory_ids"]
+
         # The installed 4,096-neuron preview must survive a complete offline
         # backup/restore into a new, clean workspace, not merely two starts.
         preview_archive = root / "operator-preview-backup"
@@ -147,6 +202,15 @@ def main():
         assert SpatialHabitat(restored_preview_world).verify()["world_epoch"] == (
             preview_genesis["world_epoch"]
         )
+        assert sum(
+            m["source"] == physical_source
+            for m in PretoriusBrainPort(restored_preview_state).brain.store.memories(False)
+        ) == 1
+        with closing(SpatialHabitat(restored_preview_world)._open()) as restored_db:
+            assert restored_db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                (noesis_work_id,),
+            ).fetchone()[0] == 1
         with np.load(restored_preview_state / "pretorius_recurrent.npz",
                      allow_pickle=False) as checkpoint:
             assert json.loads(str(checkpoint["cfg_json"].item()))["neurons"] == 4096
