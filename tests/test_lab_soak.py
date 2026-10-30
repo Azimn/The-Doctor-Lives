@@ -111,6 +111,19 @@ class SoakEvidenceTests(unittest.TestCase):
         self.assertNotEqual(denied.returncode, 0)
         self.assertEqual(len(self.log.read_text().splitlines()), 1)
 
+    def test_engineering_log_cannot_become_brain_or_world_state(self):
+        with self.assertRaises(ValueError):
+            soak_laboratory(
+                self.state, self.world, self.state / "soak.jsonl",
+                target_seconds=0.2, segment_seconds=0.2, interval_seconds=0.1,
+            )
+        with self.assertRaises(ValueError):
+            soak_laboratory(
+                self.state, self.world, self.world,
+                target_seconds=0.2, segment_seconds=0.2, interval_seconds=0.1,
+            )
+        self.assertFalse((self.state / "soak.jsonl").exists())
+
     def test_preexisting_stop_never_creates_world_look(self):
         stop = threading.Event()
         stop.set()
