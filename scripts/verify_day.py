@@ -263,6 +263,18 @@ def judge(bundle: Path, lab_root: Path, *, baseline=False):
         failures[exc.code] = str(exc)
     actions = []
     origins = {}
+    # Distinct tasks are an independent physical test. A forged or host-driven
+    # task must fail (b) as well, not hide a missing third task under one error.
+    try:
+        kinds = set()
+        for eid, intent in reservations.items():
+            if eid in receipts and intent["status"] == "complete":
+                kinds.add(_physical_op(receipts[eid][0], receipts[eid][1]))
+        kinds.discard(None)
+        if len(kinds) < 3:
+            reject("a", "fewer than three different completed Lab physical task kinds")
+    except DayEvidenceError as exc:
+        failures[exc.code] = str(exc)
     try:
         # Every Doctor journal reservation, not merely manifest-listed events,
         # must be justified by one original Noesis choice. No hidden actions.
