@@ -254,6 +254,7 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
         from .organs import SixOrganRuntime
         from .noesis_lab_work import (
             propose_noesis_work, execute_noesis_work, verify_noesis_work_replay,
+            prior_noesis_motor_binding,
         )
 
         runtime = SixOrganRuntime.open(state)
@@ -325,6 +326,17 @@ def work_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
                 "clock": {"utc": clock.utc_iso, "beat": clock.beat},
             }
 
+        # A killed child may have bound Noesis before reserving the bridge
+        # intent, or may have left a proven-uncommitted tombstone on restart.
+        # Neither case may create a second policy choice for the same ID.
+        if bridge.abandoned_action_intent(event_id):
+            raise RuntimeError(
+                "Laboratory action ID permanently abandoned before world commit"
+            )
+        if prior_noesis_motor_binding(bridge, event_id):
+            raise PermissionError(
+                "Work event ID already bound to an original-Noesis decision"
+            )
         # Reuse the already-tested Noesis choice and original Lab motor bridge.
         # Neither the CLI nor the scheduler supplies an action preference.
         proposal = propose_noesis_work(

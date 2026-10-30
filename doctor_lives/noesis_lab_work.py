@@ -194,6 +194,19 @@ def verify_noesis_work_replay(
     return matching[0]
 
 
+def prior_noesis_motor_binding(bridge: DoctorHomeBridge, event_id: str) -> bool:
+    """A durable original policy binding cannot be assigned a second choice."""
+    with bridge.doctor.brain.store.connect() as db:
+        rows = db.execute(
+            "SELECT state_pressure_json FROM policy_decisions "
+            "WHERE trigger='noesis_situated_choice'"
+        ).fetchall()
+    return any(
+        json.loads(row["state_pressure_json"]).get("motor_event_id") == event_id
+        for row in rows
+    )
+
+
 def execute_noesis_work(
     bridge: DoctorHomeBridge, *, decision_id: str,
     event_id: str, authorized_world_action: bool = False,
@@ -263,6 +276,20 @@ def execute_noesis_work(
         ).fetchone()
         if saved is None:
             raise PermissionError("Original Noesis decision disappeared")
+        # Canonical BrainStore transaction enforces unique physical identity
+        # even when an alternate caller skips shipping-host preflight.
+        prior_rows = db.execute(
+            "SELECT id,state_pressure_json FROM policy_decisions "
+            "WHERE trigger='noesis_situated_choice' AND id!=?",
+            (decision_id,),
+        ).fetchall()
+        if any(
+            json.loads(prior["state_pressure_json"]).get("motor_event_id") == event_id
+            for prior in prior_rows
+        ):
+            raise PermissionError(
+                "Work event ID already bound to another original-Noesis decision"
+            )
         bound = json.loads(saved["state_pressure_json"])
         if bound.get("motor_event_id") not in (None, event_id):
             raise PermissionError("Original Noesis decision bound to another work ID")

@@ -277,7 +277,22 @@ class DoctorHomeBridge:
                 "event_id TEXT PRIMARY KEY, request_json TEXT NOT NULL, "
                 "status TEXT NOT NULL CHECK(status IN ('pending','complete')))"
             )
+            # A receipt-free crash may leave a canonical Noesis motor binding.
+            # The existing world-side journal keeps a permanent ID tombstone,
+            # with no new memory authority and no schema migration.
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS doctor_aborted_action_ids ("
+                "event_id TEXT PRIMARY KEY, request_json TEXT NOT NULL)"
+            )
             db.execute("BEGIN IMMEDIATE")
+            if db.execute(
+                "SELECT 1 FROM doctor_aborted_action_ids WHERE event_id=?",
+                (event_id,),
+            ).fetchone():
+                db.execute("ROLLBACK")
+                raise RuntimeError(
+                    "Laboratory action ID permanently abandoned before world commit"
+                )
             row = db.execute(
                 "SELECT request_json FROM doctor_action_intents WHERE event_id=?",
                 (event_id,),
@@ -422,13 +437,44 @@ class DoctorHomeBridge:
                         raise RuntimeError(
                             "Cannot abandon intent with a physical world receipt"
                         )
+            # Retire the exact ID atomically with removing it from the
+            # active replay queue. Never reuse a previously bound motor ID.
             db.execute(
+                "CREATE TABLE IF NOT EXISTS doctor_aborted_action_ids ("
+                "event_id TEXT PRIMARY KEY, request_json TEXT NOT NULL)"
+            )
+            db.execute(
+                "INSERT INTO doctor_aborted_action_ids(event_id,request_json) "
+                "VALUES (?,?)", (event_id, row[0]),
+            )
+            removed = db.execute(
                 "DELETE FROM doctor_action_intents "
                 "WHERE event_id=? AND request_json=? AND status='pending'",
                 (event_id, row[0]),
-            )
+            ).rowcount
+            if removed != 1:
+                raise RuntimeError("Pending Doctor intent changed during abandonment")
             db.execute("COMMIT")
         return True
+
+    def abandoned_action_intent(self, event_id: str) -> bool:
+        """Read-only permanent retirement check in the existing world journal."""
+        if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
+            raise ValueError("Stable bounded Laboratory action identity required")
+        path = self._intent_path()
+        if not path.is_file():
+            return False
+        with sqlite3.connect(path, timeout=30) as db:
+            present = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                "AND name='doctor_aborted_action_ids'"
+            ).fetchone()
+            if not present:
+                return False
+            return db.execute(
+                "SELECT 1 FROM doctor_aborted_action_ids WHERE event_id=?",
+                (event_id,),
+            ).fetchone() is not None
 
     def pending_action_intents(self) -> tuple[dict, ...]:
         """Host-only durable replay queue, never a subject-facing memory."""
