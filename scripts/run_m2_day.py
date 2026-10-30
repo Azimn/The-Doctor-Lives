@@ -23,7 +23,7 @@ from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.neural import DEFAULT_CONFIG
 from doctor_lives.lab_home_bridge import DoctorHomeBridge
 from doctor_lives.noesis_day import (real_affordances, offer_daily_opportunity,
-                                    act_on_noesis_choice)
+                                    act_on_noesis_choice, physical_args)
 from doctor_lives.noesis_lab_work import propose_noesis_work
 from scripts.verify_day import LAB_PIN, SCHEMA, judge
 
@@ -181,7 +181,7 @@ def random_baseline(root: Path):
             break
         action = rng.choice(options)  # Random baseline, NOT canonical Noesis.
         event_id = "random-" + uuid4().hex
-        outcome = bridge.act(action, event_id=event_id)
+        outcome = bridge.act(action, event_id=event_id, **physical_args(action))
         actions.append({"event_id": event_id, "action": action, "status": outcome["status"]})
     doctor.save()
     (random_root / "day.json").write_text(json.dumps({
