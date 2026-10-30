@@ -62,14 +62,24 @@ CELESTIAL = {"sun": "sun", "moon": "moon", "saturn": "saturn",
              "venus": "venus", "mars": "mars", "mercury": "mercury",
              "jupiter": "jupiter"}
 GEOMANCY_NAMES = {
-    (1, 1, 1, 1): "Via", (2, 2, 2, 2): "Populus",
-    (1, 2, 2, 2): "Cauda Draconis", (2, 2, 2, 1): "Caput Draconis",
-    (1, 1, 2, 2): "Fortuna Minor", (2, 2, 1, 1): "Fortuna Major",
-    (1, 2, 1, 2): "Puer", (2, 1, 2, 1): "Puella",
-    (1, 2, 2, 1): "Carcer", (2, 1, 1, 2): "Conjunctio",
-    (1, 1, 1, 2): "Acquisitio", (2, 1, 1, 1): "Amissio",
-    (2, 2, 1, 2): "Laetitia", (2, 1, 2, 2): "Tristitia",
-    (1, 1, 2, 1): "Albus", (1, 2, 1, 1): "Rubeus",
+    # Conventional top-to-bottom Fire, Air, Water, Earth arrangements.
+    # Verified against a complete sixteen-pattern reference table.
+    (1, 1, 1, 1): "Via",
+    (2, 2, 2, 2): "Populus",
+    (2, 1, 1, 2): "Conjunctio",
+    (1, 2, 2, 1): "Carcer",
+    (2, 2, 1, 1): "Fortuna Major",
+    (1, 1, 2, 2): "Fortuna Minor",
+    (2, 1, 2, 1): "Acquisitio",
+    (1, 2, 1, 2): "Amissio",
+    (1, 2, 2, 2): "Laetitia",
+    (2, 2, 2, 1): "Tristitia",
+    (1, 2, 1, 1): "Puella",
+    (1, 1, 2, 1): "Puer",
+    (2, 2, 1, 2): "Albus",
+    (2, 1, 2, 2): "Rubeus",
+    (2, 1, 1, 1): "Caput Draconis",
+    (1, 1, 1, 2): "Cauda Draconis",
 }
 
 
