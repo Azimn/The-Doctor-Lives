@@ -19,7 +19,7 @@ def parser() -> argparse.ArgumentParser:
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
     x=sp.add_parser("lab-start"); x.add_argument("--world", type=Path, required=True)
-    x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0)
+    x=sp.add_parser("lab-run"); x.add_argument("--world", type=Path, required=True); x.add_argument("--seconds", type=float, default=60.0); x.add_argument("--interval-seconds", type=float, default=5.0); x.add_argument("--work-every-seconds", type=float, default=None, help="Optional real-elapsed bench opportunities; original Noesis chooses work, host never moves body")
     x=sp.add_parser("lab-sleep"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable operator-authorized physical sleep ID; repeat it to replay safely")
     x=sp.add_parser("lab-work"); x.add_argument("--world", type=Path, required=True); x.add_argument("--event-id", required=True, help="Stable work-opportunity ID; original Noesis chooses feasible physical action")
     x=sp.add_parser("lab-backup"); x.add_argument("--world", type=Path, required=True); x.add_argument("--output", type=Path, required=True)
@@ -89,6 +89,7 @@ def main(argv=None) -> int:
             emit(run_laboratory(
                 a.state, a.world, duration_seconds=a.seconds,
                 interval_seconds=a.interval_seconds, stop=stop,
+                work_interval_seconds=a.work_every_seconds,
             ))
         finally:
             for signum, handler in previous.items():
