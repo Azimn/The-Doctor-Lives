@@ -4,6 +4,7 @@ from __future__ import annotations
 import gc
 import importlib.util
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -62,7 +63,7 @@ class SoakEvidenceTests(unittest.TestCase):
         self.assertEqual(report["work_event_ids"], 0)
         self.assertFalse(report["independent_source_attestation"])
         self.assertEqual(len(self.log.read_text().splitlines()), report["segments"])
-        self.assertTrue(all(__import__("re").fullmatch(r"@[0-9]{3}", json.loads(line)["beat"])
+        self.assertTrue(all(re.fullmatch(r"@[0-9]{3}", json.loads(line)["beat"])
                             for line in self.log.read_text().splitlines()))
 
         second = self.cli(
