@@ -470,6 +470,71 @@ def main():
             for m in PretoriusBrainPort(full_restored_brain).brain.store.memories(False)
         ) == 1
 
+        # R5 negative matrix at the actual original 4,096-neuron size.
+        # A manifest digest is not a neural schema validator: a malicious or
+        # damaged archive can have all member hashes recomputed consistently.
+        # Each failed restore must leave ALL three authorities absent.
+        for failure in (
+            "unrehashed-checkpoint",
+            "rehashed-invalid-checkpoint",
+            "mixed-valid-world-and-journal",
+        ):
+            invalid_archive = root / ("full-size-" + failure)
+            shutil.copytree(full_archive, invalid_archive)
+            invalid_manifest_path = invalid_archive / "manifest.json"
+            invalid_manifest = json.loads(
+                invalid_manifest_path.read_text(encoding="utf-8")
+            )
+            if failure == "mixed-valid-world-and-journal":
+                names = ("world.sqlite3", "action-intents.sqlite3")
+                for name in names:
+                    shutil.copyfile(foreign_archive / name, invalid_archive / name)
+            else:
+                names = ("brain/pretorius_recurrent.npz",)
+                checkpoint = invalid_archive / names[0]
+                if failure == "unrehashed-checkpoint":
+                    with checkpoint.open("ab") as stream:
+                        stream.write(b"damaged-after-backup")
+                else:
+                    checkpoint.write_bytes(b"not a canonical recurrent checkpoint")
+            if failure != "unrehashed-checkpoint":
+                for name in names:
+                    member = invalid_archive / name
+                    invalid_manifest["files"][name] = {
+                        "sha256": hashlib.sha256(member.read_bytes()).hexdigest(),
+                        "bytes": member.stat().st_size,
+                    }
+                invalid_manifest_path.write_text(
+                    json.dumps(invalid_manifest, sort_keys=True, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+            invalid_brain = root / ("denied-" + failure + "-brain")
+            invalid_world = root / ("denied-" + failure + "-world.sqlite3")
+            denial = subprocess.run([
+                console, "--state", str(invalid_brain), "lab-restore",
+                "--world", str(invalid_world),
+                "--archive", str(invalid_archive),
+            ], capture_output=True, text=True, timeout=120)
+            assert denial.returncode != 0 and not denial.stdout, failure
+            assert not invalid_brain.exists() and not invalid_world.exists(), failure
+            assert not Path(
+                str(invalid_world) + ".doctor-action-intents.sqlite3"
+            ).exists(), failure
+
+        # The backup direction must likewise reject an already corrupted
+        # original 4,096-neuron checkpoint, not seal a useless archive.
+        (full_restored_brain / "pretorius_recurrent.npz").write_bytes(
+            b"not a canonical recurrent checkpoint"
+        )
+        denied_full_backup = root / "denied-full-size-checkpoint-backup"
+        backup_denial = subprocess.run([
+            console, "--state", str(full_restored_brain), "lab-backup",
+            "--world", str(full_restored_world),
+            "--output", str(denied_full_backup),
+        ], capture_output=True, text=True, timeout=120)
+        assert backup_denial.returncode != 0 and not backup_denial.stdout
+        assert not denied_full_backup.exists()
+
         full_command = [
             console, "--state", str(full_brain_path),
             "lab-start", "--world", str(full_world_path),
@@ -519,6 +584,10 @@ def main():
                           "full_size_4096_recovered": 1,
                           "full_size_4096_second_restart": 0,
                           "full_size_4096_archive_restored": True,
+                          "full_size_4096_corrupt_digest_denied": True,
+                          "full_size_4096_rehashed_invalid_neural_denied": True,
+                          "full_size_4096_mixed_world_denied": True,
+                          "full_size_4096_invalid_neural_backup_denied": True,
                           "full_size_4096_restored_recovered": 1,
                           "full_size_4096_restored_second_restart": 0,
                           "installed_human_subject_only": True}, sort_keys=True))
