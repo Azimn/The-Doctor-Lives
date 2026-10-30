@@ -33,32 +33,42 @@ class LocalOllama(InferencePort):
 
     def propose(self, context: dict[str,Any]) -> list[str]:
         content=(
-            "Generate 3 to 8 different possible FIRST-PERSON intentions for a "
-            "persistent artificial laboratory subject. Reply ONLY with a JSON "
-            "array of strings. Every item must be an idea, not a fact or a "
-            "command. Include at least one wish outside current abilities. "
-            "Use current observations, needs and memories as context. "
-            "Available affordances are descriptions, NEVER commands to execute.\n"
+            "You are creating hypothetical possible intentions, NOT choosing "
+            "physical actions. Return exactly five DIFFERENT, short, first-person "
+            "ideas as one valid JSON object with key 'intentions' containing "
+            "five strings. At least one idea must be an unfulfilled wish. "
+            "Use first-person memories and needs only as tentative context. "
+            "Available ability descriptions are opportunities, not commands. "
+            "Nothing you write can be executed directly.\n"
             +json.dumps(context,sort_keys=True,ensure_ascii=False)
         )
-        payload=json.dumps({"model":self.model,"prompt":content,"stream":False,
-                             "format":"json","options":{"temperature":0.0,
-                             "num_predict":384}}).encode()
-        req=Request(self.endpoint+"/api/generate",data=payload,
-                    headers={"Content-Type":"application/json"},method="POST")
-        with urlopen(req,timeout=45) as answer:
-            raw=json.loads(answer.read(128000).decode("utf-8"))
-        try:
-            parsed=json.loads(raw["response"])
-            if isinstance(parsed,dict):
-                parsed=parsed.get("intentions",parsed.get("proposals"))
-            if not isinstance(parsed,list) or not 3<=len(parsed)<=8:
-                raise ValueError("Local model must propose 3 to 8 intentions")
-            if any(type(p) is not str or not p.strip() or len(p)>400 for p in parsed):
-                raise ValueError("Model proposal shape invalid")
-            return parsed
-        except (KeyError,ValueError,TypeError) as exc:
-            raise ValueError("Local model produced invalid, non-executable proposal JSON") from exc
+        # Local Ollama supports JSON schema. A small local model can truncate
+        # a short response or choose a different wrapper key; bounded retries
+        # must still fail closed if the output is not genuinely model authored.
+        expected={"type":"object","properties":{"intentions":{
+            "type":"array","minItems":3,"maxItems":8,
+            "items":{"type":"string"}}},"required":["intentions"]}
+        for attempt in range(3):
+            payload=json.dumps({"model":self.model,
+                "prompt":content + ("\nReturn ONLY the required JSON object." if attempt else ""),
+                "stream":False,"format":expected,
+                "options":{"temperature":0.0,"num_predict":768}}).encode()
+            req=Request(self.endpoint+"/api/generate",data=payload,
+                        headers={"Content-Type":"application/json"},method="POST")
+            with urlopen(req,timeout=90) as answer:
+                raw=json.loads(answer.read(128000).decode("utf-8"))
+            try:
+                parsed=json.loads(raw["response"])
+                if isinstance(parsed,dict):
+                    parsed=parsed.get("intentions",parsed.get("proposals",
+                                  parsed.get("goals")))
+                if (isinstance(parsed,list) and 3<=len(parsed)<=8
+                    and all(type(p) is str and p.strip() and len(p)<=400
+                            for p in parsed)):
+                    return parsed
+            except (KeyError,ValueError,TypeError):
+                pass
+        raise ValueError("Local Ollama failed three bounded genuine-proposal JSON attempts")
 
 class DeterministicFallback(InferencePort):
     """Model-off text proposer; memory-sensitive but never a second selector."""
