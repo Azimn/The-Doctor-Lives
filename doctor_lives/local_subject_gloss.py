@@ -70,7 +70,12 @@ def local_interpretation(frames: list[dict], model: str) -> str | None:
         note = value.get("response") if isinstance(value, dict) else None
         if not isinstance(note, str) or not note.strip():
             return None
-        # Operator commentary is inert data, never terminal markup or a second\n        # first-person frame. JSON ASCII quoting escapes ESC/CR/LF, C0/C1,\n        # Unicode line separators and bidi controls. Escaping brackets also\n        # prevents model-supplied text from impersonating a trusted heading.\n        safe = " ".join(note.split())[:_MAX_OUTPUT]\n        return json.dumps(safe, ensure_ascii=True).replace("[", "\\u005b").replace("]", "\\u005d")
+        # Operator commentary is inert data, never terminal markup or a second
+        # first-person frame. JSON ASCII quoting escapes ESC/CR/LF, C0/C1,
+        # Unicode line separators and bidi controls. Escaping brackets also
+        # prevents model-supplied text from impersonating a trusted heading.
+        safe = " ".join(note.split())[:_MAX_OUTPUT]
+        return json.dumps(safe, ensure_ascii=True).replace("[", "\\u005b").replace("]", "\\u005d")
     except (OSError, TimeoutError, ValueError, UnicodeError, http.client.HTTPException):
         return None
     finally:
