@@ -48,6 +48,20 @@ class SoakEvidenceTests(unittest.TestCase):
              *args], capture_output=True, text=True, timeout=25,
         )
 
+    def rehash_engineering_log(self, rows):
+        # The negative must pass the *local* hash chain so only the original
+        # Laboratory/Noesis source check can reject its forged work identity.
+        previous = "0" * 64
+        for row in rows:
+            row.pop("sha256", None)
+            row["previous_sha256"] = previous
+            row["sha256"] = _digest(row)
+            previous = row["sha256"]
+        self.log.write_text(
+            "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+            encoding="utf-8",
+        )
+
     def test_real_elapsed_segments_resume_and_do_not_fake_24h(self):
         first = self.cli(
             "lab-soak", "--world", str(self.world),
@@ -279,13 +293,11 @@ class SoakEvidenceTests(unittest.TestCase):
 
         # Rehashing a locally writable engineering log cannot manufacture
         # original Laboratory receipts or an original-Noesis motor binding.
-        lines = self.log.read_text(encoding="utf-8").splitlines()
-        first = json.loads(lines[0])
-        first["work_event_ids"] = ["forged-physical-work"]
-        first.pop("sha256")
-        first["sha256"] = _digest(first)
-        lines[0] = json.dumps(first, sort_keys=True)
-        self.log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        rows = [json.loads(line) for line in
+                self.log.read_text(encoding="utf-8").splitlines()]
+        rows[0]["work_event_ids"] = ["forged-physical-work"]
+        self.rehash_engineering_log(rows)
+        self.assertEqual(read_soak_log(self.log)["work_event_ids"], 1)
         with self.assertRaises((RuntimeError, PermissionError)):
             verify_soak_sources(self.state, self.world, self.log)
 
@@ -312,12 +324,12 @@ class SoakEvidenceTests(unittest.TestCase):
             self.state, self.world, self.log, target_seconds=0.25,
             segment_seconds=0.25, interval_seconds=0.1,
         )
-        record = json.loads(self.log.read_text(encoding="utf-8"))
-        self.assertEqual(record["work_event_ids"], [])
-        record["work_event_ids"] = ["pre-soak-real-noesis-work"]
-        record.pop("sha256")
-        record["sha256"] = _digest(record)
-        self.log.write_text(json.dumps(record) + "\n", encoding="utf-8")
+        rows = [json.loads(line) for line in
+                self.log.read_text(encoding="utf-8").splitlines()]
+        self.assertTrue(rows)
+        self.assertEqual(sum(len(row["work_event_ids"]) for row in rows), 0)
+        rows[0]["work_event_ids"] = ["pre-soak-real-noesis-work"]
+        self.rehash_engineering_log(rows)
         self.assertEqual(read_soak_log(self.log)["work_event_ids"], 1)
         with self.assertRaises(PermissionError):
             verify_soak_sources(self.state, self.world, self.log)
