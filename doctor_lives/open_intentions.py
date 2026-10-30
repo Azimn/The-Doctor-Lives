@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import Counter
 from hashlib import sha256
 import json
+import os
 import re
 from typing import Any
 from uuid import uuid4
@@ -18,6 +19,7 @@ from .open_inference import InferencePort
 from .open_lab_bridge import OperatorWork
 from .store import new_id, utc_now
 from .neural import ACTIONS
+from .semantic_intentions import semantic_scores, LocalOllamaEmbeddings
 
 _STOP={"i","might","would","like","to","a","the","my","of","and","an","in",
        "want","could","for","about","with","do","on","be","try","some","at"}
@@ -150,10 +152,16 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
            for row in known):
         raise PermissionError("Hypothetical proposals not anchored to the one BrainStore")
     current={a["affordance_key"]:a for a in work.affordances(cycle)}
+    # An explicitly requested embedding provider must succeed, not silently
+    # fall back to a different inference condition.
+    local_model=os.environ.get("PRETORIUS_LOCAL_EMBED_MODEL")
+    embeddings=LocalOllamaEmbeddings(local_model) if local_model else None
     # Neural substrate is the sole selector, not an LLM, host planner, or
     # additional recurrent model. Unknown affordance descriptions receive a
     # stable projection into the ORIGINAL 10-tendency neural vocabulary.
     candidates={}
+    contributions={}
+    semantic_tendencies={}
     used_memories=[m for m in store.memories(False)
                    if m["active"] and m["evidence_class"]=="lived_runtime_memory"
                    and m["source"].startswith("laboratory-home:action:")]
@@ -162,22 +170,26 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         if key is None or key not in current:
             continue
         cap=current[key]
-        # Stable feature projection, no fixed catalog of allowed actions.
-        encoded=sha256(("neural-affordance-v1:"+key+" "+row["text"]).encode()).digest()
-        native_index=int.from_bytes(encoded[:4],"big")%len(ACTIONS)
-        tendency=ACTIONS[native_index]
+        # Source text is mapped by semantic similarity, not text hashing.
+        # Original Noesis still supplies the sole action distribution.
+        scores=semantic_scores(row["text"],embeddings=embeddings)
+        tendency=max(ACTIONS,key=lambda a:(scores[a],-ACTIONS.index(a)))
         base=float(native[tendency])
-        # Novelty and repetition valuation apply to ALL dynamically
-        # registered capabilities, never a special case for the test target.
-        # Repeated activity becomes less attractive as evidence accumulates.
-        familiarity=0.10 if cap["uses"]==0 else -0.10*min(cap["uses"],5)
-        novelty=1.00 if cap["introduced_cycle"]>0 and cap["uses"]==0 else 0.0
+        semantic_tendencies[row["proposal_id"]]=tendency
+        # v0.4-style per-family caps prevent a large novelty bias from
+        # drowning out the recurrent decision signal.
+        familiarity=0.025 if cap["uses"]==0 else -0.025*min(cap["uses"],2)
+        novelty=0.05 if cap["introduced_cycle"]>0 and cap["uses"]==0 else 0.0
         history=0.0
         if memory_enabled:
             for mem in used_memories[:12]:
-                history+=0.02*len(words(row["text"])&words(mem["text"]))
-        history=min(history,0.20)
-        score=base*0.22 + familiarity + novelty + history
+                history+=0.005*len(words(row["text"])&words(mem["text"]))
+        history=min(history,0.03)
+        neural_component=base
+        score=neural_component+familiarity+novelty+history
+        contributions[row["proposal_id"]]={"neural":neural_component,
+            "familiarity":familiarity,"novelty":novelty,"history":history,
+            "total":score,"tendency":tendency,"similarity":scores[tendency]}
         candidates[row["proposal_id"]]=(score,row)
     selected=None
     if candidates:
@@ -195,6 +207,9 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         "motor_event_id":None,"motor_authorization":"not_granted",
         "native_abstract_scores":native,
         "candidate_scores":{p:round(v[0],7) for p,v in candidates.items()},
+        "contributions":contributions,
+        "semantic_tendencies":semantic_tendencies,
+        "semantic_provider":"LocalOllamaEmbeddings" if embeddings else "DeterministicConceptSimilarity",
         "memory_enabled":memory_enabled,
         "used_memory_ids":[m["id"] for m in used_memories[:12]] if memory_enabled else [],
     }
