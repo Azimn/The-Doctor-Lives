@@ -518,3 +518,91 @@ def _run_laboratory_session(
         "elapsed_seconds": round(time.monotonic() - started, 3),
         "clock": {"utc": clock.utc_iso, "beat": clock.beat},
     }
+
+
+def run_native_laboratory(
+    state: Path, world: Path, *, affectus_source: Path,
+    steps: int = 1, allow_world_actions: bool = False,
+) -> dict:
+    """Offer bounded original six-organ goal opportunities on the shipping host.
+
+    This is opt-in and requires the existing pinned, locally installed donors.
+    The original neural policy originates explore/avoid; the EXISTING native
+    chooser maps these to book/rest goals. That mapping and physical routing
+    remain host-owned and are disclosed, not misreported as open-ended agency.
+    Neither an LLM nor this host supplies a goal, book ID, or action preference.
+    """
+    if type(steps) is not int or not 1 <= steps <= 64:
+        raise ValueError("Native goal steps must be an integer from 1 to 64")
+    if type(allow_world_actions) is not bool:
+        raise TypeError("World-action permission must be a boolean")
+    state, world, affectus_source = Path(state), Path(world), Path(affectus_source)
+    if not affectus_source.is_dir():
+        raise FileNotFoundError("Existing local pinned Affectus donor required")
+    if not world.is_file():
+        raise FileNotFoundError("Existing authoritative Laboratory world required")
+    if not (state / "brain.sqlite3").is_file() or not (
+        state / "pretorius_recurrent.npz"
+    ).is_file():
+        raise FileNotFoundError("Existing canonical Doctor state required")
+
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+    from pretorius_lab.subject_port import SubjectPort
+    from .lab_native_goal_choice import NativeLaboratoryGoalChooser
+    from .lab_six_organ_session import SixOrganLaboratoryCycle
+    from .organs import SixOrganRuntime
+
+    def source_only_renderer(subject: str) -> str:
+        if type(subject) is not str or not subject.startswith(
+            ("I ", "My ", "Mine ", "Me ")
+        ):
+            raise PermissionError("Renderer received non-subject diagnostics")
+        return subject
+
+    with _exclusive_host(state, world):
+        runtime = SixOrganRuntime.open(state)
+        subject = SubjectPort(SpatialHabitat(world))
+        epoch = subject.verify()["world_epoch"]
+        receipts = []
+        with SixOrganLaboratoryCycle(
+            runtime, subject, affectus_source=affectus_source,
+            renderer=source_only_renderer, authorized=True,
+        ) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            try:
+                for _ in range(steps):
+                    result = chooser.step(
+                        authorized_world_action=allow_world_actions
+                    )
+                    receipts.append({
+                        "status": result.status,
+                        "kind": result.kind,
+                        "goal_id": result.goal_id,
+                        "memory_id": result.memory_id,
+                        "selected_tendency": result.selected_tendency,
+                        "host_selected_goal_mapping": result.host_selected_goal_mapping,
+                        "host_selected_route": result.host_selected_route,
+                    })
+                    if result.status in (
+                        "completed", "already_complete", "exhausted",
+                        "authorization_required",
+                    ):
+                        break
+            finally:
+                runtime.checkpoint()
+        if subject.verify()["world_epoch"] != epoch:
+            raise RuntimeError("Authoritative Laboratory epoch changed")
+        clock = engineer_time()
+        return {
+            "schema": "doctor-laboratory-native-goals.v1",
+            "status": receipts[-1]["status"],
+            "steps": len(receipts),
+            "receipts": receipts,
+            "same_original_brain": True,
+            "original_world_epoch_unchanged": True,
+            "host_selected_goal_mapping": True,
+            "uncoached_three_task_life_proven": False,
+            "natural_language_goal_authorship_proven": False,
+            "cloud_calls": 0,
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        }
