@@ -100,13 +100,17 @@ def _verify_neural_checkpoint(path: Path) -> None:
     """Validate original recurrent checkpoint semantics, not only its digest.
 
     An archive manifest can be rewritten by its holder. Its SHA-256 proves
-    byte consistency, not that the neural payload is loadable. Reuse the
-    canonical recurrent substrate's own schema/shape/CSR validator before
-    publishing any restored brain or Laboratory world.
+    byte consistency, not that the neural payload is loadable. The canonical
+    loader validates schema and arrays, then reconstructs the configured
+    recurrent substrate. Shape-only validation misses configuration values
+    that fail during reconstruction (for example a negative connection degree).
+    Run the SAME loader used at cold start before publishing any restored
+    brain or Laboratory world. This does not admit experience or alter the
+    archived checkpoint.
     """
     from .neural import PretoriusRecurrentSubstrate
 
-    PretoriusRecurrentSubstrate._validate_checkpoint_file(path)
+    PretoriusRecurrentSubstrate.load(path)
 
 
 def _validate_authority_binding(brain: Path, world: Path, journal: Path) -> None:
