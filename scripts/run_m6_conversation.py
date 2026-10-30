@@ -149,7 +149,7 @@ def actual_life(root:Path, *, model:str|None) -> dict:
         turn=channel.submit(question,request_id="operator_day_"+str(day),
                             day=day,model=model if day in (1,3) else None)
         turns.append({"origin":"operator","text":question,"day":day})
-        turns.append({"origin":"pretorius","text":turn["text"],
+        turns.append({"origin":"pretorius","turn_id":turn["turn_id"],"text":turn["text"],
                       "model_called":turn["model_called"],"tokens":turn["model_tokens"],
                       "latency_ms":turn["model_latency_ms"],
                       "claims":turn["claims"],"day":day,"beat":turn["beat"],
@@ -192,7 +192,7 @@ def actual_life(root:Path, *, model:str|None) -> dict:
     if model is not None:
         turns.append({"origin":"operator","text":"What have you genuinely done?",
                       "day":3})
-        turns.append({"origin":"pretorius","text":offline["text"],
+        turns.append({"origin":"pretorius","turn_id":offline["turn_id"],"text":offline["text"],
                       "model_called":False,"tokens":0,"latency_ms":0,
                       "claims":offline["claims"],"day":3})
     recap=channel.absence(3)
