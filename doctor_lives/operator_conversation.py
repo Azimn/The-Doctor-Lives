@@ -15,7 +15,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .chassis import PretoriusBrainPort
-from .conversation_claims import admit_model_draft
+from .conversation_claims import admit_model_draft, _inert_model_quote
 from .engineer_time import engineer_time
 from .lab_home_bridge import DoctorHomeBridge, _ACTION_DOMAINS, _row
 from .local_ollama_transport import post_local_ollama
@@ -139,7 +139,7 @@ class OperatorConversation:
             except sqlite3.OperationalError:
                 wishes=[]
         for wish in wishes:
-            verified.append({"status":"verified","text":"I have a recorded but unfulfilled possibility: “" + str(wish[1]) + "”",
+            verified.append({"status":"verified","text":"I have a recorded but unfulfilled possibility: " + _inert_model_quote(str(wish[1])),
                              "source":"wish","evidence_key":"wish:"+wish[0],
                              "tick":int(wish[2])})
         return verified
