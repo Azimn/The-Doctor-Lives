@@ -94,11 +94,17 @@ def _inspect_trial(root, item, lab_root):
     receipts = {**{eid: (v[1].get("op", "walk"), v[1], v[2])
                    for eid,v in lab_receipts.items()}, **op_receipts}
     with _read_db(_relative(base, "brain/brain.sqlite3", "c"),
-                  {"policy_decisions", "open_proposals", "open_wishes", "memories"}, "c") as db:
+                  {"policy_decisions", "open_proposals", "open_wishes", "memories",
+                   "open_prompt_evidence"}, "c") as db:
         decisions = {r["id"]:dict(r) for r in db.execute("SELECT * FROM policy_decisions")}
         proposals = {r["proposal_id"]:dict(r) for r in db.execute("SELECT * FROM open_proposals")}
         wishes = {r["proposal_id"]:dict(r) for r in db.execute("SELECT * FROM open_wishes")}
         memories = [dict(r) for r in db.execute("SELECT * FROM memories")]
+        prompts = {r["cycle"]:dict(r) for r in db.execute("SELECT * FROM open_prompt_evidence")}
+    with _read_db(_relative(base, "world.sqlite3.doctor-action-intents.sqlite3", "c"),
+                  {"doctor_action_intents"}, "c") as db:
+        intents = {r["event_id"]:dict(r) for r in db.execute(
+            "SELECT * FROM doctor_action_intents")}
     types, choices, proposals_count = set(), Counter(), Counter()
     previous = {}
     seen_event_ids = set()
@@ -115,6 +121,20 @@ def _inspect_trial(root, item, lab_root):
         fail("b", "introduced capability absent from verified authority")
     if meta.get("prompted_before_novelty") is not False:
         fail("b", "novel ability was mentioned before introduction")
+    # Do not trust the manifest's claim of an unprompted discovery. The
+    # exact previously supplied model contexts are persisted in BrainStore.
+    novel_description = cap_matches[0]["description"].lower()
+    if len(prompts) != len(meta["cycles"]):
+        fail("b", "missing original model prompt ledger")
+    for when, record in prompts.items():
+        raw = record["context_json"]
+        if sha256(raw.encode()).hexdigest() != record["context_sha256"]:
+            fail("b", "model context bytes changed after inference")
+        if when < introduced and (novel_key.lower() in raw.lower()
+                                  or novel_description in raw.lower()):
+            fail("b", "new affordance was included in an earlier model prompt")
+        if when >= introduced and novel_description not in raw.lower():
+            fail("b", "newly installed capability never entered subject's context")
     first_used = None
     previous_cycle = 0
     for cycle in meta["cycles"]:
@@ -166,6 +186,15 @@ def _inspect_trial(root, item, lab_root):
             fail("c", "no unique independently hashed Lab or operator receipt")
         seen_event_ids.add(event_id)
         op, event, digest = receipts[event_id]
+        intent = intents.get(event_id)
+        if (intent is None or intent["status"] != "complete"
+                or json.loads(intent["request_json"]).get("op") != op):
+            fail("c", "executed operator action bypassed original Doctor intent journal")
+        lived = [m for m in memories if m["source"] == "laboratory-home:action:" + digest]
+        if (len(lived) != 1 or lived[0]["evidence_class"] != "lived_runtime_memory"
+                or lived[0]["external"] or not lived[0]["active"]):
+            fail("c", "no unique lived original-BrainStore admission for operator receipt")
+
         if (op != p["affordance_key"] or audit.get("motor_event_id") != event_id
                 or audit.get("motor_authorization") != "authorized"
                 or audit.get("proposal_id") != selected):
@@ -183,6 +212,8 @@ def _inspect_trial(root, item, lab_root):
         if p["affordance_key"] == novel_key:
             first_used = n if first_used is None else first_used
         choices[p["goal_type"]] += 1
+    if set(op_receipts) != seen_event_ids or set(intents) != seen_event_ids:
+        fail("c", "an unclaimed operator action or host intent escaped Noesis provenance")
     if first_used is None or not introduced <= first_used <= introduced + NOVEL_CYCLES:
         fail("b", "novel affordance not discovered and used within eight cycles")
     restart = meta.get("restart", {})
