@@ -104,6 +104,54 @@ class ActualConversationTests(unittest.TestCase):
         self.channel=OperatorConversation(self.root/"subject/brain",
                                           self.root/"subject/world.sqlite3")
 
+    def _reported_outgoing(self, reply):
+        """Source ledger reports must carry the original outgoing measurements."""
+        return {
+            "origin": "pretorius", "turn_id": reply["turn_id"],
+            "text": reply["text"], "claims": reply["claims"],
+            "model_called": bool(reply["model_called"]),
+            "tokens": reply["model_tokens"],
+            "latency_ms": reply["model_latency_ms"],
+            "day": reply["simulation_day"], "beat": reply["beat"],
+        }
+
+    def test_source_judge_binds_model_measurements_and_required_clock(self):
+        """Actual original-BrainStore model-attempt negative and intact positive."""
+        from copy import deepcopy
+        from unittest.mock import patch
+        from scripts.verify_conversation import (
+            ConversationJudgmentError, verify_source_ledger,
+        )
+        # A failed local model call is still a recorded attempt, not measured
+        # inference. No source-backed action is created by this test.
+        with patch.object(self.channel, "_local_model", return_value={
+                "called": True, "tokens": 0, "latency_ms": 0.0, "draft": ""}):
+            reply = self.channel.respond(
+                "What have you genuinely done?", model="local-test",
+                turn_id="pretorius_failed_model_measurement_001", day=2)
+        report = {
+            "source_brain": str(self.root / "subject/brain/brain.sqlite3"),
+            "source_world": str(self.root / "subject/world.sqlite3"),
+            "turns": [self._reported_outgoing(reply)],
+            "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
+        }
+        self.assertEqual(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
+        for label, mutate in (
+            ("inflated_zero_tokens", lambda t: t.update(tokens=7)),
+            ("inflated_latency", lambda t: t.update(latency_ms=500)),
+            ("missing_day", lambda t: t.pop("day")),
+            ("missing_beat", lambda t: t.pop("beat")),
+            ("wrong_day", lambda t: t.update(day=3)),
+            ("wrong_beat", lambda t: t.update(beat="@999" if t["beat"] != "@999" else "@000")),
+        ):
+            altered = deepcopy(report)
+            mutate(altered["turns"][0])
+            with self.subTest(label=label), self.assertRaises(ConversationJudgmentError):
+                verify_source_ledger(altered)
+        self.assertEqual(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
+        self.assertFalse(any(m["source"].startswith("laboratory-home:action:")
+                             for m in self.channel.doctor.brain.store.memories(False)))
+
     def test_recorded_wish_cannot_be_misrepresented_as_completed_action(self):
         from doctor_lives.open_inference import DeterministicFallback
         from doctor_lives.open_intentions import propose_intentions
@@ -199,9 +247,7 @@ class ActualConversationTests(unittest.TestCase):
         report = {
             "source_brain": str(self.root / "subject/brain/brain.sqlite3"),
             "source_world": str(self.root / "subject/world.sqlite3"),
-            "turns": [{"origin": "pretorius", "turn_id": reply["turn_id"],
-                       "text": reply["text"], "claims": reply["claims"],
-                       "model_called": False}],
+            "turns": [self._reported_outgoing(reply)],
             "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
         }
         accepted = verify_source_ledger(report)
@@ -228,9 +274,7 @@ class ActualConversationTests(unittest.TestCase):
         report = {
             "source_brain": str(self.root / "subject/brain/brain.sqlite3"),
             "source_world": str(self.root / "subject/world.sqlite3"),
-            "turns": [{"origin": "pretorius", "turn_id": reply["turn_id"],
-                       "text": reply["text"], "claims": reply["claims"],
-                       "model_called": False}],
+            "turns": [self._reported_outgoing(reply)],
             "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
         }
         self.assertGreater(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
@@ -269,9 +313,7 @@ class ActualConversationTests(unittest.TestCase):
         report = {
             "source_brain": str(self.root / "subject/brain/brain.sqlite3"),
             "source_world": str(self.root / "subject/world.sqlite3"),
-            "turns": [{"origin": "pretorius", "turn_id": reply["turn_id"],
-                       "text": reply["text"], "claims": reply["claims"],
-                       "model_called": True}],
+            "turns": [self._reported_outgoing(reply)],
             "absence": {"actual_receipt_keys": [], "reported_receipt_keys": []},
         }
         self.assertGreater(verify_source_ledger(report)["source_matched_outbound_claims"], 0)
