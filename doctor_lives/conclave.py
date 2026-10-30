@@ -325,14 +325,28 @@ class Conclave:
 
     def _check_world_receipt(self, event_id: str) -> None:
         # This checks a canonical *record*, not privileged world state.
+        # Important: the canonical ingress marks verified firsthand world
+        # observations external=False and stores them as lived_runtime_memory.
+        # Unverified WORLD reports are external=True / external_statement.
+        # A bare events.external flag would INVERT the trust distinction.
         with self._store.connect() as db:
             row = db.execute(
-                "SELECT external,evidence_class FROM events WHERE id=?", (event_id,)
+                """SELECT e.kind,e.source,e.evidence_class,e.external,m.id AS memory_id
+                   FROM events AS e
+                   JOIN memories AS m ON m.source_event_id=e.id
+                    AND m.source=e.source AND m.external=0
+                    AND m.evidence_class='lived_runtime_memory' AND m.active=1
+                   WHERE e.id=?""", (event_id,)
             ).fetchone()
-        if row is None or int(row["external"]) != 1 or row["evidence_class"] in {
-            "dreamed", "imagined", "divined", "inferred"
-        }:
-            raise PermissionError("world_verified requires a recorded external event")
+        if (
+            row is None or int(row["external"]) != 0
+            or row["evidence_class"] != "lived_runtime_memory"
+            or row["kind"] not in {"observation", "virtual_world_observation"}
+            or not row["source"].startswith(("laboratory-home:", "virtual-world:"))
+        ):
+            raise PermissionError(
+                "world_verified requires canonical lived observation and verified Lab source"
+            )
 
     @staticmethod
     def _truth(db, reading_id: str) -> str:
