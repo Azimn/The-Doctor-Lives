@@ -131,6 +131,10 @@ def noesis_open_choice(bridge,work:OperatorWork,proposals:list[dict],cycle:int,
         raise ValueError("Noesis must receive 3 to 8 proposed intentions")
     brain=bridge.doctor.brain
     store=brain.store
+    # Advance the actual ORIGINAL recurrent selector in response to this
+    # opportunity. The proposed text cannot itself set neural motor scores.
+    from .organs import NoesisOrgan
+    NoesisOrgan(bridge.doctor).deliberate(host_trigger="m4_open_intention")
     native=brain.neural.action_scores()
     if set(native)!=set(ACTIONS):
         raise RuntimeError("Original recurrent policy changed unexpectedly")
