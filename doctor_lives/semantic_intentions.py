@@ -9,7 +9,7 @@ import json
 import math
 import re
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from .local_ollama_transport import post_local_ollama
 from .neural import ACTIONS
 
 CATEGORY_DESCRIPTIONS = {
@@ -77,14 +77,15 @@ class LocalOllamaEmbeddings:
         if not isinstance(model,str) or not re.fullmatch(r"[a-zA-Z0-9_.:/-]{1,96}",model):
             raise ValueError("Invalid local embedding model")
         self.endpoint=endpoint.rstrip("/")
+        self.hostname=url.hostname
+        self.port=url.port
         self.model=model
 
     def embed_many(self, texts: list[str]) -> list[list[float]]:
         payload=json.dumps({"model":self.model,"input":texts}).encode("utf-8")
-        req=Request(self.endpoint+"/api/embed",data=payload,method="POST",
-                    headers={"Content-Type":"application/json"})
-        with urlopen(req,timeout=90) as answer:
-            value=json.loads(answer.read(2000000).decode("utf-8"))
+        value=json.loads(post_local_ollama(
+            self.hostname,self.port,"/api/embed",payload,
+            timeout=90,max_response_bytes=2000000).decode("utf-8"))
         vectors=value.get("embeddings")
         if (not isinstance(vectors,list) or len(vectors)!=len(texts)
                 or not vectors or not all(isinstance(x,list) and x for x in vectors)):

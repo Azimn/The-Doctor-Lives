@@ -28,6 +28,7 @@ REVIEWED_OPERATOR_GLOSS = {"local_subject_gloss.py": {"http"}}
 # M4/M5 opt-in research adapters are separate from the subject renderer.
 REVIEWED_LOCAL_RESEARCH = {"open_inference.py": {"urllib"},
                            "semantic_intentions.py": {"urllib"}}
+REVIEWED_LOCAL_TRANSPORT = {"local_ollama_transport.py": {"http"}}
 
 MODEL_PROVIDER_ROOTS = {
     "urllib", "requests", "httpx", "http", "openai", "anthropic",
@@ -62,7 +63,8 @@ def run() -> dict:
         root = ast.parse(content, filename=str(file))
         found = imports(root) & MODEL_PROVIDER_ROOTS
         expected = RESEARCH_ONLY.get(file.name, REVIEWED_OPERATOR_GLOSS.get(
-            file.name, REVIEWED_LOCAL_RESEARCH.get(file.name, set())))
+            file.name, REVIEWED_LOCAL_RESEARCH.get(file.name,
+                REVIEWED_LOCAL_TRANSPORT.get(file.name, set()))))
         if found != expected:
             raise AssertionError(
                 f"Unreviewed model/process/network import in {file.name}: "
@@ -81,10 +83,23 @@ def run() -> dict:
             calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
                      and isinstance(n.func, ast.Name)]
             if (not all(part in content for part in required)
-                    or sum(n.func.id == "urlopen" for n in calls) != 1
-                    or sum(n.func.id == "Request" for n in calls) != 1):
+                    or sum(n.func.id == "post_local_ollama" for n in calls) != 1
+                    or "urlopen(" in content or "Request(" in content):
                 raise AssertionError("Unreviewed local research provider route")
             audits[file.name] = "audited loopback-only research adapter, not renderer"
+        if file.name in REVIEWED_LOCAL_TRANSPORT:
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute)]
+            connections = [n for n in calls if n.func.attr == "HTTPConnection"]
+            requests = [n for n in calls if n.func.attr == "request"]
+            required = ('"::1" if hostname == "::1" else "127.0.0.1"',
+                        'route not in ("/api/generate", "/api/embed")',
+                        'if response.status != 200:', 'response.read(max_response_bytes + 1)')
+            if (len(connections) != 1 or len(requests) != 1
+                    or not all(part in content for part in required)
+                    or "urlopen(" in content):
+                raise AssertionError("Unreviewed local research HTTP transport")
+            audits[file.name] = "direct numeric-loopback POST; no proxies or redirects"
         if file.name == "local_subject_gloss.py":
             # Only this operator-only adapter may use a network import, and
             # only for a literal fixed-loopback Ollama POST. This does not

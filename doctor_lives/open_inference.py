@@ -12,7 +12,7 @@ import json
 import random
 from typing import Any
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from .local_ollama_transport import post_local_ollama
 
 class InferencePort(ABC):
     @abstractmethod
@@ -30,6 +30,8 @@ class LocalOllama(InferencePort):
             raise ValueError("Local Ollama model must be named")
         self.model=model
         self.endpoint=endpoint.rstrip("/")
+        self.hostname=url.hostname
+        self.port=url.port
 
     def propose(self, context: dict[str,Any]) -> list[str]:
         content=(
@@ -53,10 +55,9 @@ class LocalOllama(InferencePort):
                 "prompt":content + ("\nReturn ONLY the required JSON object." if attempt else ""),
                 "stream":False,"format":expected,
                 "options":{"temperature":0.0,"num_predict":768}}).encode()
-            req=Request(self.endpoint+"/api/generate",data=payload,
-                        headers={"Content-Type":"application/json"},method="POST")
-            with urlopen(req,timeout=90) as answer:
-                raw=json.loads(answer.read(128000).decode("utf-8"))
+            raw=json.loads(post_local_ollama(
+                self.hostname,self.port,"/api/generate",payload,
+                timeout=90,max_response_bytes=128000).decode("utf-8"))
             try:
                 parsed=json.loads(raw["response"])
                 if isinstance(parsed,dict):
