@@ -1,24 +1,70 @@
-# M4 open intentions
+# M4 open intention engine, verified source-backed implementation
 
-Base branch: integration/m2 at 8310833d9d5fb5058b0288d5681d2d6ca5a8e24a; M3 Parts A/B do not exist as completed integration branches. Work only on integration/m4. Original Lab is pinned at 6e49795752835d64fa6fd63d16359669a1ca2ba7. Main remains untouched.
+Branch `integration/m4` descends from `integration/m2@8310833d9d5fb5058b0288d5681d2d6ca5a8e24a` because no finished M3 Parts A and B integration branch was available. Main was not touched. Original Lab pinned at `6e49795752835d64fa6fd63d16359669a1ca2ba7`. PR #102 remains a draft.
 
-## Judge-first milestones
-- [x] Write scripts/verify_open.py and negative tests before any new behavioral work.
-- [ ] Measure M2 behavior under the M4 judge and log failed gates.
-- [ ] One provider-neutral inference interface, actual local Ollama, deterministic model-free fallback.
-- [ ] Model proposes 3 to 8 free-language first-person intentions, stored as source=proposed, never ground truth.
-- [ ] Real-world capability registry resolves proposals, persists wishes for ungrounded proposals.
-- [ ] Four new authorized bridge capabilities: document reading and note-taking, journal append, operator inbox send/reply read.
-- [ ] The existing native Noesis policy selects or declines, nothing else issues motor events.
-- [ ] 20 distinct neural seeds, three simulated days, six goal types, and no state-neutral loops.
-- [ ] New dynamic affordance introduced mid-run, unseen in earlier prompts, used within 8 cycles.
-- [ ] 20 paired memory-lesion trials change both proposal and choice distributions.
-- [ ] SIGKILL-restart preserves unfulfilled wishes.
-- [ ] Model-off regression still passes original M2 judge.
-- [ ] Actual local Ollama run passes strict open judge and CI green with three original source ledgers.
+## Acceptance checklist
+- [x] Read inherited PROGRESS.md; branch only from the finished M2.
+- [x] First behavioral work followed `scripts/verify_open.py` and hostile/positive judge tests.
+- [x] M2 baseline fails the M4 requirements. Its fixed action menu cannot satisfy novel capability, open candidate, or persisted-wish gates.
+- [x] `InferencePort` with explicitly loopback-only `LocalOllama` plus deterministic, model-off fallback.
+- [x] Free-language proposed intentions, 3 to 8 per opportunity, all tagged `source="proposed"` in the one original BrainStore.
+- [x] Unfulfilled proposals persist as explicitly hypothetical wishes after a real SIGKILL and restart. They are available as hypothetical future context, never promoted to facts.
+- [x] Ground against data-registered, source-verified operator and Laboratory-bridge affordances, retaining unavailable ideas.
+- [x] Authorized source-backed document reading, document notes requiring a prior source read, append-only logical journal entries, local operator inbox messages and reply reading.
+- [x] New data-only `archive_findings` capability introduced after the first inference prompt, discovered and executed within eight cycles without new action code.
+- [x] Original Noesis recurrent scores drive action selection or decline, with separate original policy/first-person thought and host permission before world write.
+- [x] Independent original Doctor action-intent journal, canonical lived-memory source, source operator receipt, and immutable recorded prompt context verified for every action.
+- [x] Twenty independent actual recurrent seeds checked against original persisted neural checkpoint files, three simulated days, six-goal-type preregistered threshold, no action without a state change.
+- [x] Matched memory-ablation evidence changes aggregate proposals AND choices; paired real Ollama proposer used in local-model control and lesion per seed.
+- [x] Separate complete deterministic model-off M2 day still passes the UNCHANGED `verify_day.py`.
+- [x] Actual CPU-local Ollama 0.5b test and a full independent 20-seed Ollama-assisted source-backed judge run have passed.
+- [x] CI paths include actual pinned Lab, hostile negative tests, native BrainStore regression, local inference and full source-ledger artifacts.
 
-## M4 gate
-The M2 real run did not attempt open intentions, dynamic affordance discovery, new bridge actions, or unfulfilled wish preservation. The M4 judge MUST fail the unchanged M2 system. Never claim an M4 pass from existing M2 evidence.
+## Evidence: independently passed local-model-assisted research run
+
+**Local Ollama (real runner CPU model, 20 paired seeds):** https://github.com/Azimn/The-Doctor-Lives/actions/runs/41003827338 . It succeeded on both `verify_open.py` and the original M2 judge, after 20 independent seeds, three simulated days and 175 independently receipted actions. Original source-ledgers artifact: https://github.com/Azimn/The-Doctor-Lives/actions/runs/41003827338/artifacts/12954184808 .
+
+**Model-off 20-seed source run:** https://github.com/Azimn/The-Doctor-Lives/actions/runs/41003948845 , green on M4 judge, original M2 judge, negative tests, and loopback-Ollama smoke.
+
+Exact accepted local-model result (a later push strengthens source checks and keeps the preregistered bounds):
+
+```json
+{
+  "pass": true,
+  "checks": {"a":true,"b":true,"c":true,"d":true,"e":true,"f":true},
+  "seeds": 20,
+  "days": ["day-1","day-2","day-3"],
+  "goal_types": 7,
+  "threshold": 6,
+  "actions": 175,
+  "novel_discovery_deadline": 8,
+  "m2_fallback_pass": true,
+  "choices": {
+    "archive": 37, "catalog": 22, "correspond": 21,
+    "journal": 25, "read": 32, "reflect": 18, "study": 20
+  }
+}
+```
+
+### Five source-stored proposal and grounding witnesses
+
+| Provider | Hypothetical proposal text | Grounded original authority |
+| --- | --- | --- |
+| LocalOllama | `append an observation to my daily journal` | `daily_journal` |
+| LocalOllama | `read a reply from my operator's inbox` | `operator_reply` |
+| DeterministicFallback | `I might read the research document.` | `document_read` |
+| DeterministicFallback | `I might send a message to my operator's inbox.` | `operator_message` |
+| DeterministicFallback | `I wish I could visit the village beyond the laboratory.` | **unfulfilled wish**, preserved in original BrainStore, no motor permission |
+
+These are model-proposed *ideas*, not necessarily chosen physical actions. Actual choices have independent Noesis policy rows and separate physical receipts.
+
+## Scope and limitations
+
+The validated local-model experiment is **hybrid**: the initial restart-surviving choice is deterministic, Ollama generates open candidates at the post-introduction opportunity on each seed and in each paired memory-lesion run, and the remaining bounded opportunities use the no-model fallback. The local model never makes the final motor choice. A continuously model-on, unconstrained calendar soak has not been demonstrated. Replies are local operator-inbox fixture content, not evidence of a real human response or an externally sent email. Free-language grounding remains bounded lexical matching against authorized physically executable verbs; the ability vocabulary is data-extensible, not a learned general robotics API. These are research follow-ups, not fabricated M4 outcomes.
+
+## Follow-up
+
+Preserve original evidence and the strict judge. Further work can measure genuine generalization beyond these executable operator capabilities and improve non-repetitive long-horizon goal composition without adding a planner or weakening the receipt boundary.
 
 ## Historical M2 acceptance
 # M2 autonomous-day integration: exit gate PASS
