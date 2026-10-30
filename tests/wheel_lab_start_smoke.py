@@ -166,7 +166,7 @@ def main():
         assert len(source_memories) == 1
         assert source_memories[0]["evidence_class"] == "lived_runtime_memory"
         assert source_memories[0]["text"] == work_report["subject_frames"][-1]["inner"]
-        with PretoriusBrainPort(preview_state).brain.store.connect() as mind_db:
+        with closing(PretoriusBrainPort(preview_state).brain.store.connect()) as mind_db:
             decision = mind_db.execute(
                 "SELECT state_pressure_json FROM policy_decisions "
                 "WHERE trigger='noesis_situated_choice' ORDER BY rowid DESC LIMIT 1"
@@ -223,7 +223,7 @@ def main():
         real_publish = lab_preview._publish_noreplace
 
         def competing_publisher(staging, destination):
-            assert destination == contested_backup
+            assert destination == contested_backup.resolve()
             destination.mkdir()
             return real_publish(staging, destination)
 
@@ -238,6 +238,7 @@ def main():
         assert contested_backup.is_dir()
         assert list(contested_backup.iterdir()) == []
         assert not list(root.glob(".doctor-backup-*"))
+        gc.collect()  # Close discarded SQLite readers before Windows temp cleanup.
 
         no_reseed = subprocess.run([
             console, "preview-init", "--workspace", str(preview),
