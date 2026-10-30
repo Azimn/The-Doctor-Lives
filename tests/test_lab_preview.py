@@ -1,6 +1,7 @@
 """Standalone original-Laboratory genesis and cold-start acceptance candidates."""
 from __future__ import annotations
 
+import gc
 import importlib.util
 import subprocess
 import sys
@@ -66,6 +67,10 @@ class OriginalLaboratoryGenesisTests(unittest.TestCase):
                 self.assertIn('"status": "ready"', result.stdout)
             with self.assertRaises(FileExistsError):
                 initialize_preview(destination)
+            # Original Laboratory `with sqlite3.Connection` commits without
+            # closing readers; release verification-only handles before the
+            # Windows TemporaryDirectory removes the world database.
+            gc.collect()
 
     def test_competing_empty_workspace_at_publish_is_never_clobbered(self):
         # Deterministically create the competing directory AFTER full genesis
@@ -133,6 +138,9 @@ class OriginalLaboratoryGenesisTests(unittest.TestCase):
                     f"genesis=ready_for_operator_start cold_start=ready",
                     flush=True,
                 )
+            # Parent-side original-world verification also opens SQLite readers.
+            # Do not mistake Windows test teardown locks for genesis failures.
+            gc.collect()
 
     def test_failed_world_genesis_leaves_no_published_authority(self):
         from unittest.mock import patch
