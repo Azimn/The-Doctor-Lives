@@ -17,6 +17,17 @@ def require(condition, explanation):
         raise ConversationJudgmentError(explanation)
 
 
+def _verified_wish_sentence(value: str) -> str:
+    """Independently reconstruct the inert presentation from raw BrainStore.
+
+    Do not trust the candidate's claim text or import its renderer. The source
+    ledger must prove the underlying unfulfilled wish AND the escaped output.
+    """
+    quote = json.dumps(value, ensure_ascii=True)
+    quote = quote.replace("[", r"\u005b").replace("]", r"\u005d")
+    return "I have a recorded but unfulfilled possibility: " + quote
+
+
 def verify_source_ledger(report: dict) -> dict:
     """Independently re-open the original BrainStore and Laboratory receipts."""
     import sqlite3
@@ -103,7 +114,7 @@ def verify_source_ledger(report: dict) -> dict:
             elif source=="wish":
                 require(key.startswith("wish:") and key[5:] in wishes,
                         "Unverified wished-for intention")
-                expected="I have a recorded but unfulfilled possibility: “"+wishes[key[5:]]+"”"
+                expected=_verified_wish_sentence(wishes[key[5:]])
                 require(claim["text"]==expected,"Claimed wish differs from recorded hypothetical")
             elif source=="operator":
                 actual=memories.get(claim.get("memory_id"))
