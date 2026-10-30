@@ -239,7 +239,7 @@ def _check_ablation(ablations, bundle, lab_root):
         try:
             PretoriusRecurrentSubstrate._validate_checkpoint_file(neural)
             with np.load(neural, allow_pickle=False) as stored:
-                cfg = json.loads(str(stored["cfg_json"][0]))
+                cfg = json.loads(str(stored["cfg_json"].item()))
             if int(cfg["seed"]) != seed:
                 reject("e", "recorded neural seed does not match original checkpoint")
         except (KeyError, ValueError, TypeError, OSError) as exc:
