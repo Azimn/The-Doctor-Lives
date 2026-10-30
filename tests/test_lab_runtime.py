@@ -1102,7 +1102,7 @@ raise AssertionError("The action-to-memory crash boundary was not reached")
         )
         self.assertEqual(bridge.pending_action_intents(), ())
 
-    def test_all_shipping_entrypoints_refuse_ghost_pre_world_intent(self):
+    def test_cold_start_abandons_proven_pre_world_crash_without_ghost_action(self):
         # Real child process dies after the original Doctor intent journal
         # commits, but BEFORE any original Laboratory physical act. Restart
         # must not invent the missing action, memory, or subjective frame.
@@ -1149,31 +1149,52 @@ raise AssertionError("Expected process termination before physical action")
                 (event_id,),
             ).fetchone())
 
-        for command in ("lab-start", "lab-run", "lab-sleep", "lab-work"):
-            with self.subTest(command=command):
-                argv = [
-                    sys.executable, "-m", "doctor_lives.cli", "--state",
-                    str(self.state), command, "--world", str(self.world_path),
-                ]
-                if command == "lab-run":
-                    argv += ["--seconds", "0.3", "--interval-seconds", "0.1"]
-                elif command in ("lab-sleep", "lab-work"):
-                    argv += ["--event-id", "new-opportunity-after-crash"]
-                denied = subprocess.run(
-                    argv, capture_output=True, text=True, timeout=25,
-                )
-                self.assertNotEqual(denied.returncode, 0)
-                self.assertEqual(denied.stdout, "")
-                self.assertIn("automatic physical replay denied", denied.stderr)
-                self.assertEqual(self._receipt_and_observation_counts(), stable)
-                self.assertEqual(bridge.pending_action_intents(), pending)
-                with self.world._open() as db:
-                    self.assertIsNone(db.execute(
-                        "SELECT 1 FROM embodied_events WHERE event_id=?",
-                        (event_id,),
-                    ).fetchone())
-        # Fail-closed pending reservation requires later explicit operator
-        # reconciliation. It must never become a new motor command on restart.
+        # Cold start safely abandons the intent after proving that the
+        # original Laboratory never committed a physical event. It must
+        # neither execute the reserved walk nor admit a first-person memory.
+        started = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(started.returncode, 0, started.stderr)
+        report = json.loads(started.stdout)
+        self.assertEqual(report["status"], "ready")
+        self.assertEqual(report["recovered"], 0)
+        self.assertEqual(report["abandoned"], 1)
+        self.assertEqual(report["subject_frames"], [])
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        self.assertEqual(bridge.pending_action_intents(), ())
+        with self.world._open() as db:
+            self.assertIsNone(db.execute(
+                "SELECT 1 FROM embodied_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone())
+        port = PretoriusBrainPort(self.state)
+        self.assertFalse([
+            m for m in port.brain.store.memories(False)
+            if m["source"].startswith("laboratory-home:action:")
+        ])
+
+        # A second cold start is idempotent and never repeats the abandoned
+        # intent. An ordinary elapsed run may LOOK, but cannot move the body.
+        again = subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), "lab-start", "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=25,
+        )
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertEqual(json.loads(again.stdout)["abandoned"], 0)
+        self.assertEqual(self._receipt_and_observation_counts(), stable)
+        elapsed = self._cli("--seconds", "0.3", "--interval-seconds", "0.1")
+        self.assertEqual(elapsed.returncode, 0, elapsed.stderr)
+        self.assertEqual(json.loads(elapsed.stdout)["abandoned"], 0)
+        with self.world._open() as db:
+            self.assertIsNone(db.execute(
+                "SELECT 1 FROM embodied_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone())
+        self.assertEqual(bridge.pending_action_intents(), ())
 
     def test_interrupt_and_invalid_interval_fail_closed(self):
         stop = threading.Event()
