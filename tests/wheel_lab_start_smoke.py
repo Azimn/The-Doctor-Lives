@@ -878,6 +878,7 @@ def main():
                           "verified_lived_memories": 1,
                           "preview_noesis_distinct_work_actions": 2,
                           "preview_authenticated_work_memories": 2,
+                          "preview_operator_scheduled_noesis_day_verified": True,
                           "preview_later_different_admitted_action_after_world_change": True,
                            "preview_initial_feasible_actions": initial_feasible,
                            "preview_followup_feasible_actions": followup_feasible,
