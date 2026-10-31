@@ -521,6 +521,29 @@ def _run_laboratory_session(
 
 
 
+def _source_rhythm_subject(action: str, receipt: dict) -> dict:
+    """Reconstruct ONLY the original SubjectPort's pinned rhythm projection.
+
+    Original Laboratory daily_rhythm.advance stores "Time passes..." in its
+    hashed world event; SubjectPort.act("advance") presents the additional
+    first-person "I notice time passing." prefix. All other daily rhythm
+    actions return the source frame unchanged. This is not an LLM renderer.
+    """
+    subject = receipt.get("subject")
+    if (type(subject) is not dict or set(subject) != {"inner", "spoken_aloud"}
+            or type(subject["inner"]) is not str
+            or not subject["inner"]):
+        raise RuntimeError("Malformed original-world subject receipt")
+    if action == "advance":
+        if not subject["inner"].startswith("Time passes. "):
+            raise RuntimeError("Unexpected original Laboratory advance wording")
+        return {
+            "inner": "I notice time passing. " + subject["inner"],
+            "spoken_aloud": subject["spoken_aloud"],
+        }
+    return subject
+
+
 def offer_laboratory_day(
     state: Path, world: Path, *, allow_world_actions: bool = False,
 ) -> dict:
@@ -567,11 +590,12 @@ def offer_laboratory_day(
                 receipt, digest = _row(
                     db, _ACTION_DOMAINS[choice.action], event_id,
                 )
+            subject_frame = _source_rhythm_subject(choice.action, receipt)
             lived = bridge.doctor.brain.store.get_memory(actual["memory_id"])
             if (lived is None or not lived["active"] or lived["external"]
                     or lived["evidence_class"] != "lived_runtime_memory"
                     or lived["source"] != "laboratory-home:action:" + digest
-                    or receipt.get("subject", {}).get("inner") != lived["text"]):
+                    or subject_frame["inner"] != lived["text"]):
                 raise RuntimeError("No authenticated original-world lived consequence")
             if bridge.subject.verify()["world_epoch"] != epoch:
                 raise RuntimeError("Original Laboratory epoch changed")
@@ -592,7 +616,7 @@ def offer_laboratory_day(
             "recovered": len(recovered),
             "abandoned": len(abandoned),
             "subject_frames": [item["subject"] for item in recovered]
-                              + [receipt["subject"]],
+                              + [subject_frame],
             "host_selected_action": False,
             "operator_offered_opportunity": True,
             "uncoached_three_task_life_proven": False,
