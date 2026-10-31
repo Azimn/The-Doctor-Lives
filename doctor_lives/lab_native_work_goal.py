@@ -211,6 +211,12 @@ class NativeWorkPursuit:
                     state["phase"] = "blocked"
                     self._save(state)
                 return WorkReceipt("blocked", state["id"])
+            # A real six-port cycle precedes the concrete work selection.
+            # It is non-actuating: only the subsequently source-verified
+            # original Noesis work policy may authorize a physical action.
+            cycle = self.host.cycle(authorized_world_action=False)
+            if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
+                raise RuntimeError("Incomplete canonical six-organ work opportunity")
             proposed = propose_noesis_work(
                 self.host.bridge, outcome_learning_enabled=True
             )
