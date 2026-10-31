@@ -21,6 +21,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
+      - name: Preserve exact Git blob bytes on both operating systems
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
