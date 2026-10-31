@@ -282,6 +282,52 @@ def main():
                      allow_pickle=False) as checkpoint:
             assert json.loads(str(checkpoint["cfg_json"].item()))["neurons"] == 4096
 
+        # Exercise the NEW non-chat Noesis daily opportunity from the sealed,
+        # non-editable installed 4,096-neuron wheel, not the source checkout.
+        # The operator authorizes an opportunity but never supplies an action.
+        day = json.loads(_run([
+            console, "--state", str(restored_preview_state),
+            "lab-opportunity", "--world", str(restored_preview_world),
+            "--allow-world-actions",
+        ]).stdout)
+        assert day["schema"] == "doctor-laboratory-offline-opportunity.v1"
+        assert day["status"] == "admitted"
+        assert day["selection"] == "original_noesis"
+        assert day["operator_offered_opportunity"] is True
+        assert day["host_selected_action"] is False
+        assert day["uncoached_three_task_life_proven"] is False
+        assert day["action"] in day["feasible_actions"]
+        with closing(SpatialHabitat(restored_preview_world)._open()) as day_db:
+            day_receipt = day_db.execute(
+                "SELECT event_hash,envelope FROM rhythm_events WHERE event_id=?",
+                (day["event_id"],),
+            ).fetchone()
+        assert day_receipt is not None
+        day_memory = PretoriusBrainPort(
+            restored_preview_state
+        ).brain.store.get_memory(day["memory_id"])
+        assert day_memory["evidence_class"] == "lived_runtime_memory"
+        assert day_memory["source"] == "laboratory-home:action:" + day_receipt[0]
+        assert day_memory["text"] == json.loads(day_receipt[1])["subject"]["inner"]
+        assert day["subject_frames"][-1]["inner"] == day_memory["text"]
+        with closing(PretoriusBrainPort(restored_preview_state).brain.store.connect()) as day_mind:
+            day_policy = day_mind.execute(
+                "SELECT selected_action,state_pressure_json FROM policy_decisions "
+                "WHERE id=?", (day["policy_decision_id"],),
+            ).fetchone()
+        assert day_policy is not None
+        assert day_policy[0] == day["action"]
+        assert json.loads(day_policy[1])["selector_authority"] == "original_noesis"
+        assert json.loads(_run([
+            console, "--state", str(restored_preview_state),
+            "lab-start", "--world", str(restored_preview_world),
+        ]).stdout)["recovered"] == 0
+        with closing(SpatialHabitat(restored_preview_world)._open()) as day_db:
+            assert day_db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                (day["event_id"],),
+            ).fetchone()[0] == 1
+
         # A competing empty backup destination must never be overwritten
         # between the final check and the actual directory publication.
         from unittest.mock import patch
