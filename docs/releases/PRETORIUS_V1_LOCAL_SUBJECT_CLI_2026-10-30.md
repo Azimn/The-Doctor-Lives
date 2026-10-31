@@ -59,3 +59,5 @@ The archive verifier checks both canonical brain and original-world authority, t
 ## Current limitations
 
 This is a text-only console, not an autonomous three-task day or a self-authored enduring project. It does not navigate to books, bedrooms or workstations; does not certify every renderer/model substitution path; and does not make a first-person transcript into proof of cognition. No production-main merge, immutable release tag, or independent R1-R6 acceptance is implied.
+
+The Laboratory is currently the only supported world. The world interface exists in source but is not the installed preview's boundary. Durable mind state includes the neural checkpoint and optional Ipseity state outside BrainStore.
