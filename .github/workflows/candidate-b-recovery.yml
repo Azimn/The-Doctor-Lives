@@ -13,6 +13,12 @@ on:
       - .github/workflows/candidate-b-recovery.yml
   workflow_dispatch:
 
+# Only the latest B pull-request head deserves costly donor builds.
+# This does not apply to the separately marker-gated four-hour workflow.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
