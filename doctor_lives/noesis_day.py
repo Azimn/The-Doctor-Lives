@@ -91,6 +91,93 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
                        observed["memory_id"], options)
 
 
+
+def _complete_daily_motor(bridge: DoctorHomeBridge, policy_id: str,
+                          event_id: str, memory_id: str) -> None:
+    """Record only the already source-admitted action in the ONE BrainStore."""
+    store = bridge.doctor.brain.store
+    with store.transaction() as db:
+        row = db.execute(
+            "SELECT selected_action,state_pressure_json FROM policy_decisions "
+            "WHERE id=? AND trigger='noesis_situated_choice'", (policy_id,)
+        ).fetchone()
+        if row is None:
+            raise PermissionError("Daily motor lost its original Noesis policy")
+        evidence = json.loads(row["state_pressure_json"])
+        if (evidence.get("selector_authority") != "original_noesis"
+                or evidence.get("motor_authorization") != "authorized"
+                or evidence.get("motor_event_id") != event_id
+                or evidence.get("motor_memory_id") not in (None, memory_id)):
+            raise PermissionError("Daily motor completion does not match original policy")
+        evidence["motor_completion"] = "admitted"
+        evidence["motor_memory_id"] = memory_id
+        db.execute("UPDATE policy_decisions SET state_pressure_json=? WHERE id=?",
+                   (json.dumps(evidence, sort_keys=True), policy_id))
+        store.bump_state_version(db)
+
+
+def reconcile_pending_daily_action(bridge: DoctorHomeBridge) -> tuple[dict, ...]:
+    """Cold-replay an authorized original-Noesis action without a new choice.
+
+    A kill after the policy reservation, original physical commit or memory
+    admission must not create another action. The original Laboratory bridge
+    verifies the same event ID and source, then admits the one lived memory.
+    If an uncommitted action's world has changed, refuse to act on stale
+    perception. This is one-action crash recovery, NOT sustained goal agency.
+    """
+    if not isinstance(bridge, DoctorHomeBridge):
+        raise TypeError("Original Laboratory bridge required for recovery")
+    from .lab_home_bridge import _ACTION_DOMAINS
+    store = bridge.doctor.brain.store
+    with store.connect() as db:
+        rows = db.execute(
+            "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
+            "WHERE trigger='noesis_situated_choice' ORDER BY rowid"
+        ).fetchall()
+    pending = []
+    for row in rows:
+        evidence = json.loads(row["state_pressure_json"])
+        if (evidence.get("motor_authorization") != "authorized"
+                or evidence.get("motor_completion") == "admitted"):
+            continue
+        action = row["selected_action"]
+        event_id = evidence.get("motor_event_id")
+        if (action not in NEURAL_AFFORDANCE_MAP
+                or action not in _ACTION_DOMAINS
+                or evidence.get("selector_authority") != "original_noesis"
+                or evidence.get("physical_authority") != "none"
+                or type(event_id) is not str
+                or type(evidence.get("observation_memory_id")) is not str):
+            raise PermissionError("Unverifiable pending daily motor reservation")
+        with bridge.world._open() as db:
+            table = _ACTION_DOMAINS[action]
+            table_exists = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                (table,)
+            ).fetchone() is not None
+            world_committed = table_exists and db.execute(
+                "SELECT 1 FROM " + table + " WHERE event_id=?",
+                (event_id,)
+            ).fetchone() is not None
+        if not world_committed:
+            observed = bridge.observe()
+            if observed["memory_id"] != evidence["observation_memory_id"]:
+                raise RuntimeError("Pending daily action has stale physical observation")
+            if action not in real_affordances(bridge):
+                raise RuntimeError("Pending daily action no longer physically feasible")
+        receipt = bridge.act(action, event_id=event_id, **physical_args(action))
+        if receipt["status"] not in ("admitted", "already_admitted"):
+            raise RuntimeError("Recovered daily motor lacks original world admission")
+        _complete_daily_motor(bridge, row["id"], event_id, receipt["memory_id"])
+        pending.append({
+            "policy_decision_id": row["id"], "action": action,
+            "event_id": event_id, "memory_id": receipt["memory_id"],
+            "status": receipt["status"], "new_goal_selected": False,
+            "original_world_receipt_replayed": bool(world_committed),
+        })
+    return tuple(pending)
+
+
 def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
                          event_id: str, authorized: bool = False) -> dict:
     """No action parameter: execute only the committed original Noesis winner."""
@@ -144,6 +231,7 @@ def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
     actual = bridge.act(choice.action, event_id=event_id, **physical_args(choice.action))
     if actual["status"] not in ("admitted", "already_admitted"):
         raise RuntimeError("Actual Laboratory action not source-admitted")
+    _complete_daily_motor(bridge, choice.policy_id, event_id, actual["memory_id"])
     return {"policy_decision_id": choice.policy_id, "action": choice.action,
             "event_id": event_id, "memory_id": actual["memory_id"],
             "status": actual["status"]}
