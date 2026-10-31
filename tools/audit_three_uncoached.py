@@ -375,6 +375,7 @@ def verify_external_origin_witness(path: Path | None, expected: dict) -> dict:
     if baseline.intersection(expected):
         raise PermissionError("preexisting_goal_cannot_be_claimed_as_new")
     observed = set()
+    final_checksums_seen = set()
     for entry in observations[1:]:
         if not entry["process_alive"]:
             continue
@@ -389,15 +390,21 @@ def verify_external_origin_witness(path: Path | None, expected: dict) -> dict:
                     or row.get("origin_policy_id") != expected_row["origin_policy_id"]
                     or row.get("origin_thought_id") != expected_row["origin_thought_id"]
                     or row.get("selected_tendency") != expected_row["original_tendency"]
-                    or row.get("canonical_checksum") != expected_row["canonical_checksum"]
                     or row.get("policy_trigger") != "six_organ_lab_cycle"
                     or row.get("thought_generated_by") !=
                     "neural_policy:" + expected_row["origin_policy_id"]
                     or row.get("checksum_matches") is not True
                     or row.get("record_consistency_only") is not True):
                 raise PermissionError("independent_origin_source_mismatch:" + goal_id)
+            # Canonical goals legitimately change their checksums as the
+            # authentic physical task advances through travel/complete.
+            # Independently observe BOTH the original immutable origin and
+            # the final sealed canonical envelope while the process is alive.
+            # A fabricated or preseeded origin still fails baseline/custody.
+            if row.get("canonical_checksum") == expected_row["canonical_checksum"]:
+                final_checksums_seen.add(goal_id)
             observed.add(goal_id)
-    if not expected or observed != set(expected):
+    if not expected or observed != set(expected) or final_checksums_seen != set(expected):
         raise PermissionError("independent_live_origin_not_observed")
     return {"observed_goal_ids": sorted(observed),
             "observation_count": len(observations),
