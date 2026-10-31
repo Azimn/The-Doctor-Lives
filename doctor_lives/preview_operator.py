@@ -191,6 +191,43 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                     if activity["status"] in ("moved", "opened", "completed"):
                         report["last_action"] = activity["status"]
                         report["last_action_origin"] = "original_neural_tendency_host_mapped"
+                    # When an endogenous book/rest goal is already complete
+                    # (or has no situated target), return to genuine native
+                    # physical opportunities rather than endlessly replaying
+                    # the old completion. This uses the SAME six-organ runtime,
+                    # one canonical BrainStore and original world rules.
+                    # The host still offers the opportunity and may route
+                    # movement; do NOT count one-step actions as R4 autonomy.
+                    if activity["status"] in (
+                        "already_complete", "exhausted", "no_situated_goal",
+                    ):
+                        from .lab_daily_life_cycle import run_daily_life_cycle
+                        life = run_daily_life_cycle(
+                            workspace / "state",
+                            workspace / "laboratory.sqlite3",
+                            affectus_source=effective_native,
+                            authorize_world=True,
+                        )
+                        append_activity(
+                            workspace, event="candidate_b_daily_life_pulse",
+                            external_input=False, fields={
+                                "origin_policy_id": life["daily_noesis_policy_id"],
+                                "source_selected_action": life["daily_noesis_selected"],
+                                "physical_receipt": life["world_effect"],
+                                "all_six_ports_invoked": life["all_six_ports_invoked"],
+                                "host_offered_opportunity": True,
+                                "three_goal_autonomy_credit": False,
+                                "operator_supplied_goal": None,
+                            },
+                        )
+                        if life["world_effect"] is not None:
+                            report["last_action"] = life["daily_noesis_selected"]
+                            report["last_action_origin"] = (
+                                "original_noesis_source_feasible_host_offered"
+                            )
+                            report["current_activity"] = (
+                                "daily_life:" + life["daily_noesis_selected"]
+                            )
                     # A bounded pacing interval lets the operator observe,
                     # interrupt, and reconcile between actual physical steps.
                     report["last_heartbeat"] = _utc()
