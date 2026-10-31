@@ -569,6 +569,7 @@ def _run_laboratory_session(
 def run_native_laboratory(
     state: Path, world: Path, *, affectus_source: Path,
     steps: int = 1, allow_world_actions: bool = False,
+    enable_sustained_work: bool = False,
 ) -> dict:
     """Offer bounded original six-organ goal opportunities on the shipping host.
 
@@ -582,6 +583,8 @@ def run_native_laboratory(
         raise ValueError("Native goal steps must be an integer from 1 to 64")
     if type(allow_world_actions) is not bool:
         raise TypeError("World-action permission must be a boolean")
+    if type(enable_sustained_work) is not bool:
+        raise TypeError("Sustained work enablement must be a boolean")
     state, world, affectus_source = Path(state), Path(world), Path(affectus_source)
     if not affectus_source.is_dir():
         raise FileNotFoundError("Existing local pinned Affectus donor required")
@@ -617,7 +620,10 @@ def run_native_laboratory(
             # Reconcile shipping work/sleep intents before offering a new goal.
             # The six-organ session separately reconciles its own movement.
             _, recovered, abandoned = _recover_shipping_actions(session.bridge)
-            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            chooser = NativeLaboratoryGoalChooser(
+                session, authorized=True,
+                enable_sustained_work=enable_sustained_work,
+            )
             try:
                 for _ in range(steps):
                     result = chooser.step(
