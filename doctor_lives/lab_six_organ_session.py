@@ -52,6 +52,9 @@ class SixOrganCycleReceipt:
     subjective_delivery_count: int
     host_provided_goal: bool
     self_selected_goal_proven: bool
+    affectus_consumed: tuple[str, ...] = ()
+    sensus_prominence_consumed: float = 1.0
+    mnemonic_recall_cost_consumed: float = 0.12
 
 
 @contextmanager
@@ -450,4 +453,10 @@ class SixOrganLaboratoryCycle:
             # Selected abstract tendency + affordance is not by itself
             # proof of genuine independent intention or sustained goals.
             self_selected_goal_proven=False,
+            affectus_consumed=(
+                "salience_gain", "exploration_bias",
+                "rehearsal_bias", "decay_multiplier",
+            ),
+            sensus_prominence_consumed=claim_confidence,
+            mnemonic_recall_cost_consumed=recall_cost,
         )
