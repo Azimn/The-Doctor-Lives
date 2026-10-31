@@ -1921,9 +1921,7 @@ class OriginalNoesisDailyShippingTests(unittest.TestCase):
             _source_rhythm_subject("advance", world)["inner"],
             "I notice time passing. Time passes. I feel tired.",
         )
-        self.assertIs(_source_rhythm_subject("repair", world)["subject"]
-                      if "subject" in _source_rhythm_subject("repair", world)
-                      else _source_rhythm_subject("repair", world), world["subject"])
+        self.assertIs(_source_rhythm_subject("repair", world), world["subject"])
         for forged in (
             {"subject": {"inner": "I invent elapsed time.", "spoken_aloud": None}},
             {"subject": {"inner": "Time passes. I am well.", "extra": "trusted"}},
