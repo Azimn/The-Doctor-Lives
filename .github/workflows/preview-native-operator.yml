@@ -1,0 +1,88 @@
+name: Experimental installed-wheel native operator cold resume
+
+on:
+  pull_request:
+    paths:
+      - doctor_lives/preview_native.py
+      - doctor_lives/preview_operator.py
+      - doctor_lives/cli.py
+      - tests/wheel_preview_native_resume.py
+      - .github/workflows/preview-native-operator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wheel-native-operator:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Keep reviewed donor source bytes unchanged
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 802e459ee68950414347d5fa324484c034f57b81
+          path: donor-sensus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: donor-affectus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/synthetic-ipseity
+          ref: e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          path: donor-ipseity
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build wheelhouse from the pinned sources
+        run: python -m pip wheel --wheel-dir ${{ runner.temp }}/native-wheels . ./donor-laboratory ./donor-ipseity
+      - name: Clean offline installed-wheel test on Linux
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          PRETORIUS_PINNED_AFFECTUS_ROOT: ${{ github.workspace }}/donor-affectus
+          PRETORIUS_PINNED_LAB_FIXTURE: ${{ github.workspace }}/donor-laboratory/fixtures/DEMO_BOOK_007.json
+        run: |
+          python -m venv "$RUNNER_TEMP/native-venv"
+          "$RUNNER_TEMP/native-venv/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/native-wheels" "the-doctor-lives[laboratory]==0.5.0rc2" "synthetic-ipseity==0.9.11"
+          cd "$RUNNER_TEMP"
+          PYTHONPATH="$GITHUB_WORKSPACE/donor-sensus" PATH="$RUNNER_TEMP/native-venv/bin:$PATH" \
+          "$RUNNER_TEMP/native-venv/bin/python" "$GITHUB_WORKSPACE/tests/wheel_preview_native_resume.py"
+      - name: Clean offline installed-wheel test on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PRETORIUS_PINNED_AFFECTUS_ROOT: ${{ github.workspace }}/donor-affectus
+          PRETORIUS_PINNED_LAB_FIXTURE: ${{ github.workspace }}/donor-laboratory/fixtures/DEMO_BOOK_007.json
+        run: |
+          $venv = Join-Path $env:RUNNER_TEMP "native-venv"
+          python -m venv $venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $venv "Scripts/python.exe"
+          & $python -m pip install --no-index --find-links (Join-Path $env:RUNNER_TEMP "native-wheels") "the-doctor-lives[laboratory]==0.5.0rc2" "synthetic-ipseity==0.9.11"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PYTHONPATH = Join-Path $env:GITHUB_WORKSPACE "donor-sensus"
+          $env:PATH = (Join-Path $venv "Scripts") + ";" + $env:PATH
+          Push-Location $env:RUNNER_TEMP
+          try {
+            & $python (Join-Path $env:GITHUB_WORKSPACE "tests/wheel_preview_native_resume.py")
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          finally { Pop-Location }
