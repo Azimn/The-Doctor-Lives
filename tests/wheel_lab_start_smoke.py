@@ -231,6 +231,86 @@ def _installed_hard_kill_recovery(console: str, root: Path):
             "uncoached_multistep_goal_resumption_proven": False}
 
 
+def _installed_same_scheduler_rest_probe(console: str, root: Path) -> dict:
+    """Owner's frozen R4 diagnostic, no operator-selected action or goal.
+
+    This intentionally NEVER upgrades an unselected rest or missing book
+    affordance into an acceptance. All activity counts remain QA-owned.
+    """
+    from doctor_lives.noesis_situated_choice import NEURAL_AFFORDANCE_MAP
+    from pretorius_lab.daily_rhythm import OPERATIONS
+    from doctor_lives.organs import SixOrganRuntime
+
+    # A real source-installed book would remain outside this DAILY scheduler:
+    # no book/read verb exists in its intersected original-world action set.
+    book_missing = (
+        "book" not in OPERATIONS
+        and "read_book" not in OPERATIONS
+        and "book" not in NEURAL_AFFORDANCE_MAP
+        and "read_book" not in NEURAL_AFFORDANCE_MAP
+    )
+    assert book_missing, "Daily scheduler's book-action source boundary changed"
+
+    workspace = root / "scheduled-rest-diagnostic"
+    report = json.loads(_run([
+        console, "preview-init", "--workspace", str(workspace),
+    ]).stdout)
+    brain = workspace / "state"
+    world_path = workspace / "laboratory.sqlite3"
+    runtime = SixOrganRuntime.open(brain)
+    bridge = runtime.bind_laboratory(
+        SubjectPort(SpatialHabitat(world_path)), authorized=True
+    )
+    # Operator-prepared ENVIRONMENT ONLY. The next command has no action
+    # or goal parameter and original Noesis is free to refuse resting.
+    bridge.act("walk", event_id="scheduled-rest-setup-hall",
+               station="station:hall")
+    bridge.act("walk", event_id="scheduled-rest-setup-bedroom",
+               station="station:bedroom")
+    assert bridge.subject.embodied.verify()["station"] == "station:bedroom"
+    runtime.checkpoint()
+    del bridge, runtime
+    gc.collect()
+
+    actual = json.loads(_run([
+        console, "--state", str(brain), "lab-opportunity",
+        "--world", str(world_path), "--allow-world-actions",
+    ]).stdout)
+    assert actual["selection"] == "original_noesis"
+    assert actual["host_selected_action"] is False
+    assert actual["operator_offered_opportunity"] is True
+    assert actual["action"] in actual["feasible_actions"]
+    assert "rest" in actual["feasible_actions"] and "sleep" in actual["feasible_actions"]
+    with closing(SpatialHabitat(world_path)._open()) as db:
+        matching = db.execute(
+            "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+            (actual["event_id"],),
+        ).fetchall()
+    assert len(matching) == 1
+    lived = PretoriusBrainPort(brain).brain.store.get_memory(actual["memory_id"])
+    assert lived["evidence_class"] == "lived_runtime_memory"
+    assert lived["source"] == "laboratory-home:action:" + matching[0][0]
+    start = json.loads(_run([
+        console, "--state", str(brain), "lab-start",
+        "--world", str(world_path),
+    ]).stdout)
+    assert start["status"] == "ready" and start["recovered"] == 0
+    assert SpatialHabitat(world_path).verify()["world_epoch"] == report["world_epoch"]
+    rested = actual["action"] in ("rest", "sleep")
+    gc.collect()
+    return {
+        "candidate": "daily_lab_opportunity_original_noesis",
+        "book_status": "BLOCKED_NOT_OFFERED",
+        "rest_status": "PASSED" if rested else "ATTEMPTED_NOT_SELECTED",
+        "rest_feasible_in_original_world": True,
+        "rest_actually_selected": rested,
+        "no_operator_selected_action_or_goal": True,
+        "selected_action": actual["action"],
+        "valid_source_receipt_and_memory": True,
+        "uncoached_three_task_life_proven": False,
+    }
+
+
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == "--crash":
         _crash(Path(sys.argv[2]), Path(sys.argv[3]))
@@ -521,6 +601,8 @@ def main():
         )
 
         hard_kill_evidence = _installed_hard_kill_recovery(console, root)
+
+        same_scheduler_activity_probes = _installed_same_scheduler_rest_probe(console, root)
 
         world_path, brain_path = root / "world.sqlite3", root / "brain"
         world = SpatialHabitat.create(world_path)
@@ -1034,7 +1116,8 @@ def main():
         # rather than explicit closes. Do not mask Windows handle leaks by
         # disabling TemporaryDirectory cleanup; reclaim unreferenced handles.
         gc.collect()
-        print(json.dumps({"hard_kill_evidence": hard_kill_evidence,
+        print(json.dumps({"same_scheduler_activity_probes": same_scheduler_activity_probes,
+                          "hard_kill_evidence": hard_kill_evidence,
                           "result": "PASS", "installed_console": True,
                           "original_lab_world_actions": 1,
                           "verified_lived_memories": 1,
