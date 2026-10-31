@@ -10,6 +10,8 @@ import importlib.util
 import json
 import os
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -136,6 +138,54 @@ class CandidateBSourceBackedWork(unittest.TestCase):
             self.assertEqual(work._load()["memory_id"], result.memory_id)
             self.assertEqual(len([m for m in cold._port.brain.store.memories(False)
                                   if m["source"] == memory["source"]]), 1)
+        # Independent read-only Python process, not the in-process chooser,
+        # checks the exact same original BrainStore and physical Laboratory.
+        # This is one real WORK positive, not 3/3 uncoached acceptance.
+        witness_script = r"""
+import json, sqlite3, sys
+from pathlib import Path
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.daily_rhythm import DailyRhythm
+brain_path, world_path, policy_id, thought_id, event_id, memory_id = sys.argv[1:]
+with sqlite3.connect(Path(brain_path).absolute().as_uri() + "?mode=ro", uri=True) as db:
+    policy = db.execute("SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
+                        (policy_id,)).fetchone()
+    thought = db.execute("SELECT generated_by FROM thoughts WHERE id=?",
+                         (thought_id,)).fetchone()
+    memory = db.execute("SELECT source,evidence_class,external FROM memories WHERE id=?",
+                        (memory_id,)).fetchone()
+assert policy and policy[0] in ("explore", "persist")
+assert policy[1] == "six_organ_lab_cycle"
+assert thought == ("neural_policy:" + policy_id,)
+assert memory and memory[1] == "lived_runtime_memory" and memory[2] == 0
+lab = SpatialHabitat(Path(world_path))
+physics = lab.verify()
+rhythm = DailyRhythm(lab).verify()
+assert physics["world_epoch"] == rhythm["world_epoch"]
+with sqlite3.connect(Path(world_path).absolute().as_uri() + "?mode=ro", uri=True) as db:
+    event = db.execute("SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                       (event_id,)).fetchone()
+assert event and memory[0] == "laboratory-home:action:" + event[0]
+print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
+    "source_pinned_original_world": True,
+    "original_neural_policy": policy[0],
+    "original_thought": True,
+    "source_world_receipt": True,
+    "lived_memory": True,
+    "three_uncoached_goals_proven": False,
+}, sort_keys=True))
+"""
+        witnessed = subprocess.run(
+            [sys.executable, "-c", witness_script,
+             str(self.state / "brain.sqlite3"), str(self.root / "original.sqlite3"),
+             record["origin_policy_id"], record["origin_thought_id"],
+             "ng_" + created.goal_id + "_work", result.memory_id],
+            capture_output=True, text=True, timeout=45,
+        )
+        self.assertEqual(witnessed.returncode, 0, witnessed.stderr)
+        self.assertIn("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=",
+                      witnessed.stdout)
+
         print("B_NATIVE_REAL_WORK_TARGETED=" + json.dumps({
             "original_neural_source": created.selected_tendency, "actual_concrete_noesis": record["selected_action"],
             "original_world_receipt": True, "one_lived_memory": True,
