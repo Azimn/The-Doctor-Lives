@@ -144,7 +144,8 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
     receipt = result["receipts"][-1]
     event = {
         "status": receipt["status"], "goal_id": receipt["goal_id"],
-        "kind": receipt["kind"], "host_selected_goal_mapping": True,
+        "kind": receipt["kind"], "selected_tendency": receipt["selected_tendency"],
+        "host_selected_goal_mapping": True,
         "host_selected_route": True, "operator_supplied_goal": None,
         "same_original_brain": result["same_original_brain"],
         "original_world_epoch_unchanged": result["original_world_epoch_unchanged"],
