@@ -30,4 +30,22 @@ doctor-lives --state ./pretorius-restored/state lab-start --world ./pretorius-re
 
 The backup is a **directory containing a manifest and verified files**, not a ZIP archive. Stop the live host and all other state writers before backing up. Publication uses the same atomic no-replace primitive as preview genesis, so a competing empty backup directory cannot be overwritten. Restore only to a **separate, absent** brain/world/action-journal destination, never over the live workspace. Verify the restored world epoch and cold start before retiring the original. The installed-wheel smoke now checks a full 4,096-neuron preview backup, restore and cold start, as well as competing-destination refusal. These short controls are not the 24-hour soak. The still-outstanding 24-hour operational soak must run for at least 86,400 genuine elapsed seconds on continuously running local hardware or an appropriately isolated self-hosted runner, then pass `lab-soak-verify` against original-world action and canonical BrainStore evidence. Short CI and fast-forward time do not count. No soak has been started by this initializer.
 
+## Persistent-machine soak preparation (not started or accepted)
+
+The existing `lab-soak` CLI and `scripts/observe_soak_runner.py` are separate processes. Run both only on a continuously powered local or self-hosted machine with sleep, scheduled updates and automatic reboot disabled, after keeper authorization. Do **not** run a nominal 24-hour job on GitHub-hosted Actions, and do not purchase compute. The observer is standard-library-only on Linux and Windows and must be given the actual running `lab-soak` process PID. It records UTC ISO-8601, monotonic nanoseconds, OS boot identity/uptime, process start identity, system CPU and memory, disk free space and the producer log's file size. It samples every 30 seconds by default and refuses a missing/replaced process, a reboot, a >60-second observer gap or an existing/symlinked evidence destination. Its evidence should be retained separately from the producer's state and log, preferably on an independently controlled volume.
+
+Example Linux shell, from a source checkout with the sealed offline wheel already installed:
+
+```console
+doctor-lives --state ./pretorius-alone/state lab-soak --world ./pretorius-alone/laboratory.sqlite3 --evidence-log ./pretorius-soak.jsonl --seconds 86400 --segment-seconds 900 --interval-seconds 30 --work-every-seconds 300 &
+SOAK_PID=$!
+python scripts/observe_soak_runner.py --pid "$SOAK_PID" --disk-path ./pretorius-alone --soak-log ./pretorius-soak.jsonl --evidence-log /mnt/independent/pretorius-runner-health.jsonl --seconds 86400 --interval 30
+wait "$SOAK_PID"
+doctor-lives --state ./pretorius-alone/state lab-soak-verify --world ./pretorius-alone/laboratory.sqlite3 --evidence-log ./pretorius-soak.jsonl
+```
+
+On Windows, launch `doctor-lives ... lab-soak` in a dedicated PowerShell process, record its actual PID, then run the same Python observer command with `--pid <PID>` and Windows filesystem paths. The observer's test suite (`python -m unittest discover -s tests -p test_soak_observer.py -v`) uses a subsecond positive run and deliberate missing-process, exited-process, symlink and long-interval negatives. These short tests are **not** a 24-hour run.
+
+This is runner-health instrumentation, **not independent source or wall-clock attestation**. The operator must separately preserve independent external time anchors and original-world/Noesis/BrainStore source receipts for QA. The present host offers bench work only if Pretorius is already physically at the bench; it does not autonomously navigate, read or rest through `lab-soak`. Consequently, even 86,400 elapsed seconds with a healthy runner would **not** satisfy frozen R4/R5 full-life acceptance without authentic uncoached activities, matched controls, source-verified memory and independent review. Neither process has been launched by this documentation change.
+
 The authoritative Laboratory source currently pinned by this campaign is `6e49795752835d64fa6fd63d16359669a1ca2ba7`. Production main is unchanged. The preview does not claim three uncoached activities or release acceptance.
