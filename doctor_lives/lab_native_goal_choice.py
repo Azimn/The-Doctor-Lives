@@ -7,6 +7,7 @@ natural-language goal or independently authored a specific destination.
 """
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -265,10 +266,7 @@ class NativeLaboratoryGoalChooser:
                 and "bookshelves" in event["offered_payload"]["perceived_features"]
             ), None)
             if scene is None:
-                return NativeGoalChoiceReceipt(
-                    "no_situated_goal", None, None,
-                    selected_tendency="explore"
-                )
+                return self._move_to_remembered_cue(proposal, authorized_world_action)
             result = self.book.step(
                 native_proposal=proposal, authorized_world_action=False
             )
@@ -285,6 +283,8 @@ class NativeLaboratoryGoalChooser:
                     selected_tendency="persist"
                 )
             result = self.work.originate(proposal)
+            if result.goal_id is None:
+                return self._move_to_remembered_cue(proposal, authorized_world_action)
             return NativeGoalChoiceReceipt(
                 result.status, "work" if result.goal_id else None,
                 result.goal_id, result.memory_id,
@@ -300,6 +300,64 @@ class NativeLaboratoryGoalChooser:
                 selected_tendency=proposal.selected_tendency
             )
         return self._originate_rest(proposal)
+
+    def _move_to_remembered_cue(self, proposal, authorized):
+        """One physical exploration hop toward an ACTUALLY seen local cue.
+
+        A new neural explore/persist choice may support travel to a previously
+        verified room observation after rest. The host supplies a shortest
+        physical route, never a book/work goal, unseen target, or action
+        sequence. This movement has NO goal ID and earns NO R4 completion.
+        """
+        from pretorius_lab.embodied_access import STATIONS
+        from .organs import CognitiveProposal
+        if type(proposal) is not CognitiveProposal or proposal.selected_tendency not in (
+                "explore", "persist"):
+            raise PermissionError("Exploratory travel requires original neural policy")
+        if not authorized:
+            return NativeGoalChoiceReceipt(
+                "no_situated_goal", None, None,
+                selected_tendency=proposal.selected_tendency,
+            )
+        station = self.host.subject.embodied.verify()["station"]
+        # Only verified original physical LOOK receipts can identify a cue.
+        # The Laboratory's source-defined graph supplies traversable edges.
+        seen = {
+            event["after_station"]
+            for event, _ in _verified_looks(self.host.subject.embodied)
+            if event["after_station"] in STATIONS
+            and any(feature in event["offered_payload"]["perceived_features"]
+                    for feature in ("bookshelves", "workbench"))
+        }
+        if not seen or station in seen:
+            return NativeGoalChoiceReceipt(
+                "no_situated_goal", None, None,
+                selected_tendency=proposal.selected_tendency,
+            )
+        frontier = deque([(station, None)])
+        visited = {station}
+        hop = None
+        while frontier:
+            at, first = frontier.popleft()
+            if at in seen:
+                hop = first
+                break
+            for adjacent in sorted(STATIONS[at][1]):
+                if adjacent not in visited:
+                    visited.add(adjacent)
+                    frontier.append((adjacent, first or adjacent))
+        if hop is None:
+            return NativeGoalChoiceReceipt(
+                "no_situated_goal", None, None,
+                selected_tendency=proposal.selected_tendency,
+            )
+        result = self.host._execute_movement(proposal, hop)
+        if result.status not in ("admitted", "already_admitted") or not result.memory_id:
+            raise RuntimeError("Exploratory movement lacks original lived receipt")
+        return NativeGoalChoiceReceipt(
+            "moved", None, None, result.memory_id,
+            selected_tendency=proposal.selected_tendency,
+        )
 
     def _originate_rest(self, proposal):
         # Original neural avoidance must be proved by its current policy,
