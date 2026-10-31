@@ -1,0 +1,84 @@
+"""Independent stdlib runner-health observer controls; no 24-hour claim."""
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+import tempfile
+import unittest
+
+SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "observe_soak_runner.py"
+spec = importlib.util.spec_from_file_location("pretorius_soak_observer", SCRIPT)
+observer = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(observer)
+
+
+@unittest.skipUnless(os.name == "nt" or os.path.exists("/proc/uptime"),
+                     "Observer requires Windows or Linux system telemetry")
+class ObserverTests(unittest.TestCase):
+    def test_real_monotonic_samples_and_nonqualification(self):
+        with tempfile.TemporaryDirectory() as root:
+            log = Path(root) / "runner.jsonl"
+            result = observer.observe(pid=os.getpid(), evidence_log=log,
+                                      disk_path=Path(root), seconds=0.12,
+                                      interval=0.04)
+            rows = [json.loads(line) for line in log.read_text().splitlines()]
+            self.assertGreaterEqual(len(rows), 3)
+            self.assertEqual(result["samples"], len(rows))
+            self.assertGreaterEqual(result["monotonic_elapsed_seconds"], 0.12)
+            self.assertFalse(result["r5_qualified"])
+            self.assertTrue(all(x["runner_health_only"] and not
+                                x["independent_source_attestation"] for x in rows))
+            self.assertEqual([x["sequence"] for x in rows], list(range(1, len(rows)+1)))
+            self.assertEqual(len({x["boot_identity"] for x in rows}), 1)
+            self.assertTrue(all(x["memory_total_bytes"] >= x["memory_available_bytes"]
+                                for x in rows))
+            with self.assertRaises(FileExistsError):
+                observer.observe(pid=os.getpid(), evidence_log=log,
+                                 disk_path=Path(root), seconds=0.01, interval=0.01)
+
+    def test_refuses_missing_process_without_creating_log(self):
+        with tempfile.TemporaryDirectory() as root:
+            log = Path(root) / "runner.jsonl"
+            with self.assertRaises(RuntimeError):
+                observer.observe(pid=2147483647, evidence_log=log,
+                                 disk_path=Path(root), seconds=0.01, interval=0.01)
+            self.assertFalse(log.exists())
+
+    def test_observed_process_exit_is_a_fault_not_a_pass(self):
+        with tempfile.TemporaryDirectory() as root:
+            log = Path(root) / "runner.jsonl"
+            child = subprocess.Popen([sys.executable, "-c", "pass"])
+            try:
+                with self.assertRaisesRegex(RuntimeError, "exited or PID was reused"):
+                    observer.observe(pid=child.pid, evidence_log=log,
+                                     disk_path=Path(root), seconds=2.5,
+                                     interval=0.1)
+                self.assertTrue(log.exists())
+                self.assertGreaterEqual(len(log.read_text().splitlines()), 1)
+            finally:
+                child.wait(timeout=5)
+
+    def test_refuses_symlink_and_long_gap_configuration(self):
+        with tempfile.TemporaryDirectory() as root:
+            log = Path(root) / "runner.jsonl"
+            with self.assertRaises(ValueError):
+                observer.observe(pid=os.getpid(), evidence_log=log,
+                                 disk_path=Path(root), seconds=0.01, interval=61)
+            target = Path(root) / "target"
+            target.write_text("keep")
+            try:
+                log.symlink_to(target)
+            except (OSError, NotImplementedError):
+                return
+            with self.assertRaises(ValueError):
+                observer.observe(pid=os.getpid(), evidence_log=log,
+                                 disk_path=Path(root), seconds=0.01, interval=0.01)
+            self.assertEqual(target.read_text(), "keep")
+
+
+if __name__ == "__main__":
+    unittest.main()
