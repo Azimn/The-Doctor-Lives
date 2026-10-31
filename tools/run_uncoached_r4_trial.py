@@ -115,7 +115,7 @@ def main():
                 error = "operator_did_not_terminate"
             if proc.returncode != 0:
                 error = "operator_return_code_" + str(proc.returncode)
-        except (OSError, ValueError, RuntimeError) as exc:
+        except (OSError, ValueError, RuntimeError, sqlite3.DatabaseError) as exc:
             error = "independent_witness_or_operator_error:" + type(exc).__name__ + ":" + str(exc)[:300]
         finally:
             if proc is not None and proc.poll() is None:
@@ -128,7 +128,8 @@ def main():
                 error = "independent_final_witness_error:" + type(exc).__name__ + ":" + str(exc)[:300]
     independent = subprocess.run(
         [sys.executable, str(Path(__file__).with_name("audit_three_uncoached.py")),
-         "--workspace", str(workspace), "--report", str(args.report)],
+         "--workspace", str(workspace), "--report", str(args.report),
+         "--origin-witness", str(origins_path)],
         capture_output=True, text=True, timeout=180)
     data = json.loads(args.report.read_text(encoding="utf-8"))
     data["observation_elapsed_target_seconds"] = args.seconds
