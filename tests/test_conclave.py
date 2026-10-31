@@ -1,5 +1,6 @@
 """Acceptance tests for the opt-in Conclave kernel and its authority boundary."""
 import tempfile
+from contextlib import closing
 import unittest
 from pathlib import Path
 
@@ -82,7 +83,7 @@ class ConclaveKernelTests(unittest.TestCase):
         self.assertEqual([r.id for r in initial], [r.id for r in again])
         self.assertEqual(again[0].state, "contested")
         self.assertEqual(again[0].truth_status, "supported")
-        with self.store.connect() as db:
+        with closing(self.store.connect()) as db:
             self.assertEqual(db.execute(
                 "SELECT COUNT(*) FROM conclave_readings"
             ).fetchone()[0], 5)
@@ -179,7 +180,7 @@ class ConclaveKernelTests(unittest.TestCase):
         cues = self.kernel.cues("garden_1")
         self.assertTrue(cues)
         self.assertIn("report:raven001", cues)
-        with self.store.connect() as db:
+        with closing(self.store.connect()) as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM memories").fetchone()[0], 0)
             self.assertEqual(db.execute("SELECT COUNT(*) FROM policy_decisions").fetchone()[0], 0)
 
@@ -231,7 +232,7 @@ class ConclaveKernelTests(unittest.TestCase):
         self.kernel.transition(r.id, "withdrawn", reason="unhelpful")
         self.assertEqual(self.kernel.cues("garden_1"), ())
         self.assertEqual(self.kernel.readings("garden_1")[0].state, "withdrawn")
-        with self.store.connect() as db:
+        with closing(self.store.connect()) as db:
             changes = list(db.execute(
                 "SELECT old_state,new_state FROM conclave_transitions ORDER BY revision"
             ))
