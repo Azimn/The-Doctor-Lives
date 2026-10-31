@@ -380,6 +380,13 @@ class SixOrganRuntime:
         from .conclave import Conclave
         return Conclave(self._port.brain.store, enabled=enabled)
 
+    def bind_phantasmagorium(self, donor_archive: str | Path, *, enabled: bool = False):
+        """Opt-in external v0.5 donor probe, with no new world or memory owner."""
+        from .phantasmagorium_bridge import PhantasmagoriumBridge
+        return PhantasmagoriumBridge(
+            self._port.brain.store, donor_archive, enabled=enabled
+        )
+
     def bind_laboratory(self, subject_port, *, authorized: bool = False):
         """Attach the existing source-verified Laboratory bridge to this brain.
 
