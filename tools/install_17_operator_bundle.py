@@ -31,7 +31,9 @@ def check_bundle(home: Path) -> dict:
 
 
 def exec_check(cmd, *, cwd=None):
-    subprocess.run([str(v) for v in cmd], cwd=cwd, check=True)
+    # Subprocess progress is diagnostic data, not the installer JSON API.
+    # Keep stdout solely for the final machine-readable installation receipt.
+    subprocess.run([str(v) for v in cmd], cwd=cwd, check=True, stdout=sys.stderr)
 
 
 def run():
@@ -65,7 +67,7 @@ def run():
         exec_check([executable, "-m", "pip", "install", "--no-index",
                     "--find-links", home / "wheels",
                     "the-doctor-lives[laboratory]==0.5.0rc2",
-                    "synthetic-ipseity==0.9.11"])
+                    "synthetic-ipseity==0.9.11"], cwd=target)
         site = subprocess.check_output([
             str(executable), "-c",
             "import sysconfig; print(sysconfig.get_paths()['purelib'])"
@@ -77,11 +79,11 @@ def run():
         exec_check([executable, "-c",
                     "from doctor_lives.preview_native import verify_donors; "
                     "import sys; verify_donors(sys.argv[1])",
-                    source / "donor-affectus"])
+                    source / "donor-affectus"], cwd=target)
         workspace = target / "workspace"
         exec_check([executable, "-m", "doctor_lives.cli", "preview-init",
                     "--workspace", workspace, "--world-template",
-                    template / "unread-17-full-text-lab.sqlite3"])
+                    template / "unread-17-full-text-lab.sqlite3"], cwd=target)
         result = subprocess.check_output([
             str(executable), "-c",
             "from doctor_lives.preview_17_books import verify_unread_seventeen; "
