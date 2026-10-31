@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import sqlite3
 from pathlib import Path
 import tempfile
 import unittest
@@ -141,6 +142,33 @@ class CandidateBSourceBackedWork(unittest.TestCase):
             "cold_reopen": True, "host_routed": True,
             "independent_three_goal_acceptance": False,
         }, sort_keys=True))
+
+    def test_original_lab_authority_rejects_foreign_rhythm_epoch(self):
+        # This uses the REAL pinned DailyRhythm.verify, not a fabricated
+        # SQLite-only positive or an auditor bypass.
+        from pretorius_lab.physics import Conflict
+        self.subject.rhythm.verify()
+        with sqlite3.connect(self.root / "original.sqlite3") as db:
+            db.execute(
+                "UPDATE rhythm_meta SET value=? WHERE key='world_epoch'",
+                (json.dumps("forged-other-world"),),
+            )
+        with self.assertRaises(Conflict):
+            self.subject.rhythm.verify()
+
+    def test_original_lab_full_replay_rejects_torn_physical_chain(self):
+        from pretorius_lab.physics import Conflict
+        # A genuine physical time action first commits to original world.
+        self.subject.rhythm.act("advance", event_id="original-chain-probe",
+                                minutes=10)
+        self.subject.rhythm.verify()
+        with sqlite3.connect(self.root / "original.sqlite3") as db:
+            db.execute(
+                "UPDATE rhythm_events SET prev_hash=? WHERE event_id=?",
+                ("f" * 64, "original-chain-probe"),
+            )
+        with self.assertRaises(Conflict):
+            self.subject.rhythm.verify()
 
     def test_self_consistent_forged_goal_cannot_create_work(self):
         rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
