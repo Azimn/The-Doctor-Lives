@@ -1,0 +1,457 @@
+"""Independent R4 ledger contract adversarial checks (synthetic, NOT R4 credit).
+
+These fixtures assert the auditor's read-only, fail-closed behavior and real
+original Laboratory table SHAPES. They do not simulate an autonomous Doctor
+or replace authentic pinned-world CI and independent release acceptance.
+"""
+import copy
+import hashlib
+import json
+import sqlite3
+from pathlib import Path
+import tempfile
+import unittest
+
+from tools.audit_three_uncoached import (_digest, evaluate_schema_only as evaluate,
+                                        evaluate as release_evaluate,
+                                        verify_external_origin_witness)
+
+
+def world_hash(value):
+    return hashlib.sha256(json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False).encode("utf-8")).hexdigest()
+
+
+class IndependentThreeGoalContract(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="independent-r4-audit-")
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "state").mkdir()
+        self.brain = self.root / "state/brain.sqlite3"
+        self.world = self.root / "laboratory.sqlite3"
+        with sqlite3.connect(self.brain) as db:
+            db.execute("CREATE TABLE policy_decisions (id TEXT PRIMARY KEY, selected_action TEXT, trigger TEXT, state_pressure_json TEXT)")
+            db.execute("CREATE TABLE memories (id TEXT PRIMARY KEY, source TEXT, evidence_class TEXT, external INT, active INT, text TEXT)")
+            db.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+            db.execute("CREATE TABLE thoughts (id TEXT PRIMARY KEY, generated_by TEXT)")
+            for kind, tendency in (("read_book", "explore"), ("rest", "avoid"),
+                                   ("work", "explore")):
+                db.execute("INSERT INTO policy_decisions VALUES(?,?,?,?)", (
+                    "origin_" + kind, tendency, "six_organ_lab_cycle", "{}"))
+                db.execute("INSERT INTO thoughts VALUES(?,?)", (
+                    "thought_" + kind, "neural_policy:origin_" + kind))
+            db.execute("INSERT INTO policy_decisions VALUES(?,?,?,?)", (
+                "motor_work", "repair", "noesis_situated_choice", json.dumps({
+                    "motor_event_id": "ng_work01_work",
+                    "selector_authority": "original_noesis",
+                    "physical_authority": "none",
+                    "motor_authorization": "authorized",
+                })))
+        with sqlite3.connect(self.world) as db:
+            for table, column in (("books_events", "payload"),
+                                  ("rhythm_events", "envelope"),
+                                  ("embodied_events", "envelope")):
+                db.execute("CREATE TABLE " + table + " (event_id TEXT PRIMARY KEY, " +
+                           column + " TEXT NOT NULL,event_hash TEXT NOT NULL)")
+        self._populate()
+        self._write_ledger()
+
+    @staticmethod
+    def _spec(kind):
+        return {"read_book": ("books_events", "bk_read", "read"),
+                "rest": ("rhythm_events", "rest_evt", "rest"),
+                "work": ("rhythm_events", "ng_work01_work", "repair")}[kind]
+
+    def _populate(self):
+        self.records = {}
+        with sqlite3.connect(self.world) as lab, sqlite3.connect(self.brain) as brain:
+            for kind in ("read_book", "rest", "work"):
+                table, eid, operation = self._spec(kind)
+                text = {
+                    "read_book": "I read a page of Sample. The words before me read: Test.",
+                    "rest": "I sit quietly and rest awhile.",
+                    "work": "I replace the worn component in my apparatus.",
+                }[kind]
+                source = {"event_id": eid, "world_epoch": "epoch-real",
+                          "lab_id": "lab-real"}
+                if kind == "read_book":
+                    source.update(action={"op": "read", "book_id": "book:001"},
+                                  page_receipt={"page_number": 1})
+                else:
+                    source.update(op=operation,
+                                  station="station:bedroom" if kind == "rest" else "station:bench",
+                                  subject={"inner": text, "spoken_aloud": None})
+                digest = world_hash(source)
+                column = "payload" if table == "books_events" else "envelope"
+                lab.execute("INSERT INTO " + table + " VALUES(?,?,?)",
+                            (eid, json.dumps(source, sort_keys=True, ensure_ascii=False), digest))
+                mid = "memory_" + kind
+                brain.execute("INSERT INTO memories VALUES(?,?,?,?,?,?)", (
+                    mid, "laboratory-home:action:" + digest,
+                    "lived_runtime_memory", 0, 1, text
+                ))
+                intent = {"id": kind + "01" if kind != "work" else "work01",
+                          "world_epoch": "epoch-real",
+                          "phase": "complete", "origin_policy_id": "origin_" + kind,
+                          "origin_thought_id": "thought_" + kind,
+                          ("read_memory_id" if kind == "read_book" else "memory_id"): mid}
+                schemas = {
+                    "read_book": ("pretorius.endogenous-book-pursuit.v1",
+                                  "I want to discover a book here and read what it actually says."),
+                    "rest": ("pretorius.native-rest-intention.v1",
+                             "I want to rest somewhere safe."),
+                    "work": ("pretorius.native-work-intention.v1",
+                             "I want to undertake worthwhile work at my laboratory bench."),
+                }
+                intent.update(schema=schemas[kind][0], goal=schemas[kind][1])
+                if kind == "work":
+                    intent.update(work_policy_id="motor_work", selected_action="repair")
+                key = {"read_book": "six_organ_endogenous_book_goal_v1",
+                       "rest": "six_organ_native_rest_intention_v1",
+                       "work": "six_organ_native_work_intention_v1"}[kind]
+                brain.execute("INSERT INTO meta VALUES(?,?)", (key, json.dumps(
+                    {"payload": intent, "sha256": _digest(intent)}, sort_keys=True)))
+                self.records[kind] = {
+                    "kind": kind, "goal_id": intent["id"],
+                    "origin_policy_id": "origin_" + kind,
+                    "original_tendency": "avoid" if kind == "rest" else "explore",
+                    "canonical_memory_id": mid,
+                    "canonical_memory_source": "laboratory-home:action:" + digest,
+                    "world_table": table, "world_event_id": eid,
+                    "world_receipt_sha256": digest,
+                    "source_rechecked_by_host": True,
+                    "source_attestation_independent": False,
+                    "operator_supplied_goal": None,
+                }
+
+    def _write_ledger(self):
+        data = [("operator_start", {}, True)]
+        for kind in ("read_book", "rest", "work"):
+            data.append(("native_goal_goal_created", {
+                "kind": kind, "goal_id": self.records[kind]["goal_id"],
+                "origin_policy_id": self.records[kind]["origin_policy_id"],
+                "original_tendency": self.records[kind]["original_tendency"]}, False))
+            data.append(("native_goal_completed", self.records[kind], False))
+        self.events = data
+        self._resign()
+
+    def _resign(self):
+        prior = "0" * 64
+        lines = []
+        for num, (event, fields, external) in enumerate(self.events, 1):
+            entry = {"sequence": num, "previous_sha256": prior, "event": event,
+                     "fields": fields, "external_input": external,
+                     "utc": "2026-10-31T19:00:00Z", "beat": "@123"}
+            entry["sha256"] = _digest(entry)
+            prior = entry["sha256"]
+            lines.append(json.dumps(entry, sort_keys=True))
+        (self.root / "preview-activity.jsonl").write_text("\n".join(lines) + "\n")
+
+    def _edit(self, sql, params=()):
+        with sqlite3.connect(self.brain) as db:
+            db.execute(sql, params)
+
+    def _alter_world(self, kind, mutate):
+        table, eid, _ = self._spec(kind)
+        column = "payload" if table == "books_events" else "envelope"
+        with sqlite3.connect(self.world) as lab, sqlite3.connect(self.brain) as brain:
+            row = lab.execute("SELECT " + column + " FROM " + table +
+                              " WHERE event_id=?", (eid,)).fetchone()
+            source = json.loads(row[0])
+            mutate(source)
+            newhash = world_hash(source)
+            lab.execute("UPDATE " + table + " SET " + column +
+                        "=?,event_hash=? WHERE event_id=?", (
+                            json.dumps(source, sort_keys=True), newhash, eid))
+            mid = self.records[kind]["canonical_memory_id"]
+            brain.execute("UPDATE memories SET source=? WHERE id=?", (
+                "laboratory-home:action:" + newhash, mid))
+            rec = self.records[kind]
+            rec["world_receipt_sha256"] = newhash
+            rec["canonical_memory_source"] = "laboratory-home:action:" + newhash
+        self._resign()
+
+    def assert_invalid(self, needle=None):
+        report = evaluate(self.root)
+        self.assertEqual(report["status"], "FAIL", report)
+        self.assertFalse(report["three_distinct_uncoached"])
+        if needle:
+            self.assertTrue(any(needle in x for x in report["problems"]), report)
+
+    def test_contract_01_valid_shape_only_not_real_world_acceptance(self):
+        report = evaluate(self.root)
+        self.assertEqual(report["status"], "PASS", report)
+        self.assertEqual(report["distinct_valid_activity_kinds"],
+                         ["read_book", "rest", "work"])
+        self.assertFalse(report["independent_human_review_performed"])
+
+    def test_contract_01b_synthetic_source_cannot_pass_release_verifier(self):
+        # The same synthetic shape-positive fixture is NEVER a shipping R4
+        # pass. Full original source-pinned physics is mandatory.
+        strict = release_evaluate(self.root)
+        self.assertEqual(strict["status"], "FAIL")
+        self.assertFalse(strict["three_distinct_uncoached"])
+        self.assertFalse(strict["original_source_world_verified"])
+        self.assertTrue(any("original_source_world_authority_not_verified" in p
+                            for p in strict["problems"]))
+
+    def test_contract_02_nonexistent_neural_work_action_is_rejected(self):
+        self._edit("UPDATE policy_decisions SET selected_action='work' WHERE id='origin_work'")
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_03_motor_binding_must_be_authorized(self):
+        self._edit("UPDATE policy_decisions SET state_pressure_json=? WHERE id='motor_work'",
+                   (json.dumps({"motor_event_id": "ng_work01_work",
+                                "selector_authority": "original_noesis",
+                                "physical_authority": "none",
+                                "motor_authorization": "not_granted"}),))
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_04_motor_event_cannot_be_foreign(self):
+        self._edit("UPDATE policy_decisions SET state_pressure_json=? WHERE id='motor_work'",
+                   (json.dumps({"motor_event_id": "another-action",
+                                "selector_authority": "original_noesis",
+                                "physical_authority": "none",
+                                "motor_authorization": "authorized"}),))
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_05_concrete_motor_must_match_real_repair(self):
+        self._edit("UPDATE policy_decisions SET selected_action='experiment' WHERE id='motor_work'")
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_06_foreign_world_epoch_fails_even_when_rehashed(self):
+        self._alter_world("work", lambda source: source.update(world_epoch="other-world"))
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_07_forged_lived_memory_text_rejected(self):
+        self._edit("UPDATE memories SET text='I invented an unobserved repair' WHERE id='memory_work'")
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_08_duplicate_completion_rejected(self):
+        self.events.append(copy.deepcopy(self.events[-1]))
+        self._resign()
+        self.assert_invalid("Duplicate goal completion")
+
+    def test_contract_09_duplicate_goal_origin_rejected(self):
+        self.events.insert(-1, copy.deepcopy(self.events[-2]))
+        self._resign()
+        self.assert_invalid("duplicate_goal_origin")
+
+    def test_contract_10_host_coaching_does_not_count(self):
+        self.records["work"]["task_instruction"] = "Perform repair"
+        self._resign()
+        self.assert_invalid("coached_task_input")
+
+    def test_contract_11_missing_physical_world_receipt_fails_closed(self):
+        with sqlite3.connect(self.world) as lab:
+            lab.execute("DELETE FROM rhythm_events WHERE event_id='ng_work01_work'")
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_12_unread_book_is_not_a_completed_goal(self):
+        self._alter_world("read_book", lambda source: source.update(page_receipt=None))
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_13_rest_in_the_kitchen_is_not_rest(self):
+        self._alter_world("rest", lambda source: source.update(station="station:kitchen"))
+        self.assert_invalid("unauthenticated_completion")
+
+    def test_contract_14_false_world_event_hash_is_not_a_receipt(self):
+        with sqlite3.connect(self.world) as lab:
+            lab.execute("UPDATE rhythm_events SET event_hash=? WHERE event_id=?",
+                        ("f" * 64, "ng_work01_work"))
+        self.assert_invalid("unauthenticated_completion")
+
+
+    def _change_intent(self, kind, **updates):
+        key = {"read_book": "six_organ_endogenous_book_goal_v1",
+               "rest": "six_organ_native_rest_intention_v1",
+               "work": "six_organ_native_work_intention_v1"}[kind]
+        with sqlite3.connect(self.brain) as db:
+            original = json.loads(db.execute(
+                "SELECT value FROM meta WHERE key=?", (key,)).fetchone()[0])
+            original["payload"].update(updates)
+            original["sha256"] = _digest(original["payload"])
+            db.execute("UPDATE meta SET value=? WHERE key=?",
+                       (json.dumps(original, sort_keys=True), key))
+
+    def test_u21_reject_non_neural_policy_trigger(self):
+        self._edit("UPDATE policy_decisions SET trigger=? WHERE id=?",
+                   ("host_scheduled", "origin_work"))
+        self.assert_invalid("not a real six-organ policy")
+
+    def test_u22_reject_goal_without_original_neural_thought(self):
+        self._edit("DELETE FROM thoughts WHERE id=?", ("thought_work",))
+        self.assert_invalid("native goal lacks original Noesis thought")
+
+    def test_u23_reject_thought_claiming_different_policy(self):
+        self._edit("UPDATE thoughts SET generated_by=? WHERE id=?",
+                   ("neural_policy:other_policy", "thought_work"))
+        self.assert_invalid("native goal lacks original Noesis thought")
+
+    def test_u24_reject_substituted_native_goal_schema(self):
+        self._change_intent("work", schema="pretorius.author_goal.v1")
+        self.assert_invalid("substituted native goal")
+
+    def test_u25_reject_host_reworded_native_goal(self):
+        self._change_intent("rest", goal="Operator demands rest in bedroom")
+        self.assert_invalid("substituted native goal")
+
+    def test_u26_reject_origin_policy_change_after_creation(self):
+        kind, data, external = self.events[5]
+        self.assertEqual(kind, "native_goal_goal_created")
+        data["origin_policy_id"] = "origin_read_book"
+        self._resign()
+        self.assert_invalid("origin policy changed after creation")
+
+    def test_u27_reject_neural_tendency_change_after_creation(self):
+        kind, data, external = self.events[3]
+        self.assertEqual(kind, "native_goal_goal_created")
+        data["original_tendency"] = "explore"
+        self._resign()
+        self.assert_invalid("neural tendency changed after creation")
+
+    def test_u28_reject_nonmapping_event_fields_without_crash(self):
+        kind, data, external = self.events[5]
+        self.events[5] = (kind, ["forged", "fields"], external)
+        self._resign()
+        self.assert_invalid("invalid_or_torn_activity_record")
+
+    def test_u29_reject_external_input_string_instead_of_boolean(self):
+        kind, data, external = self.events[5]
+        self.events[5] = (kind, data, "false")
+        self._resign()
+        self.assert_invalid("invalid_or_torn_activity_record")
+
+    def test_coordinated_policy_thought_goal_and_ledger_forgery_needs_external_witness(self):
+        # All local source strings and self-hashes are rewritten together.
+        # This is deliberately schema-consistent. A synthetic schema PASS
+        # must never be mistaken for an independently witnessed neural act.
+        forged_policy = "forged_consistent_policy"
+        forged_thought = "forged_consistent_thought"
+        self._edit(
+            "INSERT INTO policy_decisions VALUES(?,?,?,?)",
+            (forged_policy, "explore", "six_organ_lab_cycle", "{}"),
+        )
+        self._edit(
+            "INSERT INTO thoughts VALUES(?,?)",
+            (forged_thought, "neural_policy:" + forged_policy),
+        )
+        self._change_intent("work", origin_policy_id=forged_policy,
+                            origin_thought_id=forged_thought)
+        self.records["work"]["origin_policy_id"] = forged_policy
+        self.events[5][1]["origin_policy_id"] = forged_policy
+        self._resign()
+        synthetic = evaluate(self.root)
+        self.assertEqual(synthetic["status"], "PASS", synthetic)
+        strict = release_evaluate(self.root)
+        self.assertEqual(strict["status"], "FAIL", strict)
+        self.assertFalse(strict["independent_live_neural_origin_observed"])
+        self.assertTrue(any("independent_origin_witness_not_verified" in p
+                            for p in strict["problems"]), strict)
+
+        # Even a source-shaped observation cannot promote a goal that was
+        # present BEFORE the independently launched operator process.
+        expected = synthetic["verified_goal_origins"]
+        row = expected["work01"]
+        observed = {
+            "goal_id": row["goal_id"], "origin_policy_id": forged_policy,
+            "origin_thought_id": forged_thought,
+            "selected_tendency": "explore",
+            "canonical_checksum": row["canonical_checksum"],
+            "policy_trigger": "six_organ_lab_cycle",
+            "thought_generated_by": "neural_policy:" + forged_policy,
+            "checksum_matches": True, "record_consistency_only": True,
+        }
+        def sample(alive, seconds):
+            return {
+                "schema": "pretorius.r4.external-neural-origin-observation.v1",
+                "elapsed_seconds": seconds, "process_alive": alive,
+                "goals": {"work": observed},
+                "source_authentication_performed": False,
+                "autonomy_credit": False,
+            }
+        witness = self.root / "forged-origins.jsonl"
+        witness.write_text(json.dumps(sample(False, 0)) + "\n" +
+                           json.dumps(sample(True, 1)) + "\n")
+        with self.assertRaisesRegex(PermissionError, "preexisting_goal"):
+            verify_external_origin_witness(witness, expected)
+
+    def test_live_witness_rejects_nonfinite_or_negative_elapsed(self):
+        # A process witness must not accept NaN, infinity or pre-start
+        # negative clock samples as a real observation timeline.
+        witness = self.root / "invalid-clock-origins.jsonl"
+        for bad in (float("nan"), float("inf"), -0.01):
+            with self.subTest(elapsed=repr(bad)):
+                witness.write_text(json.dumps({
+                    "schema": "pretorius.r4.external-neural-origin-observation.v1",
+                    "elapsed_seconds": bad, "process_alive": False, "goals": {},
+                    "source_authentication_performed": False,
+                    "autonomy_credit": False,
+                }) + "\n")
+                with self.assertRaisesRegex(ValueError, "malformed_independent_origin_observation"):
+                    verify_external_origin_witness(witness, {})
+
+    def test_live_witness_large_integer_time_does_not_overflow(self):
+        # A syntactically valid but extreme integer cannot crash the
+        # independent judge through a float-conversion OverflowError.
+        witness = self.root / "huge-clock-origins.jsonl"
+        witness.write_text(json.dumps({
+            "schema": "pretorius.r4.external-neural-origin-observation.v1",
+            "elapsed_seconds": 10 ** 500, "process_alive": False, "goals": {},
+            "source_authentication_performed": False,
+            "autonomy_credit": False,
+        }) + "\n")
+        with self.assertRaisesRegex(PermissionError, "independent_live_origin_not_observed"):
+            verify_external_origin_witness(witness, {})
+
+    def test_live_witness_tracks_mutable_checksum_without_losing_origin(self):
+        # A canonical goal's checksum changes with phase and physical
+        # receipts, while the neural policy/thought origin must not change.
+        # Synthetic witness contract only, NOT neural-causality proof.
+        expected = evaluate(self.root)["verified_goal_origins"]
+        rows = {}
+        for goal_id, spec in expected.items():
+            rows[spec["kind"]] = {
+                "goal_id": goal_id,
+                "origin_policy_id": spec["origin_policy_id"],
+                "origin_thought_id": spec["origin_thought_id"],
+                "selected_tendency": spec["original_tendency"],
+                "canonical_checksum": spec["canonical_checksum"],
+                "policy_trigger": "six_organ_lab_cycle",
+                "thought_generated_by": "neural_policy:" + spec["origin_policy_id"],
+                "checksum_matches": True, "record_consistency_only": True,
+            }
+        def sample(seconds, alive, goals):
+            return json.dumps({
+                "schema": "pretorius.r4.external-neural-origin-observation.v1",
+                "elapsed_seconds": seconds, "process_alive": alive, "goals": goals,
+                "source_authentication_performed": False,
+                "autonomy_credit": False,
+            })
+        intermediate = copy.deepcopy(rows)
+        for row in intermediate.values():
+            row["canonical_checksum"] = "0" * 64
+        witness = self.root / "evolving-checksum-origins.jsonl"
+        initial = sample(0, False, {})
+        middle = sample(1, True, intermediate)
+        final = sample(2, True, rows)
+        witness.write_text("\n".join((initial, middle, final)) + "\n")
+        verified = verify_external_origin_witness(witness, expected)
+        self.assertEqual(verified["observed_goal_ids"], sorted(expected))
+        # Seeing only an earlier checksum must not validate the sealed
+        # completed goal that the release-facing judge will inspect.
+        witness.write_text("\n".join((initial, middle)) + "\n")
+        with self.assertRaisesRegex(PermissionError, "independent_live_origin_not_observed"):
+            verify_external_origin_witness(witness, expected)
+
+    def test_u30_reject_completion_without_ledger_origin(self):
+        self.events.pop(5)
+        self._resign()
+        self.assert_invalid("completion lacked recorded origination")
+
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -11,13 +11,35 @@ on:
       - tools/check_17_operator_bundle.py
       - tools/audit_three_uncoached.py
       - tools/run_uncoached_r4_trial.py
+      - tools/observe_uncoached_r4.py
+      - tests/test_r4_uncoached_witness.py
+      - tests/test_candidate_b_r4_audit_contract.py
       - .github/workflows/preview-17-operator-bundle.yml
   workflow_dispatch:
+
+# Only the latest B pull-request head deserves costly donor builds.
+# This does not apply to the separately marker-gated four-hour workflow.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
 jobs:
+  independent-r4-auditor-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject ten-plus forged or unauthenticated R4 evidence classes
+        run: python -m unittest discover -s tests -p test_candidate_b_r4_audit_contract.py -v
+
   verified-unread-17:
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -163,6 +185,10 @@ jobs:
         with:
           name: experimental-17-book-operator-linux
           path: ${{ runner.temp }}/operator-download
+      - name: Install Candidate B runtime dependencies for independent witness
+        run: python -m pip install .
+      - name: Independent read-only witness regression, no donor imports
+        run: python -m unittest discover -s tests -p test_r4_uncoached_witness.py -v
       - name: Install verified source-pinned world offline with zero goal inputs
         run: |
           python - <<'PY'
@@ -179,13 +205,18 @@ jobs:
       - name: Independent three-distinct-activity R4 test, no task messages or scripted choices
         run: |
           python tools/run_uncoached_r4_trial.py \
-            --install-root "${{ runner.temp }}/r4-installed" --seconds 90 \
+            --install-root "${{ runner.temp }}/r4-installed" --seconds 600 \
             --report "${{ runner.temp }}/independent-r4-report.json"
       - name: Retain exact-R4 failure evidence regardless of verdict
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: independent-uncoached-three-activities-r4
-          path: ${{ runner.temp }}/independent-r4-report.json
+          path: |
+            ${{ runner.temp }}/independent-r4-report.json
+            ${{ runner.temp }}/independent-r4-report.witness.jsonl
+            ${{ runner.temp }}/independent-r4-report.origins.jsonl
+            ${{ runner.temp }}/independent-r4-report.operator.stdout.txt
+            ${{ runner.temp }}/independent-r4-report.operator.stderr.txt
           retention-days: 30
           if-no-files-found: warn

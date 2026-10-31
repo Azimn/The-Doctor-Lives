@@ -121,6 +121,21 @@ def stop(workspace: Path) -> int:
     return 4
 
 
+def _unclosed_prior_session(entries: list[dict]) -> dict | None:
+    """Identify a previous session, never a current-run configuration event.
+
+    A mode selection, fixture, or activity pulse is not a process start.
+    Only an actual start/resume without a later stop is an unfinished
+    session. This is ledger evidence, not proof of an external OS kill.
+    """
+    for entry in reversed(entries):
+        if entry["event"] == "operator_stop":
+            return None
+        if entry["event"] in ("operator_start", "operator_resume"):
+            return entry
+    return None
+
+
 def run(workspace: Path, *, resume: bool = False, native_source: Path | None = None) -> int:
     if native_source is not None:
         if resume:
@@ -133,6 +148,15 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
         request = workspace / ".preview-stop-request"
         if request.exists() or request.is_symlink():
             raise RuntimeError("Outstanding stop request: refuse ambiguous restart")
+        # Capture the entire PRE-RUN status and ledger before any current
+        # process event, including native-mode selection. Otherwise the new
+        # mode-selection row looks like a killed previous session.
+        previous = _read_status(workspace)
+        old = read_activity_ledger(workspace)
+        if resume and previous is None:
+            raise RuntimeError("No previous operator session to resume")
+        unfinished = _unclosed_prior_session(old)
+        run_index = 1 if previous is None else int(previous.get("run_index", 0)) + 1
         if native_source is not None:
             if select_native(workspace, native_source):
                 append_activity(workspace, event="operator_native_mode_selected",
@@ -140,10 +164,6 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                                 fields={"source_pinned": True, "operator_supplied_goal": None})
         effective_native = configured_source(workspace)
         started = _utc()
-        previous = _read_status(workspace)
-        if resume and previous is None:
-            raise RuntimeError("No previous operator session to resume")
-        run_index = 1 if previous is None else int(previous.get("run_index", 0)) + 1
         report = {
             "schema": "doctor-laboratory-preview-operator.v1",
             "status": "running", "workspace": str(workspace),
@@ -156,11 +176,12 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
         }
         # A previous foreground process may have been killed without a final
         # record. Mark that gap rather than invent a successful continuation.
-        old = read_activity_ledger(workspace)
-        if old and old[-1]["event"] not in ("operator_stop",):
+        if unfinished is not None:
             append_activity(workspace, event="unexpected_termination", external_input=False,
                             fields={"previous_sequence": old[-1]["sequence"],
-                                    "unfinished_doctor_goal_resumed": False})
+                                    "previous_session_sequence": unfinished["sequence"],
+                                    "unfinished_doctor_goal_resumed": False,
+                                    "external_os_kill_verified": False})
         append_activity(workspace, event="operator_resume" if resume else "operator_start",
                         external_input=True,
                         fields={"run_index": run_index, "operator_supplied_goal": None})
@@ -191,6 +212,44 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                     if activity["status"] in ("moved", "opened", "completed"):
                         report["last_action"] = activity["status"]
                         report["last_action_origin"] = "original_neural_tendency_host_mapped"
+                    # When an endogenous book/rest goal is already complete
+                    # (or has no situated target), return to genuine native
+                    # physical opportunities rather than endlessly replaying
+                    # the old completion. This uses the SAME six-organ runtime,
+                    # one canonical BrainStore and original world rules.
+                    # The host still offers the opportunity and may route
+                    # movement; do NOT count one-step actions as R4 autonomy.
+                    if activity["status"] in (
+                        "already_complete", "exhausted", "no_situated_goal",
+                        "blocked",
+                    ):
+                        from .lab_daily_life_cycle import run_daily_life_cycle
+                        life = run_daily_life_cycle(
+                            workspace / "state",
+                            workspace / "laboratory.sqlite3",
+                            affectus_source=effective_native,
+                            authorize_world=True,
+                        )
+                        append_activity(
+                            workspace, event="candidate_b_daily_life_pulse",
+                            external_input=False, fields={
+                                "origin_policy_id": life["daily_noesis_policy_id"],
+                                "source_selected_action": life["daily_noesis_selected"],
+                                "physical_receipt": life["world_effect"],
+                                "all_six_ports_invoked": life["all_six_ports_invoked"],
+                                "host_offered_opportunity": True,
+                                "three_goal_autonomy_credit": False,
+                                "operator_supplied_goal": None,
+                            },
+                        )
+                        if life["world_effect"] is not None:
+                            report["last_action"] = life["daily_noesis_selected"]
+                            report["last_action_origin"] = (
+                                "original_noesis_source_feasible_host_offered"
+                            )
+                            report["current_activity"] = (
+                                "daily_life:" + life["daily_noesis_selected"]
+                            )
                     # A bounded pacing interval lets the operator observe,
                     # interrupt, and reconcile between actual physical steps.
                     report["last_heartbeat"] = _utc()

@@ -1,0 +1,116 @@
+name: Candidate B - original physics recovery and six-organ life contract
+
+on:
+  pull_request:
+    paths:
+      - doctor_lives/lab_recovery_census.py
+      - doctor_lives/lab_daily_life_cycle.py
+      - doctor_lives/noesis_day.py
+      - doctor_lives/preview_operator.py
+      - tests/test_candidate_b_operator_sessions.py
+      - tests/test_candidate_b_recovery.py
+      - tests/test_candidate_b_daily_life.py
+      - doctor_lives/lab_native_work_goal.py
+      - doctor_lives/lab_native_goal_choice.py
+      - doctor_lives/preview_native.py
+      - tests/test_candidate_b_native_work.py
+      - doctor_lives/lab_baselines.py
+      - tests/test_candidate_b_baselines.py
+      - .github/workflows/candidate-b-recovery.yml
+  workflow_dispatch:
+
+# Only the latest B pull-request head deserves costly donor builds.
+# This does not apply to the separately marker-gated four-hour workflow.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  original-physics-recovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: pinned-laboratory
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install actual original Laboratory and canonical Doctor
+        run: python -m pip install -e ./pinned-laboratory -e .
+      - name: Validate original source physics recovery and resource non-replenishment
+        env:
+          PRETORIUS_REQUIRE_PINNED_LAB: '1'
+        run: python -m unittest discover -s tests -p test_candidate_b_recovery.py -v
+      - name: Classify fresh native starts and prior unclosed operator sessions on both platforms
+        run: python -m unittest discover -s tests -p test_candidate_b_operator_sessions.py -v
+      - name: Match simple and flat no-organ original-Lab recovery controls
+        run: python -m unittest discover -s tests -p test_candidate_b_baselines.py -v
+
+  same-mind-living-cycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 802e459ee68950414347d5fa324484c034f57b81
+          path: donor-sensus
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: donor-affectus
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/synthetic-ipseity
+          ref: e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          path: donor-ipseity
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install four reviewed donor sources, canonical brain
+        run: python -m pip install ./donor-laboratory ./donor-ipseity .
+      - name: Reject incorrect donor revisions
+        run: |
+          test "$(git -C donor-laboratory rev-parse HEAD)" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+          test "$(git -C donor-sensus rev-parse HEAD)" = "802e459ee68950414347d5fa324484c034f57b81"
+          test "$(git -C donor-affectus rev-parse HEAD)" = "904bf11861700739ccc03d4b0d4340ff3422a7d3"
+          test "$(git -C donor-ipseity rev-parse HEAD)" = "e2d1dc3978c952e59d270a29e84704c8a1fe264a"
+      - name: Execute one complete six-organ native life cycle, physical action and restart
+        env:
+          PYTHONPATH: donor-laboratory:donor-sensus
+          PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
+        run: python -m unittest discover -s tests -p test_candidate_b_daily_life.py -v
+      - name: Complete original Noesis-situated persistent work on pinned physical Laboratory
+        env:
+          PYTHONPATH: donor-laboratory:donor-sensus
+          PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
+        run: python -m unittest discover -s tests -p test_candidate_b_native_work.py -v

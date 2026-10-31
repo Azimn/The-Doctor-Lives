@@ -52,18 +52,29 @@ class SixOrganCycleReceipt:
     subjective_delivery_count: int
     host_provided_goal: bool
     self_selected_goal_proven: bool
+    affectus_consumed: tuple[str, ...] = ()
+    sensus_prominence_consumed: float = 1.0
+    mnemonic_recall_cost_consumed: float = 0.12
 
 
 @contextmanager
 def original_noesis_weather(organ, modulation):
-    """Apply ONE bounded experimental source to the existing native selector.
+    """Apply bounded exploration and memory-retention weather to original Noesis.
 
-    The only decision authority remains PretoriusBrain.think. The patch lasts
-    for a single synchronous cognition call, not installed on any entrypoint.
-    Other donor modulation channels are NOT reported as used.
+    The only decision authority remains PretoriusBrain.think. Neither this
+    temporary read-time weighting nor the caller can author a goal or source.
     """
     brain = organ._port.brain
     original = brain._state_policy_scores
+    original_salience = brain._salience
+
+    def weather_salience(row, now_tick, terms):
+        # Retention affects only READ-TIME relative memory relevance.
+        # Never erase, rewrite or promote an unverified experience.
+        age = max(0, now_tick - int(row["updated_tick"]))
+        age_weight = min(1.0, age / 12.0)
+        multiplier = 1.0 + _G * (1.0 - modulation.decay_multiplier) * age_weight
+        return max(0.0, original_salience(row, now_tick, terms) * multiplier)
 
     def adjusted(*args, **kwargs):
         base, scores, audit = original(*args, **kwargs)
@@ -75,13 +86,16 @@ def original_noesis_weather(organ, modulation):
         changed = {key: value / norm for key, value in changed.items()}
         audit = dict(audit)
         audit["lab_experiment_weather"] = {
-            "modulation_consumed": "exploration_bias", "delta": delta,
+            "modulation_consumed": ("exploration_bias", "decay_multiplier"),
+            "exploration_delta": delta,
+            "relative_memory_retention": modulation.decay_multiplier,
             "not_subject_visible": True,
         }
         return base, changed, audit
 
-    with patch.object(brain, "_state_policy_scores", side_effect=adjusted):
-        yield
+    with patch.object(brain, "_salience", side_effect=weather_salience):
+        with patch.object(brain, "_state_policy_scores", side_effect=adjusted):
+            yield
 
 
 class SixOrganLaboratoryCycle:
@@ -328,28 +342,6 @@ class SixOrganLaboratoryCycle:
         station = state["station"]
         if station not in _VALID:
             raise PermissionError("Unreviewed Laboratory station")
-        donor = self.sensus._donor
-        ref = evidence["source"]
-        claim = donor.Percept(
-            event_id="six_cycle_" + str(tick) + "_location",
-            channel="vision",
-            evidence=donor.Evidence.OBSERVED,
-            source_ref=ref, tick=tick,
-            attribute="room", value=_VALID[station],
-            confidence=1.0, object_hint="room",
-            features=(("type", "room"),),
-        )
-        scene = self.sensus.acquire(
-            tick, (claim,), trusted_refs=frozenset({ref}),
-            verified_world_refs=frozenset({ref}),
-        )
-
-        # CORPUS: read the real independently verified body before acting.
-        self.subject.home.verify()
-        body = self.subject.home.audit_state()["body"]
-        if not isinstance(body, dict):
-            raise RuntimeError("Missing source-verified physical body")
-
         # AFFECTUS: weather is durable in canonical BrainStore, and its
         # driver is a bounded trusted host opportunity. A realized world
         # consequence remains recorded independently, never forged.
@@ -369,15 +361,43 @@ class SixOrganLaboratoryCycle:
             authorized=True, consumed_world_source=consumed,
         )
 
-        # MNEMOSYNE: policy selects own question from a canonical concern,
-        # no host-authored question or privileged world fact.
-        mnemonic = self.mnemosyne.deliberate()
+        modulation = self.weather.modulation()
+        # The OBSERVED source remains immutable; only prominence of the
+        # verified scene claim changes within bounded percept confidence.
+        claim_confidence = max(0.5, min(1.0, 0.8 * modulation.salience_gain))
+        donor = self.sensus._donor
+        ref = evidence["source"]
+        claim = donor.Percept(
+            event_id="six_cycle_" + str(tick) + "_location",
+            channel="vision",
+            evidence=donor.Evidence.OBSERVED,
+            source_ref=ref, tick=tick,
+            attribute="room", value=_VALID[station],
+            confidence=claim_confidence, object_hint="room",
+            features=(("type", "room"),),
+        )
+        scene = self.sensus.acquire(
+            tick, (claim,), trusted_refs=frozenset({ref}),
+            verified_world_refs=frozenset({ref}),
+        )
+
+        # CORPUS: read the real independently verified body before acting.
+        self.subject.home.verify()
+        body = self.subject.home.audit_state()["body"]
+        if not isinstance(body, dict):
+            raise RuntimeError("Missing source-verified physical body")
+
+        # MNEMOSYNE: same original concern/recall policy. Weather changes
+        # its recall cost, not question text or source authority.
+        recall_cost = max(0.0, min(1.0,
+            0.12 - _G * modulation.rehearsal_bias))
+        mnemonic = self.mnemosyne.deliberate(recall_cost=recall_cost)
         if mnemonic.action == "recall":
             self.mnemosyne.reflect_selected_recollection()
 
         # NOESIS: unchanged native neural selector, temporarily modulated.
         with original_noesis_weather(
-            self.runtime.noesis, self.weather.modulation(),
+            self.runtime.noesis, modulation,
         ):
             proposal = self.runtime.noesis.deliberate(
                 host_trigger="six_organ_lab_cycle",
@@ -433,4 +453,10 @@ class SixOrganLaboratoryCycle:
             # Selected abstract tendency + affordance is not by itself
             # proof of genuine independent intention or sustained goals.
             self_selected_goal_proven=False,
+            affectus_consumed=(
+                "salience_gain", "exploration_bias",
+                "rehearsal_bias", "decay_multiplier",
+            ),
+            sensus_prominence_consumed=claim_confidence,
+            mnemonic_recall_cost_consumed=recall_cost,
         )

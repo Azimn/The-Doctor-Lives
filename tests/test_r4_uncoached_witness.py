@@ -1,0 +1,138 @@
+"""No donor dependencies: independent witness must not mutate world or brain."""
+import json
+from pathlib import Path
+import sqlite3
+import tempfile
+import unittest
+from datetime import datetime, timezone
+
+from tools.observe_uncoached_r4 import inspect_neural_origins, sample
+
+
+class R4WitnessTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "state").mkdir()
+        with sqlite3.connect(self.root / "laboratory.sqlite3") as db:
+            for table in ("books_events", "rhythm_events", "embodied_events"):
+                db.execute(f"CREATE TABLE {table}(event_id TEXT,event_hash TEXT)")
+            db.execute("INSERT INTO rhythm_events VALUES ('act1','hash1')")
+        with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
+            db.execute("CREATE TABLE policy_decisions(trigger TEXT,selected_action TEXT)")
+            db.execute("CREATE TABLE memories(evidence_class TEXT,external INTEGER,source TEXT)")
+            db.execute("INSERT INTO policy_decisions VALUES ('six_organ_lab_cycle','explore')")
+            db.execute("INSERT INTO memories VALUES ('lived_runtime_memory',0,'laboratory-home:action:hash1')")
+        self.status = self.root / "preview-status.json"
+        self.status.write_text(json.dumps({
+            "schema": "doctor-laboratory-preview-operator.v1", "status": "running",
+            "last_heartbeat": "2026-10-31T17:00:00Z",
+        }))
+        (self.root / "preview-activity.jsonl").write_text(json.dumps({
+            "event": "native_goal_goal_created",
+            "fields": {"kind": "read_book", "goal_phase": "search"},
+        }) + "\n")
+
+    def test_independent_read_only_and_no_autonomy_credit(self):
+        world = (self.root / "laboratory.sqlite3").read_bytes()
+        brain = (self.root / "state/brain.sqlite3").read_bytes()
+        result = sample(self.root, process_alive=True, elapsed_seconds=30,
+                        baseline_world_receipts=1)
+        self.assertEqual(result["world_receipt_delta_from_initial"], 0)
+        self.assertEqual(result["brain"]["unverified_lived_action_rows"], 1)
+        self.assertEqual(result["brain"]["policy_counts"]["six_organ_lab_cycle:explore"], 1)
+        self.assertEqual(result["operator_ledger_diagnostic_only"]["last_native_event"]["goal_phase"], "search")
+        self.assertFalse(result["source_authentication_performed"])
+        self.assertFalse(result["autonomy_credit"])
+        self.assertEqual((self.root / "laboratory.sqlite3").read_bytes(), world)
+        self.assertEqual((self.root / "state/brain.sqlite3").read_bytes(), brain)
+
+    def test_crash_stall_silent_skip_distinguished(self):
+        self.assertEqual(sample(self.root, process_alive=False, elapsed_seconds=100,
+                                baseline_world_receipts=1)["failure_class_candidate"], "crash")
+        self.assertEqual(sample(self.root, process_alive=True, elapsed_seconds=100,
+                                baseline_world_receipts=1)["failure_class_candidate"], "stall")
+        status = json.loads(self.status.read_text())
+        status["last_heartbeat"] = datetime.now(timezone.utc).isoformat()
+        self.status.write_text(json.dumps(status))
+        self.assertEqual(sample(self.root, process_alive=True, elapsed_seconds=650,
+                                baseline_world_receipts=1)["failure_class_candidate"],
+                         "silent_skip_candidate")
+
+    def test_no_situated_goal_retains_source_tendency_without_r4_credit(self):
+        # The installed operator must not erase Noesis's actual tendency on
+        # a failed goal opportunity. This is a forwarding test, NOT evidence
+        # of autonomous goal creation, physical action, or a real donor run.
+        from unittest.mock import patch
+        from doctor_lives.preview_native import native_step
+
+        source = {
+            "receipts": [{
+                "status": "no_situated_goal", "kind": None, "goal_id": None,
+                "memory_id": None, "selected_tendency": "persist",
+            }],
+            "same_original_brain": True,
+            "original_world_epoch_unchanged": True,
+        }
+        with patch("doctor_lives.lab_runtime.run_native_laboratory",
+                   return_value=source) as native:
+            record = native_step(
+                self.root / "state", self.root / "laboratory.sqlite3",
+                self.root / "unopened-affectus-source")
+        native.assert_called_once()
+        self.assertEqual(record["status"], "no_situated_goal")
+        self.assertEqual(record["selected_tendency"], "persist")
+        self.assertIsNone(record["goal_id"])
+        self.assertIsNone(record["kind"])
+        self.assertFalse(record["source_attestation_independent"])
+        self.assertIsNone(record["operator_supplied_goal"])
+
+    def test_external_neural_origin_snapshot_is_read_only_and_not_causal_credit(self):
+        # A consistent canonical goal is only an observed database fact.
+        # A coordinated rewrite can satisfy strings and hashes; independent
+        # temporal and original-world custody must still be evaluated.
+        import hashlib
+        with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
+            db.execute("ALTER TABLE policy_decisions ADD COLUMN id TEXT")
+            db.execute("UPDATE policy_decisions SET id='p-real'")
+            db.execute("CREATE TABLE thoughts(id TEXT,generated_by TEXT)")
+            db.execute("INSERT INTO thoughts VALUES('t-real','neural_policy:p-real')")
+            db.execute("CREATE TABLE meta(key TEXT,value TEXT)")
+            goal = {
+                "id": "g-real", "phase": "travel",
+                "origin_policy_id": "p-real", "origin_thought_id": "t-real",
+            }
+            digest = hashlib.sha256(json.dumps(
+                goal, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=True, allow_nan=False,
+            ).encode("utf-8")).hexdigest()
+            db.execute("INSERT INTO meta VALUES(?,?)", (
+                "six_organ_native_work_intention_v1",
+                json.dumps({"payload": goal, "sha256": digest}),
+            ))
+        before = (self.root / "state/brain.sqlite3").read_bytes()
+        snapshot = inspect_neural_origins(self.root)
+        self.assertEqual(snapshot["work"]["goal_id"], "g-real")
+        self.assertTrue(snapshot["work"]["record_consistency_only"])
+        self.assertEqual((self.root / "state/brain.sqlite3").read_bytes(), before)
+        with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
+            db.execute("UPDATE policy_decisions SET trigger='host_scheduled'")
+        self.assertFalse(inspect_neural_origins(self.root)["work"]["record_consistency_only"])
+
+    def test_missing_original_world_table_fails_closed(self):
+        with sqlite3.connect(self.root / "laboratory.sqlite3") as db:
+            db.execute("DROP TABLE books_events")
+        with self.assertRaisesRegex(RuntimeError, "Missing authoritative world table"):
+            sample(self.root, process_alive=True, elapsed_seconds=1)
+
+    def test_receipt_delta_is_not_provenance(self):
+        result = sample(self.root, process_alive=True, elapsed_seconds=5,
+                        baseline_world_receipts=0)
+        self.assertEqual(result["world_receipt_delta_from_initial"], 1)
+        self.assertFalse(result["source_authentication_performed"])
+        self.assertFalse(result["autonomy_credit"])
+
+
+if __name__ == "__main__":
+    unittest.main()
