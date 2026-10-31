@@ -210,6 +210,32 @@ class NativeLaboratoryGoalChooser:
         station = state["station"]
         proposal = self._native_policy()
         if proposal.selected_tendency == "explore":
+            # Bounded source-grounded alternative: when an actual book has
+            # already been read or no installed physical edition exists,
+            # exploratory Noesis may pursue the SEEN workbench instead.
+            # The host checks catalogue feasibility, never sends unseen
+            # titles or an operator-authored task to the Doctor.
+            if self.work is not None:
+                from pretorius_lab.book_library import BookLibrary
+                from pretorius_lab.physics import LabError
+                try:
+                    available_books = bool(BookLibrary(
+                        self.host.subject.habitat).catalog())
+                except LabError:
+                    available_books = False
+                if prior_book_complete or not available_books:
+                    if work is not None:
+                        return NativeGoalChoiceReceipt(
+                            "already_complete", "work", work["id"],
+                            work["memory_id"], selected_tendency="explore"
+                        )
+                    alternative = self.work.originate(proposal)
+                    if alternative.goal_id is not None:
+                        return NativeGoalChoiceReceipt(
+                            alternative.status, "work", alternative.goal_id,
+                            alternative.memory_id,
+                            selected_tendency=alternative.selected_tendency
+                        )
             if book.goal_id is not None:
                 # Exhausted or completed once: never accidentally reopen
                 # the original volume or start an alias of the old goal.
