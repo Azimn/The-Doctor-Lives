@@ -49,6 +49,17 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
                 "phantasmagorium:probe:" + imagination["record_id"]))
             self.assertIsNotNone(reopened.meta(
                 "phantasmagorium:probe:" + dream["record_id"]))
+            import json
+            for result in (imagination, dream):
+                opaque = reopened.meta(
+                    "phantasmagorium:probe:" + result["record_id"])
+                parsed = json.loads(opaque)
+                self.assertFalse(parsed["subject_admitted"])
+                self.assertTrue(parsed["no_autobiographical_content"])
+                self.assertNotIn('"result"', opaque)
+                self.assertNotIn('"entities"', opaque)
+            # Not even a generated *dream* can silently become lived memory.
+            self.assertEqual(len(reopened.memories()), 0)
 
 
 if __name__ == "__main__":
