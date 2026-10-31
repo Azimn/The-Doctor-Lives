@@ -34,10 +34,10 @@ The backup is a **directory containing a manifest and verified files**, not a ZI
 
 The existing `lab-soak` CLI and `scripts/observe_soak_runner.py` are separate processes. Run both only on a continuously powered local or self-hosted machine with sleep, scheduled updates and automatic reboot disabled, after keeper authorization. Do **not** run a nominal 24-hour job on GitHub-hosted Actions, and do not purchase compute. The observer is standard-library-only on Linux and Windows and must be given the actual running `lab-soak` process PID. It records UTC ISO-8601, monotonic nanoseconds, OS boot identity/uptime, process start identity, system CPU and memory, disk free space and the producer log's file size. It samples every 30 seconds by default and refuses a missing/replaced process, a reboot, a >60-second observer gap or an existing/symlinked evidence destination. Its evidence should be retained separately from the producer's state and log, preferably on an independently controlled volume.
 
-Example Linux shell, from a source checkout with the sealed offline wheel already installed:
+Example Linux shell, from a source checkout with the sealed offline wheel already installed: The producer is configured for 86,520 seconds, giving the observer 120 seconds of startup margin to witness a full 86,400 seconds after it attaches. If the margin is exceeded, the run fails rather than fabricating observer time.
 
 ```console
-doctor-lives --state ./pretorius-alone/state lab-soak --world ./pretorius-alone/laboratory.sqlite3 --evidence-log ./pretorius-soak.jsonl --seconds 86400 --segment-seconds 900 --interval-seconds 30 --work-every-seconds 300 &
+doctor-lives --state ./pretorius-alone/state lab-soak --world ./pretorius-alone/laboratory.sqlite3 --evidence-log ./pretorius-soak.jsonl --seconds 86520 --segment-seconds 900 --interval-seconds 30 --work-every-seconds 300 &
 SOAK_PID=$!
 python scripts/observe_soak_runner.py --pid "$SOAK_PID" --disk-path ./pretorius-alone --soak-log ./pretorius-soak.jsonl --evidence-log /mnt/independent/pretorius-runner-health.jsonl --seconds 86400 --interval 30
 wait "$SOAK_PID"
