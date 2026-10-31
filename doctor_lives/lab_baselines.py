@@ -55,7 +55,15 @@ def run_repair_baseline(mode: str, *, max_steps: int = 24) -> dict:
         genesis["fatigue"] = 9
         genesis["apparatus"] = 0
         genesis["cleanliness"]["room:sanctum"] = 3
-        DailyRhythm(world).initialize(initial_state=genesis)
+        # A changed initial condition is an explicitly RESEARCHER-AUTHORED
+        # baseline fixture. The original world refuses noncanonical
+        # genesis without documented parent provenance.
+        DailyRhythm(world).initialize(
+            initial_state=genesis,
+            parent={"status": "researcher_authored_comparison_fixture",
+                    "not_lived_by_pretorius": True,
+                    "same_initial_state_for_all_baselines": True},
+        )
         subject = SubjectPort(world)
         epoch = subject.verify()["world_epoch"]
         trace: list[str] = []
