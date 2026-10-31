@@ -100,7 +100,7 @@ def main():
     independent = subprocess.run(
         [sys.executable, str(Path(__file__).with_name("audit_three_uncoached.py")),
          "--workspace", str(workspace), "--report", str(args.report)],
-        capture_output=True, text=True, timeout=60)
+        capture_output=True, text=True, timeout=180)
     data = json.loads(args.report.read_text(encoding="utf-8"))
     data["observation_elapsed_target_seconds"] = args.seconds
     data["operator_run_error"] = error
