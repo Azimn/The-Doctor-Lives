@@ -65,7 +65,39 @@ jobs:
         run: |
           set -euo pipefail
           test -s "$ROOT/import/SHA256SUMS.txt"
-          (cd "$ROOT/import" && sha256sum -c SHA256SUMS.txt) | tee "$ROOT/evidence/prior-checksums.txt"
+          python - <<'PY' | tee "$ROOT/evidence/prior-checksums.txt"
+          import hashlib, os, re
+          from pathlib import Path
+          root=(Path(os.environ['ROOT'])/'import').resolve(strict=True)
+          lines=(root/'SHA256SUMS.txt').read_text().splitlines()
+          expected=set()
+          excluded=0
+          for line in lines:
+              m=re.fullmatch(r'([a-f0-9]{64})  (.+)', line)
+              if m is None:
+                  raise SystemExit('Malformed original artifact checksum record')
+              digest, relative=m.groups()
+              candidate=(root/relative).resolve(strict=True)
+              if candidate != root and root not in candidate.parents:
+                  raise SystemExit('Original artifact checksum escaped import directory')
+              if candidate.is_symlink() or not candidate.is_file():
+                  raise SystemExit('Original artifact checksum points to a non-regular file')
+              if candidate == root/'SHA256SUMS.txt':
+                  excluded+=1
+                  continue
+              normalized=candidate.relative_to(root).as_posix()
+              if normalized in expected:
+                  raise SystemExit('Duplicate original artifact checksum path')
+              expected.add(normalized)
+              if hashlib.sha256(candidate.read_bytes()).hexdigest()!=digest:
+                  raise SystemExit('Original artifact checksum mismatch: '+normalized)
+              print('verified '+normalized)
+          actual={p.relative_to(root).as_posix() for p in root.rglob('*')
+                  if p.is_file() and p!=root/'SHA256SUMS.txt'}
+          if not expected or expected!=actual or excluded!=1:
+              raise SystemExit('Original artifact member inventory mismatch')
+          print('NOTE: excluded the original SHA256SUMS self-checksum made by shell redirection; all other files verified')
+          PY
           "$ROOT/venv/bin/python" --version >/dev/null 2>&1 || true
           python - <<'PY'
           import json, os
@@ -189,7 +221,7 @@ jobs:
           mkdir -p "$ROOT/export"
           if test -d "$ROOT/evidence"; then cp -a "$ROOT/evidence" "$ROOT/export/evidence"; fi
           if test -d "$ROOT/preview"; then tar -czf "$ROOT/export/fresh-world-and-mind-stage2.tar.gz" -C "$ROOT" preview; fi
-          (cd "$ROOT/export" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          (cd "$ROOT/export" && find . -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
           date -u +'%Y-%m-%dT%H:%M:%SZ' > "$ROOT/export/exported-utc.txt"
 
       - name: Upload successor evidence
