@@ -1,0 +1,202 @@
+name: Frozen Pretorius A - 4h cold machine continuation
+
+on:
+  push:
+    branches:
+      - qa/frozen-a-github-four-hour-20261031
+    paths:
+      - qa/soak/launch-stage2-after-41173540391.txt
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: frozen-pretorius-a-stage2-41173540391
+  cancel-in-progress: false
+
+jobs:
+  stage2-cold-restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    env:
+      DOCTOR_SHA: a8cc49ab15a4d6453c8a5954e1a39a047e4fe4a3
+      LAB_SHA: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+      ROOT: ${{ github.workspace }}/pretorius-stage2
+      PREVIOUS_RUN_ID: '41173540391'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Checkout immutable Doctor and original Laboratory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/evidence" "$ROOT/wheels" "$ROOT/import"
+          for pair in "doctor:$DOCTOR_SHA:Azimn/The-Doctor-Lives" "lab:$LAB_SHA:Azimn/Pretorius-Laboratory"; do
+            IFS=: read -r name sha repo <<< "$pair"
+            git init -q "$ROOT/$name"
+            git -C "$ROOT/$name" remote add origin "https://github.com/$repo.git"
+            git -C "$ROOT/$name" fetch -q --no-tags --depth=1 origin "$sha"
+            git -C "$ROOT/$name" checkout -q --detach FETCH_HEAD
+            test "$(git -C "$ROOT/$name" rev-parse HEAD)" = "$sha"
+          done
+          {
+            echo "doctor=$DOCTOR_SHA"
+            echo "lab=$LAB_SHA"
+            echo "prior_run=$PREVIOUS_RUN_ID"
+            echo "continuation_workflow_sha=$GITHUB_SHA"
+            echo "utc=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            python --version
+          } > "$ROOT/evidence/source-custody.txt"
+
+      - name: Retrieve first run's official persisted world and mind
+        uses: actions/download-artifact@v4
+        with:
+          name: frozen-pretorius-a-four-hour-41173540391
+          run-id: 41173540391
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ github.workspace }}/pretorius-stage2/import
+
+      - name: Reject missing or failed first-run evidence and restore exact state
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$ROOT/import/SHA256SUMS.txt"
+          (cd "$ROOT/import" && sha256sum -c SHA256SUMS.txt) | tee "$ROOT/evidence/prior-checksums.txt"
+          "$ROOT/venv/bin/python" --version >/dev/null 2>&1 || true
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['ROOT'])
+          prev=root/'import/evidence/final-report.json'
+          report=json.loads(prev.read_text())
+          if not report.get('pass') or not all(report.get('checks',{}).values()):
+              raise SystemExit('Prior run did not pass every explicit four-hour evidence gate')
+          if report.get('r5_24h_accepted') is not False:
+              raise SystemExit('Unexpected source acceptance field')
+          setup=json.loads((root/'import/evidence/operator-setup.json').read_text())
+          if setup.get('autonomy_credit') is not False or setup.get('status')!='prepared':
+              raise SystemExit('First-run researcher fixture provenance invalid')
+          print('First run pass flags and disclosed operator fixture verified')
+          PY
+          test -s "$ROOT/import/fresh-world-and-mind.tar.gz"
+          if tar -tzf "$ROOT/import/fresh-world-and-mind.tar.gz" | grep -E '(^/|(^|/)\.\.(/|$))'; then
+            echo 'Unsafe path in archived state' >&2
+            exit 1
+          fi
+          tar -xzf "$ROOT/import/fresh-world-and-mind.tar.gz" -C "$ROOT"
+          test -s "$ROOT/preview/state/brain.sqlite3"
+          test -s "$ROOT/preview/state/pretorius_recurrent.npz"
+          test -s "$ROOT/preview/laboratory.sqlite3"
+          {
+            sha256sum "$ROOT/preview/state/brain.sqlite3"
+            sha256sum "$ROOT/preview/state/pretorius_recurrent.npz"
+            sha256sum "$ROOT/preview/laboratory.sqlite3"
+          } > "$ROOT/evidence/cold-restored-state-hashes.txt"
+          echo "Restored SAME original world and mind on a fresh GitHub-hosted machine. No genesis and no operator-directed actions."
+
+      - name: Seal exact wheels, install offline, verify previous lived receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip wheel --wheel-dir "$ROOT/wheels" "$ROOT/doctor" "$ROOT/lab" > "$ROOT/evidence/wheel-build.log" 2>&1 || {
+            tail -n 100 "$ROOT/evidence/wheel-build.log"; exit 1;
+          }
+          python "$ROOT/doctor/tools/offline_wheelhouse.py" seal --wheelhouse "$ROOT/wheels" --doctor-sha "$DOCTOR_SHA" --lab-sha "$LAB_SHA" > "$ROOT/evidence/wheel-seal.json"
+          python "$ROOT/doctor/tools/offline_wheelhouse.py" verify --wheelhouse "$ROOT/wheels" --doctor-sha "$DOCTOR_SHA" --lab-sha "$LAB_SHA" > "$ROOT/evidence/wheel-verify.json"
+          python -m venv "$ROOT/venv"
+          "$ROOT/venv/bin/python" -m pip install --no-index --find-links "$ROOT/wheels" 'the-doctor-lives[laboratory]==0.5.0rc2' > "$ROOT/evidence/offline-install.log" 2>&1
+          "$ROOT/venv/bin/python" -m pip check > "$ROOT/evidence/pip-check.txt"
+          (cd "$RUNNER_TEMP" && env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-soak-verify --world "$ROOT/preview/laboratory.sqlite3" --evidence-log "$ROOT/import/evidence/soak.jsonl") | tee "$ROOT/evidence/prior-source-replay.json"
+          (cd "$RUNNER_TEMP" && env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-start --world "$ROOT/preview/laboratory.sqlite3") | tee "$ROOT/evidence/cold-restart.json"
+
+      - name: Observe four additional REAL elapsed hours after cold restart
+        shell: bash
+        timeout-minutes: 300
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          producer=0
+          observer=0
+          cleanup() {
+            if test "$producer" -gt 0; then kill "$producer" 2>/dev/null || true; fi
+            if test "$observer" -gt 0; then kill "$observer" 2>/dev/null || true; fi
+          }
+          trap cleanup EXIT
+          env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-soak \
+            --world "$ROOT/preview/laboratory.sqlite3" --evidence-log "$ROOT/evidence/stage2-soak.jsonl" \
+            --seconds 14520 --segment-seconds 60 --interval-seconds 30 --work-every-seconds 60 \
+            > "$ROOT/evidence/soak.stdout.log" 2> "$ROOT/evidence/soak.stderr.log" &
+          producer=$!
+          "$ROOT/venv/bin/python" "$ROOT/doctor/scripts/observe_soak_runner.py" \
+            --pid "$producer" --disk-path "$ROOT" --soak-log "$ROOT/evidence/stage2-soak.jsonl" \
+            --evidence-log "$ROOT/evidence/stage2-health.jsonl" --seconds 14400 --interval 30 \
+            > "$ROOT/evidence/observer.stdout.log" 2> "$ROOT/evidence/observer.stderr.log" &
+          observer=$!
+          while kill -0 "$observer" 2>/dev/null; do
+            if ! kill -0 "$producer" 2>/dev/null; then
+              echo 'Producer exited before observer; stage2 failed' >&2
+              wait "$producer" || true
+              exit 1
+            fi
+            echo "$(date -u +'%Y-%m-%dT%H:%M:%SZ') stage2 producer_alive=1 observer_alive=1"
+            sleep 60
+          done
+          wait "$observer" || { cat "$ROOT/evidence/observer.stderr.log"; exit 1; }
+          wait "$producer" || { cat "$ROOT/evidence/soak.stderr.log"; exit 1; }
+          env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-soak-verify \
+            --world "$ROOT/preview/laboratory.sqlite3" --evidence-log "$ROOT/evidence/stage2-soak.jsonl" \
+            | tee "$ROOT/evidence/source-verification.json"
+          "$ROOT/venv/bin/python" - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['ROOT'])
+          ev=root/'evidence'
+          source=json.loads((ev/'source-verification.json').read_text())
+          prev=json.loads((ev/'prior-source-replay.json').read_text())
+          samples=[json.loads(x) for x in (ev/'stage2-health.jsonl').read_text().splitlines()]
+          gaps=[(b['monotonic_ns']-a['monotonic_ns'])/1e9 for a,b in zip(samples,samples[1:])]
+          checks={
+           'previous_world_epoch_verified': prev.get('original_world_epoch_verified') is True,
+           'unchanged_world_epoch': prev.get('world_epoch') == source.get('world_epoch'),
+           'stage2_continuous':source.get('continuous') is True,
+           'stage2_active_four_hours':source.get('active_seconds',0)>=14400,
+           'stage2_world_epoch_verified':source.get('original_world_epoch_verified') is True,
+           'stage2_noesis_physical_receipts':source.get('original_noesis_work_events_verified',0)>=1,
+           'stage2_independent_observer_four_hours':len(samples)>=2 and (samples[-1]['monotonic_ns']-samples[0]['monotonic_ns'])/1e9>=14400,
+           'stage2_no_observer_gaps':bool(gaps) and max(gaps)<=60,
+           'stage2_one_process':len({(s['observed_pid'],s['process_start_identity']) for s in samples})==1,
+           'stage2_one_boot':len({s['boot_identity'] for s in samples})==1
+          }
+          result={'schema':'qa-frozen-a-stage2-cold-restore.v1','pass':all(checks.values()),
+                  'checks':checks,'stage1_run_id':41173540391,'stage2_github_run':os.environ['GITHUB_RUN_ID'],
+                  'source':source,'prior_source':prev,'observer_samples':len(samples),
+                  'no_operator_new_action_or_goal':True,'uncoached_three_task_autonomy_proven':False,
+                  'continuous_24h_soak_proven':False}
+          (ev/'stage2-final-report.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'pass':result['pass'],'checks':checks},sort_keys=True))
+          if not result['pass']: raise SystemExit(1)
+          PY
+
+      - name: Preserve continuation state and logs even on failure
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$ROOT/export"
+          if test -d "$ROOT/evidence"; then cp -a "$ROOT/evidence" "$ROOT/export/evidence"; fi
+          if test -d "$ROOT/preview"; then tar -czf "$ROOT/export/fresh-world-and-mind-stage2.tar.gz" -C "$ROOT" preview; fi
+          (cd "$ROOT/export" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > "$ROOT/export/exported-utc.txt"
+
+      - name: Upload successor evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frozen-pretorius-a-stage2-${{ github.run_id }}
+          path: ${{ github.workspace }}/pretorius-stage2/export/
+          if-no-files-found: warn
+          retention-days: 14
