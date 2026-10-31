@@ -1,5 +1,16 @@
 # CURRENT STATE: The Doctor Lives
 
+## M6 two-way operator conversation, October 30, 2026
+
+`integration/m6` branched from the verified `integration/m5@99b6cdb`, preserving one original BrainStore, Noesis recurrent policy and source-pinned original Laboratory. The new `doctor-lives chat` and loopback-only `chat-serve` share one operator ingress and one source-verified reply path. Incoming operator claims are attributed as **operator statements**, never original world observations. Autobiographical replies cite authentic Laboratory action receipt and BrainStore memory, or an explicitly hypothetical stored wish. The local Ollama model is optional; deterministic model-off replies are guaranteed.
+
+Frozen 40-family semantic holdout: **116/120 correct**, **37/40 all-paraphrases stable** without holdout-specific tuning. 18-decision donor wiring: CASCADE entered 18, eligible 0; household entered 0, eligible 0; habit entered 18, eligible 16, score-positive 16. The old household 0/180 is **untested**, not negative. Positive targeted original-world donor control scenarios were executed but no physical-world outcome advantage was shown. Donors remain OFF.
+
+[Original-Lab M6 conversational CI 41075702190](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41075702190) demonstrated real multi-turn model-on/off three-day simulated conversation, authentic Noesis-first operator messages **[0,1,1]** per simulated day, authenticated memory and actual mid-session SIGKILL recovery. Original 20-seed CausalAuditHarness comparisons found **6/20** altered choices against no message and **12/20** against shuffled topic; report pressure is independently recorded per family. [Strict-source M6 41076414424](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41076414424) independently verified **9 lived actions, 17 outbound claim citations and 2 genuine Noesis initiative receipts**. Real local `qwen2.5:0.5b` used 2 model calls and 30 generated tokens; no hosted API.
+
+**Current caution:** M6 remains a candidate branch, with final CI rerun needed after further source classification, surface integration tests and transcript reporting. Production `main` and draft PRs #98/#102 are unchanged. Full R1-R6 release approval, 24h elapsed soak and independent review are outstanding.
+
+
 ## M5 ChatGPT-authored stand-in and semantic donor harvest, October 30, 2026
 
 On the existing combined `integration/m5` (M4 plus PR #98), [`878fbae`](https://github.com/Azimn/The-Doctor-Lives/commit/878fbae9c60b4d41c93e531e825f1efc589949a1) added a *test-only* ChatGPT-authored candidate corpus fed through original `InferencePort` and actual pinned Laboratory. It is not a ChatGPT API or live Ollama substitution. Five of six hypothetical ideas grounded in existing operator actions; one remained a wish. The original Noesis, not the fixture, chose one physical/operator task; independent receipt, one lived memory and one cold restart were verified in [CI 41068903914](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41068903914) and [CI 41069141705](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41069141705).

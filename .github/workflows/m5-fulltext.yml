@@ -1,7 +1,7 @@
 name: M5 seventeen full-text actual Laboratory acceptance
 on:
   push:
-    branches: [integration/m5]
+    branches: [integration/m5, integration/m6]
   workflow_dispatch:
 permissions:
   contents: read

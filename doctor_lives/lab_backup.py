@@ -270,7 +270,10 @@ def backup(state: Path, world: Path, destination: Path) -> dict:
         (staging / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-        staging.rename(destination)
+        # Reuse the same kernel-enforced no-replace publish as preview genesis.
+        # Path.rename could silently replace a competing empty backup folder.
+        from .lab_preview import _publish_noreplace
+        _publish_noreplace(staging, destination)
         return {"schema": SCHEMA, "files": len(files), "status": "backed_up"}
     finally:
         if staging.exists():

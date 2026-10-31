@@ -81,9 +81,243 @@ def _crash(world_path: Path, brain_path: Path):
     raise AssertionError("Physical world commit did not reach crash boundary")
 
 
+def _hard_kill_original_day(state: Path, world: Path, ready: Path):
+    """Installed-wheel child: park AFTER the real Noesis world commit.
+
+    The parent must issue an actual OS hard kill, not a graceful exception
+    or a simulated process failure. No operator message or follow-up motor
+    request crosses the replay boundary.
+    """
+    import time
+    from unittest.mock import patch
+    from doctor_lives.lab_home_bridge import DoctorHomeBridge
+    from doctor_lives.lab_runtime import offer_laboratory_day
+
+    real_admit = DoctorHomeBridge._admit_verified
+
+    def pause_after_world_commit(self, frame, source, **kwargs):
+        if source.startswith("laboratory-home:action:"):
+            # The authentic world action has committed; BrainStore has not
+            # yet admitted its lived consequence. The file is test-only.
+            ready.write_text(source, encoding="utf-8")
+            while True:
+                time.sleep(0.1)
+        return real_admit(self, frame, source, **kwargs)
+
+    with patch.object(DoctorHomeBridge, "_admit_verified",
+                      pause_after_world_commit):
+        offer_laboratory_day(state, world, allow_world_actions=True)
+    raise AssertionError("Hard-kill child unexpectedly completed")
+
+
+def _installed_hard_kill_recovery(console: str, root: Path):
+    """One source-selected physical action, OS kill, zero-input cold recovery.
+
+    This proves exactly-once post-world reconciliation, NOT autonomous
+    continuation of a partially executed multi-step book/rest goal.
+    """
+    from doctor_lives.organs import SixOrganRuntime
+
+    preview = root / "hard-kill-original-laboratory"
+    genesis = json.loads(_run([
+        console, "preview-init", "--workspace", str(preview),
+    ]).stdout)
+    brain = preview / "state"
+    world_path = preview / "laboratory.sqlite3"
+    world = SpatialHabitat(world_path)
+    runtime = SixOrganRuntime.open(brain)
+    bridge = runtime.bind_laboratory(SubjectPort(world), authorized=True)
+    # Legitimate operator fixture preparation only. No selected action is
+    # supplied to the tested original-Noesis opportunity.
+    bridge.act("walk", event_id="kill-setup-center",
+               station="station:center")
+    bridge.act("walk", event_id="kill-setup-bench",
+               station="station:bench")
+    bridge.act("experiment", event_id="kill-setup-wear")
+    runtime.checkpoint()
+    del bridge, runtime
+    gc.collect()
+
+    def operator_turn_count() -> int:
+        with closing(sqlite3.connect(brain / "brain.sqlite3")) as db:
+            exists = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                "AND name='operator_conversation_turns'"
+            ).fetchone()
+            return (db.execute("SELECT COUNT(*) FROM operator_conversation_turns"
+                              ).fetchone()[0] if exists else 0)
+
+    before_turns = operator_turn_count()
+    ready = root / "hard-kill-after-world-before-memory.signal"
+    args = [sys.executable, __file__, "--hard-kill-day",
+            str(brain), str(world_path), str(ready)]
+    child = subprocess.Popen(args, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True)
+    import time
+    try:
+        deadline = time.monotonic() + 120.0
+        while not ready.exists() and child.poll() is None:
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(0.05)
+        assert ready.is_file(), (
+            "Installed original-Noesis child never reached committed world "
+            "action boundary; child returncode=" + repr(child.poll())
+        )
+        assert child.poll() is None, "Child exited before actual hard kill"
+        child.kill()  # SIGKILL on Linux, TerminateProcess on Windows.
+        child.communicate(timeout=30)
+        assert child.returncode != 0
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.communicate(timeout=30)
+
+    source = ready.read_text(encoding="utf-8")
+    assert source.startswith("laboratory-home:action:")
+    journal = Path(str(world_path) + ".doctor-action-intents.sqlite3")
+    with closing(sqlite3.connect(journal)) as db:
+        pending = db.execute(
+            "SELECT event_id,request_json FROM doctor_action_intents "
+            "WHERE status='pending'"
+        ).fetchall()
+    assert len(pending) == 1, ("Missing interrupted physical action", pending)
+    event_id, request_json = pending[0]
+    action = json.loads(request_json)["op"]
+    assert action in ("experiment", "repair", "advance",
+                      "light", "extinguish", "rest", "sleep", "clean",
+                      "brew_tea", "prepare_meal", "eat")
+    with closing(world._open()) as db:
+        receipt = db.execute(
+            "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+            (event_id,),
+        ).fetchall()
+    assert len(receipt) == 1
+    assert source == "laboratory-home:action:" + receipt[0][0]
+
+    def source_memories() -> list:
+        return [
+            m for m in PretoriusBrainPort(brain).brain.store.memories(False)
+            if m["source"] == source
+        ]
+
+    assert source_memories() == [], "Physical effect already admitted before kill"
+    start = [console, "--state", str(brain), "lab-start",
+             "--world", str(world_path)]
+    cold = json.loads(_run(start).stdout)
+    assert cold["status"] == "ready" and cold["recovered"] == 1
+    assert cold["abandoned"] == 0
+    assert len(cold["subject_frames"]) == 1
+    memory = source_memories()
+    assert len(memory) == 1
+    assert memory[0]["evidence_class"] == "lived_runtime_memory"
+    assert memory[0]["text"] == cold["subject_frames"][0]["inner"]
+    assert json.loads(_run(start).stdout)["recovered"] == 0
+    with closing(world._open()) as db:
+        assert db.execute(
+            "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+            (event_id,),
+        ).fetchone()[0] == 1
+    assert len(source_memories()) == 1
+    assert operator_turn_count() == before_turns == 0, (
+        "An external operator message entered the no-input recovery ledger"
+    )
+    assert SpatialHabitat(world_path).verify()["world_epoch"] == genesis["world_epoch"]
+    gc.collect()
+    return {"hard_kill_during_original_noesis_action": True,
+            "hard_kill_action": action, "cold_recovered_without_operator_message": True,
+            "physical_receipts_after_restart": 1,
+            "lived_memories_after_restart": 1,
+            "uncoached_multistep_goal_resumption_proven": False}
+
+
+def _installed_same_scheduler_rest_probe(console: str, root: Path) -> dict:
+    """Owner's frozen R4 diagnostic, no operator-selected action or goal.
+
+    This intentionally NEVER upgrades an unselected rest or missing book
+    affordance into an acceptance. All activity counts remain QA-owned.
+    """
+    from doctor_lives.noesis_situated_choice import NEURAL_AFFORDANCE_MAP
+    from pretorius_lab.daily_rhythm import OPERATIONS
+    from doctor_lives.organs import SixOrganRuntime
+
+    # A real source-installed book would remain outside this DAILY scheduler:
+    # no book/read verb exists in its intersected original-world action set.
+    book_missing = (
+        "book" not in OPERATIONS
+        and "read_book" not in OPERATIONS
+        and "book" not in NEURAL_AFFORDANCE_MAP
+        and "read_book" not in NEURAL_AFFORDANCE_MAP
+    )
+    assert book_missing, "Daily scheduler's book-action source boundary changed"
+
+    workspace = root / "scheduled-rest-diagnostic"
+    report = json.loads(_run([
+        console, "preview-init", "--workspace", str(workspace),
+    ]).stdout)
+    brain = workspace / "state"
+    world_path = workspace / "laboratory.sqlite3"
+    runtime = SixOrganRuntime.open(brain)
+    bridge = runtime.bind_laboratory(
+        SubjectPort(SpatialHabitat(world_path)), authorized=True
+    )
+    # Operator-prepared ENVIRONMENT ONLY. The next command has no action
+    # or goal parameter and original Noesis is free to refuse resting.
+    bridge.act("walk", event_id="scheduled-rest-setup-hall",
+               station="station:hall")
+    bridge.act("walk", event_id="scheduled-rest-setup-bedroom",
+               station="station:bedroom")
+    assert bridge.subject.embodied.verify()["station"] == "station:bedroom"
+    runtime.checkpoint()
+    del bridge, runtime
+    gc.collect()
+
+    actual = json.loads(_run([
+        console, "--state", str(brain), "lab-opportunity",
+        "--world", str(world_path), "--allow-world-actions",
+    ]).stdout)
+    assert actual["selection"] == "original_noesis"
+    assert actual["host_selected_action"] is False
+    assert actual["operator_offered_opportunity"] is True
+    assert actual["action"] in actual["feasible_actions"]
+    assert "rest" in actual["feasible_actions"] and "sleep" in actual["feasible_actions"]
+    with closing(SpatialHabitat(world_path)._open()) as db:
+        matching = db.execute(
+            "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+            (actual["event_id"],),
+        ).fetchall()
+    assert len(matching) == 1
+    lived = PretoriusBrainPort(brain).brain.store.get_memory(actual["memory_id"])
+    assert lived["evidence_class"] == "lived_runtime_memory"
+    assert lived["source"] == "laboratory-home:action:" + matching[0][0]
+    start = json.loads(_run([
+        console, "--state", str(brain), "lab-start",
+        "--world", str(world_path),
+    ]).stdout)
+    assert start["status"] == "ready" and start["recovered"] == 0
+    assert SpatialHabitat(world_path).verify()["world_epoch"] == report["world_epoch"]
+    rested = actual["action"] in ("rest", "sleep")
+    gc.collect()
+    return {
+        "candidate": "daily_lab_opportunity_original_noesis",
+        "book_status": "BLOCKED_NOT_OFFERED",
+        "rest_status": "PASSED" if rested else "ATTEMPTED_NOT_SELECTED",
+        "rest_feasible_in_original_world": True,
+        "rest_actually_selected": rested,
+        "no_operator_selected_action_or_goal": True,
+        "selected_action": actual["action"],
+        "valid_source_receipt_and_memory": True,
+        "uncoached_three_task_life_proven": False,
+    }
+
+
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == "--crash":
         _crash(Path(sys.argv[2]), Path(sys.argv[3]))
+        return
+    if len(sys.argv) == 5 and sys.argv[1] == "--hard-kill-day":
+        _hard_kill_original_day(Path(sys.argv[2]), Path(sys.argv[3]),
+                                Path(sys.argv[4]))
         return
     assert len(sys.argv) == 1, "Unexpected smoke-test arguments"
     import doctor_lives
@@ -98,6 +332,278 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="pretorius-wheel-smoke-") as temp:
         root = Path(temp)
+        # Operator P0: prove the installed, non-editable offline wheel itself
+        # creates the ONE canonical brain and original Laboratory from scratch.
+        # This is genesis, not Pretorius's lived experience or an R4 goal.
+        preview = root / "operator-preview"
+        preview_genesis = json.loads(_run([
+            console, "preview-init", "--workspace", str(preview),
+        ]).stdout)
+        assert preview_genesis["schema"] == "doctor-laboratory-experimental-genesis.v1"
+        assert not preview_genesis["release_accepted"]
+        assert not preview_genesis["subject_experienced_initialization"]
+        assert not preview_genesis["three_task_autonomy_proven"]
+        assert not preview_genesis["books_installed"]
+        preview_state = preview / "state"
+        preview_world = preview / "laboratory.sqlite3"
+        assert preview_state.joinpath("brain.sqlite3").is_file()
+        assert preview_state.joinpath("pretorius_recurrent.npz").is_file()
+        preview_start = [
+            console, "--state", str(preview_state), "lab-start",
+            "--world", str(preview_world),
+        ]
+        for _ in range(2):
+            actual = json.loads(_run(preview_start).stdout)
+            assert actual["status"] == "ready" and actual["abandoned"] == 0
+        # An untouched genesis has no physical receipt binding the two
+        # authorities, so archival verification correctly refuses it.
+        # Prepare the actual original bench with explicitly operator-owned
+        # navigation and wear. The next action is NOT chosen by this harness.
+        # This is an offered Noesis action, not proof of self-initiated R4 life.
+        from doctor_lives.organs import SixOrganRuntime
+        runtime = SixOrganRuntime.open(preview_state)
+        preview_bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(preview_world)), authorized=True,
+        )
+        preview_bridge.act("walk", event_id="preview-setup-center",
+                           station="station:center")
+        preview_bridge.act("walk", event_id="preview-setup-bench",
+                           station="station:bench")
+        setup_wear = preview_bridge.act(
+            "experiment", event_id="preview-setup-real-wear",
+        )
+        assert setup_wear["status"] == "admitted"
+        runtime.checkpoint()
+        del preview_bridge, runtime
+        gc.collect()
+
+        noesis_work_id = "preview-noesis-physical-work"
+        work_report = json.loads(_run([
+            console, "--state", str(preview_state), "lab-work",
+            "--world", str(preview_world), "--event-id", noesis_work_id,
+        ]).stdout)
+        assert work_report["schema"] == "doctor-laboratory-offline-work.v1"
+        assert work_report["status"] == "admitted"
+        assert work_report["selection"] == "original_noesis"
+        assert work_report["action"] in ("repair", "experiment")
+        with closing(SpatialHabitat(preview_world)._open()) as world_db:
+            receipt = world_db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (noesis_work_id,),
+            ).fetchone()
+        assert receipt is not None
+        physical_source = "laboratory-home:action:" + receipt[0]
+        source_memories = [
+            m for m in PretoriusBrainPort(preview_state).brain.store.memories(False)
+            if m["source"] == physical_source
+        ]
+        assert len(source_memories) == 1
+        assert source_memories[0]["evidence_class"] == "lived_runtime_memory"
+        assert source_memories[0]["text"] == work_report["subject_frames"][-1]["inner"]
+        with closing(PretoriusBrainPort(preview_state).brain.store.connect()) as mind_db:
+            decision = mind_db.execute(
+                "SELECT state_pressure_json FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice' ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+        assert decision is not None
+        assert setup_wear["memory_id"] in json.loads(
+            decision[0]
+        )["used_outcome_memory_ids"]
+
+        # A second source-backed physical action, not a causal preference reversal:
+        # cold-start the SAME 4,096-neuron individual after repair. Original
+        # Laboratory physics removes repair from the feasible set at apparatus=3.
+        # The installed CLI must still record a fresh Noesis decision and receipt.
+        assert work_report["action"] == "repair", (
+            "Observed apparatus wear must produce the source-backed repair choice"
+        )
+        with closing(SpatialHabitat(preview_world)._open()) as world_db:
+            repaired = json.loads(world_db.execute(
+                "SELECT value FROM rhythm_meta WHERE key='state'"
+            ).fetchone()[0])
+        assert repaired["apparatus"] == 3
+        between_actions = json.loads(_run(preview_start).stdout)
+        assert between_actions["status"] == "ready"
+        assert between_actions["recovered"] == 0
+        followup_id = "preview-noesis-followup-after-repair"
+        followup = json.loads(_run([
+            console, "--state", str(preview_state), "lab-work",
+            "--world", str(preview_world), "--event-id", followup_id,
+        ]).stdout)
+        assert followup["status"] == "admitted"
+        assert followup["selection"] == "original_noesis"
+        assert followup["action"] == "experiment", (
+            "Original Laboratory must admit the remaining feasible post-repair work"
+        )
+        with closing(SpatialHabitat(preview_world)._open()) as world_db:
+            followup_receipt = world_db.execute(
+                "SELECT event_hash,envelope FROM rhythm_events WHERE event_id=?",
+                (followup_id,),
+            ).fetchone()
+            after_followup = json.loads(world_db.execute(
+                "SELECT value FROM rhythm_meta WHERE key='state'"
+            ).fetchone()[0])
+        assert followup_receipt is not None
+        assert json.loads(followup_receipt[1])["op"] == "experiment"
+        assert after_followup["apparatus"] == 2
+        followup_source = "laboratory-home:action:" + followup_receipt[0]
+        assert followup_source != physical_source
+        followup_memories = [
+            m for m in PretoriusBrainPort(preview_state).brain.store.memories(False)
+            if m["source"] == followup_source
+        ]
+        assert len(followup_memories) == 1
+        assert followup_memories[0]["evidence_class"] == "lived_runtime_memory"
+        assert followup_memories[0]["text"] == followup["subject_frames"][-1]["inner"]
+        with closing(PretoriusBrainPort(preview_state).brain.store.connect()) as mind_db:
+            choices = mind_db.execute(
+                "SELECT selected_action,state_pressure_json,action_scores_json "
+                "FROM policy_decisions WHERE trigger='noesis_situated_choice' "
+                "ORDER BY rowid DESC LIMIT 2"
+            ).fetchall()
+        assert [row[0] for row in choices] == ["experiment", "repair"]
+        assert all(json.loads(row[1])["selector_authority"] == "original_noesis"
+                   for row in choices)
+        assert json.loads(choices[0][1])["observation_memory_id"]
+        # The canonical Noesis policy row records scores only for the actual
+        # original-world feasible set. Preserve this distinction in CI output:
+        # a different action when repair is forbidden is NOT a two-way choice.
+        initial_feasible = sorted(json.loads(choices[1][2]))
+        followup_feasible = sorted(json.loads(choices[0][2]))
+        assert initial_feasible and "repair" in initial_feasible
+        assert followup_feasible == ["experiment"]
+        assert choices[0][0] != choices[1][0]
+        assert json.loads(_run(preview_start).stdout)["recovered"] == 0
+
+        # The installed 4,096-neuron preview must survive a complete offline
+        # backup/restore into a new, clean workspace, not merely two starts.
+        preview_archive = root / "operator-preview-backup"
+        saved = json.loads(_run([
+            console, "--state", str(preview_state), "lab-backup",
+            "--world", str(preview_world), "--output", str(preview_archive),
+        ]).stdout)
+        assert saved["status"] == "backed_up"
+        restored_preview = root / "operator-preview-restored"
+        restored_preview_state = restored_preview / "state"
+        restored_preview_world = restored_preview / "laboratory.sqlite3"
+        restored = json.loads(_run([
+            console, "--state", str(restored_preview_state), "lab-restore",
+            "--world", str(restored_preview_world), "--archive",
+            str(preview_archive),
+        ]).stdout)
+        assert restored["status"] == "restored"
+        restored_start = json.loads(_run([
+            console, "--state", str(restored_preview_state), "lab-start",
+            "--world", str(restored_preview_world),
+        ]).stdout)
+        assert restored_start["status"] == "ready"
+        assert restored_start["abandoned"] == 0
+        assert SpatialHabitat(restored_preview_world).verify()["world_epoch"] == (
+            preview_genesis["world_epoch"]
+        )
+        for authenticated_source in (physical_source, followup_source):
+            assert sum(
+                m["source"] == authenticated_source
+                for m in PretoriusBrainPort(restored_preview_state).brain.store.memories(False)
+            ) == 1
+        with closing(SpatialHabitat(restored_preview_world)._open()) as restored_db:
+            for original_work_id in (noesis_work_id, followup_id):
+                assert restored_db.execute(
+                    "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                    (original_work_id,),
+                ).fetchone()[0] == 1
+        with np.load(restored_preview_state / "pretorius_recurrent.npz",
+                     allow_pickle=False) as checkpoint:
+            assert json.loads(str(checkpoint["cfg_json"].item()))["neurons"] == 4096
+
+        # Exercise the NEW non-chat Noesis daily opportunity from the sealed,
+        # non-editable installed 4,096-neuron wheel, not the source checkout.
+        # The operator authorizes an opportunity but never supplies an action.
+        day = json.loads(_run([
+            console, "--state", str(restored_preview_state),
+            "lab-opportunity", "--world", str(restored_preview_world),
+            "--allow-world-actions",
+        ]).stdout)
+        assert day["schema"] == "doctor-laboratory-offline-opportunity.v1"
+        assert day["status"] == "admitted"
+        assert day["selection"] == "original_noesis"
+        assert day["operator_offered_opportunity"] is True
+        assert day["host_selected_action"] is False
+        assert day["uncoached_three_task_life_proven"] is False
+        assert day["action"] in day["feasible_actions"]
+        with closing(SpatialHabitat(restored_preview_world)._open()) as day_db:
+            day_receipt = day_db.execute(
+                "SELECT event_hash,envelope FROM rhythm_events WHERE event_id=?",
+                (day["event_id"],),
+            ).fetchone()
+        assert day_receipt is not None
+        day_memory = PretoriusBrainPort(
+            restored_preview_state
+        ).brain.store.get_memory(day["memory_id"])
+        assert day_memory["evidence_class"] == "lived_runtime_memory"
+        assert day_memory["source"] == "laboratory-home:action:" + day_receipt[0]
+        raw_day_inner = json.loads(day_receipt[1])["subject"]["inner"]
+        expected_day_inner = (
+            "I notice time passing. " + raw_day_inner
+            if day["action"] == "advance" else raw_day_inner
+        )
+        assert day_memory["text"] == expected_day_inner
+        assert day["subject_frames"][-1]["inner"] == day_memory["text"]
+        with closing(PretoriusBrainPort(restored_preview_state).brain.store.connect()) as day_mind:
+            day_policy = day_mind.execute(
+                "SELECT selected_action,state_pressure_json FROM policy_decisions "
+                "WHERE id=?", (day["policy_decision_id"],),
+            ).fetchone()
+        assert day_policy is not None
+        assert day_policy[0] == day["action"]
+        assert json.loads(day_policy[1])["selector_authority"] == "original_noesis"
+        assert json.loads(_run([
+            console, "--state", str(restored_preview_state),
+            "lab-start", "--world", str(restored_preview_world),
+        ]).stdout)["recovered"] == 0
+        with closing(SpatialHabitat(restored_preview_world)._open()) as day_db:
+            assert day_db.execute(
+                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                (day["event_id"],),
+            ).fetchone()[0] == 1
+
+        # A competing empty backup destination must never be overwritten
+        # between the final check and the actual directory publication.
+        from unittest.mock import patch
+        from doctor_lives import lab_backup, lab_preview
+        contested_backup = root / "competing-empty-backup"
+        real_publish = lab_preview._publish_noreplace
+
+        def competing_publisher(staging, destination):
+            assert destination == contested_backup.resolve()
+            destination.mkdir()
+            return real_publish(staging, destination)
+
+        with patch("doctor_lives.lab_preview._publish_noreplace",
+                   side_effect=competing_publisher):
+            try:
+                lab_backup.backup(preview_state, preview_world, contested_backup)
+            except FileExistsError:
+                pass
+            else:
+                raise AssertionError("Backup replaced a competing empty directory")
+        assert contested_backup.is_dir()
+        assert list(contested_backup.iterdir()) == []
+        assert not list(root.glob(".doctor-backup-*"))
+        gc.collect()  # Close discarded SQLite readers before Windows temp cleanup.
+
+        no_reseed = subprocess.run([
+            console, "preview-init", "--workspace", str(preview),
+        ], capture_output=True, text=True, timeout=120)
+        assert no_reseed.returncode != 0 and not no_reseed.stdout
+        assert SpatialHabitat(preview_world).verify()["world_epoch"] == (
+            preview_genesis["world_epoch"]
+        )
+
+        hard_kill_evidence = _installed_hard_kill_recovery(console, root)
+
+        same_scheduler_activity_probes = _installed_same_scheduler_rest_probe(console, root)
+
         world_path, brain_path = root / "world.sqlite3", root / "brain"
         world = SpatialHabitat.create(world_path)
         HomeLife(world).initialize()
@@ -610,9 +1116,19 @@ def main():
         # rather than explicit closes. Do not mask Windows handle leaks by
         # disabling TemporaryDirectory cleanup; reclaim unreferenced handles.
         gc.collect()
-        print(json.dumps({"result": "PASS", "installed_console": True,
+        print(json.dumps({"same_scheduler_activity_probes": same_scheduler_activity_probes,
+                          "hard_kill_evidence": hard_kill_evidence,
+                          "result": "PASS", "installed_console": True,
                           "original_lab_world_actions": 1,
                           "verified_lived_memories": 1,
+                          "preview_noesis_distinct_work_actions": 2,
+                          "preview_authenticated_work_memories": 2,
+                          "preview_operator_scheduled_noesis_day_verified": True,
+                          "preview_later_different_admitted_action_after_world_change": True,
+                           "preview_initial_feasible_actions": initial_feasible,
+                           "preview_followup_feasible_actions": followup_feasible,
+                           "preview_r4_causal_preference_proven": False,
+                          "preview_cold_restart_between_decisions": True,
                           "recovered_on_restart": 1,
                           "recovered_on_second_restart": 0,
                           "missing_authority_denied": True,

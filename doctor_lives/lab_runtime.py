@@ -518,3 +518,202 @@ def _run_laboratory_session(
         "elapsed_seconds": round(time.monotonic() - started, 3),
         "clock": {"utc": clock.utc_iso, "beat": clock.beat},
     }
+
+
+
+def _source_rhythm_subject(action: str, receipt: dict) -> dict:
+    """Reconstruct ONLY the original SubjectPort's pinned rhythm projection.
+
+    Original Laboratory daily_rhythm.advance stores "Time passes..." in its
+    hashed world event; SubjectPort.act("advance") presents the additional
+    first-person "I notice time passing." prefix. All other daily rhythm
+    actions return the source frame unchanged. This is not an LLM renderer.
+    """
+    subject = receipt.get("subject")
+    if (type(subject) is not dict or set(subject) != {"inner", "spoken_aloud"}
+            or type(subject["inner"]) is not str
+            or not subject["inner"]):
+        raise RuntimeError("Malformed original-world subject receipt")
+    if action == "advance":
+        if not subject["inner"].startswith("Time passes. "):
+            raise RuntimeError("Unexpected original Laboratory advance wording")
+        return {
+            "inner": "I notice time passing. " + subject["inner"],
+            "spoken_aloud": subject["spoken_aloud"],
+        }
+    return subject
+
+
+def offer_laboratory_day(
+    state: Path, world: Path, *, allow_world_actions: bool = False,
+) -> dict:
+    """One original-Noesis physical opportunity, without a host-authored goal.
+
+    Reuse the existing source-verified Noesis day chooser and original Doctor
+    action journal. This is an operator-scheduled opportunity, NOT a claim
+    that three distinct goals or an autonomous day have been achieved.
+    """
+    if allow_world_actions is not True:
+        raise PermissionError("Explicit original-Laboratory motor authorization required")
+    state, world = Path(state), Path(world)
+    if not world.is_file():
+        raise FileNotFoundError("Existing authoritative Laboratory world required")
+    if not (state / "brain.sqlite3").is_file() or not (
+        state / "pretorius_recurrent.npz"
+    ).is_file():
+        raise FileNotFoundError("Existing canonical Doctor brain and checkpoint required")
+
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+    from pretorius_lab.subject_port import SubjectPort
+    from .lab_home_bridge import _ACTION_DOMAINS, _row
+    from .noesis_day import offer_daily_opportunity, act_on_noesis_choice
+    from .organs import SixOrganRuntime
+
+    with _exclusive_host(state, world):
+        runtime = SixOrganRuntime.open(state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(world)), authorized=True,
+        )
+        epoch = bridge.subject.verify()["world_epoch"]
+        _, recovered, abandoned = _recover_shipping_actions(bridge)
+        try:
+            # Neither a requested action nor a destination crosses this API.
+            # The source-pinned Laboratory computes the feasible action set.
+            choice = offer_daily_opportunity(
+                bridge, author_goal=True, use_consequences=True,
+            )
+            event_id = "day-noesis-" + secrets.token_hex(16)
+            actual = act_on_noesis_choice(
+                bridge, choice, event_id=event_id, authorized=True,
+            )
+            with bridge.world._open() as db:
+                receipt, digest = _row(
+                    db, _ACTION_DOMAINS[choice.action], event_id,
+                )
+            subject_frame = _source_rhythm_subject(choice.action, receipt)
+            lived = bridge.doctor.brain.store.get_memory(actual["memory_id"])
+            if (lived is None or not lived["active"] or lived["external"]
+                    or lived["evidence_class"] != "lived_runtime_memory"
+                    or lived["source"] != "laboratory-home:action:" + digest
+                    or subject_frame["inner"] != lived["text"]):
+                raise RuntimeError("No authenticated original-world lived consequence")
+            if bridge.subject.verify()["world_epoch"] != epoch:
+                raise RuntimeError("Original Laboratory epoch changed")
+        finally:
+            # The same canonical recurrent checkpoint must survive a new
+            # process even if a real world action raises after admission.
+            runtime.checkpoint()
+        clock = engineer_time()
+        return {
+            "schema": "doctor-laboratory-offline-opportunity.v1",
+            "status": actual["status"],
+            "selection": "original_noesis",
+            "policy_decision_id": choice.policy_id,
+            "action": choice.action,
+            "feasible_actions": list(choice.options),
+            "event_id": event_id,
+            "memory_id": actual["memory_id"],
+            "recovered": len(recovered),
+            "abandoned": len(abandoned),
+            "subject_frames": [item["subject"] for item in recovered]
+                              + [subject_frame],
+            "host_selected_action": False,
+            "operator_offered_opportunity": True,
+            "uncoached_three_task_life_proven": False,
+            "causal_preference_reversal_proven": False,
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        }
+
+
+
+def run_native_laboratory(
+    state: Path, world: Path, *, affectus_source: Path,
+    steps: int = 1, allow_world_actions: bool = False,
+) -> dict:
+    """Offer bounded original six-organ goal opportunities on the shipping host.
+
+    This is opt-in and requires the existing pinned, locally installed donors.
+    The original neural policy originates explore/avoid; the EXISTING native
+    chooser maps these to book/rest goals. That mapping and physical routing
+    remain host-owned and are disclosed, not misreported as open-ended agency.
+    Neither an LLM nor this host supplies a goal, book ID, or action preference.
+    """
+    if type(steps) is not int or not 1 <= steps <= 64:
+        raise ValueError("Native goal steps must be an integer from 1 to 64")
+    if type(allow_world_actions) is not bool:
+        raise TypeError("World-action permission must be a boolean")
+    state, world, affectus_source = Path(state), Path(world), Path(affectus_source)
+    if not affectus_source.is_dir():
+        raise FileNotFoundError("Existing local pinned Affectus donor required")
+    if not world.is_file():
+        raise FileNotFoundError("Existing authoritative Laboratory world required")
+    if not (state / "brain.sqlite3").is_file() or not (
+        state / "pretorius_recurrent.npz"
+    ).is_file():
+        raise FileNotFoundError("Existing canonical Doctor state required")
+
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+    from pretorius_lab.subject_port import SubjectPort
+    from .lab_native_goal_choice import NativeLaboratoryGoalChooser
+    from .lab_six_organ_session import SixOrganLaboratoryCycle
+    from .organs import SixOrganRuntime
+
+    def source_only_renderer(subject: str) -> str:
+        if type(subject) is not str or not subject.startswith(
+            ("I ", "My ", "Mine ", "Me ")
+        ):
+            raise PermissionError("Renderer received non-subject diagnostics")
+        return subject
+
+    with _exclusive_host(state, world):
+        runtime = SixOrganRuntime.open(state)
+        subject = SubjectPort(SpatialHabitat(world))
+        epoch = subject.verify()["world_epoch"]
+        receipts = []
+        with SixOrganLaboratoryCycle(
+            runtime, subject, affectus_source=affectus_source,
+            renderer=source_only_renderer, authorized=True,
+        ) as session:
+            # Reconcile shipping work/sleep intents before offering a new goal.
+            # The six-organ session separately reconciles its own movement.
+            _, recovered, abandoned = _recover_shipping_actions(session.bridge)
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            try:
+                for _ in range(steps):
+                    result = chooser.step(
+                        authorized_world_action=allow_world_actions
+                    )
+                    receipts.append({
+                        "status": result.status,
+                        "kind": result.kind,
+                        "goal_id": result.goal_id,
+                        "memory_id": result.memory_id,
+                        "selected_tendency": result.selected_tendency,
+                        "host_selected_goal_mapping": result.host_selected_goal_mapping,
+                        "host_selected_route": result.host_selected_route,
+                    })
+                    if result.status in (
+                        "completed", "already_complete", "exhausted",
+                        "authorization_required",
+                    ):
+                        break
+            finally:
+                runtime.checkpoint()
+        if subject.verify()["world_epoch"] != epoch:
+            raise RuntimeError("Authoritative Laboratory epoch changed")
+        clock = engineer_time()
+        return {
+            "schema": "doctor-laboratory-native-goals.v1",
+            "status": receipts[-1]["status"],
+            "steps": len(receipts),
+            "recovered": len(recovered),
+            "abandoned": len(abandoned),
+            "receipts": receipts,
+            "same_original_brain": True,
+            "original_world_epoch_unchanged": True,
+            "host_selected_goal_mapping": True,
+            "uncoached_three_task_life_proven": False,
+            "natural_language_goal_authorship_proven": False,
+            "cloud_calls": 0,
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        }

@@ -14,7 +14,7 @@ import threading
 import unittest
 
 from doctor_lives.chassis import PretoriusBrainPort
-from doctor_lives.lab_soak import read_soak_log, soak_laboratory
+from doctor_lives.lab_soak import _digest, read_soak_log, soak_laboratory, verify_soak_sources
 from doctor_lives.neural import DEFAULT_CONFIG
 
 HAS_LAB = importlib.util.find_spec("pretorius_lab") is not None
@@ -46,6 +46,20 @@ class SoakEvidenceTests(unittest.TestCase):
         return subprocess.run(
             [sys.executable, "-m", "doctor_lives.cli", "--state", str(self.state),
              *args], capture_output=True, text=True, timeout=25,
+        )
+
+    def rehash_engineering_log(self, rows):
+        # The negative must pass the *local* hash chain so only the original
+        # Laboratory/Noesis source check can reject its forged work identity.
+        previous = "0" * 64
+        for row in rows:
+            row.pop("sha256", None)
+            row["previous_sha256"] = previous
+            row["sha256"] = _digest(row)
+            previous = row["sha256"]
+        self.log.write_text(
+            "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+            encoding="utf-8",
         )
 
     def test_real_elapsed_segments_resume_and_do_not_fake_24h(self):
@@ -242,6 +256,116 @@ class SoakEvidenceTests(unittest.TestCase):
             self.assertEqual(db.execute(
                 "SELECT COUNT(*) FROM embodied_events"
             ).fetchone()[0], 0)
+
+
+    def test_real_soak_work_requires_original_world_noesis_and_lived_memory(self):
+        from doctor_lives.organs import SixOrganRuntime
+        from pretorius_lab.subject_port import SubjectPort
+
+        # Setup is an explicit operator action, not credited as Doctor initiative.
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world)), authorized=True,
+        )
+        bridge.act("walk", event_id="soak-setup-center", station="station:center")
+        bridge.act("walk", event_id="soak-setup-bench", station="station:bench")
+        bridge.act("experiment", event_id="soak-setup-wear")
+        runtime.checkpoint()
+        result = soak_laboratory(
+            self.state, self.world, self.log, target_seconds=2.0,
+            segment_seconds=2.0, interval_seconds=0.2,
+            work_interval_seconds=0.15,
+        )
+        self.assertGreaterEqual(result["work_event_ids"], 1)
+        verified = verify_soak_sources(self.state, self.world, self.log)
+        self.assertTrue(verified["original_world_epoch_verified"])
+        self.assertEqual(verified["original_noesis_work_events_verified"],
+                         result["work_event_ids"])
+        self.assertFalse(verified["independent_source_attestation"])
+        self.assertFalse(verified["qualified_24h_candidate"])
+        via_cli = self.cli(
+            "lab-soak-verify", "--world", str(self.world),
+            "--evidence-log", str(self.log),
+        )
+        self.assertEqual(via_cli.returncode, 0, via_cli.stderr)
+        self.assertEqual(json.loads(via_cli.stdout)[
+            "original_noesis_work_events_verified"], result["work_event_ids"])
+
+        # Rehashing a locally writable engineering log cannot manufacture
+        # original Laboratory receipts or an original-Noesis motor binding.
+        rows = [json.loads(line) for line in
+                self.log.read_text(encoding="utf-8").splitlines()]
+        rows[0]["work_event_ids"] = ["forged-physical-work"]
+        self.rehash_engineering_log(rows)
+        self.assertEqual(read_soak_log(self.log)["work_event_ids"], 1)
+        with self.assertRaises((RuntimeError, PermissionError)):
+            verify_soak_sources(self.state, self.world, self.log)
+
+    def test_authentic_pre_soak_noesis_receipt_cannot_be_reused_as_soak_work(self):
+        from doctor_lives.organs import SixOrganRuntime
+        from doctor_lives.lab_runtime import work_laboratory
+        from pretorius_lab.subject_port import SubjectPort
+
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world)), authorized=True,
+        )
+        bridge.act("walk", event_id="pre-soak-center", station="station:center")
+        bridge.act("walk", event_id="pre-soak-bench", station="station:bench")
+        bridge.act("experiment", event_id="pre-soak-apparatus-wear")
+        runtime.checkpoint()
+        original = work_laboratory(
+            self.state, self.world, event_id="pre-soak-real-noesis-work",
+        )
+        self.assertEqual(original["selection"], "original_noesis")
+        # The real action, original motor binding and lived memory all exist.
+        # Their presence alone must not credit work to a later soak window.
+        soak_laboratory(
+            self.state, self.world, self.log, target_seconds=0.25,
+            segment_seconds=0.25, interval_seconds=0.1,
+        )
+        rows = [json.loads(line) for line in
+                self.log.read_text(encoding="utf-8").splitlines()]
+        self.assertTrue(rows)
+        self.assertEqual(sum(len(row["work_event_ids"]) for row in rows), 0)
+        rows[0]["work_event_ids"] = ["pre-soak-real-noesis-work"]
+        self.rehash_engineering_log(rows)
+        self.assertEqual(read_soak_log(self.log)["work_event_ids"], 1)
+        with self.assertRaises(PermissionError):
+            verify_soak_sources(self.state, self.world, self.log)
+
+    def test_rehashed_clock_only_24h_is_not_qualified_life(self):
+        # This is deliberately NOT a real 24-hour test. A privileged writer
+        # can rehash a fabricated engineering log; no world, neural activity
+        # or independent approval may be inferred from its timestamps.
+        row = {
+            "schema": "doctor-laboratory-soak-segment.v1",
+            "sequence": 1, "previous_sha256": "0" * 64,
+            "started_utc": "2026-10-30T00:00:00Z",
+            "ended_utc": "2026-10-31T00:00:01Z",
+            "active_seconds": 86401.0,
+            "host_elapsed_seconds": 86401.0,
+            "status": "completed", "beat": "@000",
+            "world_epoch": "invented-world",
+            "pulses": 0, "recovered": 0, "abandoned": 0,
+            "work_event_ids": [], "subject_frame_count": 0,
+            "lab_source_pin_expected": "6e49795752835d64fa6fd63d16359669a1ca2ba7",
+        }
+        row["sha256"] = _digest(row)
+        self.log.write_text(json.dumps(row) + "\n", encoding="utf-8")
+        report = read_soak_log(self.log)
+        self.assertTrue(report["elapsed_24h_candidate"])
+        self.assertFalse(report["activity_observed"])
+        self.assertFalse(report["qualified_24h_candidate"])
+        self.assertFalse(report["independent_source_attestation"])
+        with self.assertRaises(RuntimeError):
+            verify_soak_sources(self.state, self.world, self.log)
+        row["pulses"] = -1
+        row.pop("sha256")
+        row["sha256"] = _digest(row)
+        self.log.write_text(json.dumps(row) + "\n", encoding="utf-8")
+        with self.assertRaises(RuntimeError):
+            read_soak_log(self.log)
 
 
 if __name__ == "__main__":

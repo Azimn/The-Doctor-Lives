@@ -68,3 +68,16 @@ The six ChatGPT-authored hypothetical proposal fixture was committed at [`878fba
 
 The following donor harvest was rerun on *that exact combined code*, not the old isolated M5 branch. [Source-backed M5 workflow 41069141705](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41069141705) preserved all 180 original Noesis policy decisions from 20 initial seeds, then applied donors separately in CausalAuditHarness clones without actuating different world outcomes. CASCADE commitment bonus changed **0/180** choices, household feasibility bonus changed **0/180**, and receipt-linked habit changed **60/180**. Without donors, the original Noesis choice differed from the equal-information non-neural ranking in **87/180** decisions. Habit-ON differed from that same simple ranking in **145/180**. Since **none** establishes superior authenticated real-world results, **leave every donor OFF**. Earlier 41/180 counts were source observations from the previous semantic mapping and cannot be confused with this newer cohort. No shadow habit database, new scheduler, extra organ or alternate policy authority was introduced.
 
+
+## M6 measured donor call coverage, 2026-10-30
+
+The source-backed [M6 pinned-Laboratory test 41075126006](https://github.com/Azimn/The-Doctor-Lives/actions/runs/41075126006) instrumented *every original Noesis proposal decision* in an 18-opportunity selected original-world trial, separately from M5's 20-seed nonactuating donor score counterfactual. Each donor audit traces whether the module's code path **entered**, whether the source-world candidate was **eligible**, and its exact bounded **score contribution**.
+
+**CASCADE commitment:** 18 of 18 decision contexts entered its code path, zero eligible due to no matching canonical commitment, zero nonzero score. A targeted same-brain real commitment produced +0.03. Routine zero is not evidence of no possible effect.
+
+**Household preflight:** 0 of 18 entered its household-specific path because that M4 operator task set had no household candidates. The historical **0/180** therefore was *never actually testing* its physical household feasibility. A targeted original-Lab `clean` activity passed the pure world feasibility preflight. This is a veto with 0.0 preference bonus; not a failed selector donor.
+
+**Household habit:** 18/18 entered, 16/18 eligible and nonzero in the original observed operator task opportunities. Targeted repeated authenticated journal receipts yielded +0.03; no alternative world outcome was replayed. More choices changing does not imply improvement.
+
+**Disposition:** All three donors remain disabled in the actual shipping conversation and original Noesis. The targeted tests demonstrate wiring and source preconditions, not physical-world superiority. Later M6 CI must remain green.
+

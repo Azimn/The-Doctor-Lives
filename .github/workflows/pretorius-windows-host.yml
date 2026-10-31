@@ -2,12 +2,16 @@ name: Pretorius original Laboratory Windows host and sealed offline install
 
 on:
   push:
-    branches: [integration/m5]
+    branches: [integration/m5, integration/m6]
   pull_request:
     paths:
       - doctor_lives/lab_runtime.py
+      - doctor_lives/lab_preview.py
+      - tests/test_lab_preview.py
       - doctor_lives/lab_soak.py
       - tests/test_lab_soak.py
+      - scripts/observe_soak_runner.py
+      - tests/test_soak_observer.py
       - doctor_lives/lab_backup.py
       - doctor_lives/cli.py
       - doctor_lives/local_subject_gloss.py
@@ -45,6 +49,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -c "from pretorius_lab.subject_port import SubjectPort; print('Pinned original Laboratory imported on Windows')"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Windows repeated clean preview genesis and atomic no-clobber regression
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_lab_preview.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Original-world Windows process leases, cold restart, sleep and elapsed observation
         shell: pwsh
         run: |
@@ -54,6 +63,11 @@ jobs:
         shell: pwsh
         run: |
           python -m unittest discover -s tests -p test_lab_soak.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Windows independent-process runner-health observer and fail-closed controls
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_soak_observer.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows canonical evidence checkout and deliberate active-evidence tamper negatives
         shell: pwsh

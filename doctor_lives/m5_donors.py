@@ -16,18 +16,23 @@ def _words(text):
         "i","would","like","might","to","the","a","an","of","my","with","for",
         "could","should","and","in","on","will","about","this","that"}
 
-def contributions(bridge,work,proposal,affordance,cycle,enabled=()):
+def contributions(bridge,work,proposal,affordance,cycle,enabled=(),*,audit=None):
     if not set(enabled)<=set(DONORS):
         raise ValueError("Unknown donor, no silent plugin adoption")
     values={name:0.0 for name in DONORS}
+    if audit is not None:
+        audit.update({name:{"enabled":name in enabled,"entered":False,
+                            "eligible":False,"contribution":0.0} for name in DONORS})
     if not enabled:
         return values
     store=bridge.doctor.brain.store
     text=str(proposal["text"])
     if "cascade_commitments" in enabled:
+        if audit is not None: audit["cascade_commitments"]["entered"]=True
         for commitment in store.open_commitments():
             if len(_words(commitment.get("description",""))&_words(text))>=2:
                 values["cascade_commitments"]=CAP_PER_FAMILY
+                if audit is not None: audit["cascade_commitments"]["eligible"]=True
                 break
     if "household_grounded" in enabled:
         # Import only the original donor's PURE world preflight, not its
@@ -37,12 +42,15 @@ def contributions(bridge,work,proposal,affordance,cycle,enabled=()):
         # preflight before this donor can provide an eligible candidate.
         from .m5_home_feasibility import physically_available
         if affordance.get("goal_type")=="household":
+            if audit is not None: audit["household_grounded"]["entered"]=True
             state=bridge.subject.rhythm.audit_state()
             station=bridge.subject.embodied.verify()["station"]
             choices=physically_available(state,station)["available"]
             if affordance.get("affordance_key") not in choices:
                 raise PermissionError("Household donor cannot authorize impossible task")
+            if audit is not None: audit["household_grounded"]["eligible"]=True
     if "household_habit" in enabled:
+        if audit is not None: audit["household_habit"]["entered"]=True
         # Original source-only first-person action memories and independently
         # verifiable operator receipts, never a duplicate habit SQLite store.
         count=0
@@ -59,5 +67,9 @@ def contributions(bridge,work,proposal,affordance,cycle,enabled=()):
             if "laboratory-home:action:"+h in sources:
                 count+=1
         if count>=2:
+            if audit is not None: audit["household_habit"]["eligible"]=True
             values["household_habit"]=min(CAP_PER_FAMILY,0.01*count)
+    if audit is not None:
+        for name in DONORS:
+            audit[name]["contribution"]=values[name]
     return values

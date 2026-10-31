@@ -1,0 +1,367 @@
+{
+  "schema": "pretorius.m6.semantic-heldout.frozen.v1",
+  "frozen_from": "integration/m5@99b6cdb71c5ff4db2ae9382b344a279ba5dcc406",
+  "rules": "Do not tune mapping to this data. For any general change, evaluate on a fresh independently frozen set.",
+  "families": [
+    {
+      "id": "H01",
+      "category": "explore",
+      "paraphrases": [
+        "I intend to investigate a puzzling specimen.",
+        "I might inspect that strange sample.",
+        "I would examine the unfamiliar object."
+      ]
+    },
+    {
+      "id": "H02",
+      "category": "explore",
+      "paraphrases": [
+        "I plan to research the ancient journal.",
+        "I could study the old record.",
+        "I should survey those archived notes."
+      ]
+    },
+    {
+      "id": "H03",
+      "category": "explore",
+      "paraphrases": [
+        "I wish to discover what lies in the cabinet.",
+        "I might inspect its contents.",
+        "I ought to investigate the unknown collection."
+      ]
+    },
+    {
+      "id": "H04",
+      "category": "explore",
+      "paraphrases": [
+        "I am curious about the peculiar mechanism.",
+        "I should examine the apparatus.",
+        "I might research how it works."
+      ]
+    },
+    {
+      "id": "H05",
+      "category": "challenge",
+      "paraphrases": [
+        "I intend to dispute the visitor's assertion.",
+        "I should contest their claim.",
+        "I may question this argument."
+      ]
+    },
+    {
+      "id": "H06",
+      "category": "challenge",
+      "paraphrases": [
+        "I want to debate the published hypothesis.",
+        "I might criticize the proposed theory.",
+        "I should object to that account."
+      ]
+    },
+    {
+      "id": "H07",
+      "category": "challenge",
+      "paraphrases": [
+        "I would question the reliability of that explanation.",
+        "I ought to dispute the reasoning.",
+        "I intend to contest the premise."
+      ]
+    },
+    {
+      "id": "H08",
+      "category": "challenge",
+      "paraphrases": [
+        "I want to confront the unsupported claim.",
+        "I could object to its argument.",
+        "I might challenge that theory."
+      ]
+    },
+    {
+      "id": "H09",
+      "category": "approach",
+      "paraphrases": [
+        "I intend to approach the open doorway.",
+        "I might advance toward the entry.",
+        "I want to draw near the door."
+      ]
+    },
+    {
+      "id": "H10",
+      "category": "approach",
+      "paraphrases": [
+        "I would move closer to the visitor.",
+        "I should approach the guest.",
+        "I might draw near to the stranger."
+      ]
+    },
+    {
+      "id": "H11",
+      "category": "approach",
+      "paraphrases": [
+        "I plan to advance toward the table.",
+        "I could approach the bench.",
+        "I want to move closer to the station."
+      ]
+    },
+    {
+      "id": "H12",
+      "category": "approach",
+      "paraphrases": [
+        "I should go toward the laboratory door.",
+        "I could draw near the doorway.",
+        "I intend to approach the entrance."
+      ]
+    },
+    {
+      "id": "H13",
+      "category": "avoid",
+      "paraphrases": [
+        "I must avoid the burning lamp.",
+        "I should retreat from the flames.",
+        "I want to withdraw from the fire."
+      ]
+    },
+    {
+      "id": "H14",
+      "category": "avoid",
+      "paraphrases": [
+        "I plan to escape the danger.",
+        "I ought to stay away from the threat.",
+        "I should retreat from this risk."
+      ]
+    },
+    {
+      "id": "H15",
+      "category": "avoid",
+      "paraphrases": [
+        "I would withdraw from the noisy chamber.",
+        "I might evade the racket.",
+        "I intend to steer clear of the noise."
+      ]
+    },
+    {
+      "id": "H16",
+      "category": "avoid",
+      "paraphrases": [
+        "I want to avoid the hazardous experiment.",
+        "I should retreat from the risk.",
+        "I ought to escape the danger."
+      ]
+    },
+    {
+      "id": "H17",
+      "category": "cooperate",
+      "paraphrases": [
+        "I wish to collaborate with my colleague.",
+        "I should cooperate with another researcher.",
+        "I might work together with a partner."
+      ]
+    },
+    {
+      "id": "H18",
+      "category": "cooperate",
+      "paraphrases": [
+        "I want to assist the librarian.",
+        "I could help the archivist.",
+        "I ought to cooperate with the staff."
+      ]
+    },
+    {
+      "id": "H19",
+      "category": "cooperate",
+      "paraphrases": [
+        "I plan to coordinate shared laboratory work.",
+        "I might collaborate with the team.",
+        "I would work together with my partner."
+      ]
+    },
+    {
+      "id": "H20",
+      "category": "cooperate",
+      "paraphrases": [
+        "I should help the visitor organize the notes.",
+        "I could coordinate with a colleague.",
+        "I want to cooperate on this research."
+      ]
+    },
+    {
+      "id": "H21",
+      "category": "dominate",
+      "paraphrases": [
+        "I intend to command the workers.",
+        "I want to take charge of the staff.",
+        "I shall impose authority over the group."
+      ]
+    },
+    {
+      "id": "H22",
+      "category": "dominate",
+      "paraphrases": [
+        "I would control the meeting.",
+        "I plan to establish dominance.",
+        "I should command the discussion."
+      ]
+    },
+    {
+      "id": "H23",
+      "category": "dominate",
+      "paraphrases": [
+        "I want to exert authority.",
+        "I might impose control.",
+        "I would take charge of those decisions."
+      ]
+    },
+    {
+      "id": "H24",
+      "category": "dominate",
+      "paraphrases": [
+        "I aim to dominate the committee.",
+        "I shall control its procedures.",
+        "I intend to command the assembly."
+      ]
+    },
+    {
+      "id": "H25",
+      "category": "create",
+      "paraphrases": [
+        "I want to construct a new device.",
+        "I should build a machine.",
+        "I plan to craft an invention."
+      ]
+    },
+    {
+      "id": "H26",
+      "category": "create",
+      "paraphrases": [
+        "I wish to compose a narrative.",
+        "I might write a new story.",
+        "I will create an original tale."
+      ]
+    },
+    {
+      "id": "H27",
+      "category": "create",
+      "paraphrases": [
+        "I intend to design a mechanism.",
+        "I want to make an apparatus.",
+        "I shall construct a prototype."
+      ]
+    },
+    {
+      "id": "H28",
+      "category": "create",
+      "paraphrases": [
+        "I would compose notes into a book.",
+        "I might write a fresh account.",
+        "I wish to craft an original narrative."
+      ]
+    },
+    {
+      "id": "H29",
+      "category": "persist",
+      "paraphrases": [
+        "I will continue the unfinished task.",
+        "I want to carry on with the assignment.",
+        "I intend to persist with the work."
+      ]
+    },
+    {
+      "id": "H30",
+      "category": "persist",
+      "paraphrases": [
+        "I need to finish my project.",
+        "I shall complete the work.",
+        "I would persist until it is done."
+      ]
+    },
+    {
+      "id": "H31",
+      "category": "persist",
+      "paraphrases": [
+        "I ought to persevere despite setbacks.",
+        "I might keep going through obstacles.",
+        "I will persist despite delays."
+      ]
+    },
+    {
+      "id": "H32",
+      "category": "persist",
+      "paraphrases": [
+        "I want to continue the laboratory study.",
+        "I plan to finish that assignment.",
+        "I mean to carry on working."
+      ]
+    },
+    {
+      "id": "H33",
+      "category": "conceal",
+      "paraphrases": [
+        "I should conceal the secret letter.",
+        "I might hide the document.",
+        "I intend to keep the letter hidden."
+      ]
+    },
+    {
+      "id": "H34",
+      "category": "conceal",
+      "paraphrases": [
+        "I intend to disguise the artifact.",
+        "I want to camouflage the relic.",
+        "I should conceal this object."
+      ]
+    },
+    {
+      "id": "H35",
+      "category": "conceal",
+      "paraphrases": [
+        "I will protect this confidential information.",
+        "I must keep the secret.",
+        "I should not reveal these details."
+      ]
+    },
+    {
+      "id": "H36",
+      "category": "conceal",
+      "paraphrases": [
+        "I would hide the locked manuscript.",
+        "I should conceal its location.",
+        "I intend to disguise its appearance."
+      ]
+    },
+    {
+      "id": "H37",
+      "category": "comply",
+      "paraphrases": [
+        "I intend to obey the instruction.",
+        "I will follow the directions.",
+        "I must comply with the order."
+      ]
+    },
+    {
+      "id": "H38",
+      "category": "comply",
+      "paraphrases": [
+        "I should accept the rule.",
+        "I will adhere to the regulation.",
+        "I ought to follow the requirement."
+      ]
+    },
+    {
+      "id": "H39",
+      "category": "comply",
+      "paraphrases": [
+        "I shall carry out the request.",
+        "I will obey the commands.",
+        "I need to comply with the directions."
+      ]
+    },
+    {
+      "id": "H40",
+      "category": "comply",
+      "paraphrases": [
+        "I would follow the written instructions.",
+        "I should obey the stated order.",
+        "I intend to comply with the request."
+      ]
+    }
+  ]
+}
