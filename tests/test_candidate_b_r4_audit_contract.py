@@ -34,10 +34,13 @@ class IndependentThreeGoalContract(unittest.TestCase):
             db.execute("CREATE TABLE policy_decisions (id TEXT PRIMARY KEY, selected_action TEXT, trigger TEXT, state_pressure_json TEXT)")
             db.execute("CREATE TABLE memories (id TEXT PRIMARY KEY, source TEXT, evidence_class TEXT, external INT, active INT, text TEXT)")
             db.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+            db.execute("CREATE TABLE thoughts (id TEXT PRIMARY KEY, generated_by TEXT)")
             for kind, tendency in (("read_book", "explore"), ("rest", "avoid"),
                                    ("work", "explore")):
                 db.execute("INSERT INTO policy_decisions VALUES(?,?,?,?)", (
                     "origin_" + kind, tendency, "six_organ_lab_cycle", "{}"))
+                db.execute("INSERT INTO thoughts VALUES(?,?)", (
+                    "thought_" + kind, "neural_policy:origin_" + kind))
             db.execute("INSERT INTO policy_decisions VALUES(?,?,?,?)", (
                 "motor_work", "repair", "noesis_situated_choice", json.dumps({
                     "motor_event_id": "ng_work01_work",
@@ -91,7 +94,17 @@ class IndependentThreeGoalContract(unittest.TestCase):
                 intent = {"id": kind + "01" if kind != "work" else "work01",
                           "world_epoch": "epoch-real",
                           "phase": "complete", "origin_policy_id": "origin_" + kind,
+                          "origin_thought_id": "thought_" + kind,
                           ("read_memory_id" if kind == "read_book" else "memory_id"): mid}
+                schemas = {
+                    "read_book": ("pretorius.endogenous-book-pursuit.v1",
+                                  "I want to discover a book here and read what it actually says."),
+                    "rest": ("pretorius.native-rest-intention.v1",
+                             "I want to rest somewhere safe."),
+                    "work": ("pretorius.native-work-intention.v1",
+                             "I want to undertake worthwhile work at my laboratory bench."),
+                }
+                intent.update(schema=schemas[kind][0], goal=schemas[kind][1])
                 if kind == "work":
                     intent.update(work_policy_id="motor_work", selected_action="repair")
                 key = {"read_book": "six_organ_endogenous_book_goal_v1",
@@ -116,7 +129,9 @@ class IndependentThreeGoalContract(unittest.TestCase):
         data = [("operator_start", {}, True)]
         for kind in ("read_book", "rest", "work"):
             data.append(("native_goal_goal_created", {
-                "kind": kind, "goal_id": self.records[kind]["goal_id"]}, False))
+                "kind": kind, "goal_id": self.records[kind]["goal_id"],
+                "origin_policy_id": self.records[kind]["origin_policy_id"],
+                "original_tendency": self.records[kind]["original_tendency"]}, False))
             data.append(("native_goal_completed", self.records[kind], False))
         self.events = data
         self._resign()
@@ -246,6 +261,73 @@ class IndependentThreeGoalContract(unittest.TestCase):
             lab.execute("UPDATE rhythm_events SET event_hash=? WHERE event_id=?",
                         ("f" * 64, "ng_work01_work"))
         self.assert_invalid("unauthenticated_completion")
+
+
+    def _change_intent(self, kind, **updates):
+        key = {"read_book": "six_organ_endogenous_book_goal_v1",
+               "rest": "six_organ_native_rest_intention_v1",
+               "work": "six_organ_native_work_intention_v1"}[kind]
+        with sqlite3.connect(self.brain) as db:
+            original = json.loads(db.execute(
+                "SELECT value FROM meta WHERE key=?", (key,)).fetchone()[0])
+            original["payload"].update(updates)
+            original["sha256"] = _digest(original["payload"])
+            db.execute("UPDATE meta SET value=? WHERE key=?",
+                       (json.dumps(original, sort_keys=True), key))
+
+    def test_u21_reject_non_neural_policy_trigger(self):
+        self._edit("UPDATE policy_decisions SET trigger=? WHERE id=?",
+                   ("host_scheduled", "origin_work"))
+        self.assert_invalid("not a real six-organ policy")
+
+    def test_u22_reject_goal_without_original_neural_thought(self):
+        self._edit("DELETE FROM thoughts WHERE id=?", ("thought_work",))
+        self.assert_invalid("native goal lacks original Noesis thought")
+
+    def test_u23_reject_thought_claiming_different_policy(self):
+        self._edit("UPDATE thoughts SET generated_by=? WHERE id=?",
+                   ("neural_policy:other_policy", "thought_work"))
+        self.assert_invalid("native goal lacks original Noesis thought")
+
+    def test_u24_reject_substituted_native_goal_schema(self):
+        self._change_intent("work", schema="pretorius.author_goal.v1")
+        self.assert_invalid("substituted native goal")
+
+    def test_u25_reject_host_reworded_native_goal(self):
+        self._change_intent("rest", goal="Operator demands rest in bedroom")
+        self.assert_invalid("substituted native goal")
+
+    def test_u26_reject_origin_policy_change_after_creation(self):
+        kind, data, external = self.events[5]
+        self.assertEqual(kind, "native_goal_goal_created")
+        data["origin_policy_id"] = "origin_read_book"
+        self._resign()
+        self.assert_invalid("origin policy changed after creation")
+
+    def test_u27_reject_neural_tendency_change_after_creation(self):
+        kind, data, external = self.events[3]
+        self.assertEqual(kind, "native_goal_goal_created")
+        data["original_tendency"] = "explore"
+        self._resign()
+        self.assert_invalid("neural tendency changed after creation")
+
+    def test_u28_reject_nonmapping_event_fields_without_crash(self):
+        kind, data, external = self.events[5]
+        self.events[5] = (kind, ["forged", "fields"], external)
+        self._resign()
+        self.assert_invalid("invalid_or_torn_activity_record")
+
+    def test_u29_reject_external_input_string_instead_of_boolean(self):
+        kind, data, external = self.events[5]
+        self.events[5] = (kind, data, "false")
+        self._resign()
+        self.assert_invalid("invalid_or_torn_activity_record")
+
+    def test_u30_reject_completion_without_ledger_origin(self):
+        self.events.pop(5)
+        self._resign()
+        self.assert_invalid("completion lacked recorded origination")
+
 
 
 if __name__ == "__main__":
