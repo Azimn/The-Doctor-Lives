@@ -122,12 +122,17 @@ def _begin_and_kill(root):
                                 "goal_completed": False, "task_instruction": None})
         assert goal.status().goal_id == origin.goal_id
         assert goal.status().phase != "complete"
-        runtime.checkpoint()
-    append_activity(root, event="harness_mid_activity_crash_point",
-                    external_input=False,
-                    fields={"goal_id": origin.goal_id, "task_instruction": None})
-    # A real hard process exit: no finally/normal Python shutdown/clean-stop.
-    os._exit(79)
+        append_activity(root, event="harness_mid_activity_crash_point",
+                        external_input=False,
+                        fields={"goal_id": origin.goal_id, "task_instruction": None,
+                                "session_still_active": True,
+                                "clean_session_exit": False,
+                                "extra_checkpoint_before_kill": False})
+        # Terminate INSIDE the live six-organ session after the world action.
+        # Neither __exit__ nor the final checkpoint/cleanup path can run.
+        # The next process must recover only from the already durable sources.
+        os._exit(79)
+    raise AssertionError("The live-session hard kill unexpectedly returned")
 
 
 def _continue_without_instruction(root):
