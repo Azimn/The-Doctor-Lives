@@ -42,7 +42,8 @@ class NativeGoalChoiceReceipt:
 class NativeLaboratoryGoalChooser:
     """Bounded native-policy arbitration, one original BrainStore, one world."""
 
-    def __init__(self, session, *, authorized: bool = False):
+    def __init__(self, session, *, authorized: bool = False,
+                 enable_sustained_work: bool = False):
         from .lab_six_organ_session import SixOrganLaboratoryCycle
         if type(session) is not SixOrganLaboratoryCycle or authorized is not True:
             raise PermissionError("Trusted opt-in six-organ Laboratory host needed")
@@ -51,6 +52,12 @@ class NativeLaboratoryGoalChooser:
         self.store = session.runtime._port.brain.store
         self.book = EndogenousBookPursuit(session, authorized=True)
         self._load_rest()
+        if type(enable_sustained_work) is not bool:
+            raise TypeError("Native work capability requires a typed opt-in")
+        self.work = None
+        if enable_sustained_work:
+            from .lab_native_work_goal import NativeWorkPursuit
+            self.work = NativeWorkPursuit(session)
 
     def _epoch(self):
         return self.host.subject.verify()["world_epoch"]
@@ -147,6 +154,19 @@ class NativeLaboratoryGoalChooser:
             raise TypeError("Typed world authorization required")
         rest = self._load_rest()
         book = self.book.status()
+        work = self.work._load() if self.work is not None else None
+        if work is not None and work["phase"] != "complete" and (
+                (rest is not None and rest["phase"] != "complete") or
+                (book.goal_id is not None and book.phase not in ("complete", "exhausted"))):
+            raise RuntimeError("Competing native work and other unfinished goals")
+        if work is not None and work["phase"] != "complete":
+            result = self.work.step(
+                authorized=authorized_world_action, new_policy=self._native_policy
+            )
+            return NativeGoalChoiceReceipt(
+                result.status, "work", result.goal_id, result.memory_id,
+                selected_tendency=result.selected_tendency
+            )
         if rest is not None and book.goal_id is not None and book.phase not in (
                 "complete", "exhausted"):
             raise RuntimeError("Competing pending goals require explicit review")
@@ -206,6 +226,18 @@ class NativeLaboratoryGoalChooser:
             return NativeGoalChoiceReceipt(
                 "goal_created", "read_book", result.goal_id,
                 selected_tendency=proposal.selected_tendency
+            )
+        if proposal.selected_tendency == "persist" and self.work is not None:
+            if work is not None:
+                return NativeGoalChoiceReceipt(
+                    "already_complete", "work", work["id"], work["memory_id"],
+                    selected_tendency="persist"
+                )
+            result = self.work.originate(proposal)
+            return NativeGoalChoiceReceipt(
+                result.status, "work" if result.goal_id else None,
+                result.goal_id, result.memory_id,
+                selected_tendency=result.selected_tendency
             )
         if proposal.selected_tendency != "avoid":
             return NativeGoalChoiceReceipt(
