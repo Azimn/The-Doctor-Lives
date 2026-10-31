@@ -44,6 +44,9 @@ jobs:
       - name: Static protected local renderer/provider ingress audit
         shell: bash
         run: python tools/ipseity_entrypoint_gate.py
+      - name: Assert crash, stall, and silent-skip are distinguishable
+        shell: bash
+        run: python -m unittest discover -s tests -p test_candidate_b_failure_taxonomy.py -v
       - name: Assert both organoid binders use single canonical BrainStore
         shell: bash
         run: |
