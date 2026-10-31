@@ -213,6 +213,7 @@ jobs:
           path: |
             ${{ runner.temp }}/independent-r4-report.json
             ${{ runner.temp }}/independent-r4-report.witness.jsonl
+            ${{ runner.temp }}/independent-r4-report.origins.jsonl
             ${{ runner.temp }}/independent-r4-report.operator.stdout.txt
             ${{ runner.temp }}/independent-r4-report.operator.stderr.txt
           retention-days: 30
