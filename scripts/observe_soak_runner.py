@@ -110,7 +110,10 @@ def _process_identity(pid: int) -> str | None:
         kernel = ctypes.windll.kernel32
         kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
         kernel.OpenProcess.restype = ctypes.c_void_p
-        handle = kernel.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
+        # Query process creation time and synchronize on the process object.
+        # GetExitCodeProcess == STILL_ACTIVE (259) is not a liveness test:
+        # a terminated process is allowed to return 259 as its exit code.
+        handle = kernel.OpenProcess(0x1000 | 0x00100000, False, pid)  # QUERY_LIMITED_INFORMATION | SYNCHRONIZE
         if not handle:
             return None
         try:
@@ -118,16 +121,17 @@ def _process_identity(pid: int) -> str | None:
                 _fields_ = [("low", wintypes.DWORD), ("high", wintypes.DWORD)]
             created, exited, kernel_time, user_time = (FILETIME() for _ in range(4))
             kernel.GetProcessTimes.argtypes = [ctypes.c_void_p] + [ctypes.POINTER(FILETIME)] * 4
-            kernel.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(wintypes.DWORD)]
+            kernel.WaitForSingleObject.argtypes = [ctypes.c_void_p, wintypes.DWORD]
+            kernel.WaitForSingleObject.restype = wintypes.DWORD
             if not kernel.GetProcessTimes(handle, ctypes.byref(created),
                                           ctypes.byref(exited), ctypes.byref(kernel_time),
                                           ctypes.byref(user_time)):
                 raise RuntimeError("Cannot read observed process creation time")
-            exit_code = wintypes.DWORD()
-            if not kernel.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
-                raise RuntimeError("Cannot read observed process state")
-            if exit_code.value != 259:  # STILL_ACTIVE
+            wait_result = kernel.WaitForSingleObject(handle, 0)
+            if wait_result == 0:  # WAIT_OBJECT_0: process has terminated.
                 return None
+            if wait_result != 0x102:  # WAIT_TIMEOUT: process is still running.
+                raise RuntimeError("Cannot establish observed process liveness")
             return str((created.high << 32) | created.low)
         finally:
             kernel.CloseHandle.argtypes = [ctypes.c_void_p]
