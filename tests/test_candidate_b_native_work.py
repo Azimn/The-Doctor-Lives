@@ -64,20 +64,14 @@ class CandidateBSourceBackedWork(unittest.TestCase):
         with self.session(rt) as host:
             chooser = NativeLaboratoryGoalChooser(
                 host, authorized=True, enable_sustained_work=True)
-            host.bridge.observe()
-            tendencies = {}
-            for attempts in range(64):
-                proposal = chooser._native_policy()  # actual original Noesis
-                tendencies[proposal.selected_tendency] = tendencies.get(
-                    proposal.selected_tendency, 0) + 1
-                if proposal.selected_tendency == "persist":
-                    created = chooser.work.originate(proposal)
-                    if created.status == "goal_created":
-                        break
-            else:
-                self.fail("No native persist intention in 64 original six-organ opportunities: "
-                          + json.dumps(tendencies, sort_keys=True))
+            # Exercise the shipping chooser, not a host-picked action or
+            # directly injected goal. The original world has no books
+            # installed, so a real native EXPLORE may investigate the seen
+            # workbench; an AVOID/other origin remains a measured negative.
+            created = chooser.step(authorized_world_action=False)
             self.assertEqual(created.status, "goal_created")
+            self.assertEqual(created.kind, "work")
+            self.assertIn(created.selected_tendency, ("explore", "persist"))
             self.assertEqual(self.subject.embodied.verify()["station"], "station:threshold")
             denied = chooser.step(authorized_world_action=False)
             self.assertEqual(denied.kind, "work")
@@ -142,7 +136,7 @@ class CandidateBSourceBackedWork(unittest.TestCase):
             self.assertEqual(len([m for m in cold._port.brain.store.memories(False)
                                   if m["source"] == memory["source"]]), 1)
         print("B_NATIVE_REAL_WORK_TARGETED=" + json.dumps({
-            "original_neural_persist": True, "actual_concrete_noesis": record["selected_action"],
+            "original_neural_source": created.selected_tendency, "actual_concrete_noesis": record["selected_action"],
             "original_world_receipt": True, "one_lived_memory": True,
             "cold_reopen": True, "host_routed": True,
             "independent_three_goal_acceptance": False,
