@@ -119,6 +119,16 @@ class TwelveCycleActualSixOrganLaboratory(unittest.TestCase):
                             and r.subjective_delivery_count == 1 for r in results))
         self.assertTrue(all(not r.self_selected_goal_proven for r in results))
         self.assertTrue(all(not r.scene_vetoed for r in results))
+        # Four donor modulation outputs must actually be consumed by the
+        # physical six-organ cycle, not merely serialized as decorative fields.
+        self.assertTrue(all(set(r.affectus_consumed) == {
+            "salience_gain", "exploration_bias",
+            "rehearsal_bias", "decay_multiplier",
+        } for r in results))
+        self.assertTrue(all(0.5 <= r.sensus_prominence_consumed <= 1.0
+                            for r in results))
+        self.assertTrue(all(0.0 <= r.mnemonic_recall_cost_consumed <= 1.0
+                            for r in results))
         from doctor_lives.canonical_affectus_weather import _META
         self.assertIsNotNone(reopened._port.brain.store.meta(_META))
         self.assertFalse((self.root / "brain" / "affectus.sqlite3").exists())
