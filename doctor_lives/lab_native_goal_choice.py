@@ -208,6 +208,19 @@ class NativeLaboratoryGoalChooser:
             raise PermissionError("Missing real situated original-Doctor perception")
         state = self.host.subject.embodied.verify()
         station = state["station"]
+        # Passive, local, source-ledger LOOK opportunity, not a neural goal or
+        # operator-chosen destination. The original world must supply the cue.
+        # Without an actual LOOK, existing book/work origin guards cannot
+        # admit a situated goal on a pristine installed world.
+        if authorized_world_action and not any(
+            e["after_station"] == station
+            for e, _ in _verified_looks(self.host.subject.embodied)
+        ):
+            cue_id = "ng_percept_" + sha256(
+                (self._epoch() + "|" + station).encode("utf-8")
+            ).hexdigest()[:24]
+            scan = self.host.subject.embodied.look(event_id=cue_id)
+            self.book.books.admit_sighting(scan)
         proposal = self._native_policy()
         if proposal.selected_tendency == "explore":
             # Bounded source-grounded alternative: when an actual book has

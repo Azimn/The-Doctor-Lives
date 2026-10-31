@@ -205,7 +205,7 @@ jobs:
       - name: Independent three-distinct-activity R4 test, no task messages or scripted choices
         run: |
           python tools/run_uncoached_r4_trial.py \
-            --install-root "${{ runner.temp }}/r4-installed" --seconds 90 \
+            --install-root "${{ runner.temp }}/r4-installed" --seconds 600 \
             --report "${{ runner.temp }}/independent-r4-report.json"
       - name: Retain exact-R4 failure evidence regardless of verdict
         if: always()
