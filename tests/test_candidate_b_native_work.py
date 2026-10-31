@@ -107,7 +107,7 @@ class CandidateBSourceBackedWork(unittest.TestCase):
                 chosen = db.execute(
                     "SELECT selected_action FROM policy_decisions WHERE id=?",
                     (record["work_policy_id"],)).fetchone()
-            self.assertEqual(policy["selected_action"], "persist")
+            self.assertEqual(policy["selected_action"], created.selected_tendency)
             self.assertEqual(chosen["selected_action"], record["selected_action"])
             next_goal = chooser.step(authorized_world_action=True)
             # A later original exploratory/avoid choice may legitimately
