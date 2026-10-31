@@ -81,8 +81,10 @@ def select_native(workspace: Path, source: Path) -> bool:
 
 def _intent_source(state: Path, goal_id: str) -> dict:
     """Read real canonical intent origin; never create a policy or goal."""
+    from .lab_native_work_goal import WORK_KEY
     with closing(sqlite3.connect(state / "brain.sqlite3")) as db:
-        for key, kind in ((_BOOK_KEY, "read_book"), (_REST_KEY, "rest")):
+        for key, kind in ((_BOOK_KEY, "read_book"), (_REST_KEY, "rest"),
+                          (WORK_KEY, "work")):
             row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
             if not row:
                 continue
@@ -93,7 +95,8 @@ def _intent_source(state: Path, goal_id: str) -> dict:
                 "SELECT selected_action FROM policy_decisions WHERE id=?",
                 (entry["origin_policy_id"],)
             ).fetchone()
-            expected = "explore" if kind == "read_book" else "avoid"
+            expected = {"read_book": "explore", "rest": "avoid",
+                        "work": "persist"}[kind]
             if not choice or choice[0] != expected:
                 raise PermissionError("Native intent has no original Noesis decision")
             return {"origin_policy_id": entry["origin_policy_id"],
@@ -139,7 +142,7 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
     from .lab_runtime import run_native_laboratory
     result = run_native_laboratory(
         state, world, affectus_source=affectus_source, steps=1,
-        allow_world_actions=True
+        allow_world_actions=True, enable_sustained_work=True
     )
     receipt = result["receipts"][-1]
     event = {
