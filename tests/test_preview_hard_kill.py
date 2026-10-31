@@ -6,6 +6,7 @@ existing world/state paths and a general world-action authorization.
 """
 from __future__ import annotations
 
+from contextlib import closing
 import gc
 import importlib.util
 import json
@@ -235,7 +236,7 @@ class RealHardKillResumeTests(unittest.TestCase):
             self.assertFalse(any(x["source_attestation_independent"] for x in log))
             self.assertEqual(SpatialHabitat(root / "laboratory.sqlite3")
                              .verify()["world_epoch"], expected_epoch)
-            with SpatialHabitat(root / "laboratory.sqlite3")._open() as db:
+            with closing(SpatialHabitat(root / "laboratory.sqlite3")._open()) as db:
                 reads = [json.loads(row[0]) for row in
                          db.execute("SELECT payload FROM books_events")]
             self.assertEqual(sum(x["action"]["op"] == "read" for x in reads), 1)
