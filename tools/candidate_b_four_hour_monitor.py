@@ -15,6 +15,23 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import sqlite3
+from contextlib import closing
+from doctor_lives.lab_failure_taxonomy import HealthSample, classify
+
+def completed_physical_tasks(world: Path) -> int:
+    """Original Laboratory receipts only, not activity ledger or heartbeat."""
+    target = world.absolute().as_uri() + "?mode=ro"
+    with closing(sqlite3.connect(target, uri=True)) as db:
+        rhythm = [json.loads(row[0]) for row in db.execute(
+            "SELECT envelope FROM rhythm_events")]
+        books = [json.loads(row[0]) for row in db.execute(
+            "SELECT envelope FROM books_events")]
+    tasks = {"prepare_meal", "eat", "brew_tea", "sleep", "rest",
+             "clean", "experiment", "repair"}
+    return (sum(event.get("op") in tasks for event in rhythm)
+            + sum(event.get("action", {}).get("op") == "read"
+                  for event in books))
 
 
 def utc() -> str:
@@ -50,6 +67,9 @@ def main() -> int:
     base = [str(python), "-m", "doctor_lives.cli"]
     stdinless = {"stdin": subprocess.DEVNULL, "cwd": root, "env": {**os.environ, "PYTHONPATH": ""}}
     start_state = {"world": digest(world), "brain": digest(brain), "neural": digest(neural)}
+    task_count_start = completed_physical_tasks(world)
+    task_count_current = task_count_start
+    last_new_task = None
     samples: list[dict] = []
     failure: str | None = None
     started = time.monotonic()
@@ -76,6 +96,37 @@ def main() -> int:
                     "status_exit": status.returncode,
                     "status_response": status.stdout[-4000:],
                 }
+                status_heartbeat_age = None
+                task_count_now = completed_physical_tasks(world)
+                if task_count_now < task_count_current:
+                    failure = "physical_ledger_regressed"
+                if task_count_now > task_count_current:
+                    last_new_task = elapsed
+                task_count_current = task_count_now
+                if status.returncode == 0:
+                    try:
+                        status_data = json.loads(status.stdout)
+                        stamp = datetime.fromisoformat(
+                            status_data["last_heartbeat"].replace("Z", "+00:00"))
+                        status_heartbeat_age = max(
+                            0.0, (datetime.now(timezone.utc)-stamp).total_seconds())
+                    except (ValueError, KeyError, TypeError):
+                        pass
+                live = HealthSample(
+                    process_alive=operator.poll() is None,
+                    elapsed_seconds=elapsed,
+                    heartbeat_age_seconds=status_heartbeat_age,
+                    last_physical_task_age_seconds=(
+                        elapsed - last_new_task if last_new_task is not None else None),
+                    verified_completed_tasks=task_count_now-task_count_start,
+                )
+                classification = classify(live)
+                sample["health_classification"] = classification
+                sample["source_physical_task_receipts_since_start"] = (
+                    task_count_now-task_count_start)
+                sample["operator_heartbeat_age_seconds"] = status_heartbeat_age
+                if classification in ("crash", "stall", "silent_skip"):
+                    failure = failure or classification
                 if status.returncode != 0:
                     # Foreground startup may need a moment to create status.
                     # Do not count startup as a process failure.
@@ -122,6 +173,8 @@ def main() -> int:
         "workspace_persists": all(x.is_file() for x in (world, brain, neural)),
         "world_changed": digest(world) != start_state["world"],
         "canonical_brain_changed": digest(brain) != start_state["brain"],
+        "original_physical_task_progress": task_count_current > task_count_start,
+        "no_crash_stall_or_silent_skip": failure is None,
     }
     verdict = {
         "schema": "pretorius.candidate-b.four-hour-witness.v1",
@@ -129,6 +182,11 @@ def main() -> int:
         "observed_samples": len(samples),
         "max_sampling_gap": max(gaps) if gaps else None,
         "failure": failure,
+        "failure_kind": failure if failure in (
+            "crash", "stall", "silent_skip") else (
+                "infrastructure_or_source_integrity" if failure else None),
+        "original_world_task_count_start": task_count_start,
+        "original_world_task_count_end": task_count_current,
         "checks": checks,
         "pass": all(checks.values()),
         "not_proven_by_this_witness": [
