@@ -41,7 +41,7 @@ def main():
     stdout_path = args.report.with_suffix(".operator.stdout.txt")
     stderr_path = args.report.with_suffix(".operator.stderr.txt")
     error, final_sample, baseline, proc = None, None, None, None
-    last_origins, origin_snapshots = None, 0
+    last_origins, last_origin_alive, origin_snapshots = None, None, 0
     began = time.monotonic()
     with witness_path.open("w", encoding="utf-8") as witness, \
          origins_path.open("w", encoding="utf-8") as origins_stream, \
@@ -62,12 +62,12 @@ def main():
             final_sample = result
 
         def record_origins(alive):
-            nonlocal last_origins, origin_snapshots
+            nonlocal last_origins, last_origin_alive, origin_snapshots
             # Independently sample actual canonical rows while the installed
             # Doctor process runs. This is not a fabricated goal or an
             # attestation that a self-consistent DB row came from a neural act.
             current = inspect_neural_origins(workspace)
-            if current == last_origins:
+            if current == last_origins and alive == last_origin_alive:
                 return
             entry = {
                 "schema": "pretorius.r4.external-neural-origin-observation.v1",
@@ -81,6 +81,7 @@ def main():
             origins_stream.flush()
             os.fsync(origins_stream.fileno())
             last_origins = current
+            last_origin_alive = alive
             origin_snapshots += 1
 
         try:
