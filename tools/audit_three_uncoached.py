@@ -13,7 +13,9 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
+import tempfile
 
 
 EXPECTED = frozenset(("read_book", "rest", "work"))
@@ -31,7 +33,8 @@ def _db(path):
     return sqlite3.connect(path.absolute().as_uri() + "?mode=ro", uri=True)
 
 
-def evaluate(workspace: Path) -> dict:
+def evaluate_schema_only(workspace: Path) -> dict:
+    """Negative-contract check only; NEVER a releasable R4 verdict."""
     workspace = Path(workspace).resolve(strict=True)
     log = workspace / "preview-activity.jsonl"
     brain = workspace / "state" / "brain.sqlite3"
@@ -204,6 +207,126 @@ def evaluate(workspace: Path) -> dict:
         "problems": sorted(set(problems)),
         "independent_human_review_performed": False,
     }
+
+
+
+ORIGINAL_LAB_SHA = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+# This separate process imports only the reviewed original Laboratory's own
+# authority, not Doctor policy, host goal code or artificial evidence.
+SOURCE_WORLD_VERIFIER = r"""
+import json, sys
+from pathlib import Path
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.embodied_access import EmbodiedAccess
+from pretorius_lab.home_life import HomeLife
+from pretorius_lab.daily_rhythm import DailyRhythm
+from pretorius_lab.book_library import BookLibrary
+
+world = SpatialHabitat(Path(sys.argv[1]))
+physical = world.verify()
+body = EmbodiedAccess(world).verify()
+home = HomeLife(world).verify()
+rhythm = DailyRhythm(world).verify()
+books = BookLibrary(world).verify()
+assert physical["world_epoch"] == body["world_epoch"] == home["world_epoch"] == rhythm["world_epoch"] == books["world_epoch"]
+print(json.dumps({
+    "schema": "original-laboratory-full-physics-replay.v1",
+    "world_epoch": physical["world_epoch"],
+    "lab_id": physical["lab_id"],
+    "physical_revision": physical["revision"],
+    "body_revision": body["revision"],
+    "home_revision": home["revision"],
+    "rhythm_revision": rhythm["revision"],
+    "rhythm_head_hash": rhythm["head_hash"],
+    "books_revision": books["revision"],
+    "checks": ["SpatialHabitat.verify", "EmbodiedAccess.verify",
+               "HomeLife.verify", "DailyRhythm.verify", "BookLibrary.verify"],
+}, sort_keys=True))
+"""
+
+
+def verify_original_world_snapshot(workspace: Path) -> dict:
+    """Run full original source physics on an isolated SQLite read snapshot.
+
+    The judge cannot mutate the live world. The sealed offline installation
+    supplies an exact source-pinned original Laboratory wheel. A missing wheel
+    or absent install receipt is a hard FAIL, never a synthetic fallback.
+    """
+    import os
+    root = Path(workspace).resolve(strict=True).parent
+    world = Path(workspace) / "laboratory.sqlite3"
+    receipt_path = root / "installed-bundle-receipt.json"
+    if not receipt_path.is_file():
+        raise RuntimeError("sealed_original_world_install_receipt_missing")
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if (receipt.get("original_laboratory_commit") != ORIGINAL_LAB_SHA
+            or receipt.get("books") != 17
+            or receipt.get("release_accepted") is not False):
+        raise PermissionError("source_pinned_original_world_custody_mismatch")
+    executable = root / ".venv" / (
+        "Scripts/python.exe" if os.name == "nt" else "bin/python"
+    )
+    if not executable.is_file() or executable.is_symlink():
+        raise RuntimeError("source_pinned_original_world_python_missing")
+    if not world.is_file() or world.is_symlink():
+        raise RuntimeError("original_world_missing_or_symlink")
+    with tempfile.TemporaryDirectory(prefix="pretorius-r4-readonly-source-") as temp:
+        copy_path = Path(temp) / "original-world-snapshot.sqlite3"
+        # Input connection is explicitly read-only and backup creates a
+        # consistent committed snapshot. Original .verify may use RW handles
+        # on the temporary copy only, never on the installed real world.
+        with closing(_db(world)) as source, closing(sqlite3.connect(copy_path)) as target:
+            source.backup(target)
+        result = subprocess.run(
+            [str(executable), "-I", "-c", SOURCE_WORLD_VERIFIER, str(copy_path)],
+            capture_output=True, text=True, timeout=90,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                "original_laboratory_physics_replay_failed:" +
+                result.stderr[-360:].strip()
+            )
+        result_data = json.loads(result.stdout)
+        if (result_data.get("schema") != "original-laboratory-full-physics-replay.v1"
+                or len(result_data.get("checks", [])) != 5
+                or result_data.get("world_epoch") is None):
+            raise RuntimeError("original_laboratory_source_proof_malformed")
+        return result_data
+
+
+def evaluate(workspace: Path) -> dict:
+    """Release-facing independent ledger audit, never synthetic positive."""
+    evidence = evaluate_schema_only(workspace)
+    try:
+        proof = verify_original_world_snapshot(workspace)
+        # Compare replayed authoritative Laboratory identity to each claimed
+        # native goal. The original verifier also replays real world state,
+        # every original ledger's chain and complete book custody.
+        with closing(_db(Path(workspace) / "state" / "brain.sqlite3")) as db:
+            goals = []
+            for key in ("six_organ_endogenous_book_goal_v1",
+                        "six_organ_native_rest_intention_v1",
+                        "six_organ_native_work_intention_v1"):
+                row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+                if row:
+                    goals.append(json.loads(row[0])["payload"])
+        if any(g.get("world_epoch") != proof["world_epoch"] for g in goals):
+            raise PermissionError("goal_world_epoch_mismatches_replayed_authority")
+        evidence["source_pinned_original_laboratory_sha"] = ORIGINAL_LAB_SHA
+        evidence["authoritative_world_epoch"] = proof["world_epoch"]
+        evidence["full_original_physics_replay"] = proof["checks"]
+        evidence["original_source_world_verified"] = True
+    except (OSError, sqlite3.Error, ValueError, KeyError, PermissionError,
+            RuntimeError, subprocess.TimeoutExpired) as exc:
+        evidence["status"] = "FAIL"
+        evidence["three_distinct_uncoached"] = False
+        evidence["original_source_world_verified"] = False
+        evidence["full_original_physics_replay"] = []
+        evidence.setdefault("problems", []).append(
+            "original_source_world_authority_not_verified:" + type(exc).__name__ +
+            ":" + str(exc)[:240]
+        )
+    return evidence
 
 
 def main():
