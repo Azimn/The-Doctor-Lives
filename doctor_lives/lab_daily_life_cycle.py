@@ -10,7 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from .lab_runtime import _exclusive_host
-from .noesis_day import real_affordances, offer_daily_opportunity, act_on_noesis_choice
+from .noesis_day import (real_affordances, offer_daily_opportunity,
+                         act_on_noesis_choice, reconcile_pending_daily_action)
 from .store import new_id
 
 
@@ -40,6 +41,10 @@ def run_daily_life_cycle(
             renderer=renderer, authorized=True,
         ) as session:
             try:
+                # Reconcile a previously authorized Noesis motor BEFORE making
+                # another decision. The original world receipt is idempotent;
+                # no new operator goal or physical action is inferred.
+                recovered = reconcile_pending_daily_action(session.bridge)
                 # All SIX canonical organs actually participate in this cycle.
                 cycle = session.cycle(authorized_world_action=authorize_world)
                 if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
@@ -68,6 +73,7 @@ def run_daily_life_cycle(
                     "daily_noesis_policy_id": selected.policy_id if selected else None,
                     "daily_noesis_selected": selected.action if selected else None,
                     "world_effect": action,
+                    "reconciled_prior_noesis_actions": list(recovered),
                     "host_offered_opportunity": True,
                     "world_action_authorized": authorize_world,
                     "self_selected_sustained_goal_proven": False,
