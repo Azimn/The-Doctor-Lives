@@ -8,6 +8,8 @@ on:
       - doctor_lives/noesis_day.py
       - tests/test_candidate_b_recovery.py
       - tests/test_candidate_b_daily_life.py
+      - doctor_lives/lab_baselines.py
+      - tests/test_candidate_b_baselines.py
       - .github/workflows/candidate-b-recovery.yml
   workflow_dispatch:
 
@@ -42,6 +44,8 @@ jobs:
         env:
           PRETORIUS_REQUIRE_PINNED_LAB: '1'
         run: python -m unittest discover -s tests -p test_candidate_b_recovery.py -v
+      - name: Match simple and flat no-organ original-Lab recovery controls
+        run: python -m unittest discover -s tests -p test_candidate_b_baselines.py -v
 
   same-mind-living-cycle:
     runs-on: ubuntu-24.04
