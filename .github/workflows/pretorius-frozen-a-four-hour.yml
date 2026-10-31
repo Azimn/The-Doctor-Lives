@@ -22,7 +22,7 @@ jobs:
       DOCTOR_SHA: a8cc49ab15a4d6453c8a5954e1a39a047e4fe4a3
       LAB_SHA: 6e49795752835d64fa6fd63d16359669a1ca2ba7
       PIP_DISABLE_PIP_VERSION_CHECK: '1'
-      ROOT: ${{ runner.temp }}/pretorius-hosted
+      ROOT: ${{ github.workspace }}/pretorius-hosted
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -194,6 +194,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frozen-pretorius-a-four-hour-${{ github.run_id }}
-          path: ${{ runner.temp }}/pretorius-hosted/export/
+          path: ${{ github.workspace }}/pretorius-hosted/export/
           if-no-files-found: warn
           retention-days: 14
