@@ -7,7 +7,6 @@ natural-language goal or independently authored a specific destination.
 """
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 from hashlib import sha256
 import json
@@ -334,18 +333,12 @@ class NativeLaboratoryGoalChooser:
                 "no_situated_goal", None, None,
                 selected_tendency=proposal.selected_tendency,
             )
-        frontier = deque([(station, None)])
-        visited = {station}
-        hop = None
-        while frontier:
-            at, first = frontier.popleft()
-            if at in seen:
-                hop = first
-                break
-            for adjacent in sorted(STATIONS[at][1]):
-                if adjacent not in visited:
-                    visited.add(adjacent)
-                    frontier.append((adjacent, first or adjacent))
+        # Reuse the EXISTING bounded host navigation adapter. Do not add
+        # another selector or planner, and never infer a cue from the map.
+        hop = next((
+            step for target in sorted(seen)
+            if (step := EndogenousBookPursuit._route(station, target)) is not None
+        ), None)
         if hop is None:
             return NativeGoalChoiceReceipt(
                 "no_situated_goal", None, None,
