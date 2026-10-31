@@ -9,12 +9,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 from pathlib import Path
 import subprocess
 import sys
 import time
 
-from observe_uncoached_r4 import sample
+from observe_uncoached_r4 import inspect_neural_origins, sample
 
 SAMPLE_SECONDS = 15.0
 
@@ -36,11 +37,14 @@ def main():
         "--native-affectus-source", str(root / "sources" / "donor-affectus")]
     args.report.parent.mkdir(parents=True, exist_ok=True)
     witness_path = args.report.with_suffix(".witness.jsonl")
+    origins_path = args.report.with_suffix(".origins.jsonl")
     stdout_path = args.report.with_suffix(".operator.stdout.txt")
     stderr_path = args.report.with_suffix(".operator.stderr.txt")
     error, final_sample, baseline, proc = None, None, None, None
+    last_origins, origin_snapshots = None, 0
     began = time.monotonic()
     with witness_path.open("w", encoding="utf-8") as witness, \
+         origins_path.open("w", encoding="utf-8") as origins_stream, \
          stdout_path.open("w", encoding="utf-8") as operator_stdout, \
          stderr_path.open("w", encoding="utf-8") as operator_stderr:
         def record(alive):
@@ -57,8 +61,31 @@ def main():
             os.fsync(witness.fileno())
             final_sample = result
 
+        def record_origins(alive):
+            nonlocal last_origins, origin_snapshots
+            # Independently sample actual canonical rows while the installed
+            # Doctor process runs. This is not a fabricated goal or an
+            # attestation that a self-consistent DB row came from a neural act.
+            current = inspect_neural_origins(workspace)
+            if current == last_origins:
+                return
+            entry = {
+                "schema": "pretorius.r4.external-neural-origin-observation.v1",
+                "elapsed_seconds": round(time.monotonic() - began, 3),
+                "process_alive": alive,
+                "goals": current,
+                "source_authentication_performed": False,
+                "autonomy_credit": False,
+            }
+            origins_stream.write(json.dumps(entry, sort_keys=True) + "\\n")
+            origins_stream.flush()
+            os.fsync(origins_stream.fileno())
+            last_origins = current
+            origin_snapshots += 1
+
         try:
             record(False)
+            record_origins(False)
             # File-backed output cannot block a long-running child on a full
             # PIPE buffer. Logs are preserved even if the child hard exits.
             proc = subprocess.Popen(
@@ -66,6 +93,7 @@ def main():
             deadline = began + args.seconds
             next_sample = began + SAMPLE_SECONDS
             while time.monotonic() < deadline:
+                record_origins(proc.poll() is None)
                 if proc.poll() is not None:
                     error = "operator_exited_before_uncoached_window"
                     break
@@ -94,8 +122,9 @@ def main():
                 proc.kill()
                 proc.wait(timeout=30)
             try:
+                record_origins(False)
                 record(False)
-            except (OSError, ValueError, RuntimeError) as exc:
+            except (OSError, ValueError, RuntimeError, sqlite3.DatabaseError) as exc:
                 error = "independent_final_witness_error:" + type(exc).__name__ + ":" + str(exc)[:300]
     independent = subprocess.run(
         [sys.executable, str(Path(__file__).with_name("audit_three_uncoached.py")),
@@ -108,6 +137,9 @@ def main():
     data["operator_controlled_action_sequence"] = False
     data["independent_witness"] = {
         "path": witness_path.name,
+        "neural_origin_observations_path": origins_path.name,
+        "neural_origin_change_snapshots": origin_snapshots,
+        "neural_origin_consistency_is_not_causal_proof": True,
         "sample_interval_seconds": SAMPLE_SECONDS,
         "baseline_world_receipts": baseline,
         "last_world_receipt_delta": (
