@@ -520,6 +520,88 @@ def _run_laboratory_session(
     }
 
 
+
+def offer_laboratory_day(
+    state: Path, world: Path, *, allow_world_actions: bool = False,
+) -> dict:
+    """One original-Noesis physical opportunity, without a host-authored goal.
+
+    Reuse the existing source-verified Noesis day chooser and original Doctor
+    action journal. This is an operator-scheduled opportunity, NOT a claim
+    that three distinct goals or an autonomous day have been achieved.
+    """
+    if allow_world_actions is not True:
+        raise PermissionError("Explicit original-Laboratory motor authorization required")
+    state, world = Path(state), Path(world)
+    if not world.is_file():
+        raise FileNotFoundError("Existing authoritative Laboratory world required")
+    if not (state / "brain.sqlite3").is_file() or not (
+        state / "pretorius_recurrent.npz"
+    ).is_file():
+        raise FileNotFoundError("Existing canonical Doctor brain and checkpoint required")
+
+    from pretorius_lab.habitat_v2 import SpatialHabitat
+    from pretorius_lab.subject_port import SubjectPort
+    from .lab_home_bridge import _ACTION_DOMAINS, _row
+    from .noesis_day import offer_daily_opportunity, act_on_noesis_choice
+    from .organs import SixOrganRuntime
+
+    with _exclusive_host(state, world):
+        runtime = SixOrganRuntime.open(state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(world)), authorized=True,
+        )
+        epoch = bridge.subject.verify()["world_epoch"]
+        _, recovered, abandoned = _recover_shipping_actions(bridge)
+        try:
+            # Neither a requested action nor a destination crosses this API.
+            # The source-pinned Laboratory computes the feasible action set.
+            choice = offer_daily_opportunity(
+                bridge, author_goal=True, use_consequences=True,
+            )
+            event_id = "day-noesis-" + secrets.token_hex(16)
+            actual = act_on_noesis_choice(
+                bridge, choice, event_id=event_id, authorized=True,
+            )
+            with bridge.world._open() as db:
+                receipt, digest = _row(
+                    db, _ACTION_DOMAINS[choice.action], event_id,
+                )
+            lived = bridge.doctor.brain.store.get_memory(actual["memory_id"])
+            if (lived is None or not lived["active"] or lived["external"]
+                    or lived["evidence_class"] != "lived_runtime_memory"
+                    or lived["source"] != "laboratory-home:action:" + digest
+                    or receipt.get("subject", {}).get("inner") != lived["text"]):
+                raise RuntimeError("No authenticated original-world lived consequence")
+            if bridge.subject.verify()["world_epoch"] != epoch:
+                raise RuntimeError("Original Laboratory epoch changed")
+        finally:
+            # The same canonical recurrent checkpoint must survive a new
+            # process even if a real world action raises after admission.
+            runtime.checkpoint()
+        clock = engineer_time()
+        return {
+            "schema": "doctor-laboratory-offline-opportunity.v1",
+            "status": actual["status"],
+            "selection": "original_noesis",
+            "policy_decision_id": choice.policy_id,
+            "action": choice.action,
+            "feasible_actions": list(choice.options),
+            "event_id": event_id,
+            "memory_id": actual["memory_id"],
+            "recovered": len(recovered),
+            "abandoned": len(abandoned),
+            "subject_frames": [item["subject"] for item in recovered]
+                              + [{"inner": lived["text"], "spoken_aloud": None}],
+            "host_selected_action": False,
+            "operator_offered_opportunity": True,
+            "uncoached_three_task_life_proven": False,
+            "causal_preference_reversal_proven": False,
+            "clock": {"utc": clock.utc_iso, "beat": clock.beat},
+        }
+
+
+
 def run_native_laboratory(
     state: Path, world: Path, *, affectus_source: Path,
     steps: int = 1, allow_world_actions: bool = False,
