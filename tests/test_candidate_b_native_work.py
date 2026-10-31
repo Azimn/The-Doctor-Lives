@@ -193,6 +193,51 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
             "independent_three_goal_acceptance": False,
         }, sort_keys=True))
 
+    def test_original_neural_exploration_can_revisit_only_a_physically_seen_cue(self):
+        """Source-backed single movement, not a new or completed R4 goal.
+
+        Fixture setup is explicitly external. The Doctor's actual neural
+        decision authorizes ONLY the final move and original lived receipt.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            proposal = chooser._native_policy()
+            self.assertIn(proposal.selected_tendency, ("explore", "persist"))
+            # Actual original-world LOOK, never a fabricated scene or title.
+            cue = self.subject.embodied.look(event_id="external-fixture-seen-threshold")
+            self.assertIn("workbench", cue["offered_payload"]["perceived_features"])
+            # External fixture positioning is NOT a Doctor action or R4 proof.
+            self.subject.embodied.move("station:hall", event_id="external-fixture-to-hall")
+            self.subject.embodied.move("station:bedroom", event_id="external-fixture-to-bed")
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:bedroom")
+            denied = chooser._move_to_remembered_cue(proposal, False)
+            self.assertEqual(denied.status, "no_situated_goal")
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:bedroom")
+            actual = chooser._move_to_remembered_cue(proposal, True)
+            self.assertEqual((actual.status, actual.kind, actual.goal_id),
+                             ("moved", None, None))
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:hall")
+            memory = rt._port.brain.store.get_memory(actual.memory_id)
+            self.assertIsNotNone(memory)
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertFalse(memory["external"])
+            self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+            digest = memory["source"].removeprefix("laboratory-home:action:")
+            with self.world._open() as db:
+                rows = db.execute("SELECT event_id FROM embodied_events WHERE event_hash=?",
+                                  (digest,)).fetchall()
+            self.assertEqual(len(rows), 1)
+            self.subject.embodied.verify()
+            rt.checkpoint()
+        print("B_WITNESSED_CUE_EXPLORATION=" + json.dumps({
+            "source_pinned_look": True, "original_neural_policy": proposal.selected_tendency,
+            "real_world_move": True, "canonical_lived_memory": True,
+            "external_fixture_positioning": True,
+            "new_goal_created": False, "uncoached_r4_credit": False,
+        }, sort_keys=True))
+
     def test_original_lab_authority_rejects_foreign_rhythm_epoch(self):
         # This uses the REAL pinned DailyRhythm.verify, not a fabricated
         # SQLite-only positive or an auditor bypass.
