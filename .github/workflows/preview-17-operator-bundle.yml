@@ -9,6 +9,8 @@ on:
       - tools/install_17_operator_bundle.py
       - tools/assemble_17_operator_bundle.py
       - tools/check_17_operator_bundle.py
+      - tools/audit_three_uncoached.py
+      - tools/run_uncoached_r4_trial.py
       - .github/workflows/preview-17-operator-bundle.yml
   workflow_dispatch:
 
@@ -145,3 +147,45 @@ jobs:
           path: ${{ runner.temp }}/pretorius-seventeen-${{ matrix.platform }}.zip
           retention-days: 30
           if-no-files-found: error
+
+  independent-uncoached-r4:
+    needs: platform-bundle-install
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: experimental-17-book-operator-linux
+          path: ${{ runner.temp }}/operator-download
+      - name: Install verified source-pinned world offline with zero goal inputs
+        run: |
+          python - <<'PY'
+          import os, pathlib, zipfile
+          root = pathlib.Path(os.environ["RUNNER_TEMP"])
+          target = root / "operator-source"
+          target.mkdir()
+          with zipfile.ZipFile(root / "operator-download/pretorius-seventeen-linux.zip") as pack:
+              assert all(not (x.startswith("/") or ".." in pathlib.Path(x).parts)
+                         for x in pack.namelist())
+              pack.extractall(target)
+          PY
+          python "${{ runner.temp }}/operator-source/install.py" --install-root "${{ runner.temp }}/r4-installed"
+      - name: Independent three-distinct-activity R4 test, no task messages or scripted choices
+        run: |
+          python tools/run_uncoached_r4_trial.py \
+            --install-root "${{ runner.temp }}/r4-installed" --seconds 90 \
+            --report "${{ runner.temp }}/independent-r4-report.json"
+      - name: Retain exact-R4 failure evidence regardless of verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-uncoached-three-activities-r4
+          path: ${{ runner.temp }}/independent-r4-report.json
+          retention-days: 30
+          if-no-files-found: warn
