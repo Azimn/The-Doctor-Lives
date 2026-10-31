@@ -1,6 +1,6 @@
 """Candidate B persistent work intention on the ONE original Noesis and Laboratory.
 
-A source-observed workbench plus original six-organ PERSIST tendency may
+A source-observed workbench plus original six-organ source-grounded tendency may
 originate an intention. A separate ORIGINAL Noesis situated choice determines
 repair versus experiment at the real bench. This is bounded host routing, not
 an independent agent, scripted goal sequence, or new motor authority.
@@ -77,7 +77,7 @@ class NativeWorkPursuit:
                 thought = db.execute(
                     "SELECT generated_by FROM thoughts WHERE id=?",
                     (state["origin_thought_id"],)).fetchone()
-                if (origin is None or origin["selected_action"] != "persist" or
+                if (origin is None or origin["selected_action"] not in ("persist", "explore") or
                         thought is None or thought["generated_by"] !=
                         "neural_policy:" + state["origin_policy_id"]):
                     raise ValueError("not an original neural persist intention")
@@ -140,8 +140,9 @@ class NativeWorkPursuit:
         if self.state is not None:
             raise RuntimeError("A native work commitment already exists")
         from .organs import CognitiveProposal
-        if type(proposal) is not CognitiveProposal or proposal.selected_tendency != "persist":
-            raise PermissionError("Only original neural persist can originate work")
+        if (type(proposal) is not CognitiveProposal or
+                proposal.selected_tendency not in ("persist", "explore")):
+            raise PermissionError("Only original neural exploration/persistence can originate work")
         _, latest = self.host.corpus._verified_policy(proposal)
         if latest != proposal.policy_decision_id:
             raise PermissionError("Stale Noesis goal origin")
@@ -150,9 +151,9 @@ class NativeWorkPursuit:
         if not any(e["after_station"] == at and
                    "workbench" in e["offered_payload"]["perceived_features"]
                    for e, _ in scenes):
-            return WorkReceipt("no_situated_goal", None, selected_tendency="persist")
+            return WorkReceipt("no_situated_goal", None, selected_tendency=proposal.selected_tendency)
         if EndogenousBookPursuit._route(at, "station:bench") is None and at != "station:bench":
-            return WorkReceipt("no_situated_goal", None, selected_tendency="persist")
+            return WorkReceipt("no_situated_goal", None, selected_tendency=proposal.selected_tendency)
         # Original world pure transition evaluates the real BENCH's current
         # physics. No host-scripted choice, magical supply, or fake feasibility.
         from pretorius_lab.daily_rhythm import transition
@@ -166,7 +167,7 @@ class NativeWorkPursuit:
                 continue
             possible.append(action)
         if not possible:
-            return WorkReceipt("no_situated_goal", None, selected_tendency="persist")
+            return WorkReceipt("no_situated_goal", None, selected_tendency=proposal.selected_tendency)
         ident = sha256((self._epoch() + "|" +
                         proposal.policy_decision_id).encode()).hexdigest()[:24]
         record = {
@@ -178,7 +179,7 @@ class NativeWorkPursuit:
             "memory_id": None,
         }
         self._save(record)
-        return WorkReceipt("goal_created", ident, selected_tendency="persist")
+        return WorkReceipt("goal_created", ident, selected_tendency=proposal.selected_tendency)
 
     def step(self, *, authorized: bool, new_policy):
         state = self._load()
