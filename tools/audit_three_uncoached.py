@@ -50,7 +50,9 @@ def evaluate_schema_only(workspace: Path) -> dict:
             assert item["sequence"] == n
             assert item["previous_sha256"] == previous
             assert _digest(payload) == item["sha256"]
-            assert item["event"] and isinstance(item["external_input"], bool)
+            assert isinstance(item["event"], str) and item["event"]
+            assert type(item["fields"]) is dict, "ledger fields must be a dictionary"
+            assert type(item["external_input"]) is bool, "external-input boolean required"
             assert len(item["utc"]) >= 20 and item["beat"].startswith("@")
             previous = item["sha256"]
             entries.append(item)
@@ -76,6 +78,9 @@ def evaluate_schema_only(workspace: Path) -> dict:
             problems.append("coached_task_input:" + item["event"])
     created = {}
     verified = {}
+    used_world_events = set()
+    used_memory_ids = set()
+    used_neural_policies = set()
     with closing(_db(brain)) as db, closing(_db(world)) as lab:
         db.row_factory = sqlite3.Row
         for event in entries:
@@ -89,7 +94,9 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 if gid in created:
                     problems.append("duplicate_goal_origin:" + gid)
                 else:
-                    created[gid] = (kind, event["sequence"])
+                    created[gid] = (kind, event["sequence"],
+                                    fields.get("origin_policy_id"),
+                                    fields.get("original_tendency"))
                 continue
             if event["event"] != "native_goal_completed":
                 continue
@@ -97,12 +104,14 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 assert gid in created, "completion lacked recorded origination"
                 assert created[gid][0] == kind
                 assert created[gid][1] < event["sequence"]
+                assert created[gid][2] == fields["origin_policy_id"], "origin policy changed after creation"
+                assert created[gid][3] == fields["original_tendency"], "neural tendency changed after creation"
                 assert fields.get("source_rechecked_by_host") is True
                 assert fields.get("source_attestation_independent") is False
                 assert fields.get("operator_supplied_goal") is None
                 policy_id = fields["origin_policy_id"]
                 p = db.execute(
-                    "SELECT selected_action FROM policy_decisions WHERE id=?",
+                    "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
                     (policy_id,)).fetchone()
                 assert p is not None
                 assert p[0] == fields["original_tendency"]
@@ -111,6 +120,7 @@ def evaluate_schema_only(workspace: Path) -> dict:
                     "work": ("persist", "explore"),
                 }[kind]
                 assert p[0] in expected_origin, "not original neural goal"
+                assert p["trigger"] == "six_organ_lab_cycle", "not a real six-organ policy"
                 key = {"read_book": "six_organ_endogenous_book_goal_v1",
                        "rest": "six_organ_native_rest_intention_v1",
                        "work": "six_organ_native_work_intention_v1"}[kind]
@@ -120,7 +130,23 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 intent = envelope["payload"]
                 assert _digest(intent) == envelope["sha256"], "tampered goal"
                 assert intent["id"] == gid and intent["phase"] == "complete"
+                expected_goals = {
+                    "read_book": ("pretorius.endogenous-book-pursuit.v1",
+                                  "I want to discover a book here and read what it actually says."),
+                    "rest": ("pretorius.native-rest-intention.v1",
+                             "I want to rest somewhere safe."),
+                    "work": ("pretorius.native-work-intention.v1",
+                             "I want to undertake worthwhile work at my laboratory bench."),
+                }
+                assert (intent["schema"], intent["goal"]) == expected_goals[kind], "substituted native goal"
                 assert intent["origin_policy_id"] == policy_id
+                thought = db.execute(
+                    "SELECT generated_by FROM thoughts WHERE id=?",
+                    (intent["origin_thought_id"],)
+                ).fetchone()
+                assert thought is not None and thought["generated_by"] == (
+                    "neural_policy:" + policy_id
+                ), "native goal lacks original Noesis thought"
                 key_memory = "read_memory_id" if kind == "read_book" else "memory_id"
                 assert intent[key_memory] == fields["canonical_memory_id"]
                 mid = fields["canonical_memory_id"]
@@ -186,6 +212,15 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 assert source["world_epoch"] == intent["world_epoch"], "foreign world epoch"
                 if gid in verified:
                     raise AssertionError("Duplicate goal completion")
+                if (table, fields["world_event_id"]) in used_world_events:
+                    raise AssertionError("World receipt reused by another goal")
+                if mid in used_memory_ids:
+                    raise AssertionError("Canonical lived memory reused by another goal")
+                if policy_id in used_neural_policies:
+                    raise AssertionError("Neural origin policy reused by another goal")
+                used_world_events.add((table, fields["world_event_id"]))
+                used_memory_ids.add(mid)
+                used_neural_policies.add(policy_id)
                 verified[gid] = kind
             except (AssertionError, KeyError, TypeError, ValueError,
                     sqlite3.DatabaseError) as exc:
