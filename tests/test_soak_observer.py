@@ -63,6 +63,28 @@ class ObserverTests(unittest.TestCase):
             finally:
                 child.wait(timeout=5)
 
+    @unittest.skipUnless(os.name == "nt", "Windows exit-code 259 ambiguity only")
+    def test_windows_terminated_process_exit_259_is_not_live(self):
+        # Windows STILL_ACTIVE (259) is also a valid final exit code.
+        # Keep Popen's process handle alive so OpenProcess can still open
+        # the terminated process object, rather than relying on PID absence.
+        with tempfile.TemporaryDirectory() as root:
+            log = Path(root) / "runner.jsonl"
+            child = subprocess.Popen([sys.executable, "-c",
+                                      "import sys; sys.exit(259)"])
+            try:
+                self.assertEqual(child.wait(timeout=15), 259)
+                self.assertIsNone(observer._process_identity(child.pid))
+                with self.assertRaisesRegex(RuntimeError, "not alive"):
+                    observer.observe(pid=child.pid, evidence_log=log,
+                                     disk_path=Path(root), seconds=0.1,
+                                     interval=0.02)
+                self.assertFalse(log.exists())
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait(timeout=5)
+
     def test_process_disappearance_after_first_sample_preserves_partial_log(self):
         with tempfile.TemporaryDirectory() as root:
             log = Path(root) / "runner.jsonl"
