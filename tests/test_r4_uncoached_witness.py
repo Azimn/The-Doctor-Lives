@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 
-from tools.observe_uncoached_r4 import sample
+from tools.observe_uncoached_r4 import inspect_neural_origins, sample
 
 
 class R4WitnessTests(unittest.TestCase):
@@ -87,6 +87,38 @@ class R4WitnessTests(unittest.TestCase):
         self.assertIsNone(record["kind"])
         self.assertFalse(record["source_attestation_independent"])
         self.assertIsNone(record["operator_supplied_goal"])
+
+    def test_external_neural_origin_snapshot_is_read_only_and_not_causal_credit(self):
+        # A consistent canonical goal is only an observed database fact.
+        # A coordinated rewrite can satisfy strings and hashes; independent
+        # temporal and original-world custody must still be evaluated.
+        import hashlib
+        with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
+            db.execute("ALTER TABLE policy_decisions ADD COLUMN id TEXT")
+            db.execute("UPDATE policy_decisions SET id='p-real'")
+            db.execute("CREATE TABLE thoughts(id TEXT,generated_by TEXT)")
+            db.execute("INSERT INTO thoughts VALUES('t-real','neural_policy:p-real')")
+            db.execute("CREATE TABLE meta(key TEXT,value TEXT)")
+            goal = {
+                "id": "g-real", "phase": "travel",
+                "origin_policy_id": "p-real", "origin_thought_id": "t-real",
+            }
+            digest = hashlib.sha256(json.dumps(
+                goal, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=True, allow_nan=False,
+            ).encode("utf-8")).hexdigest()
+            db.execute("INSERT INTO meta VALUES(?,?)", (
+                "six_organ_native_work_intention_v1",
+                json.dumps({"payload": goal, "sha256": digest}),
+            ))
+        before = (self.root / "state/brain.sqlite3").read_bytes()
+        snapshot = inspect_neural_origins(self.root)
+        self.assertEqual(snapshot["work"]["goal_id"], "g-real")
+        self.assertTrue(snapshot["work"]["record_consistency_only"])
+        self.assertEqual((self.root / "state/brain.sqlite3").read_bytes(), before)
+        with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
+            db.execute("UPDATE policy_decisions SET trigger='host_scheduled'")
+        self.assertFalse(inspect_neural_origins(self.root)["work"]["record_consistency_only"])
 
     def test_missing_original_world_table_fails_closed(self):
         with sqlite3.connect(self.root / "laboratory.sqlite3") as db:
