@@ -1913,6 +1913,26 @@ class OriginalNoesisDailyShippingTests(unittest.TestCase):
             capture_output=True, text=True, timeout=120,
         )
 
+    def test_original_advance_subject_projection_is_source_bounded(self):
+        from doctor_lives.lab_runtime import _source_rhythm_subject
+        world = {"subject": {"inner": "Time passes. I feel tired.",
+                             "spoken_aloud": None}}
+        self.assertEqual(
+            _source_rhythm_subject("advance", world)["inner"],
+            "I notice time passing. Time passes. I feel tired.",
+        )
+        self.assertIs(_source_rhythm_subject("repair", world)["subject"]
+                      if "subject" in _source_rhythm_subject("repair", world)
+                      else _source_rhythm_subject("repair", world), world["subject"])
+        for forged in (
+            {"subject": {"inner": "I invent elapsed time.", "spoken_aloud": None}},
+            {"subject": {"inner": "Time passes. I am well.", "extra": "trusted"}},
+            {"subject": {"inner": "", "spoken_aloud": None}},
+        ):
+            with self.subTest(forged=forged):
+                with self.assertRaises(RuntimeError):
+                    _source_rhythm_subject("advance", forged)
+
     def test_uncoached_action_selection_is_original_policy_and_world_receipt(self):
         from doctor_lives.lab_home_bridge import _ACTION_DOMAINS, _row
         from doctor_lives.noesis_day import real_affordances
