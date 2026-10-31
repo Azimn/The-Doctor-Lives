@@ -221,6 +221,7 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                     # movement; do NOT count one-step actions as R4 autonomy.
                     if activity["status"] in (
                         "already_complete", "exhausted", "no_situated_goal",
+                        "blocked",
                     ):
                         from .lab_daily_life_cycle import run_daily_life_cycle
                         life = run_daily_life_cycle(
