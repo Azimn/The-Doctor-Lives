@@ -40,7 +40,7 @@ def recovery_options(state: dict[str, Any]) -> tuple[RecoveryOption, ...]:
     It is the embodied navigation layer's job to show a route and Noesis's
     job to choose. A failed option remains visible as a blocker.
     """
-    from pretorius_lab.daily_rhythm import _validate
+    from pretorius_lab.daily_rhythm import _validate, _can_see
     _validate(state)
     needs: list[tuple[str, str, tuple[str, ...]]] = []
     if state["fatigue"] >= 4:
@@ -64,6 +64,18 @@ def recovery_options(state: dict[str, Any]) -> tuple[RecoveryOption, ...]:
     ):
         if state["cleanliness"][room] >= 2:
             needs.append(("clutter:" + room, station, ("clean",)))
+    # Darkness itself is a real obstruction. Original light physics require
+    # oil, a reachable room and exact physical world action, not free vision.
+    for room, station in (
+        ("room:sanctum", "station:bench"),
+        ("room:kitchen", "station:kitchen"),
+        ("room:bedroom", "station:bedroom"),
+        ("room:parlor", "station:parlor"),
+        ("room:hall", "station:hall"),
+        ("room:shop", "station:shop:private"),
+    ):
+        if not _can_see(state, room):
+            needs.append(("darkness:" + room, station, ("light",)))
     options = []
     for need, station, actions in needs:
         ok, blocker = _attempt(state, actions, station)
