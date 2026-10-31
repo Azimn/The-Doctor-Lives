@@ -81,9 +81,163 @@ def _crash(world_path: Path, brain_path: Path):
     raise AssertionError("Physical world commit did not reach crash boundary")
 
 
+def _hard_kill_original_day(state: Path, world: Path, ready: Path):
+    """Installed-wheel child: park AFTER the real Noesis world commit.
+
+    The parent must issue an actual OS hard kill, not a graceful exception
+    or a simulated process failure. No operator message or follow-up motor
+    request crosses the replay boundary.
+    """
+    import time
+    from unittest.mock import patch
+    from doctor_lives.lab_home_bridge import DoctorHomeBridge
+    from doctor_lives.lab_runtime import offer_laboratory_day
+
+    real_admit = DoctorHomeBridge._admit_verified
+
+    def pause_after_world_commit(self, frame, source, **kwargs):
+        if source.startswith("laboratory-home:action:"):
+            # The authentic world action has committed; BrainStore has not
+            # yet admitted its lived consequence. The file is test-only.
+            ready.write_text(source, encoding="utf-8")
+            while True:
+                time.sleep(0.1)
+        return real_admit(self, frame, source, **kwargs)
+
+    with patch.object(DoctorHomeBridge, "_admit_verified",
+                      pause_after_world_commit):
+        offer_laboratory_day(state, world, allow_world_actions=True)
+    raise AssertionError("Hard-kill child unexpectedly completed")
+
+
+def _installed_hard_kill_recovery(console: str, root: Path):
+    """One source-selected physical action, OS kill, zero-input cold recovery.
+
+    This proves exactly-once post-world reconciliation, NOT autonomous
+    continuation of a partially executed multi-step book/rest goal.
+    """
+    from doctor_lives.organs import SixOrganRuntime
+
+    preview = root / "hard-kill-original-laboratory"
+    genesis = json.loads(_run([
+        console, "preview-init", "--workspace", str(preview),
+    ]).stdout)
+    brain = preview / "state"
+    world_path = preview / "laboratory.sqlite3"
+    world = SpatialHabitat(world_path)
+    runtime = SixOrganRuntime.open(brain)
+    bridge = runtime.bind_laboratory(SubjectPort(world), authorized=True)
+    # Legitimate operator fixture preparation only. No selected action is
+    # supplied to the tested original-Noesis opportunity.
+    bridge.act("walk", event_id="kill-setup-center",
+               station="station:center")
+    bridge.act("walk", event_id="kill-setup-bench",
+               station="station:bench")
+    bridge.act("experiment", event_id="kill-setup-wear")
+    runtime.checkpoint()
+    del bridge, runtime
+    gc.collect()
+
+    def operator_turn_count() -> int:
+        with closing(sqlite3.connect(brain / "brain.sqlite3")) as db:
+            exists = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                "AND name='operator_conversation_turns'"
+            ).fetchone()
+            return (db.execute("SELECT COUNT(*) FROM operator_conversation_turns"
+                              ).fetchone()[0] if exists else 0)
+
+    before_turns = operator_turn_count()
+    ready = root / "hard-kill-after-world-before-memory.signal"
+    args = [sys.executable, __file__, "--hard-kill-day",
+            str(brain), str(world_path), str(ready)]
+    child = subprocess.Popen(args, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True)
+    import time
+    try:
+        deadline = time.monotonic() + 120.0
+        while not ready.exists() and child.poll() is None:
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(0.05)
+        assert ready.is_file(), (
+            "Installed original-Noesis child never reached committed world "
+            "action boundary; child returncode=" + repr(child.poll())
+        )
+        assert child.poll() is None, "Child exited before actual hard kill"
+        child.kill()  # SIGKILL on Linux, TerminateProcess on Windows.
+        child.communicate(timeout=30)
+        assert child.returncode != 0
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.communicate(timeout=30)
+
+    source = ready.read_text(encoding="utf-8")
+    assert source.startswith("laboratory-home:action:")
+    journal = Path(str(world_path) + ".doctor-action-intents.sqlite3")
+    with closing(sqlite3.connect(journal)) as db:
+        pending = db.execute(
+            "SELECT event_id,request_json FROM doctor_action_intents "
+            "WHERE status='pending'"
+        ).fetchall()
+    assert len(pending) == 1, ("Missing interrupted physical action", pending)
+    event_id, request_json = pending[0]
+    action = json.loads(request_json)["op"]
+    assert action in ("experiment", "repair", "advance",
+                      "light", "extinguish", "rest", "sleep", "clean",
+                      "brew_tea", "prepare_meal", "eat")
+    with closing(world._open()) as db:
+        receipt = db.execute(
+            "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+            (event_id,),
+        ).fetchall()
+    assert len(receipt) == 1
+    assert source == "laboratory-home:action:" + receipt[0][0]
+
+    def source_memories() -> list:
+        return [
+            m for m in PretoriusBrainPort(brain).brain.store.memories(False)
+            if m["source"] == source
+        ]
+
+    assert source_memories() == [], "Physical effect already admitted before kill"
+    start = [console, "--state", str(brain), "lab-start",
+             "--world", str(world_path)]
+    cold = json.loads(_run(start).stdout)
+    assert cold["status"] == "ready" and cold["recovered"] == 1
+    assert cold["abandoned"] == 0
+    assert len(cold["subject_frames"]) == 1
+    memory = source_memories()
+    assert len(memory) == 1
+    assert memory[0]["evidence_class"] == "lived_runtime_memory"
+    assert memory[0]["text"] == cold["subject_frames"][0]["inner"]
+    assert json.loads(_run(start).stdout)["recovered"] == 0
+    with closing(world._open()) as db:
+        assert db.execute(
+            "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+            (event_id,),
+        ).fetchone()[0] == 1
+    assert len(source_memories()) == 1
+    assert operator_turn_count() == before_turns == 0, (
+        "An external operator message entered the no-input recovery ledger"
+    )
+    assert SpatialHabitat(world_path).verify()["world_epoch"] == genesis["world_epoch"]
+    gc.collect()
+    return {"hard_kill_during_original_noesis_action": True,
+            "hard_kill_action": action, "cold_recovered_without_operator_message": True,
+            "physical_receipts_after_restart": 1,
+            "lived_memories_after_restart": 1,
+            "uncoached_multistep_goal_resumption_proven": False}
+
+
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == "--crash":
         _crash(Path(sys.argv[2]), Path(sys.argv[3]))
+        return
+    if len(sys.argv) == 5 and sys.argv[1] == "--hard-kill-day":
+        _hard_kill_original_day(Path(sys.argv[2]), Path(sys.argv[3]),
+                                Path(sys.argv[4]))
         return
     assert len(sys.argv) == 1, "Unexpected smoke-test arguments"
     import doctor_lives
@@ -365,6 +519,8 @@ def main():
         assert SpatialHabitat(preview_world).verify()["world_epoch"] == (
             preview_genesis["world_epoch"]
         )
+
+        hard_kill_evidence = _installed_hard_kill_recovery(console, root)
 
         world_path, brain_path = root / "world.sqlite3", root / "brain"
         world = SpatialHabitat.create(world_path)
@@ -878,7 +1034,8 @@ def main():
         # rather than explicit closes. Do not mask Windows handle leaks by
         # disabling TemporaryDirectory cleanup; reclaim unreferenced handles.
         gc.collect()
-        print(json.dumps({"result": "PASS", "installed_console": True,
+        print(json.dumps({"hard_kill_evidence": hard_kill_evidence,
+                          "result": "PASS", "installed_console": True,
                           "original_lab_world_actions": 1,
                           "verified_lived_memories": 1,
                           "preview_noesis_distinct_work_actions": 2,
