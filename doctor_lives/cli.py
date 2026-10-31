@@ -75,6 +75,9 @@ def parser() -> argparse.ArgumentParser:
     ):
         command = sp.add_parser(name, help=hint)
         command.add_argument("--workspace", type=Path, required=True)
+        if name == "preview-start":
+            command.add_argument("--native-affectus-source", type=Path, default=None,
+                                 help="Opt into persisted native book/rest goal opportunities with reviewed local donors; no goal is supplied")
     x=sp.add_parser("chat", help="Two-way source-verified local operator conversation"); x.add_argument("--world",type=Path,required=True); x.add_argument("--text",default=None); x.add_argument("--request-id",default=None); x.add_argument("--day",type=int,default=1); x.add_argument("--local-model",default=None)
     x=sp.add_parser("chat-serve", help="Loopback-only local HTML conversation client"); x.add_argument("--world",type=Path,required=True); x.add_argument("--port",type=int,default=8766); x.add_argument("--local-model",default=None)
     x=sp.add_parser("chat-opportunity", help="Offer Noesis a genuine opportunity to initiate a message"); x.add_argument("--world",type=Path,required=True); x.add_argument("--cycle",type=int,required=True); x.add_argument("--day",type=int,required=True)
@@ -109,7 +112,7 @@ def main(argv=None) -> int:
             raise ValueError("Local model requires --human and a valid identifier")
     if a.cmd in ("preview-start", "preview-status", "preview-stop", "preview-resume"):
         from .preview_operator import command
-        return command(a.cmd, a.workspace)
+        return command(a.cmd, a.workspace, native_source=getattr(a, "native_affectus_source", None))
     if a.cmd == "preview-init":
         from .lab_preview import initialize_preview
         emit(initialize_preview(a.workspace))

@@ -16,6 +16,7 @@ import time
 from .lab_preview import initialize_preview
 from .lab_runtime import _exclusive_lock, run_laboratory
 from .preview_ledger import append_activity, read_activity_ledger
+from .preview_native import configured_source, native_step, select_native, verify_donors
 
 
 def _utc() -> str:
@@ -120,7 +121,11 @@ def stop(workspace: Path) -> int:
     return 4
 
 
-def run(workspace: Path, *, resume: bool = False) -> int:
+def run(workspace: Path, *, resume: bool = False, native_source: Path | None = None) -> int:
+    if native_source is not None:
+        if resume:
+            raise ValueError("Resume cannot change native donor selection")
+        verify_donors(native_source)  # fail BEFORE creating a new workspace
     workspace = _workspace(workspace, create=not resume)
     # This lease lasts across all cognitive runs. A second operator process
     # cannot compete with the same brain/world even between scheduled pulses.
@@ -128,6 +133,12 @@ def run(workspace: Path, *, resume: bool = False) -> int:
         request = workspace / ".preview-stop-request"
         if request.exists() or request.is_symlink():
             raise RuntimeError("Outstanding stop request: refuse ambiguous restart")
+        if native_source is not None:
+            if select_native(workspace, native_source):
+                append_activity(workspace, event="operator_native_mode_selected",
+                                external_input=True,
+                                fields={"source_pinned": True, "operator_supplied_goal": None})
+        effective_native = configured_source(workspace)
         started = _utc()
         previous = _read_status(workspace)
         if resume and previous is None:
@@ -138,7 +149,7 @@ def run(workspace: Path, *, resume: bool = False) -> int:
             "status": "running", "workspace": str(workspace),
             "pid": os.getpid(), "run_index": run_index,
             "started_at": started, "last_heartbeat": started,
-            "current_activity": "original_laboratory_observation",
+            "current_activity": ("native_laboratory_goal_opportunity" if effective_native is not None else "original_laboratory_observation"),
             "last_action": None if previous is None else previous.get("last_action"),
             "last_action_origin": None if previous is None else previous.get("last_action_origin"),
             "operator_initiated": True, "uncoached_three_task_life_proven": False,
@@ -153,16 +164,39 @@ def run(workspace: Path, *, resume: bool = False) -> int:
         append_activity(workspace, event="operator_resume" if resume else "operator_start",
                         external_input=True,
                         fields={"run_index": run_index, "operator_supplied_goal": None})
-        append_activity(workspace, event="host_observation_started",
+        append_activity(workspace, event=(
+                            "native_goal_opportunity_started" if effective_native is not None
+                            else "host_observation_started"),
                         external_input=False,
                         fields={"chosen_by": "host_scheduler",
-                                "uncoached_doctor_activity": False})
+                                "operator_supplied_goal": None,
+                                "uncoached_three_task_life_proven": False})
         _write_status(workspace, report)
         _response({"status": "running", "workspace": str(workspace), "pid": os.getpid()})
         # A laboratory observation is a host opportunity, NOT a self-chosen
         # Doctor goal. Only Noesis may select a physically feasible bench action.
         try:
             while not request.exists():
+                if effective_native is not None:
+                    activity = native_step(
+                        workspace / "state", workspace / "laboratory.sqlite3",
+                        effective_native)
+                    append_activity(workspace, event="native_goal_" + activity["status"],
+                                    external_input=False,
+                                    fields={**activity, "host_offered_opportunity": True})
+                    report["current_activity"] = (
+                        activity["kind"] + ":" + activity["goal_id"]
+                        if activity["kind"] and activity["goal_id"]
+                        else "native_laboratory_goal_opportunity")
+                    if activity["status"] in ("moved", "opened", "completed"):
+                        report["last_action"] = activity["status"]
+                        report["last_action_origin"] = "original_neural_tendency_host_mapped"
+                    # A bounded pacing interval lets the operator observe,
+                    # interrupt, and reconcile between actual physical steps.
+                    report["last_heartbeat"] = _utc()
+                    _write_status(workspace, report)
+                    time.sleep(0.5)
+                    continue
                 result = run_laboratory(
                     workspace / "state", workspace / "laboratory.sqlite3",
                     duration_seconds=1.0, interval_seconds=0.25,
@@ -198,14 +232,14 @@ def run(workspace: Path, *, resume: bool = False) -> int:
         return 0
 
 
-def command(kind: str, workspace: Path) -> int:
+def command(kind: str, workspace: Path, native_source: Path | None = None) -> int:
     try:
         if kind == "preview-status":
             return status(workspace)
         if kind == "preview-stop":
             return stop(workspace)
         if kind in ("preview-start", "preview-resume"):
-            return run(workspace, resume=(kind == "preview-resume"))
+            return run(workspace, resume=(kind == "preview-resume"), native_source=native_source)
         raise ValueError("Unknown preview command")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
         print(f"{kind}: {exc}", file=sys.stderr)
