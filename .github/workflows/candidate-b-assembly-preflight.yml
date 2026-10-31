@@ -55,6 +55,6 @@ jobs:
           assert "self._port.brain.store" in inspect.getsource(SixOrganRuntime.bind_conclave)
           assert "self._port.brain.store" in inspect.getsource(SixOrganRuntime.bind_phantasmagorium)
           assert "authorized_world_action" not in inspect.getsource(PhantasmagoriumBridge)
-          assert "self.store" in inspect.getsource(Conclave)
+          assert "self._store" in inspect.getsource(Conclave)
           print("Both opt-in faculties share the original BrainStore; zero action authority")
           PY
