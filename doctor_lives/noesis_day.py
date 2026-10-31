@@ -34,6 +34,28 @@ def physical_args(action: str) -> dict:
     return {"minutes": 60} if action == "advance" else {}
 
 
+def pending_daily_action_ids(bridge: DoctorHomeBridge) -> tuple[str, ...]:
+    """Read-only canonical reservations awaiting world/memory reconciliation.
+
+    This does not execute a physical action or invent a replacement goal.
+    The caller must have separate world authorization before replay.
+    """
+    if not isinstance(bridge, DoctorHomeBridge):
+        raise TypeError("Original Laboratory bridge required for pending-action audit")
+    with bridge.doctor.brain.store.connect() as db:
+        rows = db.execute(
+            "SELECT id,state_pressure_json FROM policy_decisions "
+            "WHERE trigger='noesis_situated_choice' ORDER BY rowid"
+        ).fetchall()
+    pending = []
+    for row in rows:
+        evidence = json.loads(row["state_pressure_json"])
+        if (evidence.get("motor_authorization") == "authorized"
+                and evidence.get("motor_completion") != "admitted"):
+            pending.append(row["id"])
+    return tuple(pending)
+
+
 def real_affordances(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     """Enumerate the ORIGINAL world physics, never a host-supplied task list."""
     from pretorius_lab.daily_rhythm import OPERATIONS, transition

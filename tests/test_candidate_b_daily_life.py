@@ -129,6 +129,67 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertEqual(count, 1)
         return replay[0]
 
+
+    def test_pending_daily_motor_requires_permission_and_preempts_new_action(self):
+        """A restart may reconcile ONE original motor, never silently do TWO.
+
+        No-permission cycles still exercise six organs, but cannot execute a
+        reserved action. An authorized cold cycle replays its original receipt
+        and lived memory without selecting another physical daily motor.
+        """
+        from doctor_lives.lab_home_bridge import _ACTION_DOMAINS
+        from doctor_lives.noesis_day import reconcile_pending_daily_action
+        bridge, choice, event_id = self._reserve_crash_window()
+        with self.lab._open() as db:
+            original_moves = db.execute(
+                "SELECT count(*) FROM embodied_events WHERE "
+                "json_extract(envelope, '$.kind')='move'"
+            ).fetchone()[0]
+        denied = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=False)
+        self.assertEqual(denied["pending_prior_noesis_actions"],
+                         [choice.policy_id])
+        self.assertTrue(denied["new_motor_suppressed_for_recovery"])
+        self.assertIsNone(denied["world_effect"])
+        self.assertIsNone(denied["daily_noesis_policy_id"])
+        self.assertEqual(len(denied["all_six_ports_invoked"]), 6)
+        self.assertIsNone(bridge.existing_action_intent(event_id))
+
+        allowed = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=True)
+        self.assertEqual(allowed["pending_prior_noesis_actions"], [])
+        self.assertTrue(allowed["new_motor_suppressed_for_recovery"])
+        self.assertEqual(len(allowed["reconciled_prior_noesis_actions"]), 1)
+        self.assertEqual(allowed["reconciled_prior_noesis_actions"][0]["event_id"],
+                         event_id)
+        self.assertIsNone(allowed["world_effect"])
+        self.assertIsNone(allowed["daily_noesis_policy_id"])
+        self.assertEqual(len(allowed["all_six_ports_invoked"]), 6)
+        self.assertEqual(reconcile_pending_daily_action(bridge), ())
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM " + _ACTION_DOMAINS[choice.action]
+                + " WHERE event_id=?", (event_id,)).fetchone()[0], 1)
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM embodied_events WHERE "
+                "json_extract(envelope, '$.kind')='move'"
+            ).fetchone()[0], original_moves)
+        store = SixOrganRuntime.open(self.state)._port.brain.store
+        with store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0], 1)
+        recovered = allowed["reconciled_prior_noesis_actions"][0]
+        memory = store.get_memory(recovered["memory_id"])
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+        self.assertEqual(sum(
+            m["source"] == memory["source"] for m in store.memories(False)
+        ), 1)
+
     def test_reserved_daily_motor_restarts_without_second_noesis_choice(self):
         from pretorius_lab.habitat_v2 import SpatialHabitat
         from pretorius_lab.subject_port import SubjectPort
