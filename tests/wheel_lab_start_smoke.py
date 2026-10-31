@@ -176,6 +176,62 @@ def main():
             decision[0]
         )["used_outcome_memory_ids"]
 
+        # Real subsequent decision, not a generated transcript: cold-start the
+        # SAME 4,096-neuron individual after Noesis repairs the observed wear.
+        # Original Laboratory physics now offers a different action. A fresh
+        # installed CLI process must select it without a requested action name.
+        assert work_report["action"] == "repair", (
+            "Observed apparatus wear must produce the source-backed repair choice"
+        )
+        with closing(SpatialHabitat(preview_world)._open()) as world_db:
+            repaired = json.loads(world_db.execute(
+                "SELECT value FROM rhythm_meta WHERE key='state'"
+            ).fetchone()[0])
+        assert repaired["apparatus"] == 3
+        between_actions = json.loads(_run(preview_start).stdout)
+        assert between_actions["status"] == "ready"
+        assert between_actions["recovered"] == 0
+        followup_id = "preview-noesis-followup-after-repair"
+        followup = json.loads(_run([
+            console, "--state", str(preview_state), "lab-work",
+            "--world", str(preview_world), "--event-id", followup_id,
+        ]).stdout)
+        assert followup["status"] == "admitted"
+        assert followup["selection"] == "original_noesis"
+        assert followup["action"] == "experiment", (
+            "A real post-repair world observation must change the next choice"
+        )
+        with closing(SpatialHabitat(preview_world)._open()) as world_db:
+            followup_receipt = world_db.execute(
+                "SELECT event_hash,envelope FROM rhythm_events WHERE event_id=?",
+                (followup_id,),
+            ).fetchone()
+            after_followup = json.loads(world_db.execute(
+                "SELECT value FROM rhythm_meta WHERE key='state'"
+            ).fetchone()[0])
+        assert followup_receipt is not None
+        assert json.loads(followup_receipt[1])["op"] == "experiment"
+        assert after_followup["apparatus"] == 2
+        followup_source = "laboratory-home:action:" + followup_receipt[0]
+        assert followup_source != physical_source
+        followup_memories = [
+            m for m in PretoriusBrainPort(preview_state).brain.store.memories(False)
+            if m["source"] == followup_source
+        ]
+        assert len(followup_memories) == 1
+        assert followup_memories[0]["evidence_class"] == "lived_runtime_memory"
+        assert followup_memories[0]["text"] == followup["subject_frames"][-1]["inner"]
+        with closing(PretoriusBrainPort(preview_state).brain.store.connect()) as mind_db:
+            choices = mind_db.execute(
+                "SELECT selected_action,state_pressure_json FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice' ORDER BY rowid DESC LIMIT 2"
+            ).fetchall()
+        assert [row[0] for row in choices] == ["experiment", "repair"]
+        assert all(json.loads(row[1])["selector_authority"] == "original_noesis"
+                   for row in choices)
+        assert json.loads(choices[0][1])["observation_memory_id"]
+        assert json.loads(_run(preview_start).stdout)["recovered"] == 0
+
         # The installed 4,096-neuron preview must survive a complete offline
         # backup/restore into a new, clean workspace, not merely two starts.
         preview_archive = root / "operator-preview-backup"
@@ -202,15 +258,17 @@ def main():
         assert SpatialHabitat(restored_preview_world).verify()["world_epoch"] == (
             preview_genesis["world_epoch"]
         )
-        assert sum(
-            m["source"] == physical_source
-            for m in PretoriusBrainPort(restored_preview_state).brain.store.memories(False)
-        ) == 1
+        for authenticated_source in (physical_source, followup_source):
+            assert sum(
+                m["source"] == authenticated_source
+                for m in PretoriusBrainPort(restored_preview_state).brain.store.memories(False)
+            ) == 1
         with closing(SpatialHabitat(restored_preview_world)._open()) as restored_db:
-            assert restored_db.execute(
-                "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
-                (noesis_work_id,),
-            ).fetchone()[0] == 1
+            for original_work_id in (noesis_work_id, followup_id):
+                assert restored_db.execute(
+                    "SELECT COUNT(*) FROM rhythm_events WHERE event_id=?",
+                    (original_work_id,),
+                ).fetchone()[0] == 1
         with np.load(restored_preview_state / "pretorius_recurrent.npz",
                      allow_pickle=False) as checkpoint:
             assert json.loads(str(checkpoint["cfg_json"].item()))["neurons"] == 4096
@@ -763,6 +821,10 @@ def main():
         print(json.dumps({"result": "PASS", "installed_console": True,
                           "original_lab_world_actions": 1,
                           "verified_lived_memories": 1,
+                          "preview_noesis_distinct_work_actions": 2,
+                          "preview_authenticated_work_memories": 2,
+                          "preview_later_changed_decision": True,
+                          "preview_cold_restart_between_decisions": True,
                           "recovered_on_restart": 1,
                           "recovered_on_second_restart": 0,
                           "missing_authority_denied": True,
