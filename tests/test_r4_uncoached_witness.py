@@ -60,6 +60,34 @@ class R4WitnessTests(unittest.TestCase):
                                 baseline_world_receipts=1)["failure_class_candidate"],
                          "silent_skip_candidate")
 
+    def test_no_situated_goal_retains_source_tendency_without_r4_credit(self):
+        # The installed operator must not erase Noesis's actual tendency on
+        # a failed goal opportunity. This is a forwarding test, NOT evidence
+        # of autonomous goal creation, physical action, or a real donor run.
+        from unittest.mock import patch
+        from doctor_lives.preview_native import native_step
+
+        source = {
+            "receipts": [{
+                "status": "no_situated_goal", "kind": None, "goal_id": None,
+                "memory_id": None, "selected_tendency": "persist",
+            }],
+            "same_original_brain": True,
+            "original_world_epoch_unchanged": True,
+        }
+        with patch("doctor_lives.lab_runtime.run_native_laboratory",
+                   return_value=source) as native:
+            record = native_step(
+                self.root / "state", self.root / "laboratory.sqlite3",
+                self.root / "unopened-affectus-source")
+        native.assert_called_once()
+        self.assertEqual(record["status"], "no_situated_goal")
+        self.assertEqual(record["selected_tendency"], "persist")
+        self.assertIsNone(record["goal_id"])
+        self.assertIsNone(record["kind"])
+        self.assertFalse(record["source_attestation_independent"])
+        self.assertIsNone(record["operator_supplied_goal"])
+
     def test_missing_original_world_table_fails_closed(self):
         with sqlite3.connect(self.root / "laboratory.sqlite3") as db:
             db.execute("DROP TABLE books_events")
