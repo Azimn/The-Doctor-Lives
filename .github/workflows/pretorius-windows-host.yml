@@ -10,6 +10,8 @@ on:
       - tests/test_lab_preview.py
       - doctor_lives/lab_soak.py
       - tests/test_lab_soak.py
+      - scripts/observe_soak_runner.py
+      - tests/test_soak_observer.py
       - doctor_lives/lab_backup.py
       - doctor_lives/cli.py
       - doctor_lives/local_subject_gloss.py
@@ -61,6 +63,11 @@ jobs:
         shell: pwsh
         run: |
           python -m unittest discover -s tests -p test_lab_soak.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Windows independent-process runner-health observer and fail-closed controls
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_soak_observer.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Windows canonical evidence checkout and deliberate active-evidence tamper negatives
         shell: pwsh
