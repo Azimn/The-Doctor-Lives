@@ -15,7 +15,201 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  smoke-20-minutes:
+    if: ${{ github.event_name == 'push' && github.repository == 'Azimn/The-Doctor-Lives' && github.ref == 'refs/heads/qa/frozen-a-github-four-hour-20261031' && github.event.repository.fork == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      DOCTOR_SHA: a8cc49ab15a4d6453c8a5954e1a39a047e4fe4a3
+      LAB_SHA: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ROOT: ${{ github.workspace }}/pretorius-smoke
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: pretorius-smoke/qa-workflow
+          persist-credentials: false
+      - name: Verify isolated QA harness, not a PR merge
+        shell: bash
+        run: |
+          test "$(git -C "$ROOT/qa-workflow" rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$DOCTOR_SHA" = "a8cc49ab15a4d6453c8a5954e1a39a047e4fe4a3"
+          test "$LAB_SHA" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+      - name: Resolve exact sources and verify SHA custody
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/evidence" "$ROOT/wheels"
+          for pair in "doctor:$DOCTOR_SHA:Azimn/The-Doctor-Lives" "lab:$LAB_SHA:Azimn/Pretorius-Laboratory"; do
+            IFS=: read -r name sha repo <<< "$pair"
+            git init -q "$ROOT/$name"
+            git -C "$ROOT/$name" remote add origin "https://github.com/$repo.git"
+            git -C "$ROOT/$name" fetch -q --no-tags --depth=1 origin "$sha"
+            git -C "$ROOT/$name" checkout -q --detach FETCH_HEAD
+            test "$(git -C "$ROOT/$name" rev-parse HEAD)" = "$sha"
+          done
+          {
+            printf 'doctor=%s\nlaboratory=%s\nworkflow_commit=%s\nrun_id=%s\n' "$DOCTOR_SHA" "$LAB_SHA" "$GITHUB_SHA" "$GITHUB_RUN_ID"
+            printf 'provenance_utc=%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            python --version
+          } | tee "$ROOT/evidence/provenance.txt"
+
+      - name: Build, seal, verify, and offline-install pinned wheels
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip wheel --wheel-dir "$ROOT/wheels" "$ROOT/doctor" "$ROOT/lab" > "$ROOT/evidence/wheels.log" 2>&1 || {
+            tail -n 100 "$ROOT/evidence/wheels.log"; exit 1;
+          }
+          python "$ROOT/doctor/tools/offline_wheelhouse.py" seal --wheelhouse "$ROOT/wheels" --doctor-sha "$DOCTOR_SHA" --lab-sha "$LAB_SHA" | tee "$ROOT/evidence/wheel-seal.json"
+          python "$ROOT/doctor/tools/offline_wheelhouse.py" verify --wheelhouse "$ROOT/wheels" --doctor-sha "$DOCTOR_SHA" --lab-sha "$LAB_SHA" | tee "$ROOT/evidence/wheel-verify.json"
+          cp "$ROOT/wheels/pretorius-wheelhouse-manifest.json" "$ROOT/evidence/wheelhouse-manifest.json"
+          python -m venv "$ROOT/venv"
+          "$ROOT/venv/bin/python" -m pip install --no-index --find-links "$ROOT/wheels" 'the-doctor-lives[laboratory]==0.5.0rc2' > "$ROOT/evidence/offline-install.log" 2>&1 || {
+            cat "$ROOT/evidence/offline-install.log"; exit 1;
+          }
+          "$ROOT/venv/bin/python" -m pip check | tee "$ROOT/evidence/pip-check.txt"
+          "$ROOT/venv/bin/python" -m pip freeze > "$ROOT/evidence/freeze.txt"
+          (cd "$RUNNER_TEMP" && env -u PYTHONPATH "$ROOT/venv/bin/python" -c 'import doctor_lives,pretorius_lab; assert "site-packages" in doctor_lives.__file__; assert "site-packages" in pretorius_lab.__file__; print("both original wheels installed")')
+
+      - name: Genesis of a disposable Doctor and original Laboratory
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd "$RUNNER_TEMP" && env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" preview-init --workspace "$ROOT/preview") | tee "$ROOT/evidence/genesis.json"
+          (cd "$RUNNER_TEMP" && env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-start --world "$ROOT/preview/laboratory.sqlite3") | tee "$ROOT/evidence/initial-status.json"
+
+      - name: Disclose researcher-controlled bench fixture without autonomy credit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          env -u PYTHONPATH "$ROOT/venv/bin/python" - <<'PY'
+          import json, os
+          from pathlib import Path
+          from doctor_lives.organs import SixOrganRuntime
+          from pretorius_lab.habitat_v2 import SpatialHabitat
+          from pretorius_lab.subject_port import SubjectPort
+          root = Path(os.environ['ROOT'])
+          state, world = root/'preview/state', root/'preview/laboratory.sqlite3'
+          plan = [('walk', {'event_id':'qa-4h-operator-center','station':'station:center'}),
+                  ('walk', {'event_id':'qa-4h-operator-bench','station':'station:bench'}),
+                  ('experiment', {'event_id':'qa-4h-operator-apparatus-wear'})]
+          record = {'schema':'qa-4h-operator-setup.v1','autonomy_credit':False,
+                    'purpose':'Place subject at bench and create real apparatus wear for an opportunity, not specify future choices',
+                    'planned':plan,'observed':[],'status':'started'}
+          out = root/'evidence/operator-setup.json'
+          out.write_text(json.dumps(record,indent=2))
+          runtime=SixOrganRuntime.open(state)
+          bridge=runtime.bind_laboratory(SubjectPort(SpatialHabitat(world)), authorized=True)
+          for action, kwargs in plan:
+              result=bridge.act(action, **kwargs)
+              record['observed'].append({'actor':'operator_fixture','action':action,'event_id':kwargs['event_id'],'status':result.get('status')})
+              out.write_text(json.dumps(record,indent=2))
+              if result.get('status') != 'admitted':
+                  raise RuntimeError('Operator fixture failed: '+str(record['observed'][-1]))
+          runtime.checkpoint()
+          record['status']='prepared'
+          out.write_text(json.dumps(record,indent=2))
+          print('Operator setup disclosed and completed; no autonomy credited')
+          PY
+
+      - name: Observe 20 real minutes and enforce five canonical policy receipts
+        shell: bash
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          producer=0
+          observer=0
+          cleanup() {
+            if test "$producer" -gt 0; then kill "$producer" 2>/dev/null || true; fi
+            if test "$observer" -gt 0; then kill "$observer" 2>/dev/null || true; fi
+          }
+          trap cleanup EXIT
+          env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-soak \
+            --world "$ROOT/preview/laboratory.sqlite3" --evidence-log "$ROOT/evidence/soak.jsonl" \
+            --seconds 1320 --segment-seconds 120 --interval-seconds 30 --work-every-seconds 60 \
+            > "$ROOT/evidence/soak.stdout.log" 2> "$ROOT/evidence/soak.stderr.log" &
+          producer=$!
+          "$ROOT/venv/bin/python" "$ROOT/doctor/scripts/observe_soak_runner.py" \
+            --pid "$producer" --disk-path "$ROOT" --soak-log "$ROOT/evidence/soak.jsonl" \
+            --evidence-log "$ROOT/evidence/runner-health.jsonl" --seconds 1200 --interval 30 \
+            > "$ROOT/evidence/observer.stdout.log" 2> "$ROOT/evidence/observer.stderr.log" &
+          observer=$!
+          echo "SMOKE running: 1200 real observed seconds; world setup is external researcher input"
+          while kill -0 "$observer" 2>/dev/null; do
+            if ! kill -0 "$producer" 2>/dev/null; then
+              echo "SMOKE_PRODUCER_EXITED_BEFORE_OBSERVER" >&2
+              wait "$producer" || true
+              exit 1
+            fi
+            sleep 30
+          done
+          wait "$observer" || { cat "$ROOT/evidence/observer.stderr.log"; exit 1; }
+          wait "$producer" || { cat "$ROOT/evidence/soak.stderr.log"; exit 1; }
+          env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-soak-verify \
+            --world "$ROOT/preview/laboratory.sqlite3" --evidence-log "$ROOT/evidence/soak.jsonl" \
+            | tee "$ROOT/evidence/source-verification.json"
+          "$ROOT/venv/bin/python" "$ROOT/qa-workflow/qa/soak/frozen_a_ledger.py" \
+            --state "$ROOT/preview/state" --world "$ROOT/preview/laboratory.sqlite3" \
+            --setup "$ROOT/evidence/operator-setup.json" \
+            --ledger "$ROOT/evidence/opportunities.jsonl" \
+            --summary "$ROOT/evidence/opportunity-summary.json" --min-complete 5
+          "$ROOT/venv/bin/python" - <<'PY'
+          import json,os
+          from pathlib import Path
+          ev=Path(os.environ['ROOT'])/'evidence'
+          source=json.loads((ev/'source-verification.json').read_text())
+          ledger=json.loads((ev/'opportunity-summary.json').read_text())
+          samples=[json.loads(x) for x in (ev/'runner-health.jsonl').read_text().splitlines()]
+          span=(samples[-1]['monotonic_ns']-samples[0]['monotonic_ns'])/1e9 if len(samples)>=2 else 0
+          checks={'observed_real_20_minutes':span>=1200,
+                  'original_lab_epoch_verified':source.get('original_world_epoch_verified') is True,
+                  'five_policy_receipt_memory_triples':ledger['smoke_gate_passed'] is True,
+                  'five_original_source_receipts':source.get('original_noesis_work_events_verified',0)>=5,
+                  'operator_conversation_absent':ledger['operator_conversation_turns']==0}
+          result={'schema':'qa-frozen-a-corrected-smoke.v1','checks':checks,
+                  'pass':all(checks.values()),'candidate':'a8cc49ab15a4d6453c8a5954e1a39a047e4fe4a3',
+                  'lab':'6e49795752835d64fa6fd63d16359669a1ca2ba7',
+                  'operator_setup_external':True,'r5_accepted':False,
+                  'source_report':source,'opportunities':ledger}
+          (ev/'smoke-final.json').write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')
+          print(json.dumps({'checks':checks,'pass':result['pass']},sort_keys=True))
+          if not result['pass']: raise SystemExit('SMOKE_GATE_FAILED: incomplete source or elapsed-time check')
+          PY
+
+      - name: Pack original world, mind, and evidence even on failure
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p "$ROOT/export"
+          if test -d "$ROOT/evidence"; then cp -a "$ROOT/evidence" "$ROOT/export/evidence"; fi
+          if test -d "$ROOT/preview"; then tar -czf "$ROOT/export/fresh-world-and-mind.tar.gz" -C "$ROOT" preview; fi
+          (cd "$ROOT/export" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS.txt)
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > "$ROOT/export/exported-utc.txt"
+
+      - name: Preserve complete experiment result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frozen-pretorius-a-smoke-${{ github.run_id }}
+          path: ${{ github.workspace }}/pretorius-smoke/export/
+          if-no-files-found: warn
+          retention-days: 14
+
   hosted-four-hours:
+    needs: smoke-20-minutes
+    if: ${{ needs.smoke-20-minutes.result == 'success' && github.event_name == 'push' && github.repository == 'Azimn/The-Doctor-Lives' && github.ref == 'refs/heads/qa/frozen-a-github-four-hour-20261031' && github.event.repository.fork == false }}
+    permissions:
+      contents: read
+      issues: write
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     env:
@@ -28,6 +222,41 @@ jobs:
         with:
           python-version: '3.12'
 
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: pretorius-hosted/qa-workflow
+          persist-credentials: false
+      - name: Verify isolated QA harness, not a PR merge
+        shell: bash
+        run: |
+          test "$(git -C "$ROOT/qa-workflow" rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$DOCTOR_SHA" = "a8cc49ab15a4d6453c8a5954e1a39a047e4fe4a3"
+          test "$LAB_SHA" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+      - name: Announce authorized 4h launch in issue 99 after successful smoke
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          body=("OWNER-AUTHORIZED CORRECTED FOUR-HOUR EXPERIMENT STARTED AFTER PASSED SMOKE. "
+                "Run ID: "+os.environ['GITHUB_RUN_ID']+"; branch: "+os.environ['GITHUB_REF_NAME']
+                +"; workflow SHA: "+os.environ['GITHUB_SHA']
+                +"; Doctor A: a8cc49ab15a4d6453c8a5954e1a39a047e4fe4a3; "
+                "Laboratory: 6e49795752835d64fa6fd63d16359669a1ca2ba7. "
+                "Four-hour job launched, verdict pending; zero R4 or R5 acceptance. "
+                "Prior operator fixture is classified external input.")
+          req=urllib.request.Request('https://api.github.com/repos/Azimn/The-Doctor-Lives/issues/99/comments',
+              data=json.dumps({'body':body}).encode(),
+              headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+                       'Accept':'application/vnd.github+json',
+                       'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},
+              method='POST')
+          with urllib.request.urlopen(req,timeout=30) as response:
+              assert response.status==201
+          print("Four-hour start announced:",os.environ['GITHUB_RUN_ID'],os.environ['GITHUB_SHA'])
+          PY
       - name: Resolve exact sources and verify SHA custody
         shell: bash
         run: |
@@ -122,7 +351,7 @@ jobs:
           trap cleanup EXIT
           env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-soak \
             --world "$ROOT/preview/laboratory.sqlite3" --evidence-log "$ROOT/evidence/soak.jsonl" \
-            --seconds 14520 --segment-seconds 60 --interval-seconds 30 --work-every-seconds 60 \
+            --seconds 14520 --segment-seconds 120 --interval-seconds 30 --work-every-seconds 60 \
             > "$ROOT/evidence/soak.stdout.log" 2> "$ROOT/evidence/soak.stderr.log" &
           producer=$!
           echo "Producer PID=$producer; original Noesis controls work decisions"
@@ -150,12 +379,18 @@ jobs:
           env -u PYTHONPATH "$ROOT/venv/bin/doctor-lives" --state "$ROOT/preview/state" lab-soak-verify \
             --world "$ROOT/preview/laboratory.sqlite3" --evidence-log "$ROOT/evidence/soak.jsonl" \
             | tee "$ROOT/evidence/source-verification.json"
+          "$ROOT/venv/bin/python" "$ROOT/qa-workflow/qa/soak/frozen_a_ledger.py" \
+            --state "$ROOT/preview/state" --world "$ROOT/preview/laboratory.sqlite3" \
+            --setup "$ROOT/evidence/operator-setup.json" \
+            --ledger "$ROOT/evidence/opportunities.jsonl" \
+            --summary "$ROOT/evidence/opportunity-summary.json" --min-complete 1 --no-gate
           "$ROOT/venv/bin/python" - <<'PY'
           import json, os
           from pathlib import Path
           root=Path(os.environ['ROOT'])
           evidence=root/'evidence'
           source=json.loads((evidence/'source-verification.json').read_text())
+          policy_ledger=json.loads((evidence/'opportunity-summary.json').read_text())
           obs=[json.loads(x) for x in (evidence/'runner-health.jsonl').read_text().splitlines()]
           gaps=[(b['monotonic_ns']-a['monotonic_ns'])/1e9 for a,b in zip(obs,obs[1:])]
           checks={
@@ -163,6 +398,7 @@ jobs:
              'source_active_4h':source.get('active_seconds',0)>=14400,
              'world_epoch_verified':source.get('original_world_epoch_verified') is True,
              'original_noesis_receipt':source.get('original_noesis_work_events_verified',0)>=1,
+             'policy_ledger_authenticated':policy_ledger['complete_original_noesis_opportunities']>=1 and policy_ledger['missing_or_invalid_opportunities']==0 and policy_ledger['operator_conversation_turns']==0,
              'observed_process_4h':len(obs)>=2 and (obs[-1]['monotonic_ns']-obs[0]['monotonic_ns'])/1e9>=14400,
              'no_observer_gaps_over_60':bool(gaps) and max(gaps)<=60,
              'one_process_identity':len({(x['observed_pid'],x['process_start_identity']) for x in obs})==1,
@@ -172,6 +408,7 @@ jobs:
                   'source_report':source,'observer_samples':len(obs),
                   'largest_observer_gap_seconds':max(gaps) if gaps else None,
                   'autonomous_three_task_life_proven':False,'r5_24h_accepted':False,
+                  'operator_fixture_external':True,'opportunity_ledger':policy_ledger,
                   'pass':all(checks.values())}
           (evidence/'final-report.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
           print(json.dumps({'checks':checks,'pass':report['pass']},sort_keys=True))
