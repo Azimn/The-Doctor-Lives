@@ -12,7 +12,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.audit_three_uncoached import _digest, evaluate
+from tools.audit_three_uncoached import (_digest, evaluate_schema_only as evaluate,
+                                        evaluate as release_evaluate)
 
 
 def world_hash(value):
@@ -169,6 +170,16 @@ class IndependentThreeGoalContract(unittest.TestCase):
         self.assertEqual(report["distinct_valid_activity_kinds"],
                          ["read_book", "rest", "work"])
         self.assertFalse(report["independent_human_review_performed"])
+
+    def test_contract_01b_synthetic_source_cannot_pass_release_verifier(self):
+        # The same synthetic shape-positive fixture is NEVER a shipping R4
+        # pass. Full original source-pinned physics is mandatory.
+        strict = release_evaluate(self.root)
+        self.assertEqual(strict["status"], "FAIL")
+        self.assertFalse(strict["three_distinct_uncoached"])
+        self.assertFalse(strict["original_source_world_verified"])
+        self.assertTrue(any("original_source_world_authority_not_verified" in p
+                            for p in strict["problems"]))
 
     def test_contract_02_nonexistent_neural_work_action_is_rejected(self):
         self._edit("UPDATE policy_decisions SET selected_action='work' WHERE id='origin_work'")
