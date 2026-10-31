@@ -177,7 +177,10 @@ class NativeLaboratoryGoalChooser:
             return NativeGoalChoiceReceipt(
                 result.status, "read_book", result.goal_id, result.memory_id
             )
-        if rest is not None:
+        # Candidate B may pursue a distinct later work/book commitment after
+        # authentically completing rest. The original two-goal preview keeps
+        # its earlier return contract unless sustained work is enabled.
+        if rest is not None and (rest["phase"] != "complete" or self.work is None):
             return self._continue_rest(rest, authorized_world_action)
         # A fulfilled intention is HISTORY, not a permanent prohibition on
         # having a different intention. Preserve the original book receipt;
@@ -239,6 +242,10 @@ class NativeLaboratoryGoalChooser:
                 result.goal_id, result.memory_id,
                 selected_tendency=result.selected_tendency
             )
+        # Never repeat an already completed native rest merely because a
+        # new avoid tendency emerges; retain its authenticated lived receipt.
+        if rest is not None and rest["phase"] == "complete":
+            return self._continue_rest(rest, authorized_world_action)
         if proposal.selected_tendency != "avoid":
             return NativeGoalChoiceReceipt(
                 "no_situated_goal", None, None,
