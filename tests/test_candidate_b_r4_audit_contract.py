@@ -424,12 +424,12 @@ class IndependentThreeGoalContract(unittest.TestCase):
         initial = sample(0, False, {})
         middle = sample(1, True, intermediate)
         final = sample(2, True, rows)
-        witness.write_text("\\n".join((initial, middle, final)) + "\\n")
+        witness.write_text("\n".join((initial, middle, final)) + "\n")
         verified = verify_external_origin_witness(witness, expected)
         self.assertEqual(verified["observed_goal_ids"], sorted(expected))
         # Seeing only an earlier checksum must not validate the sealed
         # completed goal that the release-facing judge will inspect.
-        witness.write_text("\\n".join((initial, middle)) + "\\n")
+        witness.write_text("\n".join((initial, middle)) + "\n")
         with self.assertRaisesRegex(PermissionError, "independent_live_origin_not_observed"):
             verify_external_origin_witness(witness, expected)
 
