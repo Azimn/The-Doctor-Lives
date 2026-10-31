@@ -116,6 +116,11 @@ class NativeWorkPursuit:
                         or event.get("station") != "station:bench" or
                         event.get("subject", {}).get("inner") != memory["text"]):
                     raise ValueError("completed work source mismatch")
+                from .noesis_lab_work import verify_noesis_work_replay
+                if verify_noesis_work_replay(
+                        self.host.bridge, event_id=found[0][0],
+                        action=state["selected_action"]) != state["work_policy_id"]:
+                    raise ValueError("work lacks original Noesis motor custody")
             elif state["memory_id"] is not None:
                 raise ValueError("unfinished work has a completion memory")
             return state
