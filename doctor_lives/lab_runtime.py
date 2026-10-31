@@ -592,7 +592,7 @@ def offer_laboratory_day(
             "recovered": len(recovered),
             "abandoned": len(abandoned),
             "subject_frames": [item["subject"] for item in recovered]
-                              + [{"inner": lived["text"], "spoken_aloud": None}],
+                              + [receipt["subject"]],
             "host_selected_action": False,
             "operator_offered_opportunity": True,
             "uncoached_three_task_life_proven": False,
