@@ -18,7 +18,7 @@ from .noesis_lab_work import _feasible_work, propose_noesis_work, execute_noesis
 WORK_KEY = "six_organ_native_work_intention_v1"
 _SCHEMA = "pretorius.native-work-intention.v1"
 _GOAL = "I want to undertake worthwhile work at my laboratory bench."
-_PHASES = frozenset(("travel", "execute", "complete"))
+_PHASES = frozenset(("travel", "blocked", "execute", "complete"))
 _WORK_ACTIONS = frozenset(("repair", "experiment"))
 
 
@@ -88,7 +88,7 @@ class NativeWorkPursuit:
                         "WHERE id=? AND trigger='noesis_situated_choice'",
                         (state["work_policy_id"],)).fetchone()
             if state["work_policy_id"] is None:
-                if state["phase"] != "travel" or state["selected_action"] is not None:
+                if state["phase"] not in ("travel", "blocked") or state["selected_action"] is not None:
                     raise ValueError("work phase without physical decision")
             elif (work is None or work["selected_action"] not in _WORK_ACTIONS or
                   work["selected_action"] != state["selected_action"] or
@@ -203,8 +203,13 @@ class NativeWorkPursuit:
             self._save(state)
             return WorkReceipt("moved", state["id"], moved.memory_id,
                                proposal.selected_tendency)
-        if state["phase"] == "travel":
+        if state["phase"] in ("travel", "blocked"):
             if not _feasible_work(self.host.bridge):
+                # Preserve the interrupted goal in the SAME BrainStore. No
+                # external instruction or invented material can unblock it.
+                if state["phase"] != "blocked":
+                    state["phase"] = "blocked"
+                    self._save(state)
                 return WorkReceipt("blocked", state["id"])
             proposed = propose_noesis_work(
                 self.host.bridge, outcome_learning_enabled=True
