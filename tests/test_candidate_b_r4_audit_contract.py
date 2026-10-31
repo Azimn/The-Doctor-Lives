@@ -13,7 +13,8 @@ import tempfile
 import unittest
 
 from tools.audit_three_uncoached import (_digest, evaluate_schema_only as evaluate,
-                                        evaluate as release_evaluate)
+                                        evaluate as release_evaluate,
+                                        verify_external_origin_witness)
 
 
 def world_hash(value):
@@ -322,6 +323,60 @@ class IndependentThreeGoalContract(unittest.TestCase):
         self.events[5] = (kind, data, "false")
         self._resign()
         self.assert_invalid("invalid_or_torn_activity_record")
+
+    def test_coordinated_policy_thought_goal_and_ledger_forgery_needs_external_witness(self):
+        # All local source strings and self-hashes are rewritten together.
+        # This is deliberately schema-consistent. A synthetic schema PASS
+        # must never be mistaken for an independently witnessed neural act.
+        forged_policy = "forged_consistent_policy"
+        forged_thought = "forged_consistent_thought"
+        self._edit(
+            "INSERT INTO policy_decisions VALUES(?,?,?,?)",
+            (forged_policy, "explore", "six_organ_lab_cycle", "{}"),
+        )
+        self._edit(
+            "INSERT INTO thoughts VALUES(?,?)",
+            (forged_thought, "neural_policy:" + forged_policy),
+        )
+        self._change_intent("work", origin_policy_id=forged_policy,
+                            origin_thought_id=forged_thought)
+        self.records["work"]["origin_policy_id"] = forged_policy
+        self.events[5][1]["origin_policy_id"] = forged_policy
+        self._resign()
+        synthetic = evaluate(self.root)
+        self.assertEqual(synthetic["status"], "PASS", synthetic)
+        strict = release_evaluate(self.root)
+        self.assertEqual(strict["status"], "FAIL", strict)
+        self.assertFalse(strict["independent_live_neural_origin_observed"])
+        self.assertTrue(any("independent_origin_witness_not_verified" in p
+                            for p in strict["problems"]), strict)
+
+        # Even a source-shaped observation cannot promote a goal that was
+        # present BEFORE the independently launched operator process.
+        expected = synthetic["verified_goal_origins"]
+        row = expected["work01"]
+        observed = {
+            "goal_id": row["goal_id"], "origin_policy_id": forged_policy,
+            "origin_thought_id": forged_thought,
+            "selected_tendency": "explore",
+            "canonical_checksum": row["canonical_checksum"],
+            "policy_trigger": "six_organ_lab_cycle",
+            "thought_generated_by": "neural_policy:" + forged_policy,
+            "checksum_matches": True, "record_consistency_only": True,
+        }
+        def sample(alive, seconds):
+            return {
+                "schema": "pretorius.r4.external-neural-origin-observation.v1",
+                "elapsed_seconds": seconds, "process_alive": alive,
+                "goals": {"work": observed},
+                "source_authentication_performed": False,
+                "autonomy_credit": False,
+            }
+        witness = self.root / "forged-origins.jsonl"
+        witness.write_text(json.dumps(sample(False, 0)) + "\\n" +
+                           json.dumps(sample(True, 1)) + "\\n")
+        with self.assertRaisesRegex(PermissionError, "preexisting_goal"):
+            verify_external_origin_witness(witness, expected)
 
     def test_u30_reject_completion_without_ledger_origin(self):
         self.events.pop(5)
