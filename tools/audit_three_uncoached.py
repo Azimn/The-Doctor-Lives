@@ -83,7 +83,10 @@ def evaluate(workspace: Path) -> dict:
             if not gid or kind not in EXPECTED:
                 continue
             if event["event"] == "native_goal_goal_created":
-                created[gid] = (kind, event["sequence"])
+                if gid in created:
+                    problems.append("duplicate_goal_origin:" + gid)
+                else:
+                    created[gid] = (kind, event["sequence"])
                 continue
             if event["event"] != "native_goal_completed":
                 continue
@@ -100,8 +103,23 @@ def evaluate(workspace: Path) -> dict:
                     (policy_id,)).fetchone()
                 assert p is not None
                 assert p[0] == fields["original_tendency"]
-                assert p[0] == ("explore" if kind == "read_book"
-                                else "avoid" if kind == "rest" else "work")
+                expected_origin = {
+                    "read_book": ("explore",), "rest": ("avoid",),
+                    "work": ("persist", "explore"),
+                }[kind]
+                assert p[0] in expected_origin, "not original neural goal"
+                key = {"read_book": "six_organ_endogenous_book_goal_v1",
+                       "rest": "six_organ_native_rest_intention_v1",
+                       "work": "six_organ_native_work_intention_v1"}[kind]
+                raw = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+                assert raw is not None, "missing canonical goal"
+                envelope = json.loads(raw[0])
+                intent = envelope["payload"]
+                assert _digest(intent) == envelope["sha256"], "tampered goal"
+                assert intent["id"] == gid and intent["phase"] == "complete"
+                assert intent["origin_policy_id"] == policy_id
+                key_memory = "read_memory_id" if kind == "read_book" else "memory_id"
+                assert intent[key_memory] == fields["canonical_memory_id"]
                 mid = fields["canonical_memory_id"]
                 memory = db.execute(
                     "SELECT source,evidence_class,external,active,text FROM memories WHERE id=?",
@@ -113,28 +131,60 @@ def evaluate(workspace: Path) -> dict:
                 assert memory["source"] == "laboratory-home:action:" + event_hash
                 table = fields["world_table"]
                 assert table in WORLD_TABLES
+                column = "payload" if table == "books_events" else "envelope"
                 row = lab.execute(
-                    "SELECT payload,event_hash FROM " + table + " WHERE event_id=?",
-                    (fields["world_event_id"],)).fetchone()
+                    "SELECT " + column + ",event_hash FROM " + table +
+                    " WHERE event_id=?", (fields["world_event_id"],)
+                ).fetchone()
                 assert row and row[1] == event_hash
                 source = json.loads(row[0])
                 assert hashlib.sha256(json.dumps(
                     source, sort_keys=True, separators=(",", ":"),
                     ensure_ascii=False, allow_nan=False
                 ).encode("utf-8")).hexdigest() == event_hash
-                action = source.get("action", {})
                 if kind == "read_book":
-                    assert table == "books_events" and action.get("op") == "read"
+                    assert table == "books_events"
+                    assert source.get("action", {}).get("op") == "read"
+                    assert source.get("page_receipt") is not None
                     assert "I read a page of " in memory["text"]
                 elif kind == "rest":
-                    assert table == "rhythm_events" and action.get("op") == "rest"
+                    assert table == "rhythm_events" and source.get("op") == "rest"
+                    assert source.get("station") == "station:bedroom"
+                    assert source.get("subject", {}).get("inner") == memory["text"]
                 else:
-                    assert table == "rhythm_events" and action.get("op") in (
-                        "write", "experiment", "work")
+                    assert table == "rhythm_events"
+                    action = source.get("op")
+                    assert action in ("repair", "experiment"), "not actual bench work"
+                    assert source.get("station") == "station:bench"
+                    assert source.get("subject", {}).get("inner") == memory["text"]
+                    assert intent["selected_action"] == action
+                    assert fields["world_event_id"] == "ng_" + gid + "_work"
+                    # Two original policy decisions must both be present.
+                    # No synthetic neural 'work' category is credited.
+                    motor_id = intent["work_policy_id"]
+                    motors = db.execute(
+                        "SELECT id,selected_action,state_pressure_json FROM "
+                        "policy_decisions WHERE trigger='noesis_situated_choice'"
+                    ).fetchall()
+                    linked = []
+                    for motor in motors:
+                        evidence = json.loads(motor["state_pressure_json"])
+                        if evidence.get("motor_event_id") != fields["world_event_id"]:
+                            continue
+                        assert motor["id"] == motor_id, "foreign motor binding"
+                        assert motor["selected_action"] == action
+                        assert evidence.get("selector_authority") == "original_noesis"
+                        assert evidence.get("physical_authority") == "none"
+                        assert evidence.get("motor_authorization") == "authorized"
+                        linked.append(motor["id"])
+                    assert linked == [motor_id], "missing or duplicate motor"
+                assert fields["canonical_memory_source"] == memory["source"]
+                assert fields["world_event_id"] == source["event_id"]
                 if gid in verified:
                     raise AssertionError("Duplicate goal completion")
                 verified[gid] = kind
-            except (AssertionError, KeyError, TypeError, ValueError) as exc:
+            except (AssertionError, KeyError, TypeError, ValueError,
+                    sqlite3.DatabaseError) as exc:
                 problems.append("unauthenticated_completion:" + gid + ":" + str(exc))
     kinds = sorted(set(verified.values()))
     # Distinct bodies of activity, not three steps in one book-reading task.
