@@ -12,6 +12,7 @@ from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
+from math import isfinite
 import sqlite3
 import subprocess
 import sys
@@ -362,6 +363,8 @@ def verify_external_origin_witness(path: Path | None, expected: dict) -> dict:
                 or entry.get("source_authentication_performed") is not False
                 or entry.get("autonomy_credit") is not False
                 or type(entry.get("elapsed_seconds")) not in (int, float)
+                or not isfinite(entry["elapsed_seconds"])
+                or entry["elapsed_seconds"] < 0
                 or entry["elapsed_seconds"] < last_elapsed):
             raise ValueError("malformed_independent_origin_observation")
         last_elapsed = entry["elapsed_seconds"]
