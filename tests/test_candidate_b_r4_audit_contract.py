@@ -378,6 +378,61 @@ class IndependentThreeGoalContract(unittest.TestCase):
         with self.assertRaisesRegex(PermissionError, "preexisting_goal"):
             verify_external_origin_witness(witness, expected)
 
+    def test_live_witness_rejects_nonfinite_or_negative_elapsed(self):
+        # A process witness must not accept NaN, infinity or pre-start
+        # negative clock samples as a real observation timeline.
+        witness = self.root / "invalid-clock-origins.jsonl"
+        for bad in (float("nan"), float("inf"), -0.01):
+            with self.subTest(elapsed=repr(bad)):
+                witness.write_text(json.dumps({
+                    "schema": "pretorius.r4.external-neural-origin-observation.v1",
+                    "elapsed_seconds": bad, "process_alive": False, "goals": {},
+                    "source_authentication_performed": False,
+                    "autonomy_credit": False,
+                }) + "\n")
+                with self.assertRaisesRegex(ValueError, "malformed_independent_origin_observation"):
+                    verify_external_origin_witness(witness, {})
+
+    def test_live_witness_tracks_mutable_checksum_without_losing_origin(self):
+        # A canonical goal's checksum changes with phase and physical
+        # receipts, while the neural policy/thought origin must not change.
+        # Synthetic witness contract only, NOT neural-causality proof.
+        expected = evaluate(self.root)["verified_goal_origins"]
+        rows = {}
+        for goal_id, spec in expected.items():
+            rows[spec["kind"]] = {
+                "goal_id": goal_id,
+                "origin_policy_id": spec["origin_policy_id"],
+                "origin_thought_id": spec["origin_thought_id"],
+                "selected_tendency": spec["original_tendency"],
+                "canonical_checksum": spec["canonical_checksum"],
+                "policy_trigger": "six_organ_lab_cycle",
+                "thought_generated_by": "neural_policy:" + spec["origin_policy_id"],
+                "checksum_matches": True, "record_consistency_only": True,
+            }
+        def sample(seconds, alive, goals):
+            return json.dumps({
+                "schema": "pretorius.r4.external-neural-origin-observation.v1",
+                "elapsed_seconds": seconds, "process_alive": alive, "goals": goals,
+                "source_authentication_performed": False,
+                "autonomy_credit": False,
+            })
+        intermediate = copy.deepcopy(rows)
+        for row in intermediate.values():
+            row["canonical_checksum"] = "0" * 64
+        witness = self.root / "evolving-checksum-origins.jsonl"
+        initial = sample(0, False, {})
+        middle = sample(1, True, intermediate)
+        final = sample(2, True, rows)
+        witness.write_text("\\n".join((initial, middle, final)) + "\\n")
+        verified = verify_external_origin_witness(witness, expected)
+        self.assertEqual(verified["observed_goal_ids"], sorted(expected))
+        # Seeing only an earlier checksum must not validate the sealed
+        # completed goal that the release-facing judge will inspect.
+        witness.write_text("\\n".join((initial, middle)) + "\\n")
+        with self.assertRaisesRegex(PermissionError, "independent_live_origin_not_observed"):
+            verify_external_origin_witness(witness, expected)
+
     def test_u30_reject_completion_without_ledger_origin(self):
         self.events.pop(5)
         self._resign()
