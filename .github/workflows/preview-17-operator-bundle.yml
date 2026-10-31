@@ -13,6 +13,7 @@ on:
       - tools/run_uncoached_r4_trial.py
       - tools/observe_uncoached_r4.py
       - tests/test_r4_uncoached_witness.py
+      - tests/test_candidate_b_r4_audit_contract.py
       - .github/workflows/preview-17-operator-bundle.yml
   workflow_dispatch:
 
@@ -26,6 +27,19 @@ permissions:
   contents: read
 
 jobs:
+  independent-r4-auditor-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject ten-plus forged or unauthenticated R4 evidence classes
+        run: python -m unittest discover -s tests -p test_candidate_b_r4_audit_contract.py -v
+
   verified-unread-17:
     runs-on: ubuntu-latest
     timeout-minutes: 75
