@@ -68,7 +68,7 @@ def verify_archive(path: str | Path) -> Path:
 
 
 class PhantasmagoriumBridge:
-    """Bounded non-authoritative donor output retained ONLY in canonical BrainStore."""
+    """Non-authoritative donor probe; only opaque unadmitted hashes persist."""
 
     def __init__(self, store: BrainStore, archive: str | Path, *, enabled: bool = False):
         if type(store) is not BrainStore or enabled is not True:
@@ -108,10 +108,22 @@ class PhantasmagoriumBridge:
         if len(serialized) > 65536:
             raise ValueError("Oversized organoid output")
         digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        # Keep only opaque provenance in the canonical engineering ledger.
+        # Raw imagined/dreamed text CANNOT enter the Doctor's durable memory
+        # until a separately proven Ipseity/Mnemosyne admission path exists.
+        # This is not a substitute for such a path.
+        pending = json.dumps({
+            "schema": "pretorius.phantasmagorium.unadmitted-digest.v1",
+            "content_sha256": digest,
+            "source_sha256": DONOR_SHA256,
+            "evidence_class": report["evidence_class"],
+            "subject_admitted": False,
+            "no_autobiographical_content": True,
+        }, sort_keys=True)
         with self.store.transaction() as db:
-            self.store.set_meta("phantasmagorium:probe:" + digest, serialized, db)
+            self.store.set_meta("phantasmagorium:probe:" + digest, pending, db)
             self.store.bump_state_version(db)
-        return {"record_id": digest, **report}
+        return {"record_id": digest, "subject_admitted": False, **report}
 
     def fancy(self, scene: dict, *, seed: int, max_fragments: int = 4) -> dict:
         if type(seed) is not int or not 0 <= seed < 2**63:
