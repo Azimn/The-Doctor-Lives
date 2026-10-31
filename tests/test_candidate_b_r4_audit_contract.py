@@ -393,6 +393,19 @@ class IndependentThreeGoalContract(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "malformed_independent_origin_observation"):
                     verify_external_origin_witness(witness, {})
 
+    def test_live_witness_large_integer_time_does_not_overflow(self):
+        # A syntactically valid but extreme integer cannot crash the
+        # independent judge through a float-conversion OverflowError.
+        witness = self.root / "huge-clock-origins.jsonl"
+        witness.write_text(json.dumps({
+            "schema": "pretorius.r4.external-neural-origin-observation.v1",
+            "elapsed_seconds": 10 ** 500, "process_alive": False, "goals": {},
+            "source_authentication_performed": False,
+            "autonomy_credit": False,
+        }) + "\n")
+        with self.assertRaisesRegex(PermissionError, "independent_live_origin_not_observed"):
+            verify_external_origin_witness(witness, {})
+
     def test_live_witness_tracks_mutable_checksum_without_losing_origin(self):
         # A canonical goal's checksum changes with phase and physical
         # receipts, while the neural policy/thought origin must not change.
