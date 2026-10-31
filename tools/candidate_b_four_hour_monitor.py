@@ -77,7 +77,10 @@ def main() -> int:
                     "status_response": status.stdout[-4000:],
                 }
                 if status.returncode != 0:
-                    failure = "public_operator_status_failed"
+                    # Foreground startup may need a moment to create status.
+                    # Do not count startup as a process failure.
+                    if elapsed > 30.0:
+                        failure = "public_operator_status_failed"
                 else:
                     try:
                         status_json = json.loads(status.stdout)
