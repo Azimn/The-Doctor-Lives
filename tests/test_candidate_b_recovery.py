@@ -79,6 +79,20 @@ class OriginalPhysicsRecoveryTests(unittest.TestCase):
         no_parts["supplies"]["spares"] = 0
         self.assertFalse(self.paths(no_parts, "apparatus")[0].physically_feasible)
 
+    def test_darkness_needs_real_oil_and_lamp(self):
+        state = self.state()
+        state["minute"] = 23 * 60
+        lit = self.paths(state, "darkness:room:sanctum")
+        self.assertEqual(lit[0].actions, ("light",))
+        self.assertTrue(lit[0].physically_feasible)
+        no_oil = self.state()
+        no_oil["minute"] = 23 * 60
+        no_oil["supplies"]["oil"] = 0
+        option = self.paths(no_oil, "darkness:room:sanctum")[0]
+        self.assertFalse(option.physically_feasible)
+        self.assertEqual(supply_gaps(no_oil)["oil"],
+                         "exhausted_no_verified_replenishment")
+
     def test_exhausted_reagents_are_not_misreported_as_fixable(self):
         state = self.state()
         state["supplies"]["reagents"] = 0
