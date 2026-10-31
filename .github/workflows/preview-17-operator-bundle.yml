@@ -11,6 +11,8 @@ on:
       - tools/check_17_operator_bundle.py
       - tools/audit_three_uncoached.py
       - tools/run_uncoached_r4_trial.py
+      - tools/observe_uncoached_r4.py
+      - tests/test_r4_uncoached_witness.py
       - .github/workflows/preview-17-operator-bundle.yml
   workflow_dispatch:
 
@@ -169,6 +171,8 @@ jobs:
         with:
           name: experimental-17-book-operator-linux
           path: ${{ runner.temp }}/operator-download
+      - name: Independent read-only witness regression, no donor imports
+        run: python -m unittest discover -s tests -p test_r4_uncoached_witness.py -v
       - name: Install verified source-pinned world offline with zero goal inputs
         run: |
           python - <<'PY'
@@ -192,6 +196,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: independent-uncoached-three-activities-r4
-          path: ${{ runner.temp }}/independent-r4-report.json
+          path: |
+            ${{ runner.temp }}/independent-r4-report.json
+            ${{ runner.temp }}/independent-r4-report.witness.jsonl
+            ${{ runner.temp }}/independent-r4-report.operator.stdout.txt
+            ${{ runner.temp }}/independent-r4-report.operator.stderr.txt
           retention-days: 30
           if-no-files-found: warn
