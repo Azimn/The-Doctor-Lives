@@ -74,5 +74,93 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertFalse(second["independent_three_activity_r4_proven"])
 
 
+    def _reserve_crash_window(self):
+        """Inject the exact durable motor reservation without a host action."""
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import offer_daily_opportunity
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(SubjectPort(self.lab), authorized=True)
+        choice = offer_daily_opportunity(
+            bridge, author_goal=False, use_consequences=False)
+        event_id = "candidate_b_fault_" + choice.policy_id[-16:]
+        store = runtime._port.brain.store
+        with store.transaction() as db:
+            row = db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (choice.policy_id,)
+            ).fetchone()
+            evidence = json.loads(row["state_pressure_json"])
+            self.assertEqual(evidence["selector_authority"], "original_noesis")
+            evidence["motor_authorization"] = "authorized"
+            evidence["motor_event_id"] = event_id
+            db.execute(
+                "UPDATE policy_decisions SET state_pressure_json=? WHERE id=?",
+                (json.dumps(evidence, sort_keys=True), choice.policy_id)
+            )
+            store.bump_state_version(db)
+        runtime.checkpoint()
+        return bridge, choice, event_id
+
+    def _verify_one_replayed_world_action(self, bridge, choice, event_id):
+        from doctor_lives.lab_home_bridge import _ACTION_DOMAINS
+        from doctor_lives.noesis_day import reconcile_pending_daily_action
+        replay = reconcile_pending_daily_action(bridge)
+        self.assertEqual(len(replay), 1)
+        self.assertEqual(replay[0]["policy_decision_id"], choice.policy_id)
+        self.assertEqual(replay[0]["action"], choice.action)
+        self.assertFalse(replay[0]["new_goal_selected"])
+        self.assertEqual(reconcile_pending_daily_action(bridge), ())
+        memory_id = replay[0]["memory_id"]
+        store = bridge.doctor.brain.store
+        memory = store.get_memory(memory_id)
+        self.assertIsNotNone(memory)
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+        self.assertEqual(
+            len([m for m in store.memories(False) if m["source"] == memory["source"]]),
+            1
+        )
+        with bridge.world._open() as db:
+            count = db.execute(
+                "SELECT count(*) FROM " + _ACTION_DOMAINS[choice.action]
+                + " WHERE event_id=?", (event_id,)
+            ).fetchone()[0]
+        self.assertEqual(count, 1)
+        return replay[0]
+
+    def test_reserved_daily_motor_restarts_without_second_noesis_choice(self):
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+        bridge, choice, event_id = self._reserve_crash_window()
+        # No world action occurred: a killed host after the BrainStore commit.
+        self.assertIsNone(bridge.existing_action_intent(event_id))
+        reopened = SixOrganRuntime.open(self.state).bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world)), authorized=True)
+        receipt = self._verify_one_replayed_world_action(
+            reopened, choice, event_id)
+        self.assertFalse(receipt["original_world_receipt_replayed"])
+
+    def test_world_committed_memory_unadmitted_replays_once_after_restart(self):
+        from unittest.mock import patch
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import physical_args
+        bridge, choice, event_id = self._reserve_crash_window()
+        # Deterministic crash-window injection after ORIGINAL physical commit,
+        # before first-person admission. This is NOT an external OS-kill test.
+        with patch.object(bridge, "_admit_verified",
+                          side_effect=RuntimeError("injected post-world interruption")):
+            with self.assertRaisesRegex(RuntimeError, "injected post-world"):
+                bridge.act(choice.action, event_id=event_id,
+                           **physical_args(choice.action))
+        self.assertEqual(bridge.existing_action_intent(event_id)["status"], "pending")
+        reopened = SixOrganRuntime.open(self.state).bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world)), authorized=True)
+        receipt = self._verify_one_replayed_world_action(
+            reopened, choice, event_id)
+        self.assertTrue(receipt["original_world_receipt_replayed"])
+
+
 if __name__ == "__main__":
     unittest.main()
