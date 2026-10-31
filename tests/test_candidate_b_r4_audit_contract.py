@@ -373,8 +373,8 @@ class IndependentThreeGoalContract(unittest.TestCase):
                 "autonomy_credit": False,
             }
         witness = self.root / "forged-origins.jsonl"
-        witness.write_text(json.dumps(sample(False, 0)) + "\\n" +
-                           json.dumps(sample(True, 1)) + "\\n")
+        witness.write_text(json.dumps(sample(False, 0)) + "\n" +
+                           json.dumps(sample(True, 1)) + "\n")
         with self.assertRaisesRegex(PermissionError, "preexisting_goal"):
             verify_external_origin_witness(witness, expected)
 
