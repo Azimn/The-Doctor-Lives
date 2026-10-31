@@ -31,7 +31,7 @@ class PreviewEvidenceTests(unittest.TestCase):
             record = json.loads(log.read_text())
             record["external_input"] = False
             log.write_text(json.dumps(record) + "\n", encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "digest"):
+            with self.assertRaisesRegex(RuntimeError, "Invalid or torn operator ledger line 1"):
                 read_activity_ledger(root)
             with self.assertRaises(RuntimeError):
                 append_activity(root, event="host_observation", external_input=False)
