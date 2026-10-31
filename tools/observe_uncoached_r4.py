@@ -22,6 +22,72 @@ def _read_db(path: Path):
     return sqlite3.connect(path.absolute().as_uri() + "?mode=ro", uri=True)
 
 
+
+# These keys belong to the ONE canonical BrainStore. This external observer
+# never calls Pretorius policy, authors an intention, or modifies any ledger.
+_NATIVE_KEYS = {
+    "six_organ_endogenous_book_goal_v1": "read_book",
+    "six_organ_native_rest_intention_v1": "rest",
+    "six_organ_native_work_intention_v1": "work",
+}
+
+
+def inspect_neural_origins(workspace: Path) -> dict:
+    """Read current canonical neural goal provenance from a separate process.
+
+    This is a contemporaneous source observation, not cryptographic proof
+    that the neural policy was uncoached. Coordinated forged DB rows can
+    still look internally consistent. Independent QA must compare the
+    time-series with process custody and the original physical world.
+    """
+    with closing(_read_db(Path(workspace) / "state" / "brain.sqlite3")) as db:
+        db.row_factory = sqlite3.Row
+        rows = db.execute(
+            "SELECT key,value FROM meta WHERE key IN (?,?,?)",
+            tuple(_NATIVE_KEYS),
+        ).fetchall()
+        result = {}
+        for row in rows:
+            envelope = json.loads(row["value"])
+            goal = envelope["payload"]
+            if type(goal) is not dict:
+                raise RuntimeError("Canonical native goal payload is not a mapping")
+            policy_id = goal["origin_policy_id"]
+            thought_id = goal["origin_thought_id"]
+            policy = db.execute(
+                "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
+                (policy_id,),
+            ).fetchone()
+            thought = db.execute(
+                "SELECT generated_by FROM thoughts WHERE id=?",
+                (thought_id,),
+            ).fetchone()
+            checksum = hashlib.sha256(json.dumps(
+                goal, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=True, allow_nan=False,
+            ).encode("utf-8")).hexdigest()
+            tendency = policy["selected_action"] if policy else None
+            trigger = policy["trigger"] if policy else None
+            generated_by = thought["generated_by"] if thought else None
+            result[_NATIVE_KEYS[row["key"]]] = {
+                "goal_id": goal["id"],
+                "phase": goal["phase"],
+                "origin_policy_id": policy_id,
+                "origin_thought_id": thought_id,
+                "selected_tendency": tendency,
+                "policy_trigger": trigger,
+                "thought_generated_by": generated_by,
+                "canonical_checksum": checksum,
+                "checksum_matches": checksum == envelope.get("sha256"),
+                "record_consistency_only": (
+                    trigger == "six_organ_lab_cycle"
+                    and generated_by == "neural_policy:" + policy_id
+                    and checksum == envelope.get("sha256")
+                ),
+            }
+        return dict(sorted(result.items()))
+
+
 def sample(workspace: Path, *, process_alive: bool, elapsed_seconds: float,
            baseline_world_receipts: int | None = None) -> dict:
     if type(process_alive) is not bool or elapsed_seconds < 0:
