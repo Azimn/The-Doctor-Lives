@@ -66,7 +66,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
-    x=sp.add_parser("preview-init", help="Create one new experimental original-Laboratory workspace without overwriting an inhabited state"); x.add_argument("--workspace",type=Path,required=True)
+    x=sp.add_parser("preview-init", help="Create one new experimental original-Laboratory workspace without overwriting an inhabited state"); x.add_argument("--workspace",type=Path,required=True); x.add_argument("--world-template",type=Path,default=None,help="Use a verified pristine 17-book Laboratory world at genesis, never reseed an existing workspace")
     for name, hint in (
         ("preview-start", "Initialize if absent and run the original Laboratory in the foreground until stopped"),
         ("preview-status", "Report current activity, last Noesis action, heartbeat and uptime"),
@@ -115,7 +115,7 @@ def main(argv=None) -> int:
         return command(a.cmd, a.workspace, native_source=getattr(a, "native_affectus_source", None))
     if a.cmd == "preview-init":
         from .lab_preview import initialize_preview
-        emit(initialize_preview(a.workspace))
+        emit(initialize_preview(a.workspace, world_template=a.world_template))
         return 0
     if a.cmd in ("chat", "chat-serve", "chat-opportunity"):
         from .operator_conversation import OperatorConversation

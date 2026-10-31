@@ -53,13 +53,17 @@ def _publish_noreplace(staging: Path, destination: Path) -> None:
     )
 
 
-def initialize_preview(workspace: str | Path) -> dict:
+def initialize_preview(workspace: str | Path, *, world_template: str | Path | None = None) -> dict:
     """Atomically publish two verified canonical authorities in one directory.
 
     An already-existing workspace is NEVER reseeded, migrated, or overwritten.
     Both authorities are staged as siblings on the same filesystem. Failed
     genesis leaves no publishable workspace and no invented lived experience.
     """
+    template_report = None
+    if world_template is not None:
+        from .preview_17_books import verify_unread_seventeen
+        template_report = verify_unread_seventeen(world_template)
     destination = Path(workspace).expanduser().absolute()
     if destination.exists() or destination.is_symlink():
         raise FileExistsError(f"Preview workspace already exists: {destination}")
@@ -76,9 +80,17 @@ def initialize_preview(workspace: str | Path) -> dict:
     try:
         state = staging / "state"
         world_path = staging / "laboratory.sqlite3"
-        world = SpatialHabitat.create(world_path)
-        HomeLife(world).initialize()
-        DailyRhythm(world).initialize()
+        if world_template is None:
+            world = SpatialHabitat.create(world_path)
+            HomeLife(world).initialize()
+            DailyRhythm(world).initialize()
+        else:
+            from .preview_17_books import verify_unread_seventeen
+            template = SpatialHabitat(Path(world_template).expanduser().resolve(strict=True))
+            template.backup_to(world_path)
+            if verify_unread_seventeen(world_path)["world_epoch"] != template_report["world_epoch"]:
+                raise RuntimeError("Copied pristine Laboratory has changed epoch")
+            world = SpatialHabitat(world_path)
         world_proof = world.verify()
         HomeLife(world).verify()
         DailyRhythm(world).verify()
@@ -104,7 +116,8 @@ def initialize_preview(workspace: str | Path) -> dict:
             "world_epoch": world_proof["world_epoch"],
             "laboratory_source_commit_runtime_attested": False,
             "subject_experienced_initialization": False,
-            "books_installed": False,
+            "books_installed": bool(template_report),
+            "full_text_books_available": 17 if template_report else 0,
             "three_task_autonomy_proven": False,
         }
     finally:
