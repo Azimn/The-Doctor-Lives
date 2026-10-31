@@ -185,6 +185,8 @@ jobs:
         with:
           name: experimental-17-book-operator-linux
           path: ${{ runner.temp }}/operator-download
+      - name: Install Candidate B runtime dependencies for independent witness
+        run: python -m pip install .
       - name: Independent read-only witness regression, no donor imports
         run: python -m unittest discover -s tests -p test_r4_uncoached_witness.py -v
       - name: Install verified source-pinned world offline with zero goal inputs
