@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 import tempfile
 import unittest
 
@@ -53,14 +54,26 @@ class ObserverTests(unittest.TestCase):
             log = Path(root) / "runner.jsonl"
             child = subprocess.Popen([sys.executable, "-c", "pass"])
             try:
-                with self.assertRaisesRegex(RuntimeError, "exited or PID was reused"):
+                with self.assertRaisesRegex(RuntimeError, "exited or PID was reused|not alive"):
                     observer.observe(pid=child.pid, evidence_log=log,
                                      disk_path=Path(root), seconds=2.5,
                                      interval=0.1)
-                self.assertTrue(log.exists())
-                self.assertGreaterEqual(len(log.read_text().splitlines()), 1)
+                if log.exists():
+                    self.assertGreaterEqual(len(log.read_text().splitlines()), 1)
             finally:
                 child.wait(timeout=5)
+
+    def test_process_disappearance_after_first_sample_preserves_partial_log(self):
+        with tempfile.TemporaryDirectory() as root:
+            log = Path(root) / "runner.jsonl"
+            actual_identity = observer._process_identity(os.getpid())
+            with patch.object(observer, "_process_identity",
+                              side_effect=[actual_identity, actual_identity, None]):
+                with self.assertRaisesRegex(RuntimeError, "exited or PID was reused"):
+                    observer.observe(pid=os.getpid(), evidence_log=log,
+                                     disk_path=Path(root), seconds=0.3,
+                                     interval=0.02)
+            self.assertEqual(len(log.read_text().splitlines()), 1)
 
     def test_refuses_symlink_and_long_gap_configuration(self):
         with tempfile.TemporaryDirectory() as root:
