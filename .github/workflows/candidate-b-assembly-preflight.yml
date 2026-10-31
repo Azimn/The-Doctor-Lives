@@ -1,0 +1,60 @@
+name: Candidate B - core assembly preflight
+
+on:
+  pull_request:
+    paths:
+      - doctor_lives/conclave.py
+      - doctor_lives/phantasmagorium_bridge.py
+      - doctor_lives/organs.py
+      - doctor_lives/lab_preview.py
+      - tests/test_conclave.py
+      - tests/test_candidate_b_phantasmagorium.py
+      - tools/ipseity_entrypoint_gate.py
+      - .github/workflows/candidate-b-assembly-preflight.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-b-core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install canonical Doctor without optional donors
+        shell: bash
+        run: python -m pip install -e .
+      - name: Exact-source Conclave typed-interpretation and conflict/restart tests
+        shell: bash
+        run: python -m unittest discover -s tests -p test_conclave.py -v
+      - name: Refuse forged dreams and unreviewed Phantasmagorium source
+        shell: bash
+        run: python -m unittest discover -s tests -p test_candidate_b_phantasmagorium.py -v
+      - name: Static protected local renderer/provider ingress audit
+        shell: bash
+        run: python tools/ipseity_entrypoint_gate.py
+      - name: Assert both organoid binders use single canonical BrainStore
+        shell: bash
+        run: |
+          python - <<'PY'
+          import inspect
+          from doctor_lives.organs import SixOrganRuntime
+          from doctor_lives.phantasmagorium_bridge import PhantasmagoriumBridge
+          from doctor_lives.conclave import Conclave
+          assert "self._port.brain.store" in inspect.getsource(SixOrganRuntime.bind_conclave)
+          assert "self._port.brain.store" in inspect.getsource(SixOrganRuntime.bind_phantasmagorium)
+          assert "authorized_world_action" not in inspect.getsource(PhantasmagoriumBridge)
+          assert "self.store" in inspect.getsource(Conclave)
+          print("Both opt-in faculties share the original BrainStore; zero action authority")
+          PY
