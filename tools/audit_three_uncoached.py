@@ -78,6 +78,7 @@ def evaluate_schema_only(workspace: Path) -> dict:
             problems.append("coached_task_input:" + item["event"])
     created = {}
     verified = {}
+    verified_origins = {}
     used_world_events = set()
     used_memory_ids = set()
     used_neural_policies = set()
@@ -222,6 +223,14 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 used_memory_ids.add(mid)
                 used_neural_policies.add(policy_id)
                 verified[gid] = kind
+                verified_origins[gid] = {
+                    "kind": kind,
+                    "goal_id": gid,
+                    "origin_policy_id": policy_id,
+                    "origin_thought_id": intent["origin_thought_id"],
+                    "original_tendency": fields["original_tendency"],
+                    "canonical_checksum": envelope["sha256"],
+                }
             except (AssertionError, KeyError, TypeError, ValueError,
                     sqlite3.DatabaseError) as exc:
                 problems.append("unauthenticated_completion:" + gid + ":" + str(exc))
@@ -235,6 +244,7 @@ def evaluate_schema_only(workspace: Path) -> dict:
         "gate": "R4", "status": "PASS" if enough else "FAIL",
         "distinct_valid_activity_kinds": kinds,
         "validated_goal_count": len(verified),
+        "verified_goal_origins": verified_origins,
         "three_distinct_uncoached": enough,
         "external_operator_start_disclosed": bool(started),
         "authentic_source_replay_checked": True,
@@ -329,7 +339,72 @@ def verify_original_world_snapshot(workspace: Path) -> dict:
         return result_data
 
 
-def evaluate(workspace: Path) -> dict:
+
+def verify_external_origin_witness(path: Path | None, expected: dict) -> dict:
+    """Correlate source goals with an independent live process observation.
+
+    The external runner records the initial BrainStore BEFORE launching the
+    installed operator, then reads canonical goal/policy/thought rows while
+    the process is alive. A preseeded or post-run coordinated rewrite cannot
+    acquire credit from a self-hashed operator ledger alone. This is process
+    custody evidence, NOT cryptographic proof of uncoached neural causality.
+    """
+    if path is None or not Path(path).is_file() or Path(path).is_symlink():
+        raise PermissionError("independent_neural_origin_witness_missing")
+    observations = []
+    last_elapsed = -1.0
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        entry = json.loads(raw)
+        if (entry.get("schema") !=
+                "pretorius.r4.external-neural-origin-observation.v1"
+                or type(entry.get("process_alive")) is not bool
+                or type(entry.get("goals")) is not dict
+                or entry.get("source_authentication_performed") is not False
+                or entry.get("autonomy_credit") is not False
+                or type(entry.get("elapsed_seconds")) not in (int, float)
+                or entry["elapsed_seconds"] < last_elapsed):
+            raise ValueError("malformed_independent_origin_observation")
+        last_elapsed = entry["elapsed_seconds"]
+        observations.append(entry)
+    if not observations or observations[0]["process_alive"] is not False:
+        raise ValueError("independent_origin_baseline_missing")
+    baseline = {
+        row.get("goal_id") for row in observations[0]["goals"].values()
+        if type(row) is dict
+    }
+    if baseline.intersection(expected):
+        raise PermissionError("preexisting_goal_cannot_be_claimed_as_new")
+    observed = set()
+    for entry in observations[1:]:
+        if not entry["process_alive"]:
+            continue
+        for kind, row in entry["goals"].items():
+            if type(row) is not dict:
+                raise ValueError("malformed_independent_origin_row")
+            goal_id = row.get("goal_id")
+            expected_row = expected.get(goal_id)
+            if expected_row is None:
+                continue
+            if (expected_row["kind"] != kind
+                    or row.get("origin_policy_id") != expected_row["origin_policy_id"]
+                    or row.get("origin_thought_id") != expected_row["origin_thought_id"]
+                    or row.get("selected_tendency") != expected_row["original_tendency"]
+                    or row.get("canonical_checksum") != expected_row["canonical_checksum"]
+                    or row.get("policy_trigger") != "six_organ_lab_cycle"
+                    or row.get("thought_generated_by") !=
+                    "neural_policy:" + expected_row["origin_policy_id"]
+                    or row.get("checksum_matches") is not True
+                    or row.get("record_consistency_only") is not True):
+                raise PermissionError("independent_origin_source_mismatch:" + goal_id)
+            observed.add(goal_id)
+    if not expected or observed != set(expected):
+        raise PermissionError("independent_live_origin_not_observed")
+    return {"observed_goal_ids": sorted(observed),
+            "observation_count": len(observations),
+            "process_witness_not_neural_causal_proof": True}
+
+
+def evaluate(workspace: Path, *, origin_witness: Path | None = None) -> dict:
     """Release-facing independent ledger audit, never synthetic positive."""
     evidence = evaluate_schema_only(workspace)
     try:
@@ -361,6 +436,20 @@ def evaluate(workspace: Path) -> dict:
             "original_source_world_authority_not_verified:" + type(exc).__name__ +
             ":" + str(exc)[:240]
         )
+    try:
+        witnessed = verify_external_origin_witness(
+            origin_witness, evidence.get("verified_goal_origins", {})
+        )
+        evidence["independent_live_neural_origin_observed"] = True
+        evidence["independent_origin_observation"] = witnessed
+    except (OSError, ValueError, KeyError, TypeError, PermissionError) as exc:
+        evidence["status"] = "FAIL"
+        evidence["three_distinct_uncoached"] = False
+        evidence["independent_live_neural_origin_observed"] = False
+        evidence.setdefault("problems", []).append(
+            "independent_origin_witness_not_verified:" +
+            type(exc).__name__ + ":" + str(exc)[:200]
+        )
     return evidence
 
 
@@ -368,8 +457,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--workspace", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--origin-witness", type=Path)
     args = parser.parse_args()
-    result = evaluate(args.workspace)
+    result = evaluate(args.workspace, origin_witness=args.origin_witness)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print("UNCOACHED_R4_AUDIT=" + json.dumps(result, sort_keys=True))
