@@ -176,10 +176,10 @@ def main():
             decision[0]
         )["used_outcome_memory_ids"]
 
-        # Real subsequent decision, not a generated transcript: cold-start the
-        # SAME 4,096-neuron individual after Noesis repairs the observed wear.
-        # Original Laboratory physics now offers a different action. A fresh
-        # installed CLI process must select it without a requested action name.
+        # A second source-backed physical action, not a causal preference reversal:
+        # cold-start the SAME 4,096-neuron individual after repair. Original
+        # Laboratory physics removes repair from the feasible set at apparatus=3.
+        # The installed CLI must still record a fresh Noesis decision and receipt.
         assert work_report["action"] == "repair", (
             "Observed apparatus wear must produce the source-backed repair choice"
         )
@@ -199,7 +199,7 @@ def main():
         assert followup["status"] == "admitted"
         assert followup["selection"] == "original_noesis"
         assert followup["action"] == "experiment", (
-            "A real post-repair world observation must change the next choice"
+            "Original Laboratory must admit the remaining feasible post-repair work"
         )
         with closing(SpatialHabitat(preview_world)._open()) as world_db:
             followup_receipt = world_db.execute(
@@ -223,13 +223,22 @@ def main():
         assert followup_memories[0]["text"] == followup["subject_frames"][-1]["inner"]
         with closing(PretoriusBrainPort(preview_state).brain.store.connect()) as mind_db:
             choices = mind_db.execute(
-                "SELECT selected_action,state_pressure_json FROM policy_decisions "
-                "WHERE trigger='noesis_situated_choice' ORDER BY rowid DESC LIMIT 2"
+                "SELECT selected_action,state_pressure_json,action_scores_json "
+                "FROM policy_decisions WHERE trigger='noesis_situated_choice' "
+                "ORDER BY rowid DESC LIMIT 2"
             ).fetchall()
         assert [row[0] for row in choices] == ["experiment", "repair"]
         assert all(json.loads(row[1])["selector_authority"] == "original_noesis"
                    for row in choices)
         assert json.loads(choices[0][1])["observation_memory_id"]
+        # The canonical Noesis policy row records scores only for the actual
+        # original-world feasible set. Preserve this distinction in CI output:
+        # a different action when repair is forbidden is NOT a two-way choice.
+        initial_feasible = sorted(json.loads(choices[1][2]))
+        followup_feasible = sorted(json.loads(choices[0][2]))
+        assert initial_feasible and "repair" in initial_feasible
+        assert followup_feasible == ["experiment"]
+        assert choices[0][0] != choices[1][0]
         assert json.loads(_run(preview_start).stdout)["recovered"] == 0
 
         # The installed 4,096-neuron preview must survive a complete offline
@@ -823,7 +832,10 @@ def main():
                           "verified_lived_memories": 1,
                           "preview_noesis_distinct_work_actions": 2,
                           "preview_authenticated_work_memories": 2,
-                          "preview_later_changed_decision": True,
+                          "preview_later_different_admitted_action_after_world_change": True,
+                           "preview_initial_feasible_actions": initial_feasible,
+                           "preview_followup_feasible_actions": followup_feasible,
+                           "preview_r4_causal_preference_proven": False,
                           "preview_cold_restart_between_decisions": True,
                           "recovered_on_restart": 1,
                           "recovered_on_second_restart": 0,
