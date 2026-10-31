@@ -308,7 +308,12 @@ def main():
         ).brain.store.get_memory(day["memory_id"])
         assert day_memory["evidence_class"] == "lived_runtime_memory"
         assert day_memory["source"] == "laboratory-home:action:" + day_receipt[0]
-        assert day_memory["text"] == json.loads(day_receipt[1])["subject"]["inner"]
+        raw_day_inner = json.loads(day_receipt[1])["subject"]["inner"]
+        expected_day_inner = (
+            "I notice time passing. " + raw_day_inner
+            if day["action"] == "advance" else raw_day_inner
+        )
+        assert day_memory["text"] == expected_day_inner
         assert day["subject_frames"][-1]["inner"] == day_memory["text"]
         with closing(PretoriusBrainPort(restored_preview_state).brain.store.connect()) as day_mind:
             day_policy = day_mind.execute(
