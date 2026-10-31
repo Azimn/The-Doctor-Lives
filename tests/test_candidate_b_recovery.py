@@ -1,11 +1,21 @@
 """Real Laboratory physics recovery contract; these are NOT autonomy credit."""
 import copy
+import os
 import unittest
 
 from doctor_lives.lab_recovery_census import recovery_options, supply_gaps
-from pretorius_lab.daily_rhythm import INITIAL, transition
+
+try:
+    from pretorius_lab.daily_rhythm import INITIAL, transition
+except ModuleNotFoundError as exc:
+    # General brain-only CI has no Laboratory. The pinned-Lab CI must fail closed.
+    if exc.name != "pretorius_lab" or os.environ.get("PRETORIUS_REQUIRE_PINNED_LAB") == "1":
+        raise
+    INITIAL = None
+    transition = None
 
 
+@unittest.skipIf(INITIAL is None, "requires pinned original Laboratory; see dedicated recovery CI")
 class OriginalPhysicsRecoveryTests(unittest.TestCase):
     def state(self, **kwargs):
         s = copy.deepcopy(INITIAL)
