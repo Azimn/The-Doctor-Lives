@@ -155,14 +155,23 @@ class NativeLaboratoryGoalChooser:
         rest = self._load_rest()
         book = self.book.status()
         work = self.work._load() if self.work is not None else None
-        if work is not None and work["phase"] != "complete" and (
-                (rest is not None and rest["phase"] != "complete") or
-                (book.goal_id is not None and book.phase not in ("complete", "exhausted"))):
-            raise RuntimeError("Competing native work and other unfinished goals")
         if work is not None and work["phase"] != "complete":
+            if book.goal_id is not None and book.phase not in ("complete", "exhausted"):
+                raise RuntimeError("Unreviewed competing book and work commitments")
+            # A physically blocked work goal may coexist only with a real
+            # Noesis-origin rest intention. Complete that temporary recovery
+            # before resuming the original work goal, across cold restarts.
+            if rest is not None and rest["phase"] != "complete":
+                if work["phase"] != "blocked":
+                    raise RuntimeError("Unreviewed competing work and rest")
+                return self._continue_rest(rest, authorized_world_action)
             result = self.work.step(
                 authorized=authorized_world_action, new_policy=self._native_policy
             )
+            if result.status == "blocked" and rest is None and authorized_world_action:
+                proposal = self._native_policy()
+                if proposal.selected_tendency == "avoid":
+                    return self._originate_rest(proposal)
             return NativeGoalChoiceReceipt(
                 result.status, "work", result.goal_id, result.memory_id,
                 selected_tendency=result.selected_tendency
@@ -251,7 +260,16 @@ class NativeLaboratoryGoalChooser:
                 "no_situated_goal", None, None,
                 selected_tendency=proposal.selected_tendency
             )
-        # Real body and world must exist, but a host-supplied goal is absent.
+        return self._originate_rest(proposal)
+
+    def _originate_rest(self, proposal):
+        # Original neural avoidance must be proved by its current policy,
+        # not supplied by an external task message or synthetic body state.
+        if proposal.selected_tendency != "avoid" or self._load_rest() is not None:
+            raise PermissionError("No new original-neural rest origin")
+        _, latest = self.host.corpus._verified_policy(proposal)
+        if latest != proposal.policy_decision_id:
+            raise PermissionError("Stale neural rest intention")
         self.host.subject.home.verify()
         ident = sha256((self._epoch() + "|" +
                         proposal.policy_decision_id).encode()).hexdigest()[:24]
