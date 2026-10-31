@@ -77,7 +77,7 @@ def main():
                 "source_authentication_performed": False,
                 "autonomy_credit": False,
             }
-            origins_stream.write(json.dumps(entry, sort_keys=True) + "\\n")
+            origins_stream.write(json.dumps(entry, sort_keys=True) + "\n")
             origins_stream.flush()
             os.fsync(origins_stream.fileno())
             last_origins = current
