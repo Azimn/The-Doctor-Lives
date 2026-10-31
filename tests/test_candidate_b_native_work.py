@@ -65,14 +65,18 @@ class CandidateBSourceBackedWork(unittest.TestCase):
             chooser = NativeLaboratoryGoalChooser(
                 host, authorized=True, enable_sustained_work=True)
             host.bridge.observe()
+            tendencies = {}
             for attempts in range(64):
                 proposal = chooser._native_policy()  # actual original Noesis
+                tendencies[proposal.selected_tendency] = tendencies.get(
+                    proposal.selected_tendency, 0) + 1
                 if proposal.selected_tendency == "persist":
                     created = chooser.work.originate(proposal)
                     if created.status == "goal_created":
                         break
             else:
-                self.fail("No source-situated original neural persist intention emerged")
+                self.fail("No native persist intention in 64 original six-organ opportunities: "
+                          + json.dumps(tendencies, sort_keys=True))
             self.assertEqual(created.status, "goal_created")
             self.assertEqual(self.subject.embodied.verify()["station"], "station:threshold")
             denied = chooser.step(authorized_world_action=False)
