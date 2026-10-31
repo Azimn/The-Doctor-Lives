@@ -180,6 +180,7 @@ def evaluate(workspace: Path) -> dict:
                     assert linked == [motor_id], "missing or duplicate motor"
                 assert fields["canonical_memory_source"] == memory["source"]
                 assert fields["world_event_id"] == source["event_id"]
+                assert source["world_epoch"] == intent["world_epoch"], "foreign world epoch"
                 if gid in verified:
                     raise AssertionError("Duplicate goal completion")
                 verified[gid] = kind
