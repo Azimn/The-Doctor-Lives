@@ -95,9 +95,9 @@ def _intent_source(state: Path, goal_id: str) -> dict:
                 "SELECT selected_action FROM policy_decisions WHERE id=?",
                 (entry["origin_policy_id"],)
             ).fetchone()
-            expected = {"read_book": "explore", "rest": "avoid",
-                        "work": "persist"}[kind]
-            if not choice or choice[0] != expected:
+            expected = {"read_book": ("explore",), "rest": ("avoid",),
+                        "work": ("explore", "persist")}[kind]
+            if not choice or choice[0] not in expected:
                 raise PermissionError("Native intent has no original Noesis decision")
             return {"origin_policy_id": entry["origin_policy_id"],
                     "original_tendency": choice[0], "goal_kind": kind,
