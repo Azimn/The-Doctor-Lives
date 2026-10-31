@@ -104,6 +104,14 @@ def initialize_preview(workspace: str | Path, *, world_template: str | Path | No
             raise RuntimeError("Incomplete canonical brain or recurrent checkpoint")
         if destination.exists() or destination.is_symlink():
             raise FileExistsError(f"Preview workspace appeared during genesis: {destination}")
+        # Windows refuses atomic directory publication while SQLite or mmap
+        # handles in the staged world or recurrent brain remain open. Drop
+        # transient genesis objects and collect reference cycles before the
+        # kernel-enforced no-replace rename. Never fall back to copying into
+        # an occupied workspace or weakening exclusive publication.
+        del brain, world
+        import gc
+        gc.collect()
         _publish_noreplace(staging, destination)
         published = True
         return {
