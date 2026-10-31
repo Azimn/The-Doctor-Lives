@@ -375,6 +375,11 @@ class SixOrganRuntime:
     def organ_registry(self) -> tuple[OrganDescriptor, ...]:
         return ORGAN_REGISTRY
 
+    def bind_conclave(self, *, enabled: bool = False):
+        """Opt-in interpretive faculty backed by the canonical BrainStore."""
+        from .conclave import Conclave
+        return Conclave(self._port.brain.store, enabled=enabled)
+
     def bind_laboratory(self, subject_port, *, authorized: bool = False):
         """Attach the existing source-verified Laboratory bridge to this brain.
 
