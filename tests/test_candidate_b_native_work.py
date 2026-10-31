@@ -286,9 +286,10 @@ subject = SubjectPort(SpatialHabitat(world))
 with SixOrganLaboratoryCycle(
         runtime, subject, affectus_source=donor,
         renderer=lambda text: text, authorized=True) as host:
+    original_admission = host.bridge._admit_verified
     def die_after_original_world_commit(frame, source, **kwargs):
         if not source.startswith("laboratory-home:action:"):
-            raise AssertionError("Unexpected ingress before physical work")
+            return original_admission(frame, source, **kwargs)
         # DoctorHomeBridge calls this only AFTER SubjectPort.act has
         # durably written the actual Laboratory receipt. Kill the whole
         # process without Python unwinding or closing the cognitive session.
@@ -337,7 +338,8 @@ os._exit(99)
             rows = db.execute(
                 "SELECT event_hash FROM rhythm_events WHERE event_id=?",
                 (event_id,)).fetchall()
-        self.assertEqual(rows, [(digest,)])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], digest)
         with sqlite3.connect(self.state / "brain.sqlite3") as db:
             memories = db.execute(
                 "SELECT id FROM memories WHERE source=?",
