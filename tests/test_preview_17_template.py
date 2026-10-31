@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import importlib.util
 import json
 import tempfile
 import unittest
@@ -10,6 +11,8 @@ from doctor_lives.lab_preview import initialize_preview
 from doctor_lives.preview_17_books import verify_unread_seventeen
 
 
+@unittest.skipUnless(importlib.util.find_spec("pretorius_lab") is not None,
+                     "Original Laboratory donor not installed in brain-only CI")
 class SeventeenTemplateContract(unittest.TestCase):
     def test_empty_world_rejected_before_genesis(self):
         from pretorius_lab.habitat_v2 import SpatialHabitat
