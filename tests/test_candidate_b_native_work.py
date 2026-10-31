@@ -246,5 +246,123 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
                     "SELECT count(*) FROM rhythm_events").fetchone()[0], 0)
 
 
+    def test_real_os_kill_after_world_before_brain_recovers_exactly_once(self):
+        """External process dies after real physical work, before lived admission.
+
+        This is a deliberately injected OS crash at a known custody seam.
+        It proves one targeted same-goal work replay, NOT uncoached R4 3/3.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        epoch = self.subject.verify()["world_epoch"]
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            created = chooser.step(authorized_world_action=False)
+            self.assertEqual((created.kind, created.status),
+                             ("work", "goal_created"))
+            for _ in range(12):
+                if self.subject.embodied.verify()["station"] == "station:bench":
+                    break
+                moved = chooser.step(authorized_world_action=True)
+                self.assertEqual(moved.status, "moved")
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:bench")
+            rt.checkpoint()
+
+        event_id = "ng_" + created.goal_id + "_work"
+        child = r"""
+import os
+import sys
+from pathlib import Path
+from doctor_lives.organs import SixOrganRuntime
+from doctor_lives.lab_native_goal_choice import NativeLaboratoryGoalChooser
+from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.subject_port import SubjectPort
+
+state, world, donor = map(Path, sys.argv[1:])
+runtime = SixOrganRuntime.open(state)
+subject = SubjectPort(SpatialHabitat(world))
+with SixOrganLaboratoryCycle(
+        runtime, subject, affectus_source=donor,
+        renderer=lambda text: text, authorized=True) as host:
+    def die_after_original_world_commit(frame, source, **kwargs):
+        if not source.startswith("laboratory-home:action:"):
+            raise AssertionError("Unexpected ingress before physical work")
+        # DoctorHomeBridge calls this only AFTER SubjectPort.act has
+        # durably written the actual Laboratory receipt. Kill the whole
+        # process without Python unwinding or closing the cognitive session.
+        print("REAL_WORLD_COMMITTED_BRAIN_NOT_ADMITTED", flush=True)
+        os._exit(73)
+    host.bridge._admit_verified = die_after_original_world_commit
+    chooser = NativeLaboratoryGoalChooser(
+        host, authorized=True, enable_sustained_work=True)
+    chooser.step(authorized_world_action=True)
+os._exit(99)
+"""
+        killed = subprocess.run(
+            [sys.executable, "-c", child, str(self.state),
+             str(self.root / "original.sqlite3"), str(self.donor)],
+            capture_output=True, text=True, timeout=90)
+        self.assertEqual(killed.returncode, 73, killed.stderr)
+        self.assertIn("REAL_WORLD_COMMITTED_BRAIN_NOT_ADMITTED",
+                      killed.stdout)
+        self.subject.rhythm.verify()
+        with self.world._open() as db:
+            original = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (event_id,)).fetchall()
+        self.assertEqual(len(original), 1)
+        digest = original[0][0]
+        with sqlite3.connect(self.state / "brain.sqlite3") as db:
+            before = db.execute(
+                "SELECT count(*) FROM memories WHERE source=?",
+                ("laboratory-home:action:" + digest,)).fetchone()[0]
+        self.assertEqual(before, 0)
+
+        # A completely new Python runtime reconciles the existing original
+        # world event, prior original Noesis motor binding, and canonical goal.
+        reopened = SixOrganRuntime.open(self.state)
+        with self.session(reopened) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            result = chooser.step(authorized_world_action=True)
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(result.goal_id, created.goal_id)
+            self.assertEqual(chooser.work._load()["phase"], "complete")
+            reopened.checkpoint()
+        self.assertEqual(self.subject.verify()["world_epoch"], epoch)
+        self.subject.rhythm.verify()
+        with self.world._open() as db:
+            rows = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (event_id,)).fetchall()
+        self.assertEqual(rows, [(digest,)])
+        with sqlite3.connect(self.state / "brain.sqlite3") as db:
+            memories = db.execute(
+                "SELECT id FROM memories WHERE source=?",
+                ("laboratory-home:action:" + digest,)).fetchall()
+        self.assertEqual(len(memories), 1)
+        self.assertEqual(memories[0][0], result.memory_id)
+
+        # Another cold reopen is read-only with respect to this work event.
+        again = SixOrganRuntime.open(self.state)
+        with self.session(again) as host:
+            self.assertEqual(NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True
+            ).work._load()["memory_id"], result.memory_id)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,)).fetchone()[0], 1)
+        print("B_REAL_OS_KILL_WORLD_BEFORE_BRAIN=" + json.dumps({
+            "real_process_exit": 73,
+            "original_world_event_exactly_once": True,
+            "canonical_lived_memory_exactly_once": True,
+            "same_goal_after_cold_restart": True,
+            "uncoached_three_class_R4": False,
+        }, sort_keys=True))
+
+
 if __name__ == "__main__":
     unittest.main()
