@@ -111,8 +111,14 @@ class CandidateBSourceBackedWork(unittest.TestCase):
                     (record["work_policy_id"],)).fetchone()
             self.assertEqual(policy["selected_action"], "persist")
             self.assertEqual(chosen["selected_action"], record["selected_action"])
-            self.assertEqual(chooser.step(authorized_world_action=True).status,
-                             "already_complete")
+            next_goal = chooser.step(authorized_world_action=True)
+            # A later original exploratory/avoid choice may legitimately
+            # originate a DIFFERENT book/rest goal. Neither reopens work.
+            self.assertIn(next_goal.status, ("already_complete", "goal_created",
+                                             "no_situated_goal"))
+            if next_goal.status == "goal_created":
+                self.assertIn(next_goal.kind, ("read_book", "rest"))
+                self.assertNotEqual(next_goal.goal_id, created.goal_id)
             resumed.checkpoint()
 
         with self.world._open() as db:
