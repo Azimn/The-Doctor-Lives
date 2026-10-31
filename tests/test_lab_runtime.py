@@ -1884,3 +1884,105 @@ class OptionalLocalInterpretationTests(unittest.TestCase):
                     emit_laboratory(self._report(), human=True, local_model=model)
         with self.assertRaises(ValueError):
             emit_laboratory(self._report(), human=False, local_model="qwen3:14b")
+
+
+@unittest.skipUnless(HAS_ORIGINAL_LAB, "Requires the pinned original Laboratory")
+class OriginalNoesisDailyShippingTests(unittest.TestCase):
+    """An operator offers a time to act, never a selected physical task."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.addCleanup(gc.collect)
+        root = Path(self.temp.name)
+        self.state = root / "state"
+        self.world_path = root / "world.sqlite3"
+        world = SpatialHabitat.create(self.world_path)
+        HomeLife(world).initialize()
+        DailyRhythm(world).initialize()
+        config = dict(DEFAULT_CONFIG)
+        config.update(neurons=128, sensory_dim=64, avg_recurrent_degree=8,
+                      input_degree=4, action_population_size=8, seed=1842)
+        PretoriusBrainPort(self.state, neural_config=config)
+        self.epoch = world.verify()["world_epoch"]
+
+    def command(self, *args):
+        return subprocess.run(
+            [sys.executable, "-m", "doctor_lives.cli", "--state",
+             str(self.state), *args, "--world", str(self.world_path)],
+            capture_output=True, text=True, timeout=120,
+        )
+
+    def test_uncoached_action_selection_is_original_policy_and_world_receipt(self):
+        from doctor_lives.lab_home_bridge import _ACTION_DOMAINS, _row
+        from doctor_lives.noesis_day import real_affordances
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.organs import SixOrganRuntime
+
+        denied = self.command("lab-opportunity")
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertEqual(denied.stdout, "")
+        denied_choice = self.command("lab-opportunity", "--allow-world-actions",
+                                     "--action", "repair")
+        self.assertNotEqual(denied_choice.returncode, 0)
+        self.assertEqual(denied_choice.stdout, "")
+        with SpatialHabitat(self.world_path)._open() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM rhythm_events").fetchone()[0], 0)
+
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world_path)), authorized=True,
+        )
+        available = set(real_affordances(bridge))
+        self.assertTrue(available)
+        del bridge, runtime
+        gc.collect()
+
+        first = self.command("lab-opportunity", "--allow-world-actions")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        result = json.loads(first.stdout)
+        self.assertEqual(result["status"], "admitted")
+        self.assertEqual(result["selection"], "original_noesis")
+        self.assertFalse(result["host_selected_action"])
+        self.assertTrue(result["operator_offered_opportunity"])
+        self.assertFalse(result["uncoached_three_task_life_proven"])
+        self.assertEqual(set(result["feasible_actions"]), available)
+        self.assertIn(result["action"], available)
+        self.assertEqual(len(result["subject_frames"]), 1)
+        event_id = result["event_id"]
+        with SpatialHabitat(self.world_path)._open() as db:
+            envelope, digest = _row(db, _ACTION_DOMAINS[result["action"]], event_id)
+        memory = PretoriusBrainPort(self.state).brain.store.get_memory(result["memory_id"])
+        self.assertEqual(memory["source"], "laboratory-home:action:" + digest)
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.assertFalse(memory["external"])
+        self.assertEqual(memory["text"], envelope["subject"]["inner"])
+        self.assertEqual(memory["text"], result["subject_frames"][0]["inner"])
+        with PretoriusBrainPort(self.state).brain.store.connect() as db:
+            policy = db.execute(
+                "SELECT selected_action,state_pressure_json FROM policy_decisions WHERE id=?",
+                (result["policy_decision_id"],),
+            ).fetchone()
+        self.assertEqual(policy["selected_action"], result["action"])
+        audit = json.loads(policy["state_pressure_json"])
+        self.assertEqual(audit["selector_authority"], "original_noesis")
+        self.assertEqual(audit["motor_event_id"], event_id)
+        self.assertEqual(audit["motor_authorization"], "authorized")
+
+        restarted = self.command("lab-start")
+        self.assertEqual(restarted.returncode, 0, restarted.stderr)
+        self.assertEqual(json.loads(restarted.stdout)["recovered"], 0)
+        with SpatialHabitat(self.world_path)._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT COUNT(*) FROM " + _ACTION_DOMAINS[result["action"]]
+                + " WHERE event_id=?", (event_id,),
+            ).fetchone()[0], 1)
+        self.assertEqual(SpatialHabitat(self.world_path).verify()["world_epoch"], self.epoch)
+        second = self.command("lab-opportunity", "--allow-world-actions")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        next_result = json.loads(second.stdout)
+        self.assertEqual(next_result["status"], "admitted")
+        self.assertNotEqual(next_result["event_id"], event_id)
+        self.assertNotEqual(next_result["memory_id"], result["memory_id"])
+        self.assertFalse(next_result["uncoached_three_task_life_proven"])
+        self.assertEqual(SpatialHabitat(self.world_path).verify()["world_epoch"], self.epoch)
