@@ -29,6 +29,8 @@ REVIEWED_OPERATOR_GLOSS = {"local_subject_gloss.py": {"http"}}
 REVIEWED_LOCAL_RESEARCH = {"open_inference.py": {"urllib"},
                            "semantic_intentions.py": {"urllib"}}
 REVIEWED_LOCAL_TRANSPORT = {"local_ollama_transport.py": {"http"}}
+REVIEWED_LOOPBACK_UI = {"operator_chat_web.py": {"http"}}
+REVIEWED_PINNED_ORGANOID = {"phantasmagorium_bridge.py": {"subprocess"}}
 
 MODEL_PROVIDER_ROOTS = {
     "urllib", "requests", "httpx", "http", "openai", "anthropic",
@@ -64,7 +66,8 @@ def run() -> dict:
         found = imports(root) & MODEL_PROVIDER_ROOTS
         expected = RESEARCH_ONLY.get(file.name, REVIEWED_OPERATOR_GLOSS.get(
             file.name, REVIEWED_LOCAL_RESEARCH.get(file.name,
-                REVIEWED_LOCAL_TRANSPORT.get(file.name, set()))))
+                REVIEWED_LOCAL_TRANSPORT.get(file.name, REVIEWED_LOOPBACK_UI.get(
+                    file.name, REVIEWED_PINNED_ORGANOID.get(file.name, set()))))))
         if found != expected:
             raise AssertionError(
                 f"Unreviewed model/process/network import in {file.name}: "
@@ -118,6 +121,29 @@ def run() -> dict:
                     != ["POST", "/api/generate"]):
                 raise AssertionError("Operator gloss must use only fixed-loopback Ollama")
             audits[file.name] = "fixed-loopback operator gloss only; not a subject renderer"
+        if file.name in REVIEWED_LOOPBACK_UI:
+            servers = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                       and isinstance(n.func, ast.Name)
+                       and n.func.id == "ThreadingHTTPServer"]
+            if (len(servers) != 1 or not servers[0].args
+                    or not isinstance(servers[0].args[0], ast.Tuple)
+                    or not servers[0].args[0].elts
+                    or not isinstance(servers[0].args[0].elts[0], ast.Constant)
+                    or servers[0].args[0].elts[0].value != "127.0.0.1"
+                    or "from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer" not in content):
+                raise AssertionError("Operator web UI must bind one numeric loopback server")
+            audits[file.name] = "numeric-loopback-only operator UI, no model provider"
+        if file.name in REVIEWED_PINNED_ORGANOID:
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute)
+                     and n.func.attr == "run"]
+            expected_hash = "31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8"
+            if (len(calls) != 1 or expected_hash not in content
+                    or '[sys.executable, "-I", "-c", WORKER, str(self.archive), method]' not in content
+                    or "shell=True" in content
+                    or "def verify_archive(" not in content):
+                raise AssertionError("Unreviewed isolated Phantasmagorium subprocess")
+            audits[file.name] = "exact-digest offline organoid donor, isolated process; no subject renderer"
         if file.name in AUTHORIZED_LOCAL_MODULES:
             if found:
                 raise AssertionError("Production subject modules may not directly access provider")
