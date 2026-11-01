@@ -282,8 +282,48 @@ class SixOrganLaboratoryCycle:
             raise PermissionError("Unverifiable original six-organ rest reservation")
         return data
 
+    def _direct_rest_offered(self) -> bool:
+        """Source-grounded physical offer, not a second rest scheduler.
+
+        Once the native goal-aware chooser owns a rest commitment, the daily
+        six-organ fallback must not actuate another rest outside its durable
+        canonical goal lifecycle. An otherwise eligible original AVOID can
+        still be registered by Noesis. When no native rest exists, a DIRECT
+        six-organ rest requires authentic renewed physical fatigue, not a
+        time quota or artificially modified neural scores.
+        """
+        if self.runtime._port.brain.store.meta(
+            "six_organ_native_rest_intention_v1"
+        ) is not None:
+            return False
+        from pretorius_lab.daily_rhythm import transition
+        from pretorius_lab.physics import Conflict, LabError
+        self.subject.rhythm.verify()
+        physical = self.subject.rhythm.audit_state()
+        fatigue = physical.get("fatigue")
+        if type(fatigue) is not int or not 0 < fatigue <= 10:
+            return False
+        station = self.subject.embodied.verify()["station"]
+        if station != "station:bedroom":
+            return False
+        try:
+            transition(physical, "rest", {}, station)
+        except (Conflict, LabError):
+            return False
+        return True
+
     def _reserve_rest(self, proposal: CognitiveProposal):
         """Persist the original neural AVOID before touching original world physics."""
+        if self.runtime._port.brain.store.meta(
+            "six_organ_native_rest_intention_v1"
+        ) is not None:
+            raise PermissionError(
+                "Direct six-organ rest cannot bypass canonical native rest"
+            )
+        if not self._direct_rest_offered():
+            raise PermissionError(
+                "Direct six-organ rest lacks renewed original physical fatigue"
+            )
         policy, latest = self.corpus._verified_policy(proposal)
         if (proposal.selected_tendency != "avoid"
                 or policy["trigger"] != "six_organ_lab_cycle"
@@ -530,9 +570,13 @@ class SixOrganLaboratoryCycle:
             status = receipt.status
         elif (proposal.selected_tendency == "avoid"
               and station == "station:bedroom" and authorized_world_action):
-            self._execute_rest(proposal)
-            status = "rested"
-            destination = station
+            # This is a physical opportunity filter, never a neural rewrite.
+            # Any canonical rest intention is exclusively resumed by the
+            # existing goal-aware chooser, including after cold restart.
+            if self._direct_rest_offered():
+                self._execute_rest(proposal)
+                status = "rested"
+                destination = station
 
         # IPSEITY: never call an LLM/renderer directly with audit/context.
         # In-process host conventions alone are not a universal D3 sandbox.
