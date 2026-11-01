@@ -86,6 +86,51 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         )
         return item
 
+    def test_first_neural_explore_can_move_without_a_preseeded_cue(self):
+        """Original EXPLORE can discover a room, not invent a book or goal.
+
+        A pristine world cannot have a remembered bookshelf/workbench LOOK.
+        This regression uses the actual neural policy, source graph, original
+        physical movement and first-person memory. Movement earns no R4 goal.
+        """
+        from pretorius_lab.embodied_access import STATIONS
+        path = self.root / "unseen-exploration-mind"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        with self.host(rt) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            proposal = chooser._native_policy()
+            self.assertEqual(proposal.selected_tendency, "explore")
+            origin = self.subject.embodied.verify()["station"]
+            self.assertFalse(any(
+                "bookshelves" in event["offered_payload"]["perceived_features"]
+                or "workbench" in event["offered_payload"]["perceived_features"]
+                for event, _ in __import__(
+                    "doctor_lives.lab_endogenous_book_task",
+                    fromlist=["_verified_looks"]
+                )._verified_looks(self.subject.embodied)
+            ))
+            denied = chooser._move_to_remembered_cue(proposal, False)
+            self.assertEqual(denied.status, "no_situated_goal")
+            self.assertEqual(self.subject.embodied.verify()["station"], origin)
+            moved = chooser._move_to_remembered_cue(proposal, True)
+            self.assertEqual(moved.status, "moved")
+            self.assertIsNone(moved.goal_id)
+            self.assertIsNone(moved.kind)
+            self.assertIn(self.subject.embodied.verify()["station"], STATIONS[origin][1])
+            memory = rt._port.brain.store.get_memory(moved.memory_id)
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+            self.assertIsNone(chooser.book.status().goal_id)
+            self.assertIsNone(chooser._load_rest())
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(path)
+        self.assertIsNotNone(reopened._port.brain.store.get_memory(moved.memory_id))
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM embodied_events WHERE event_hash=?",
+                (memory["source"].split(":")[-1],)
+            ).fetchone()[0], 1)
+
     def test_native_explore_pursues_real_book_without_second_goal_prompt(self):
         fixture = self.install_fixture()
         path = self.root / "book-mind"

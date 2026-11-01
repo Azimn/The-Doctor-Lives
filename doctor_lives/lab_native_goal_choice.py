@@ -361,17 +361,28 @@ class NativeLaboratoryGoalChooser:
             and any(feature in event["offered_payload"]["perceived_features"]
                     for feature in ("bookshelves", "workbench"))
         }
-        if not seen or station in seen:
+        if station in seen:
             return NativeGoalChoiceReceipt(
                 "no_situated_goal", None, None,
                 selected_tendency=proposal.selected_tendency,
             )
-        # Reuse the EXISTING bounded host navigation adapter. Do not add
-        # another selector or planner, and never infer a cue from the map.
-        hop = next((
-            step for target in sorted(seen)
-            if (step := EndogenousBookPursuit._route(station, target)) is not None
-        ), None)
+        if seen:
+            # A real prior LOOK can justify returning to its witnessed cue.
+            hop = next((
+                step for target in sorted(seen)
+                if (step := EndogenousBookPursuit._route(station, target)) is not None
+            ), None)
+        elif proposal.selected_tendency == "explore":
+            # Previously, a first EXPLORE in a pristine world was trapped:
+            # no room had been visited, so no remembered cue could exist.
+            # Reuse the SAME original six-organ affordance allocator for
+            # ONE adjacent, physically legal exploratory hop. It uses the
+            # source-defined world graph and original lived movement counts,
+            # never an unseen book/work cue, authored destination or goal.
+            # The resulting movement has NO goal identity or R4 credit.
+            hop = self.host._select_internal_affordance("explore", station)
+        else:
+            hop = None
         if hop is None:
             return NativeGoalChoiceReceipt(
                 "no_situated_goal", None, None,
