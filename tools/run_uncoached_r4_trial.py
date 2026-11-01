@@ -20,6 +20,45 @@ from observe_uncoached_r4 import inspect_neural_origins, sample
 SAMPLE_SECONDS = 15.0
 
 
+
+def _stop_with_live_origin_sampling(proc, command, record_origins, *,
+                                   timeout_seconds=90):
+    """Observe the real child while a graceful stop command is pending.
+
+    A sealed goal may finish after the observation horizon but before the
+    Doctor has exited. Sampling cannot block on preview-stop and then call
+    the first postmortem database snapshot a live neural-origin witness.
+    The observer is read-only, fsynced by its caller, and never drives goals.
+    """
+    if not isinstance(timeout_seconds, (int, float)) or timeout_seconds <= 0:
+        raise ValueError("Positive graceful-stop observation timeout required")
+    stopper = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    deadline = time.monotonic() + timeout_seconds
+    try:
+        while True:
+            alive = proc.poll() is None
+            # Use actual OS process liveness for EVERY origin observation.
+            # A late goal appears live only if its source was readable while
+            # the original Doctor process was still alive.
+            record_origins(alive)
+            finished = stopper.poll() is not None
+            if finished and (not alive or stopper.returncode != 0):
+                break
+            if time.monotonic() >= deadline:
+                stopper.kill()
+                stopper.communicate(timeout=10)
+                return 124, "preview-stop observation exceeded deadline"
+            time.sleep(0.1)
+        _, stderr = stopper.communicate(timeout=10)
+        return stopper.returncode, stderr
+    finally:
+        if stopper.poll() is None:
+            stopper.kill()
+            stopper.communicate(timeout=10)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--install-root", type=Path, required=True)
@@ -103,11 +142,12 @@ def main():
                     next_sample = time.monotonic() + SAMPLE_SECONDS
                 time.sleep(0.25)
             if proc.poll() is None:
-                stop = subprocess.run(
-                    doctor_args + ["preview-stop", "--workspace", str(workspace)],
-                    capture_output=True, text=True, timeout=90)
-                if stop.returncode != 0:
-                    error = "operator_did_not_cleanly_stop:" + stop.stderr[-400:]
+                stop_code, stop_stderr = _stop_with_live_origin_sampling(
+                    proc, doctor_args + ["preview-stop", "--workspace", str(workspace)],
+                    record_origins, timeout_seconds=90,
+                )
+                if stop_code != 0:
+                    error = "operator_did_not_cleanly_stop:" + stop_stderr[-400:]
             try:
                 proc.wait(timeout=60)
             except subprocess.TimeoutExpired:
