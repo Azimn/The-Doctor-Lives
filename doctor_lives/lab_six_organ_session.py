@@ -132,6 +132,7 @@ class SixOrganLaboratoryCycle:
         # Recover a world action that committed before brain admission,
         # once the SAME original brain/weather is reopened from its store.
         self._reconcile_pending()
+        self._reconcile_pending_rest()
         if len({
             id(runtime.noesis._port), id(runtime.mnemosyne._port),
             id(runtime.affectus._port), id(runtime.sensus._port),
@@ -167,7 +168,7 @@ class SixOrganLaboratoryCycle:
             raise ValueError("Expected stable physical Laboratory book ID")
         if operation not in ("open", "read", "turn", "close"):
             raise PermissionError("Unsupported bounded research book operation")
-        if self._pending() is not None:
+        if self._pending() is not None or self._pending_rest() is not None:
             raise RuntimeError("Reconcile pending body motion before reading")
         kwargs = {"book_id": book_id, "operation": operation}
         if operation == "turn":
@@ -189,6 +190,7 @@ class SixOrganLaboratoryCycle:
         return outcome
 
     _PENDING = "six_organ_lab_pending_world_action_v1"
+    _PENDING_REST = "six_organ_lab_pending_verified_rest_v1"
 
     def _pending(self):
         raw = self.runtime._port.brain.store.meta(self._PENDING)
@@ -208,7 +210,7 @@ class SixOrganLaboratoryCycle:
         from pretorius_lab.embodied_access import STATIONS
         if destination not in STATIONS:
             raise PermissionError("Unreviewed physical destination")
-        if self._pending() is not None:
+        if self._pending() is not None or self._pending_rest() is not None:
             raise RuntimeError("Pending Laboratory action must first reconcile")
         # Neural checkpoint first; then the canonical SQLite reservation.
         # A crash cannot turn a verified physical action into a forgotten
@@ -257,6 +259,120 @@ class SixOrganLaboratoryCycle:
         # If the host dies between world commit and Doctor admission,
         # the reservation remains. Next host restart reconciles it.
         return self._reconcile_pending()
+
+    @staticmethod
+    def _rest_event_id(policy_id: str) -> str:
+        from hashlib import sha256
+        return "six_rest_" + sha256(policy_id.encode("utf-8")).hexdigest()[:32]
+
+    def _pending_rest(self):
+        raw = self.runtime._port.brain.store.meta(self._PENDING_REST)
+        if raw is None:
+            return None
+        try:
+            data = json.loads(raw)
+        except ValueError as exc:
+            raise RuntimeError("Corrupt pending original six-organ rest") from exc
+        required = {"policy_decision_id", "thought_id", "selected_tendency",
+                    "event_id", "world_epoch"}
+        if (type(data) is not dict or set(data) != required
+                or any(type(data[k]) is not str or not data[k] for k in required)
+                or data["selected_tendency"] != "avoid"
+                or data["event_id"] != self._rest_event_id(data["policy_decision_id"])):
+            raise PermissionError("Unverifiable original six-organ rest reservation")
+        return data
+
+    def _reserve_rest(self, proposal: CognitiveProposal):
+        """Persist the original neural AVOID before touching original world physics."""
+        policy, latest = self.corpus._verified_policy(proposal)
+        if (proposal.selected_tendency != "avoid"
+                or policy["trigger"] != "six_organ_lab_cycle"
+                or latest != proposal.policy_decision_id
+                or self.subject.embodied.verify()["station"] != "station:bedroom"
+                or self._pending() is not None
+                or self._pending_rest() is not None):
+            raise PermissionError("No current original neural bedroom rest authority")
+        epoch = self.subject.verify()["world_epoch"]
+        self.runtime.checkpoint()
+        data = {
+            "policy_decision_id": proposal.policy_decision_id,
+            "thought_id": proposal.thought_id,
+            "selected_tendency": "avoid",
+            "event_id": self._rest_event_id(proposal.policy_decision_id),
+            "world_epoch": epoch,
+        }
+        store = self.runtime._port.brain.store
+        with store.transaction() as db:
+            store.set_meta(self._PENDING_REST, json.dumps(data, sort_keys=True), db)
+            store.bump_state_version(db)
+
+    def _reconcile_pending_rest(self):
+        """Replay one physical bedroom rest, then admit its canonical recovery once.
+
+        The original world owns the physical rest. The one original BrainStore
+        owns both the durable reservation and its homeostatic consequences.
+        A kill before, during or after world/memory admission leaves the same
+        event ID for recovery. This is not a new neural choice or goal.
+        """
+        from .lab_home_bridge import _row
+        pending = self._pending_rest()
+        if pending is None:
+            return None
+        if self._pending() is not None:
+            raise RuntimeError("Conflicting pending original world actions")
+        proposal = CognitiveProposal(
+            policy_decision_id=pending["policy_decision_id"],
+            thought_id=pending["thought_id"],
+            selected_tendency=pending["selected_tendency"],
+        )
+        policy, _ = self.corpus._verified_policy(proposal)
+        world = self.subject.verify()
+        if (policy["trigger"] != "six_organ_lab_cycle"
+                or world["world_epoch"] != pending["world_epoch"]
+                or self.subject.embodied.verify()["station"] != "station:bedroom"):
+            raise PermissionError("Original rest policy, epoch or bedroom changed")
+        event_id = pending["event_id"]
+        # The bridge replays an already-committed original event after a
+        # crash and refuses a mismatched request, without a second rest.
+        rest = self.bridge.act("rest", event_id=event_id)
+        if rest["status"] not in ("admitted", "already_admitted"):
+            raise RuntimeError("Laboratory rest lacked verified admission")
+        self.subject.verify()  # Replay original epoch and physical hash chains.
+        with self.bridge.world._open() as world_db:
+            event, event_hash = _row(world_db, "rhythm_events", event_id)
+        memory_id = rest["memory_id"]
+        store = self.runtime._port.brain.store
+        with store.transaction() as db:
+            current = db.execute(
+                "SELECT value FROM meta WHERE key=?", (self._PENDING_REST,)
+            ).fetchone()
+            memory = db.execute(
+                "SELECT source,text,evidence_class,active FROM memories WHERE id=?",
+                (memory_id,),
+            ).fetchone()
+            if (current is None or json.loads(current["value"]) != pending
+                    or event.get("event_id") != event_id
+                    or event.get("world_epoch") != pending["world_epoch"]
+                    or event.get("op") != "rest" or event.get("args") != {}
+                    or event.get("station") != "station:bedroom"
+                    or type(event.get("subject")) is not dict
+                    or memory is None or memory["active"] != 1
+                    or memory["evidence_class"] != "lived_runtime_memory"
+                    or memory["source"] != "laboratory-home:action:" + event_hash
+                    or memory["text"] != event["subject"].get("inner")):
+                raise PermissionError("Six-organ rest lacks original physical/lived receipt")
+            brain = self.runtime._port.brain
+            for _ in range(6):
+                tick = store.advance_tick(db)
+                brain._relax_needs(db, tick)
+                brain._update_commitments_due(db, tick)
+            db.execute("DELETE FROM meta WHERE key=?", (self._PENDING_REST,))
+            store.bump_state_version(db)
+        return rest
+
+    def _execute_rest(self, proposal: CognitiveProposal):
+        self._reserve_rest(proposal)
+        return self._reconcile_pending_rest()
 
     def _canonical_recent_action(self):
         memories = [
@@ -414,14 +530,7 @@ class SixOrganLaboratoryCycle:
             status = receipt.status
         elif (proposal.selected_tendency == "avoid"
               and station == "station:bedroom" and authorized_world_action):
-            self.corpus._verified_policy(proposal)
-            from hashlib import sha256
-            event_id = "six_rest_" + sha256(
-                proposal.policy_decision_id.encode()
-            ).hexdigest()[:32]
-            rest = self.bridge.act("rest", event_id=event_id)
-            if rest["status"] not in ("admitted", "already_admitted"):
-                raise RuntimeError("Laboratory rest lacked verified admission")
+            self._execute_rest(proposal)
             status = "rested"
             destination = station
 
