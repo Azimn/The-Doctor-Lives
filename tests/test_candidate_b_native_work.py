@@ -69,6 +69,37 @@ class CandidateBSourceBackedWork(unittest.TestCase):
             runtime, self.subject, affectus_source=self.donor,
             renderer=renderer, authorized=True)
 
+    def test_original_work_goal_rejects_policy_trigger_swap_before_world_action(self):
+        """A matching neural tendency from a different trigger is not an origin.
+
+        This is an original-physics negative test, not uncoached R4 credit.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            created = chooser.step(authorized_world_action=False)
+            self.assertEqual((created.kind, created.status),
+                             ("work", "goal_created"))
+            state = json.loads(rt._port.brain.store.meta(WORK_KEY))["payload"]
+            self.assertEqual(state["id"], created.goal_id)
+            with rt._port.brain.store.connect() as db:
+                original = db.execute(
+                    "SELECT trigger,selected_action FROM policy_decisions WHERE id=?",
+                    (state["origin_policy_id"],)).fetchone()
+            self.assertEqual(original["trigger"], "six_organ_lab_cycle")
+            self.assertIn(original["selected_action"], ("explore", "persist"))
+            before = self.subject.embodied.verify()["revision"]
+            with rt._port.brain.store.transaction() as db:
+                db.execute(
+                    "UPDATE policy_decisions SET trigger=? WHERE id=?",
+                    ("unrelated_neural_policy", state["origin_policy_id"]))
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or forged native work"):
+                chooser.work._load()
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or forged native work"):
+                chooser.step(authorized_world_action=True)
+            self.assertEqual(self.subject.embodied.verify()["revision"], before)
+
     def test_real_persist_goal_moves_and_executes_noesis_selected_work_once(self):
         rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
         epoch = self.subject.verify()["world_epoch"]
