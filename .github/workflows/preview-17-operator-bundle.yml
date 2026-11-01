@@ -219,6 +219,13 @@ jobs:
           python tools/archive_r4_source_evidence.py \
             --workspace "${{ runner.temp }}/r4-installed/workspace" \
             --output-dir "${{ runner.temp }}/r4-source-evidence"
+      - name: Verify witness scores against actual archived original BrainStore even when R4 fails
+        if: always()
+        env:
+          PRETORIUS_ARCHIVED_BRAINSTORE: ${{ runner.temp }}/r4-source-evidence/canonical-brain.sqlite3
+        run: |
+          test -f "$PRETORIUS_ARCHIVED_BRAINSTORE"
+          python -m unittest discover -s tests -p test_r4_uncoached_witness.py -v
       - name: Upload source-replayable R4 original databases and ledger
         if: always()
         uses: actions/upload-artifact@v4
