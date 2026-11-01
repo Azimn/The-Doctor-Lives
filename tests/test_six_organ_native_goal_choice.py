@@ -107,6 +107,11 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         self.subject.embodied.move(
             "station:bedroom", event_id="unseen_fixture_to_bedroom"
         )
+        # The original world lazily reconciles domestic time after movement.
+        # Settle that physical catch-up with a real source observation
+        # before bridge.observe enforces a no-world-mutation perception.
+        # This is explicitly test setup, not a neural/goal event.
+        self.subject.observe()
         with self.host(rt) as session:
             chooser = NativeLaboratoryGoalChooser(session, authorized=True)
             proposal = chooser._native_policy()
