@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 
-from tools.observe_uncoached_r4 import inspect_neural_origins, sample
+from tools.observe_uncoached_r4 import inspect_neural_origins, inspect_native_policy_pressure, sample
 
 
 class R4WitnessTests(unittest.TestCase):
@@ -119,6 +119,37 @@ class R4WitnessTests(unittest.TestCase):
         with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
             db.execute("UPDATE policy_decisions SET trigger='host_scheduled'")
         self.assertFalse(inspect_neural_origins(self.root)["work"]["record_consistency_only"])
+
+    def test_original_neural_policy_pressure_is_read_only_and_never_r4_credit(self):
+        # Instrumentation exposes ONLY bounded numeric candidate scores from
+        # canonical source rows. It cannot create a policy, goal or receipt.
+        with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
+            db.execute("ALTER TABLE policy_decisions ADD COLUMN id TEXT")
+            db.execute("ALTER TABLE policy_decisions ADD COLUMN state_pressure_json TEXT")
+            db.execute("UPDATE policy_decisions SET id='p1', state_pressure_json=?",
+                       (json.dumps({"policy_scores": {
+                           "avoid": 0.6, "explore": 0.2,
+                           "private_thought": "never forward"}}),))
+            db.execute("INSERT INTO policy_decisions VALUES (?,?,?,?)",
+                       ("six_organ_lab_cycle", "avoid", "p2",
+                        json.dumps({"scores": {"avoid": 0.8, "persist": 0.1}})))
+        before = (self.root / "state/brain.sqlite3").read_bytes()
+        diagnostic = inspect_native_policy_pressure(self.root, limit=2)
+        self.assertTrue(diagnostic["available"])
+        self.assertEqual([x["selected_tendency"] for x in diagnostic["recent_decisions"]],
+                         ["explore", "avoid"])
+        self.assertEqual(diagnostic["recent_decisions"][0]["candidate_scores"],
+                         {"policy_scores": {"avoid": 0.6, "explore": 0.2}})
+        self.assertFalse(diagnostic["autonomy_credit"])
+        self.assertFalse(diagnostic["causal_neural_origin_proven"])
+        self.assertNotIn("private_thought", json.dumps(diagnostic))
+        self.assertEqual((self.root / "state/brain.sqlite3").read_bytes(), before)
+        witness = sample(self.root, process_alive=True, elapsed_seconds=30,
+                         baseline_world_receipts=1)
+        self.assertEqual(witness["brain"]["native_policy_pressure_diagnostic"],
+                         diagnostic)
+        with self.assertRaises(ValueError):
+            inspect_native_policy_pressure(self.root, limit=1000)
 
     def test_missing_original_world_table_fails_closed(self):
         with sqlite3.connect(self.root / "laboratory.sqlite3") as db:
