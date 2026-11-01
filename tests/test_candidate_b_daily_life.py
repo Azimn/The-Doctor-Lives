@@ -74,6 +74,97 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertFalse(second["independent_three_activity_r4_proven"])
 
 
+    def test_original_daily_rest_couples_homeostasis_once_after_cold_reopen(self):
+        """Source-backed physical rest, synthetic MOTOR fixture, NOT autonomous R4.
+
+        The original Laboratory and original BrainStore are real. Only the
+        policy reservation is a deliberately explicit synthetic fixture to
+        isolate exactly-once post-world admission and forged-memory denial.
+        This test cannot count as an uncoached neural rest selection.
+        """
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_home_bridge import _row
+        from doctor_lives.noesis_day import _complete_daily_motor
+
+        runtime = SixOrganRuntime.open(self.state)
+        subject = SubjectPort(self.lab)
+        # Source-defined physical route; this is test setup, not Pretorius
+        # autonomously choosing a destination.
+        subject.embodied.move("station:hall", event_id="fixture_daily_hall")
+        subject.embodied.move("station:bedroom", event_id="fixture_daily_bedroom")
+        self.assertEqual(subject.embodied.verify()["station"], "station:bedroom")
+        bridge = runtime.bind_laboratory(subject, authorized=True)
+        unrelated_memory_id = bridge.observe()["memory_id"]
+        event_id = "fixture_original_daily_rest"
+        frame = subject.act("rest", event_id=event_id)
+        self.assertEqual(subject.rhythm.audit_state()["fatigue"], 0)
+        with self.lab._open() as world_db:
+            original, event_hash = _row(world_db, "rhythm_events", event_id)
+        self.assertEqual(original["op"], "rest")
+        self.assertEqual(original["station"], "station:bedroom")
+        admitted = bridge._admit_verified(
+            frame, "laboratory-home:action:" + event_hash,
+            kind="observation",
+        )
+        memory_id = admitted["memory_id"]
+        store = runtime._port.brain.store
+        policy_id = "fixture_daily_rest_motor_policy"
+        evidence = {
+            "selector_authority": "original_noesis",
+            "motor_authorization": "authorized",
+            "motor_event_id": event_id,
+            "motor_memory_id": None,
+        }
+        with store.transaction() as db:
+            db.execute(
+                "INSERT INTO policy_decisions "
+                "(id,tick,created_at,trigger,selected_action,"
+                "base_action_scores_json,state_pressure_json,action_scores_json,"
+                "candidate_record_ids_json,selected_record_ids_json,"
+                "neural_tick,neural_checkpoint_sha256,policy_version) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (policy_id, store.tick, "2026-10-31T00:00:00+00:00",
+                 "noesis_situated_choice", "rest", "{}",
+                 json.dumps(evidence, sort_keys=True), "{}", "[]", "[]",
+                 0, "0" * 64, "synthetic-fixture-not-r4"),
+            )
+        before = store.tick
+        with self.assertRaisesRegex(PermissionError, "matching original"):
+            _complete_daily_motor(bridge, policy_id, event_id,
+                                  unrelated_memory_id)
+        self.assertEqual(store.tick, before)
+        _complete_daily_motor(bridge, policy_id, event_id, memory_id)
+        self.assertEqual(store.tick, before + 6)
+        with store.connect() as db:
+            after = tuple(db.execute(
+                "SELECT actual,felt FROM needs WHERE key='fatigue'"
+            ).fetchone())
+            completed = json.loads(db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (policy_id,),
+            ).fetchone()[0])
+        self.assertEqual(completed["motor_completion"], "admitted")
+        self.assertEqual(completed["motor_memory_id"], memory_id)
+        runtime.checkpoint()
+        cold = SixOrganRuntime.open(self.state)
+        reopened = cold.bind_laboratory(SubjectPort(self.lab), authorized=True)
+        _complete_daily_motor(reopened, policy_id, event_id, memory_id)
+        self.assertEqual(cold._port.brain.store.tick, before + 6)
+        with cold._port.brain.store.connect() as db:
+            self.assertEqual(tuple(db.execute(
+                "SELECT actual,felt FROM needs WHERE key='fatigue'"
+            ).fetchone()), after)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        self.assertEqual(sum(
+            m["source"] == "laboratory-home:action:" + event_hash
+            for m in cold._port.brain.store.memories(False)
+        ), 1)
+
     def _reserve_crash_window(self):
         """Inject the exact durable motor reservation without a host action."""
         import json
