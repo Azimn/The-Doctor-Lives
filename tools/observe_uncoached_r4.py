@@ -101,32 +101,37 @@ def inspect_native_policy_pressure(workspace: Path, *, limit: int = 16) -> dict:
         raise ValueError("Bounded neural diagnostic horizon required")
     with closing(_read_db(Path(workspace) / "state" / "brain.sqlite3")) as db:
         columns = {row[1] for row in db.execute("PRAGMA table_info(policy_decisions)")}
-        required = {"id", "trigger", "selected_action", "state_pressure_json"}
+        required = {"id", "trigger", "selected_action", "action_scores_json",
+                    "base_action_scores_json", "state_pressure_json"}
         if not required.issubset(columns):
             return {"available": False, "reason": "source_columns_unavailable",
                     "read_only": True, "autonomy_credit": False}
         rows = db.execute(
-            "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
+            "SELECT id,selected_action,action_scores_json,base_action_scores_json,"
+            "state_pressure_json FROM policy_decisions "
             "WHERE trigger='six_organ_lab_cycle' ORDER BY rowid DESC LIMIT ?",
             (limit,),
         ).fetchall()
     decisions = []
-    for policy_id, tendency, raw in reversed(rows):
-        pressure = json.loads(raw)
-        if type(pressure) is not dict:
-            raise RuntimeError("Original neural pressure is not a mapping")
-        score_fields = {}
-        for key in ("scores", "policy_scores", "action_scores", "normalized_scores"):
-            value = pressure.get(key)
-            if type(value) is dict:
-                numeric = {
-                    name: round(float(number), 8)
-                    for name, number in value.items()
-                    if type(name) is str and type(number) in (int, float)
-                    and math.isfinite(number)
-                }
-                if numeric:
-                    score_fields[key] = dict(sorted(numeric.items()))
+    for policy_id, tendency, final_raw, baseline_raw, pressure_raw in reversed(rows):
+        final_scores = json.loads(final_raw)
+        base_scores = json.loads(baseline_raw)
+        pressure = json.loads(pressure_raw)
+        if any(type(value) is not dict for value in
+               (final_scores, base_scores, pressure)):
+            raise RuntimeError("Original neural scoring fields are not mappings")
+        def numeric_only(mapping):
+            return dict(sorted((name, round(float(number), 8))
+                               for name, number in mapping.items()
+                               if type(name) is str and type(number) in (int, float)
+                               and math.isfinite(number)))
+        score_fields = {
+            "action_scores": numeric_only(final_scores),
+            "base_action_scores": numeric_only(base_scores),
+        }
+        combined = pressure.get("combined")
+        if type(combined) is dict:
+            score_fields["pressure_combined"] = numeric_only(combined)
         decisions.append({
             "policy_id": policy_id, "selected_tendency": tendency,
             "candidate_scores": score_fields,
