@@ -160,12 +160,19 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             chooser = NativeLaboratoryGoalChooser(session, authorized=True)
             movement_count = 0
             for _ in range(12):
+                tick_before = restarted._port.brain.store.tick
                 rest = chooser.step(authorized_world_action=True)
                 self.assertEqual(rest.kind, "rest")
                 self.assertEqual(rest.goal_id, origin.goal_id)
                 if rest.status == "moved":
                     movement_count += 1
                 if rest.status == "completed":
+                    # Original Lab rest advances 60 physical minutes. Six
+                    # canonical 10-minute homeostatic opportunities must
+                    # commit with this SAME goal, never on replay.
+                    self.assertGreaterEqual(
+                        restarted._port.brain.store.tick - tick_before, 6
+                    )
                     break
             else:
                 self.fail("Original native avoid/rest did not physically finish")
@@ -174,8 +181,21 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             observed = restarted._port.brain.store.get_memory(rest.memory_id)
             self.assertEqual(observed["evidence_class"], "lived_runtime_memory")
             self.assertTrue(observed["source"].startswith("laboratory-home:action:"))
+            with restarted._port.brain.store.connect() as db:
+                canonical_fatigue = db.execute(
+                    "SELECT actual,felt FROM needs WHERE key='fatigue'"
+                ).fetchone()
+            self.assertIsNotNone(canonical_fatigue)
+            finished_tick = restarted._port.brain.store.tick
             self.assertEqual(chooser.step(authorized_world_action=True).status,
                              "already_complete")
+            self.assertEqual(restarted._port.brain.store.tick, finished_tick)
+            with restarted._port.brain.store.connect() as db:
+                self.assertEqual(
+                    tuple(db.execute(
+                        "SELECT actual,felt FROM needs WHERE key='fatigue'"
+                    ).fetchone()), tuple(canonical_fatigue)
+                )
         with self.world._open() as db:
             rests = [
                 json.loads(row[0]) for row in db.execute(
