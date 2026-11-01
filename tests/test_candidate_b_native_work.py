@@ -6,6 +6,7 @@ autonomy, externally killed process recovery, or a four-hour trial.
 """
 from __future__ import annotations
 
+import gc
 import importlib.util
 import json
 import os
@@ -43,7 +44,7 @@ class CandidateBSourceBackedWork(unittest.TestCase):
         from pretorius_lab.daily_rhythm import DailyRhythm
         from pretorius_lab.subject_port import SubjectPort
         self.temp = tempfile.TemporaryDirectory(prefix="candidate-b-real-work-")
-        self.addCleanup(self.temp.cleanup)
+        self.addCleanup(self._cleanup_test_resources)
         self.root = Path(self.temp.name)
         self.world = SpatialHabitat.create(self.root / "original.sqlite3")
         HomeLife(self.world).initialize()
@@ -51,6 +52,13 @@ class CandidateBSourceBackedWork(unittest.TestCase):
         self.subject = SubjectPort(self.world)
         self.state = self.root / "same-canonical-brain"
         self.donor = Path(os.environ["PRETORIUS_PINNED_AFFECTUS_ROOT"])
+
+    def _cleanup_test_resources(self):
+        # Python sqlite3 context managers do not close connections. On
+        # Windows release unreferenced source-world and BrainStore handles
+        # before removing the fixture, without suppressing lock failures.
+        gc.collect()
+        self.temp.cleanup()
 
     def session(self, runtime):
         def renderer(subject_text):
