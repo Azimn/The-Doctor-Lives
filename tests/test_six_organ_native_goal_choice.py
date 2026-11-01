@@ -86,6 +86,61 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         )
         return item
 
+    def test_original_direct_six_organ_rest_cannot_bypass_native_rest_goal(self):
+        """Original-world regression, not an externally chosen R4 sequence.
+
+        After a real source-verified neural rest and Laboratory receipt,
+        a later AVOID must not invoke the separate six-organ physical-rest
+        bypass. The canonical goal-aware chooser owns any later rest.
+        """
+        rt = SixOrganRuntime.open(
+            self.root / "direct-rest-bypass-mind", neural_config=config()
+        )
+        with self.host(rt) as session:
+            for _ in range(4):
+                session.cycle(authorized_world_action=True)
+            chooser = NativeLaboratoryGoalChooser(
+                session, authorized=True, enable_sustained_work=True
+            )
+            for _ in range(16):
+                proposal = chooser._native_policy()
+                if proposal.selected_tendency == "avoid":
+                    break
+            else:
+                self.fail("Real original neural AVOID did not occur")
+            first = chooser._originate_rest(proposal)
+            for _ in range(12):
+                receipt = chooser._continue_rest(chooser._load_rest(), True)
+                if receipt.status == "completed":
+                    break
+            else:
+                self.fail("Real original rest did not complete")
+            self.assertEqual(first.goal_id, receipt.goal_id)
+            self.assertEqual(chooser._load_rest()["phase"], "complete")
+            with self.world._open() as db:
+                before = db.execute(
+                    "SELECT COUNT(*) FROM rhythm_events WHERE "
+                    "event_id LIKE 'six_rest_%'"
+                ).fetchone()[0]
+            for _ in range(16):
+                later = chooser._native_policy()
+                if later.selected_tendency == "avoid":
+                    break
+            else:
+                self.fail("No separate original AVOID after native rest")
+            with self.assertRaisesRegex(PermissionError, "canonical native rest"):
+                session._execute_rest(later)
+            with self.world._open() as db:
+                after = db.execute(
+                    "SELECT COUNT(*) FROM rhythm_events WHERE "
+                    "event_id LIKE 'six_rest_%'"
+                ).fetchone()[0]
+            self.assertEqual(before, after)
+            self.assertEqual(chooser._load_rest()["phase"], "complete")
+            self.assertIsNotNone(
+                rt._port.brain.store.get_memory(receipt.memory_id)
+            )
+
     def test_completed_original_rest_never_replays_as_live_opportunity(self):
         """Source-verified completed rest stays history, not an active intention.
 
