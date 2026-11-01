@@ -99,14 +99,15 @@ class EndogenousBookPursuit:
                 raise ValueError("Invalid bounded goal state")
             with self.store.connect() as db:
                 row = db.execute(
-                    "SELECT selected_action FROM policy_decisions WHERE id=?",
+                    "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
                     (state["origin_policy_id"],)
                 ).fetchone()
                 thought = db.execute(
                     "SELECT generated_by FROM thoughts WHERE id=?",
                     (state["origin_thought_id"],)
                 ).fetchone()
-            if (row is None or row["selected_action"] != "explore"
+            if (row is None or row["trigger"] != "six_organ_lab_cycle"
+                    or row["selected_action"] != "explore"
                     or thought is None or thought["generated_by"] !=
                     "neural_policy:" + state["origin_policy_id"]):
                 raise ValueError("Goal origin no longer matches canonical neural evidence")
