@@ -109,9 +109,26 @@ class NativeLaboratoryGoalChooser:
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             raise RuntimeError("Corrupt or forged canonical rest intention") from exc
 
-    def _save_rest(self, state):
+    def _save_rest(self, state, *, archive_completed=None):
         envelope = {"payload": state, "sha256": _digest(state)}
         with self.store.transaction() as db:
+            if archive_completed is not None:
+                # A second genuine rest never erases the sealed, source-
+                # verified first goal. History remains in the same BrainStore
+                # and does not participate in active opportunity selection.
+                current = db.execute(
+                    "SELECT value FROM meta WHERE key=?", (_REST_KEY,)
+                ).fetchone()
+                if (current is None or
+                        json.loads(current["value"]).get("payload") != archive_completed
+                        or archive_completed["phase"] != "complete"):
+                    raise RuntimeError("Rest changed before historical archival")
+                key = "six_organ_native_rest_history_v1:" + archive_completed["id"]
+                if db.execute(
+                    "SELECT 1 FROM meta WHERE key=?", (key,)
+                ).fetchone() is not None:
+                    raise RuntimeError("Duplicate historical rest archival")
+                self.store.set_meta(key, current["value"], db)
             self.store.set_meta(_REST_KEY, _stable(envelope), db)
             self.store.bump_state_version(db)
 
@@ -147,6 +164,27 @@ class NativeLaboratoryGoalChooser:
                 brain._update_commitments_due(db, tick)
             self.store.set_meta(_REST_KEY, _stable(envelope), db)
             self.store.bump_state_version(db)
+
+    def _new_physical_rest_need(self):
+        """Check an authentic NEW bodily need, not a host rest quota.
+
+        Original world state is authoritative about bodily fatigue. A fresh
+        Noesis AVOID decision may support later rest only after the previously
+        completed rest and renewed physical fatigue; canonical brain fatigue
+        alone cannot replay an already completed world event.
+        """
+        from pretorius_lab.daily_rhythm import transition
+        from pretorius_lab.physics import Conflict, LabError
+        self.host.subject.rhythm.verify()
+        physical = self.host.subject.rhythm.audit_state()
+        fatigue = physical.get("fatigue")
+        if type(fatigue) not in (int, float) or not 0 < fatigue <= 10:
+            return False
+        try:
+            transition(physical, "rest", {}, "station:bedroom")
+        except (Conflict, LabError):
+            return False
+        return True
 
     def _native_policy(self):
         """Read the native choice from an ACTUAL full six-organ cycle.
@@ -202,9 +240,11 @@ class NativeLaboratoryGoalChooser:
             result = self.work.step(
                 authorized=authorized_world_action, new_policy=self._native_policy
             )
-            if result.status == "blocked" and rest is None and authorized_world_action:
+            if (result.status == "blocked" and authorized_world_action
+                    and (rest is None or rest["phase"] == "complete")):
                 proposal = self._native_policy()
-                if proposal.selected_tendency == "avoid":
+                if (proposal.selected_tendency == "avoid"
+                        and (rest is None or self._new_physical_rest_need())):
                     return self._originate_rest(proposal)
             return NativeGoalChoiceReceipt(
                 result.status, "work", result.goal_id, result.memory_id,
@@ -328,15 +368,19 @@ class NativeLaboratoryGoalChooser:
                 result.goal_id, result.memory_id,
                 selected_tendency=result.selected_tendency
             )
-        # Never repeat an already completed native rest merely because a
-        # new avoid tendency emerges; retain its authenticated lived receipt.
-        if rest is not None and rest["phase"] == "complete":
-            return self._continue_rest(rest, authorized_world_action)
+        # A completed goal is history, never the active opportunity. A new
+        # original AVOID may support a NEW rest only if the world independently
+        # exhibits renewed physical fatigue and can perform a bedroom rest.
         if proposal.selected_tendency != "avoid":
             return NativeGoalChoiceReceipt(
                 "no_situated_goal", None, None,
                 selected_tendency=proposal.selected_tendency
             )
+        if rest is not None and rest["phase"] == "complete":
+            if not self._new_physical_rest_need():
+                return NativeGoalChoiceReceipt(
+                    "no_situated_goal", None, None, selected_tendency="avoid"
+                )
         return self._originate_rest(proposal)
 
     def _move_to_remembered_cue(self, proposal, authorized):
@@ -405,7 +449,12 @@ class NativeLaboratoryGoalChooser:
     def _originate_rest(self, proposal):
         # Original neural avoidance must be proved by its current policy,
         # not supplied by an external task message or synthetic body state.
-        if proposal.selected_tendency != "avoid" or self._load_rest() is not None:
+        prior = self._load_rest()
+        if (proposal.selected_tendency != "avoid"
+                or (prior is not None and (
+                    prior["phase"] != "complete"
+                    or not self._new_physical_rest_need()
+                ))):
             raise PermissionError("No new original-neural rest origin")
         _, latest = self.host.corpus._verified_policy(proposal)
         if latest != proposal.policy_decision_id:
@@ -420,7 +469,7 @@ class NativeLaboratoryGoalChooser:
             "origin_policy_id": proposal.policy_decision_id,
             "origin_thought_id": proposal.thought_id, "memory_id": None,
         }
-        self._save_rest(record)
+        self._save_rest(record, archive_completed=prior)
         return NativeGoalChoiceReceipt(
             "goal_created", "rest", ident, selected_tendency="avoid"
         )
