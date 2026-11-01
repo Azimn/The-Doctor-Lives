@@ -209,8 +209,9 @@ class NativeLaboratoryGoalChooser:
                 result.status, "work", result.goal_id, result.memory_id,
                 selected_tendency=result.selected_tendency
             )
-        if rest is not None and book.goal_id is not None and book.phase not in (
-                "complete", "exhausted"):
+        if (rest is not None and rest["phase"] != "complete"
+                and book.goal_id is not None and book.phase not in (
+                    "complete", "exhausted")):
             raise RuntimeError("Competing pending goals require explicit review")
         if book.goal_id is not None and book.phase not in ("complete", "exhausted"):
             result = self.book.step(
