@@ -75,6 +75,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Preserve exact Git blob bytes on Windows donor checkouts
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@v4
         with:
           repository: Azimn/Pretorius-Laboratory
