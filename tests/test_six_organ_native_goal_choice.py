@@ -147,6 +147,85 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
                 (memory["source"].split(":")[-1],)
             ).fetchone()[0], 1)
 
+    def test_remote_source_seen_bookshelf_becomes_durable_neural_book_goal(self):
+        """One original EXPLORE commits to a SEEN cue across a cold restart.
+
+        Positioning to bedroom is explicitly HOST fixture setup, never R4
+        autonomy credit. Only the later original six-organ policy originates
+        the canonical book goal; all subsequent movement/read is source-backed.
+        """
+        fixture = self.install_fixture()
+        path = self.root / "remote-cue-mind"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        with self.host(rt) as session:
+            # A real threshold perception and a distinct original physical
+            # LOOK predate the neural choice. Neither is a task instruction.
+            session.bridge.observe()
+            scan = self.subject.embodied.look(
+                event_id="remote_cue_original_threshold_look"
+            )
+            self.assertIn(
+                "bookshelves", scan["offered_payload"]["perceived_features"]
+            )
+            # External positioning isolates the previously observed
+            # threshold -> bedroom -> hall dead-end; it earns no R4 credit.
+            self.subject.embodied.move(
+                "station:hall", event_id="remote_cue_fixture_hall"
+            )
+            self.subject.embodied.move(
+                "station:bedroom", event_id="remote_cue_fixture_bedroom"
+            )
+            self.subject.observe()
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            first = chooser.step(authorized_world_action=True)
+            self.assertEqual(first.selected_tendency, "explore")
+            self.assertEqual(first.status, "goal_created")
+            self.assertEqual(first.kind, "read_book")
+            self.assertIsNotNone(first.goal_id)
+            self.assertEqual(
+                self.subject.embodied.verify()["station"], "station:bedroom"
+            )
+            with rt._port.brain.store.connect() as db:
+                envelope = json.loads(rt._port.brain.store.meta(
+                    "six_organ_endogenous_book_goal_v1"
+                ))["payload"]
+                policy = db.execute(
+                    "SELECT trigger,selected_action FROM policy_decisions WHERE id=?",
+                    (envelope["origin_policy_id"],)
+                ).fetchone()
+                thought = db.execute(
+                    "SELECT generated_by FROM thoughts WHERE id=?",
+                    (envelope["origin_thought_id"],)
+                ).fetchone()
+            self.assertEqual(tuple(policy), ("six_organ_lab_cycle", "explore"))
+            self.assertEqual(
+                thought["generated_by"],
+                "neural_policy:" + envelope["origin_policy_id"]
+            )
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(path)
+        with self.host(reopened) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            self.assertEqual(chooser.book.status().goal_id, first.goal_id)
+            for _ in range(30):
+                result = chooser.step(authorized_world_action=True)
+                if result.status == "completed":
+                    break
+            else:
+                self.fail("Original remote-cue EXPLORE did not reach a real book")
+            self.assertEqual(result.goal_id, first.goal_id)
+            self.assertEqual(result.kind, "read_book")
+            memory = reopened._port.brain.store.get_memory(result.memory_id)
+            self.assertIn(fixture["pages"][0], memory["text"])
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+        with self.world._open() as db:
+            reads = [
+                json.loads(row[0]) for row in
+                db.execute("SELECT payload FROM books_events")
+            ]
+        self.assertEqual(sum(e["action"]["op"] == "read" for e in reads), 1)
+
     def test_native_explore_pursues_real_book_without_second_goal_prompt(self):
         fixture = self.install_fixture()
         path = self.root / "book-mind"
