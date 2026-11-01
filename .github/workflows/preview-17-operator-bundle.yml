@@ -6,6 +6,8 @@ on:
       - doctor_lives/lab_preview.py
       - doctor_lives/preview_17_books.py
       - doctor_lives/cli.py
+      - doctor_lives/lab_native_goal_choice.py
+      - tests/test_six_organ_native_goal_choice.py
       - tools/install_17_operator_bundle.py
       - tools/assemble_17_operator_bundle.py
       - tools/check_17_operator_bundle.py
