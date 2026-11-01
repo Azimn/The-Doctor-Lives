@@ -86,6 +86,58 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         )
         return item
 
+    def test_completed_original_rest_never_replays_as_live_opportunity(self):
+        """Source-verified completed rest stays history, not an active intention.
+
+        A real original six-organ AVOID starts the historical goal and an
+        original physical bedroom rest completes it. Subsequent uncoached
+        policy opportunities must not return that finished goal as ACTIVE.
+        This does not manufacture EXPLORE, PERSIST or a bench receipt.
+        """
+        path = self.root / "rest-lifecycle-history-mind"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        with self.host(rt) as session:
+            for _ in range(4):
+                session.cycle(authorized_world_action=True)
+            chooser = NativeLaboratoryGoalChooser(
+                session, authorized=True, enable_sustained_work=True
+            )
+            for _ in range(16):
+                proposal = chooser._native_policy()
+                if proposal.selected_tendency == "avoid":
+                    break
+            else:
+                self.fail("Actual neural AVOID never appeared in source fixture")
+            started = chooser._originate_rest(proposal)
+            for _ in range(12):
+                finished = chooser._continue_rest(chooser._load_rest(), True)
+                if finished.status == "completed":
+                    break
+            else:
+                self.fail("Original physical bedroom rest never completed")
+            self.assertEqual(started.goal_id, finished.goal_id)
+            self.assertEqual(chooser._load_rest()["phase"], "complete")
+            physical = rt._port.brain.store.get_memory(finished.memory_id)
+            self.assertEqual(physical["evidence_class"], "lived_runtime_memory")
+            old_goal = started.goal_id
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(path)
+        with self.host(reopened) as session:
+            chooser = NativeLaboratoryGoalChooser(
+                session, authorized=True, enable_sustained_work=True
+            )
+            self.assertEqual(chooser._load_rest()["id"], old_goal)
+            for _ in range(5):
+                post = chooser.step(authorized_world_action=False)
+                self.assertNotEqual(
+                    post.goal_id, old_goal,
+                    "Historical completed rest monopolizes live opportunity"
+                )
+            self.assertEqual(chooser._load_rest()["phase"], "complete")
+            self.assertIsNotNone(
+                reopened._port.brain.store.get_memory(finished.memory_id)
+            )
+
     def test_first_neural_explore_can_move_without_a_preseeded_cue(self):
         """Original EXPLORE can discover a room, not invent a book or goal.
 
