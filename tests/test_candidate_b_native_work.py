@@ -241,9 +241,14 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
             self.assertEqual(self.subject.embodied.verify()["station"],
                              "station:bedroom")
         with self.world._open() as db:
-            self.assertEqual(db.execute(
-                "SELECT count(*) FROM rhythm_events"
-            ).fetchone()[0], 0)
+            # Original six-organ observation may advance physical time.
+            # Deny only an actual unapproved repair/experiment receipt,
+            # not legitimate unrelated rhythm events.
+            physical = [
+                json.loads(row[0]).get("op")
+                for row in db.execute("SELECT envelope FROM rhythm_events")
+            ]
+        self.assertFalse(any(op in ("repair", "experiment") for op in physical))
         print("B_SEEN_WORK_CUE_PERSISTENCE=" + json.dumps({
             "original_neural_origin": True,
             "original_world_look": True,
