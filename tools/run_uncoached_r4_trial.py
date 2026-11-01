@@ -15,7 +15,11 @@ import subprocess
 import sys
 import time
 
-from observe_uncoached_r4 import inspect_neural_origins, sample
+# Support both direct script execution and import by the independent tests.
+if __package__:
+    from .observe_uncoached_r4 import inspect_neural_origins, sample
+else:
+    from observe_uncoached_r4 import inspect_neural_origins, sample
 
 SAMPLE_SECONDS = 15.0
 
