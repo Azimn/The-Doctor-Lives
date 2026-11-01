@@ -95,7 +95,19 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         subject.embodied.move("station:bedroom", event_id="fixture_daily_bedroom")
         self.assertEqual(subject.embodied.verify()["station"], "station:bedroom")
         bridge = runtime.bind_laboratory(subject, authorized=True)
-        unrelated_memory_id = bridge.observe()["memory_id"]
+        # A separate ORIGINAL physical event supplies a mismatched lived
+        # memory. A post-movement composite LOOK can legitimately change
+        # domestic catch-up state, so do not use that unstable fixture here.
+        unrelated_event_id = "fixture_daily_advance"
+        unrelated_frame = subject.act(
+            "advance", event_id=unrelated_event_id, minutes=60)
+        with self.lab._open() as world_db:
+            _, unrelated_hash = _row(
+                world_db, "rhythm_events", unrelated_event_id)
+        unrelated_memory_id = bridge._admit_verified(
+            unrelated_frame, "laboratory-home:action:" + unrelated_hash,
+            kind="observation",
+        )["memory_id"]
         event_id = "fixture_original_daily_rest"
         frame = subject.act("rest", event_id=event_id)
         self.assertEqual(subject.rhythm.audit_state()["fatigue"], 0)
