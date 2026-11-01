@@ -109,12 +109,22 @@ class NeuralOriginatedBookGoalTests(unittest.TestCase):
             self.assertEqual(moved.status, "moved")
             self.assertEqual(moved.world_action, "station:center")
             with rt._port.brain.store.connect() as db:
+                state = json.loads(rt._port.brain.store.meta(_KEY))["payload"]
                 row = db.execute(
-                    "SELECT selected_action FROM policy_decisions WHERE id=?",
-                    (json.loads(rt._port.brain.store.meta(_KEY))["payload"]
-                     ["origin_policy_id"],)
+                    "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
+                    (state["origin_policy_id"],)
+                ).fetchone()
+                thought = db.execute(
+                    "SELECT generated_by FROM thoughts WHERE id=?",
+                    (state["origin_thought_id"],)
                 ).fetchone()
                 self.assertEqual(row["selected_action"], "explore")
+                self.assertEqual(row["trigger"], "six_organ_lab_cycle")
+                self.assertIsNotNone(thought)
+                self.assertEqual(
+                    thought["generated_by"],
+                    "neural_policy:" + state["origin_policy_id"],
+                )
             rt.checkpoint()
 
         continued = SixOrganRuntime.open(path)
