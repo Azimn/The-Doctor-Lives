@@ -151,6 +151,44 @@ class R4WitnessTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             inspect_native_policy_pressure(self.root, limit=1000)
 
+
+    def test_real_archived_brainstore_nonempty_candidate_scores(self):
+        """Regression against exact archived real BrainStore, never a synthetic database.
+
+        Set PRETORIUS_ARCHIVED_BRAINSTORE to the extracted canonical-brain.sqlite3
+        from GitHub Actions artifact 13085736490 (PR #108 run 41310421608).
+        Ordinary CI without that real archive skips this check, never fabricates it.
+        """
+        import hashlib
+        import os
+        import shutil
+        archive = os.environ.get("PRETORIUS_ARCHIVED_BRAINSTORE")
+        if not archive:
+            self.skipTest("Real archived BrainStore required: set PRETORIUS_ARCHIVED_BRAINSTORE")
+        archived = Path(archive)
+        self.assertTrue(archived.is_file(), "Missing genuine archived BrainStore")
+        with sqlite3.connect(archived.absolute().as_uri() + "?mode=ro", uri=True) as db:
+            columns = {row[1] for row in db.execute("PRAGMA table_info(policy_decisions)")}
+            self.assertTrue({"action_scores_json", "base_action_scores_json"}.issubset(columns))
+            self.assertGreater(db.execute(
+                "SELECT COUNT(*) FROM policy_decisions WHERE trigger='six_organ_lab_cycle'"
+            ).fetchone()[0], 0)
+        target = self.root / "state" / "brain.sqlite3"
+        shutil.copyfile(archived, target)
+        source_hash = hashlib.sha256(target.read_bytes()).hexdigest()
+        diagnostic = inspect_native_policy_pressure(self.root, limit=16)
+        self.assertTrue(diagnostic["available"])
+        self.assertTrue(diagnostic["recent_decisions"])
+        self.assertTrue(all(
+            item["candidate_scores"].get("action_scores")
+            and item["candidate_scores"].get("base_action_scores")
+            for item in diagnostic["recent_decisions"]
+        ), "Original BrainStore candidate score columns yielded empty observer results")
+        self.assertFalse(diagnostic["autonomy_credit"])
+        self.assertFalse(diagnostic["causal_neural_origin_proven"])
+        self.assertNotIn("private_thought", json.dumps(diagnostic))
+        self.assertEqual(hashlib.sha256(target.read_bytes()).hexdigest(), source_hash)
+
     def test_missing_original_world_table_fails_closed(self):
         with sqlite3.connect(self.root / "laboratory.sqlite3") as db:
             db.execute("DROP TABLE books_events")
