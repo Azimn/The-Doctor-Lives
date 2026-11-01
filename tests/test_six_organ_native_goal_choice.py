@@ -5,6 +5,7 @@ CI, never by pretending a mocked choice is an authentic neural decision.
 """
 from __future__ import annotations
 
+import gc
 import importlib.util
 import json
 import os
@@ -43,7 +44,7 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         from pretorius_lab.daily_rhythm import DailyRhythm
         from pretorius_lab.subject_port import SubjectPort
         self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
+        self.addCleanup(self._cleanup_test_resources)
         self.root = Path(self.temp.name)
         self.world = SpatialHabitat.create(self.root / "lab.sqlite3")
         HomeLife(self.world).initialize()
@@ -51,6 +52,12 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         self.subject = SubjectPort(self.world)
         self.rendered = []
         self.affectus = os.environ["PRETORIUS_PINNED_AFFECTUS_ROOT"]
+
+    def _cleanup_test_resources(self):
+        # Do not suppress Windows SQLite locks: collect unreferenced
+        # canonical brain and original-world handles before fixture removal.
+        gc.collect()
+        self.temp.cleanup()
 
     def host(self, rt):
         def renderer(text):
