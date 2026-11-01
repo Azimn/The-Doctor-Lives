@@ -137,6 +137,44 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             self.assertIsNotNone(
                 reopened._port.brain.store.get_memory(finished.memory_id)
             )
+            # Explicit source-only fixture: advance real pinned physics to
+            # create NEW bodily fatigue, without inventing a Doctor action.
+            # The subsequent AVOID is a separately sampled actual Noesis
+            # policy, not an engineer-selected tendency or R4 credit.
+            self.subject.rhythm.advance(
+                240, event_id="external-fixture-new-physical-rest-need"
+            )
+            self.assertGreater(
+                self.subject.rhythm.audit_state()["fatigue"], 0
+            )
+            for _ in range(20):
+                new_proposal = chooser._native_policy()
+                if new_proposal.selected_tendency == "avoid":
+                    break
+            else:
+                self.fail("No original neural AVOID for renewed physical need")
+            renewed = chooser._originate_rest(new_proposal)
+            self.assertEqual(renewed.status, "goal_created")
+            self.assertNotEqual(renewed.goal_id, old_goal)
+            archived = json.loads(reopened._port.brain.store.meta(
+                "six_organ_native_rest_history_v1:" + old_goal
+            ))
+            self.assertEqual(archived["payload"]["id"], old_goal)
+            self.assertEqual(archived["payload"]["phase"], "complete")
+            self.assertEqual(archived["payload"]["memory_id"], finished.memory_id)
+            with self.assertRaisesRegex(PermissionError, "No new original-neural"):
+                chooser._originate_rest(new_proposal)
+            reopened.checkpoint()
+        restarted = SixOrganRuntime.open(path)
+        with self.host(restarted) as session:
+            chooser = NativeLaboratoryGoalChooser(
+                session, authorized=True, enable_sustained_work=True
+            )
+            self.assertEqual(chooser._load_rest()["id"], renewed.goal_id)
+            self.assertEqual(chooser._load_rest()["phase"], "travel")
+            self.assertIsNotNone(restarted._port.brain.store.get_memory(
+                finished.memory_id
+            ))
 
     def test_first_neural_explore_can_move_without_a_preseeded_cue(self):
         """Original EXPLORE can discover a room, not invent a book or goal.
