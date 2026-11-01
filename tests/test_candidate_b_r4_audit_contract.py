@@ -197,6 +197,48 @@ class IndependentThreeGoalContract(unittest.TestCase):
         self.assertTrue(any("original_source_world_authority_not_verified" in p
                             for p in strict["problems"]))
 
+    def _archive_original_rest_and_open_a_later_rest(self):
+        """Reproduce actual canonical meta layout after a distinct new rest."""
+        key = "six_organ_native_rest_intention_v1"
+        with sqlite3.connect(self.brain) as db:
+            former = json.loads(db.execute(
+                "SELECT value FROM meta WHERE key=?", (key,)
+            ).fetchone()[0])
+            gid = former["payload"]["id"]
+            db.execute(
+                "INSERT INTO meta(key,value) VALUES(?,?)",
+                ("six_organ_native_rest_history_v1:" + gid,
+                 json.dumps(former, sort_keys=True)),
+            )
+            later = copy.deepcopy(former)
+            later["payload"]["id"] = "later-rest-goal"
+            later["sha256"] = _digest(later["payload"])
+            db.execute(
+                "UPDATE meta SET value=? WHERE key=?",
+                (json.dumps(later, sort_keys=True), key),
+            )
+        return gid
+
+    def test_original_sealed_rest_remains_authentic_after_later_rest(self):
+        """Historical rest must be audited, never guessed from current slot."""
+        old_id = self._archive_original_rest_and_open_a_later_rest()
+        result = evaluate(self.root)
+        self.assertEqual(result["status"], "PASS", result)
+        self.assertIn(old_id, result["verified_goal_origins"])
+        self.assertEqual(result["verified_goal_origins"][old_id]["kind"], "rest")
+
+    def test_tampered_historical_rest_checksum_is_rejected(self):
+        old_id = self._archive_original_rest_and_open_a_later_rest()
+        key = "six_organ_native_rest_history_v1:" + old_id
+        with sqlite3.connect(self.brain) as db:
+            item = json.loads(db.execute(
+                "SELECT value FROM meta WHERE key=?", (key,)
+            ).fetchone()[0])
+            item["payload"]["goal"] = "A replacement authored task"
+            db.execute("UPDATE meta SET value=? WHERE key=?",
+                       (json.dumps(item, sort_keys=True), key))
+        self.assert_invalid("unauthenticated_completion")
+
     def test_contract_02_nonexistent_neural_work_action_is_rejected(self):
         self._edit("UPDATE policy_decisions SET selected_action='work' WHERE id='origin_work'")
         self.assert_invalid("unauthenticated_completion")
