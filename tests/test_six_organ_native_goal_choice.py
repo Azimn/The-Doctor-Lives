@@ -440,6 +440,34 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             "host_selected_route": True
         }, sort_keys=True))
 
+    def test_original_rest_goal_rejects_policy_trigger_swap_before_world_action(self):
+        """Rest may not inherit a same-tendency policy from another trigger."""
+        path = self.root / "rest-origin-trigger-mind"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        with self.host(rt) as session:
+            for _ in range(4):
+                session.cycle(authorized_world_action=True)
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            created = self._originate_rest_after_real_episodes(chooser)
+            state = json.loads(rt._port.brain.store.meta(_REST_KEY))["payload"]
+            self.assertEqual(state["id"], created.goal_id)
+            with rt._port.brain.store.connect() as db:
+                original = db.execute(
+                    "SELECT trigger,selected_action FROM policy_decisions WHERE id=?",
+                    (state["origin_policy_id"],)).fetchone()
+            self.assertEqual(tuple(original),
+                             ("six_organ_lab_cycle", "avoid"))
+            before = self.subject.embodied.verify()["revision"]
+            with rt._port.brain.store.transaction() as db:
+                db.execute(
+                    "UPDATE policy_decisions SET trigger=? WHERE id=?",
+                    ("unrelated_neural_policy", state["origin_policy_id"]))
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or forged canonical rest"):
+                chooser._load_rest()
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or forged canonical rest"):
+                chooser.step(authorized_world_action=True)
+            self.assertEqual(self.subject.embodied.verify()["revision"], before)
+
     def test_tampered_rest_intention_denies_world_action(self):
         path = self.root / "tamper-mind"
         rt = SixOrganRuntime.open(path, neural_config=config())
