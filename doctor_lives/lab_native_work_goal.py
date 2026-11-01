@@ -72,12 +72,13 @@ class NativeWorkPursuit:
                 raise ValueError("invalid work state")
             with self.store.connect() as db:
                 origin = db.execute(
-                    "SELECT selected_action FROM policy_decisions WHERE id=?",
+                    "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
                     (state["origin_policy_id"],)).fetchone()
                 thought = db.execute(
                     "SELECT generated_by FROM thoughts WHERE id=?",
                     (state["origin_thought_id"],)).fetchone()
-                if (origin is None or origin["selected_action"] not in ("persist", "explore") or
+                if (origin is None or origin["trigger"] != "six_organ_lab_cycle" or
+                        origin["selected_action"] not in ("persist", "explore") or
                         thought is None or thought["generated_by"] !=
                         "neural_policy:" + state["origin_policy_id"]):
                     raise ValueError("not an original neural persist intention")
