@@ -205,15 +205,17 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
                 host, authorized=True, enable_sustained_work=True)
             proposal = chooser._native_policy()
             self.assertIn(proposal.selected_tendency, ("explore", "persist"))
-            # A map-defined workbench without an actual LOOK cannot
-            # originate a goal, even when the original neural policy exists.
-            unseen = chooser.work.originate(proposal)
-            self.assertEqual(unseen.status, "no_situated_goal")
-            self.assertIsNone(unseen.goal_id)
-            observed = self.subject.embodied.look(
-                event_id="external-fixture-witnessed-workbench")
-            self.assertIn("workbench",
-                          observed["offered_payload"]["perceived_features"])
+            # The authentic six-organ cycle already calls the original
+            # bridge.observe(), which persists a real physical LOOK.
+            # Inspect that source record rather than pretending the room
+            # was unseen. No host-authored second LOOK is inserted.
+            from doctor_lives.lab_endogenous_book_task import _verified_looks
+            seen = [
+                e for e, _ in _verified_looks(self.subject.embodied)
+                if e["after_station"] == "station:threshold"
+                and "workbench" in e["offered_payload"]["perceived_features"]
+            ]
+            self.assertTrue(seen, "Original neural cycle did not witness bench")
             self.subject.embodied.move(
                 "station:hall", event_id="external-fixture-work-hall")
             self.subject.embodied.move(
