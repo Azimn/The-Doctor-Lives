@@ -177,6 +177,124 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
             for m in cold._port.brain.store.memories(False)
         ), 1)
 
+    def _original_six_rest_session(self):
+        """Real original neural policy and pinned world, no autonomy claim."""
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
+        from doctor_lives.neural import DEFAULT_CONFIG
+        from unittest.mock import patch
+        subject = SubjectPort(self.lab)
+        subject.embodied.move("station:hall", event_id="six_rest_test_hall")
+        subject.embodied.move("station:bedroom", event_id="six_rest_test_bedroom")
+        config = dict(DEFAULT_CONFIG)
+        config.update(neurons=128, sensory_dim=64, avg_recurrent_degree=8,
+                      input_degree=4, action_population_size=8, seed=1842)
+        runtime = SixOrganRuntime.open(self.state, neural_config=config)
+        session = SixOrganLaboratoryCycle(
+            runtime, subject, affectus_source=self.source,
+            renderer=lambda _: "I remember the room.", authorized=True,
+        )
+        proposal = None
+        for _ in range(24):
+            candidate = runtime.noesis.deliberate(host_trigger="six_organ_lab_cycle")
+            if candidate.selected_tendency == "avoid":
+                proposal = candidate
+                break
+        self.assertIsNotNone(proposal, "Original neural policy did not choose AVOID")
+        return runtime, session, proposal
+
+    def test_original_six_avoid_rest_world_kill_reconciles_brain_once(self):
+        """Real neural AVOID, actual original rest, simulated post-world kill.
+
+        This is an isolated source-backed negative/crash-window regression.
+        It does NOT demonstrate independent three-class R4 or an OS kill.
+        """
+        from unittest.mock import patch
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
+        from doctor_lives.lab_home_bridge import _row
+
+        runtime, session, proposal = self._original_six_rest_session()
+        store = runtime._port.brain.store
+        with store.transaction() as db:
+            db.execute("UPDATE needs SET actual=0.95,felt=0.95 WHERE key='fatigue'")
+        session._reserve_rest(proposal)
+        event_id = session._rest_event_id(proposal.policy_decision_id)
+        before = store.tick
+        with patch.object(session.bridge, "_admit",
+                          side_effect=RuntimeError("injected post-world kill")):
+            with self.assertRaisesRegex(RuntimeError, "post-world kill"):
+                session._reconcile_pending_rest()
+        self.assertIsNotNone(session._pending_rest())
+        with self.lab._open() as db:
+            event, digest = _row(db, "rhythm_events", event_id)
+        self.assertEqual(event["op"], "rest")
+        self.assertEqual(event["station"], "station:bedroom")
+        session.close()
+
+        reopened = SixOrganRuntime.open(self.state)
+        with SixOrganLaboratoryCycle(
+            reopened, SubjectPort(self.lab), affectus_source=self.source,
+            renderer=lambda _: "I remember the room.", authorized=True,
+        ) as recovered:
+            self.assertIsNone(recovered._pending_rest())
+            self.assertGreaterEqual(reopened._port.brain.store.tick, before + 6)
+            after = reopened._port.brain.store.tick
+            with reopened._port.brain.store.connect() as db:
+                fatigue = db.execute(
+                    "SELECT actual,felt FROM needs WHERE key='fatigue'"
+                ).fetchone()
+            self.assertLess(fatigue["actual"], 0.95)
+            self.assertLess(fatigue["felt"], 0.95)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        memories = reopened._port.brain.store.memories(False)
+        self.assertEqual(sum(
+            m["source"] == "laboratory-home:action:" + digest
+            for m in memories
+        ), 1)
+        reopened.checkpoint()
+        again = SixOrganRuntime.open(self.state)
+        with SixOrganLaboratoryCycle(
+            again, SubjectPort(self.lab), affectus_source=self.source,
+            renderer=lambda _: "I remember the room.", authorized=True,
+        ) as replay:
+            self.assertIsNone(replay._pending_rest())
+            self.assertEqual(again._port.brain.store.tick, after)
+            self.assertIsNone(replay._reconcile_pending_rest())
+
+    def test_original_six_rest_rejects_wrong_station_and_substituted_memory(self):
+        from unittest.mock import patch
+        from doctor_lives.lab_home_bridge import _row
+
+        runtime, session, proposal = self._original_six_rest_session()
+        session._reserve_rest(proposal)
+        event_id = session._rest_event_id(proposal.policy_decision_id)
+        original = session.bridge.act("rest", event_id=event_id)
+        self.assertEqual(original["status"], "admitted")
+        unrelated = session.bridge.observe()
+        before = runtime._port.brain.store.tick
+        with patch.object(session.bridge, "act", return_value={
+            "status": "admitted", "memory_id": unrelated["memory_id"],
+        }):
+            with self.assertRaisesRegex(PermissionError, "physical/lived receipt"):
+                session._reconcile_pending_rest()
+        self.assertEqual(runtime._port.brain.store.tick, before)
+        self.assertIsNotNone(session._pending_rest())
+        session._reconcile_pending_rest()
+        after = runtime._port.brain.store.tick
+        self.assertEqual(after, before + 6)
+        self.assertIsNone(session._pending_rest())
+        session.close()
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+
     def _reserve_crash_window(self):
         """Inject the exact durable motor reservation without a host action."""
         import json
