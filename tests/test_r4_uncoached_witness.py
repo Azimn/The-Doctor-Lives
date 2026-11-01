@@ -222,5 +222,78 @@ class R4WitnessTests(unittest.TestCase):
         self.assertFalse(result["autonomy_credit"])
 
 
+
+class R4GracefulStopObservationTests(unittest.TestCase):
+    def test_late_authentic_completion_is_observed_before_process_exit(self):
+        """A real change during stop must be sampled LIVE, not posthumously."""
+        from unittest.mock import patch
+        from tools.run_uncoached_r4_trial import _stop_with_live_origin_sampling
+
+        clock = {"tick": 0}
+        class Operator:
+            def poll(self):
+                return None if clock["tick"] < 5 else 0
+        class Stop:
+            returncode = None
+            def poll(self):
+                if clock["tick"] >= 4:
+                    self.returncode = 0
+                return self.returncode
+            def communicate(self, timeout=None):
+                return ("stopped", "")
+            def kill(self):
+                self.returncode = -9
+
+        observed = []
+        def capture(alive):
+            observed.append((clock["tick"] >= 2, alive))
+        def advance(_):
+            clock["tick"] += 1
+
+        with patch("tools.run_uncoached_r4_trial.subprocess.Popen", return_value=Stop()), \
+             patch("tools.run_uncoached_r4_trial.time.monotonic",
+                   side_effect=lambda: float(clock["tick"])), \
+             patch("tools.run_uncoached_r4_trial.time.sleep", side_effect=advance):
+            code, error = _stop_with_live_origin_sampling(
+                Operator(), ["preview-stop"], capture, timeout_seconds=20
+            )
+        self.assertEqual((code, error), (0, ""))
+        self.assertIn((True, True), observed)
+        self.assertTrue(all(alive is False for complete, alive in observed
+                            if clock["tick"] >= 5 and not complete))
+
+    def test_postmortem_change_is_never_reported_alive(self):
+        """An event appearing only after exit cannot earn an alive witness."""
+        from unittest.mock import patch
+        from tools.run_uncoached_r4_trial import _stop_with_live_origin_sampling
+        clock = {"tick": 0}
+        class Operator:
+            def poll(self):
+                return None if clock["tick"] < 2 else 0
+        class Stop:
+            returncode = None
+            def poll(self):
+                if clock["tick"] >= 4:
+                    self.returncode = 0
+                return self.returncode
+            def communicate(self, timeout=None):
+                return ("stopped", "")
+            def kill(self):
+                self.returncode = -9
+        observed = []
+        with patch("tools.run_uncoached_r4_trial.subprocess.Popen", return_value=Stop()), \
+             patch("tools.run_uncoached_r4_trial.time.monotonic",
+                   side_effect=lambda: float(clock["tick"])), \
+             patch("tools.run_uncoached_r4_trial.time.sleep",
+                   side_effect=lambda _: clock.__setitem__("tick", clock["tick"] + 1)):
+            code, error = _stop_with_live_origin_sampling(
+                Operator(), ["preview-stop"],
+                lambda alive: observed.append((clock["tick"] >= 3, alive)),
+                timeout_seconds=20,
+            )
+        self.assertEqual((code, error), (0, ""))
+        self.assertFalse(any(complete and alive for complete, alive in observed))
+
+
 if __name__ == "__main__":
     unittest.main()
