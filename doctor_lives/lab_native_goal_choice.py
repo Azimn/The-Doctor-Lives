@@ -87,14 +87,15 @@ class NativeLaboratoryGoalChooser:
                 raise ValueError("Invalid canonical rest goal")
             with self.store.connect() as db:
                 choice = db.execute(
-                    "SELECT selected_action FROM policy_decisions WHERE id=?",
+                    "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
                     (state["origin_policy_id"],)
                 ).fetchone()
                 thought = db.execute(
                     "SELECT generated_by FROM thoughts WHERE id=?",
                     (state["origin_thought_id"],)
                 ).fetchone()
-            if (choice is None or choice["selected_action"] != "avoid"
+            if (choice is None or choice["trigger"] != "six_organ_lab_cycle"
+                    or choice["selected_action"] != "avoid"
                     or thought is None or thought["generated_by"] !=
                     "neural_policy:" + state["origin_policy_id"]):
                 raise ValueError("Rest goal has no original avoid-policy provenance")
