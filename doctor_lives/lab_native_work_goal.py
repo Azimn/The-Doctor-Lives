@@ -176,12 +176,27 @@ class NativeWorkPursuit:
                 continue
             possible.append(action)
         if not possible:
-            return WorkReceipt("no_situated_goal", None, selected_tendency=proposal.selected_tendency)
+            # An intention is allowed to outlive a temporary physical
+            # impediment. At night the original sanctum is dark even when
+            # the same bench was genuinely seen earlier in daylight. Do
+            # NOT turn that into a missing neural intention or pretend that
+            # work was performed. Only retain a blocked commitment when
+            # finite ORIGINAL supplies make later work physically possible.
+            supplies = physical["supplies"]
+            recoverable = (
+                (supplies["reagents"] > 0 and physical["apparatus"] >= 1)
+                or (supplies["spares"] > 0 and physical["apparatus"] < 3)
+            )
+            if not recoverable:
+                return WorkReceipt(
+                    "no_situated_goal", None,
+                    selected_tendency=proposal.selected_tendency,
+                )
         ident = sha256((self._epoch() + "|" +
                         proposal.policy_decision_id).encode()).hexdigest()[:24]
         record = {
             "schema": _SCHEMA, "id": ident, "world_epoch": self._epoch(),
-            "goal": _GOAL, "phase": "travel", "steps": 0,
+            "goal": _GOAL, "phase": "travel" if possible else "blocked", "steps": 0,
             "origin_policy_id": proposal.policy_decision_id,
             "origin_thought_id": proposal.thought_id,
             "work_policy_id": None, "selected_action": None,
