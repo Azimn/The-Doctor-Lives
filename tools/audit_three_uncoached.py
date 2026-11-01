@@ -404,6 +404,15 @@ def verify_external_origin_witness(path: Path | None, expected: dict) -> dict:
             expected_row = expected.get(goal_id)
             if expected_row is None:
                 continue
+            if kind.startswith("rest_history:"):
+                # An archived rest is still a REST, not a new fourth class.
+                # Bind its witness key to exactly the authenticated goal ID.
+                if (kind != "rest_history:" + str(goal_id)
+                        or expected_row["kind"] != "rest"):
+                    raise PermissionError(
+                        "independent_origin_source_mismatch:" + str(goal_id)
+                    )
+                kind = "rest"
             if (expected_row["kind"] != kind
                     or row.get("origin_policy_id") != expected_row["origin_policy_id"]
                     or row.get("origin_thought_id") != expected_row["origin_thought_id"]
