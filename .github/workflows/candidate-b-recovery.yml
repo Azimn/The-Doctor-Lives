@@ -6,6 +6,7 @@ on:
       - doctor_lives/lab_recovery_census.py
       - doctor_lives/lab_daily_life_cycle.py
       - doctor_lives/noesis_day.py
+      - doctor_lives/lab_six_organ_session.py
       - doctor_lives/preview_operator.py
       - tests/test_candidate_b_operator_sessions.py
       - tests/test_candidate_b_recovery.py
@@ -63,7 +64,11 @@ jobs:
         run: python -m unittest discover -s tests -p test_candidate_b_baselines.py -v
 
   same-mind-living-cycle:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -100,6 +105,7 @@ jobs:
       - name: Install four reviewed donor sources, canonical brain
         run: python -m pip install ./donor-laboratory ./donor-ipseity .
       - name: Reject incorrect donor revisions
+        shell: bash
         run: |
           test "$(git -C donor-laboratory rev-parse HEAD)" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
           test "$(git -C donor-sensus rev-parse HEAD)" = "802e459ee68950414347d5fa324484c034f57b81"
@@ -107,16 +113,16 @@ jobs:
           test "$(git -C donor-ipseity rev-parse HEAD)" = "e2d1dc3978c952e59d270a29e84704c8a1fe264a"
       - name: Execute one complete six-organ native life cycle, physical action and restart
         env:
-          PYTHONPATH: donor-laboratory:donor-sensus
+          PYTHONPATH: ${{ runner.os == 'Windows' && 'donor-laboratory;donor-sensus' || 'donor-laboratory:donor-sensus' }}
           PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
         run: python -m unittest discover -s tests -p test_candidate_b_daily_life.py -v
       - name: Complete original Noesis-situated persistent work on pinned physical Laboratory
         env:
-          PYTHONPATH: donor-laboratory:donor-sensus
+          PYTHONPATH: ${{ runner.os == 'Windows' && 'donor-laboratory;donor-sensus' || 'donor-laboratory:donor-sensus' }}
           PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
         run: python -m unittest discover -s tests -p test_candidate_b_native_work.py -v
       - name: Verify original neural book-rest lifecycle and source-rest homeostatic recovery
         env:
-          PYTHONPATH: donor-laboratory:donor-sensus
+          PYTHONPATH: ${{ runner.os == 'Windows' && 'donor-laboratory;donor-sensus' || 'donor-laboratory:donor-sensus' }}
           PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
         run: python -m unittest discover -s tests -p test_six_organ_native_goal_choice.py -v
