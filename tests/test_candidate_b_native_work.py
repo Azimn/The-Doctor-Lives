@@ -232,6 +232,69 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
             "independent_three_goal_acceptance": False,
         }, sort_keys=True))
 
+    def test_original_neural_work_intention_survives_real_darkness_without_ghost_work(self):
+        """A real original bench cue can sustain a temporarily blocked goal.
+
+        Nightfall is a physical fixture intervention, NOT Pretorius choosing
+        to darken the room or independently completing a three-class R4.
+        No supplies, work event or invented motor may be granted by origin.
+        """
+        from pretorius_lab.daily_rhythm import transition
+        from pretorius_lab.physics import Conflict
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        epoch = self.subject.verify()["world_epoch"]
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            proposal = chooser._native_policy()
+            self.assertIn(proposal.selected_tendency, ("explore", "persist"))
+            from doctor_lives.lab_endogenous_book_task import _verified_looks
+            self.assertTrue(any(
+                e["after_station"] == "station:threshold"
+                and "workbench" in e["offered_payload"]["perceived_features"]
+                for e, _ in _verified_looks(self.subject.embodied)
+            ))
+            # Actual pinned-world time transition, not a patched state.
+            self.subject.rhythm.advance(
+                720, event_id="external-fixture-real-nightfall")
+            physical = self.subject.rhythm.audit_state()
+            self.assertGreater(physical["supplies"]["reagents"], 0)
+            self.assertGreater(physical["supplies"]["spares"], 0)
+            for op in ("repair", "experiment"):
+                with self.assertRaises(Conflict):
+                    transition(physical, op, {}, "station:bench")
+            before = self.subject.rhythm.verify()["revision"]
+            created = chooser.work.originate(proposal)
+            self.assertEqual(created.status, "goal_created")
+            self.assertEqual(created.selected_tendency,
+                             proposal.selected_tendency)
+            self.assertEqual(chooser.work._load()["phase"], "blocked")
+            self.assertEqual(chooser.work._load()["origin_policy_id"],
+                             proposal.policy_decision_id)
+            self.assertEqual(self.subject.rhythm.verify()["revision"], before)
+            rt.checkpoint()
+
+        reopened = SixOrganRuntime.open(self.state)
+        with self.session(reopened) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            state = chooser.work._load()
+            self.assertEqual(state["id"], created.goal_id)
+            self.assertEqual(state["phase"], "blocked")
+            self.assertIsNone(state["work_policy_id"])
+            self.assertIsNone(state["memory_id"])
+            denied = chooser.step(authorized_world_action=False)
+            self.assertEqual((denied.kind, denied.status, denied.goal_id),
+                             ("work", "authorization_required", created.goal_id))
+            self.assertEqual(self.subject.rhythm.verify()["revision"], before)
+            self.assertEqual(self.subject.verify()["world_epoch"], epoch)
+        with self.world._open() as db:
+            work_events = db.execute(
+                "SELECT count(*) FROM rhythm_events "
+                "WHERE json_extract(envelope, '$.op') IN ('repair','experiment')"
+            ).fetchone()[0]
+        self.assertEqual(work_events, 0)
+
     def test_original_neural_work_goal_survives_departure_from_seen_bench(self):
         """An original policy may commit to a previously SEEN bench.
 
