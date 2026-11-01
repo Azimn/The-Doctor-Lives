@@ -198,13 +198,17 @@ class EndogenousBookPursuit:
             raise PermissionError("Stale policy cannot originate a new book goal")
         if state is None:
             # An internal exploratory choice alone does not create a book fact.
-            # The co-present bookshelves cue must come from a verified local
-            # look that entered the Doctor's first-person observation.
+            # A bookshelves cue must have been physically SEEN by this
+            # original individual. A remembered source LOOK may be remote:
+            # an EXPLORE commitment can survive the journey back to it.
+            # The original world graph must still admit a physical route.
             looks = _verified_looks(self.subject.embodied)
+            station = self._at()
             cue = next((
                 e for e, _ in looks
-                if e["after_station"] == self._at()
-                and "bookshelves" in e["offered_payload"]["perceived_features"]
+                if "bookshelves" in e["offered_payload"]["perceived_features"]
+                and (e["after_station"] == station or
+                     self._route(station, e["after_station"]) is not None)
             ), None)
             if proposal.selected_tendency != "explore" or cue is None:
                 return EndogenousTaskReceipt("dormant", None, None)
