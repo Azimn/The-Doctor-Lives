@@ -114,6 +114,39 @@ class NativeLaboratoryGoalChooser:
             self.store.set_meta(_REST_KEY, _stable(envelope), db)
             self.store.bump_state_version(db)
 
+    def _finish_source_verified_rest(self, state, memory, event_id):
+        """One original physical rest restores original homeostasis exactly once.
+
+        The original Laboratory's one-hour rest, not a host-authored goal,
+        licenses six existing ten-minute homeostatic opportunities. The
+        canonical brain's own relaxation rule runs in the SAME transaction
+        as the completed goal, so a cold replay cannot apply it twice.
+        No action score, tendency, world supply or physics is overridden.
+        """
+        from .lab_home_bridge import _row
+        digest = memory["source"].removeprefix("laboratory-home:action:")
+        with self.host.bridge.world._open() as db:
+            original, checked = _row(db, "rhythm_events", event_id)
+        if (checked != digest or original.get("op") != "rest"
+                or original.get("station") != "station:bedroom"
+                or original.get("subject", {}).get("inner") != memory["text"]):
+            raise PermissionError("Native rest has no matching original physical receipt")
+        completed = dict(state)
+        completed["steps"] += 1
+        completed["phase"] = "complete"
+        completed["memory_id"] = memory["id"]
+        brain = self.runtime._port.brain
+        envelope = {"payload": completed, "sha256": _digest(completed)}
+        # Exactly one atomic BrainStore change owns both goal completion
+        # and the original need-relaxation dynamics. No second memory store.
+        with self.store.transaction() as db:
+            for _ in range(6):
+                tick = self.store.advance_tick(db)
+                brain._relax_needs(db, tick)
+                brain._update_commitments_due(db, tick)
+            self.store.set_meta(_REST_KEY, _stable(envelope), db)
+            self.store.bump_state_version(db)
+
     def _native_policy(self):
         """Read the native choice from an ACTUAL full six-organ cycle.
 
@@ -439,10 +472,7 @@ class NativeLaboratoryGoalChooser:
                 or not memory["source"].startswith("laboratory-home:action:")
                 or memory["text"] != outcome["subject"]["inner"]):
             raise RuntimeError("Failed to admit a real bodily rest consequence")
-        state["steps"] += 1
-        state["phase"] = "complete"
-        state["memory_id"] = memory["id"]
-        self._save_rest(state)
+        self._finish_source_verified_rest(state, memory, event_id)
         return NativeGoalChoiceReceipt(
             "completed", "rest", state["id"], memory["id"]
         )
