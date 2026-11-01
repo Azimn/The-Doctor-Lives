@@ -171,6 +171,48 @@ class R4WitnessTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             inspect_native_policy_pressure(self.root, limit=1000)
 
+    def test_real_archived_historical_rest_preserves_ledger_authentication(self):
+        """Use untouched original R4 archive, not fixture-synthesized events.
+
+        The canonical BrainStore can seal rest01 as historical when rest02
+        becomes current. Every genuine sealed rest completion must still
+        validate its own original policy, thought, checksum, physical world
+        event and lived memory. Uncoached 3/3 remains independently gated.
+        """
+        import os
+        import shutil
+        from tools.audit_three_uncoached import evaluate_schema_only
+
+        archive = os.environ.get("PRETORIUS_ARCHIVED_BRAINSTORE")
+        if not archive:
+            self.skipTest("Original archived R4 source required")
+        original = Path(archive)
+        directory = original.parent
+        world = directory / "original-laboratory.sqlite3"
+        ledger = directory / "preview-activity.jsonl"
+        if not world.is_file() or not ledger.is_file():
+            self.skipTest("Full original R4 world and operator ledger required")
+        with sqlite3.connect(original.absolute().as_uri() + "?mode=ro", uri=True) as db:
+            history = db.execute(
+                "SELECT key FROM meta "
+                "WHERE key LIKE 'six_organ_native_rest_history_v1:%'"
+            ).fetchall()
+        if not history:
+            self.skipTest("Archived source predates the real sealed rest history")
+        shutil.copyfile(original, self.root / "state" / "brain.sqlite3")
+        shutil.copyfile(world, self.root / "laboratory.sqlite3")
+        shutil.copyfile(ledger, self.root / "preview-activity.jsonl")
+        report = evaluate_schema_only(self.root)
+        historical_failures = [problem for problem in report["problems"]
+                               if problem.startswith("unauthenticated_completion:")]
+        self.assertEqual(
+            historical_failures, [],
+            "Genuine sealed original-world historical rest was rejected: "
+            + repr(historical_failures),
+        )
+        self.assertIn("rest", report["distinct_valid_activity_kinds"])
+        self.assertFalse(report["three_distinct_uncoached"])
+
     def test_real_archived_brainstore_nonempty_candidate_scores(self):
         """Regression against exact archived real BrainStore, never a synthetic database.
 
