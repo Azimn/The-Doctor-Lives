@@ -130,6 +130,20 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 assert raw is not None, "missing canonical goal"
                 envelope = json.loads(raw[0])
                 intent = envelope["payload"]
+                if kind == "rest" and intent.get("id") != gid:
+                    # The one canonical rest intention advances to a NEW
+                    # genuinely neural goal. A prior sealed completion is
+                    # immutable history in that SAME canonical BrainStore,
+                    # not invalidated by replacing the active slot. Inspect
+                    # only the exact prior ID, never an unbounded alias.
+                    historical_key = "six_organ_native_rest_history_v1:" + gid
+                    historical = db.execute(
+                        "SELECT value FROM meta WHERE key=?",
+                        (historical_key,),
+                    ).fetchone()
+                    assert historical is not None, "missing sealed historical rest"
+                    envelope = json.loads(historical[0])
+                    intent = envelope["payload"]
                 assert _digest(intent) == envelope["sha256"], "tampered goal"
                 assert intent["id"] == gid and intent["phase"] == "complete"
                 expected_goals = {
