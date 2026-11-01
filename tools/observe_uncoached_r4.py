@@ -43,7 +43,8 @@ def inspect_neural_origins(workspace: Path) -> dict:
     with closing(_read_db(Path(workspace) / "state" / "brain.sqlite3")) as db:
         db.row_factory = sqlite3.Row
         rows = db.execute(
-            "SELECT key,value FROM meta WHERE key IN (?,?,?)",
+            "SELECT key,value FROM meta WHERE key IN (?,?,?) "
+            "OR key LIKE 'six_organ_native_rest_history_v1:%'",
             tuple(_NATIVE_KEYS),
         ).fetchall()
         result = {}
@@ -52,6 +53,17 @@ def inspect_neural_origins(workspace: Path) -> dict:
             goal = envelope["payload"]
             if type(goal) is not dict:
                 raise RuntimeError("Canonical native goal payload is not a mapping")
+            history_prefix = "six_organ_native_rest_history_v1:"
+            if row["key"].startswith(history_prefix):
+                # Keep each completed rest independently visible even after
+                # a later genuine rest takes the active canonical slot.
+                # The observer never creates, repairs or promotes these goals.
+                if (row["key"] != history_prefix + goal["id"]
+                        or goal["phase"] != "complete"):
+                    raise RuntimeError("Malformed historical canonical rest")
+                output_kind = "rest_history:" + goal["id"]
+            else:
+                output_kind = _NATIVE_KEYS[row["key"]]
             policy_id = goal["origin_policy_id"]
             thought_id = goal["origin_thought_id"]
             policy = db.execute(
@@ -69,7 +81,7 @@ def inspect_neural_origins(workspace: Path) -> dict:
             tendency = policy["selected_action"] if policy else None
             trigger = policy["trigger"] if policy else None
             generated_by = thought["generated_by"] if thought else None
-            result[_NATIVE_KEYS[row["key"]]] = {
+            result[output_kind] = {
                 "goal_id": goal["id"],
                 "phase": goal["phase"],
                 "origin_policy_id": policy_id,
