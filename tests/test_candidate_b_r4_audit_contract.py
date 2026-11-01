@@ -227,6 +227,19 @@ class IndependentThreeGoalContract(unittest.TestCase):
         self.assertIn(old_id, result["verified_goal_origins"])
         self.assertEqual(result["verified_goal_origins"][old_id]["kind"], "rest")
 
+    def test_live_read_only_witness_keeps_exact_historical_rest_origin(self):
+        from tools.observe_uncoached_r4 import inspect_neural_origins
+        old_id = self._archive_original_rest_and_open_a_later_rest()
+        origin = inspect_neural_origins(self.root)
+        self.assertIn("rest_history:" + old_id, origin)
+        historic = origin["rest_history:" + old_id]
+        self.assertEqual(historic["goal_id"], old_id)
+        self.assertEqual(historic["phase"], "complete")
+        self.assertEqual(historic["policy_trigger"], "six_organ_lab_cycle")
+        self.assertTrue(historic["checksum_matches"])
+        self.assertTrue(historic["record_consistency_only"])
+        self.assertEqual(origin["rest"]["goal_id"], "later-rest-goal")
+
     def test_tampered_historical_rest_checksum_is_rejected(self):
         old_id = self._archive_original_rest_and_open_a_later_rest()
         key = "six_organ_native_rest_history_v1:" + old_id
