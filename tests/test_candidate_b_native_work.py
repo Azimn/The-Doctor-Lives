@@ -255,8 +255,11 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
                 for e, _ in _verified_looks(self.subject.embodied)
             ))
             # Actual pinned-world time transition, not a patched state.
-            self.subject.rhythm.advance(
-                720, event_id="external-fixture-real-nightfall")
+            # Original Laboratory caps each advance at 240 minutes.
+            # Three real, independently replayable source events reach night.
+            for n in range(3):
+                self.subject.rhythm.advance(
+                    240, event_id=f"external-fixture-nightfall-{n}")
             physical = self.subject.rhythm.audit_state()
             self.assertGreater(physical["supplies"]["reagents"], 0)
             self.assertGreater(physical["supplies"]["spares"], 0)
