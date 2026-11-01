@@ -191,9 +191,43 @@ class EndogenousBookPursuit:
                 raise PermissionError("Expected an original typed neural decision")
             proposal = native_proposal
         else:
-            proposal = self.runtime.noesis.deliberate(
-                host_trigger="endogenous_book_opportunity"
+            # A direct opportunity must run the SAME canonical six-organ
+            # decision as the native multi-goal chooser. A standalone Noesis
+            # call with a different trigger cannot originate a replayable goal.
+            cycle = self.host.cycle(authorized_world_action=False)
+            with self.store.connect() as db:
+                row = db.execute(
+                    "SELECT id,selected_action FROM policy_decisions "
+                    "WHERE trigger='six_organ_lab_cycle' "
+                    "ORDER BY rowid DESC LIMIT 1"
+                ).fetchone()
+                thought = (db.execute(
+                    "SELECT id FROM thoughts WHERE generated_by=? "
+                    "ORDER BY rowid DESC LIMIT 1",
+                    ("neural_policy:" + row["id"],),
+                ).fetchone() if row is not None else None)
+            if (row is None or thought is None
+                    or row["selected_action"] != cycle.selected_tendency):
+                raise RuntimeError("Direct book opportunity lacks a six-organ neural decision")
+            proposal = CognitiveProposal(
+                policy_decision_id=row["id"], thought_id=thought["id"],
+                selected_tendency=row["selected_action"],
             )
+        # Both entrypoints must bind the same original policy and thought.
+        with self.store.connect() as db:
+            origin = db.execute(
+                "SELECT trigger,selected_action FROM policy_decisions WHERE id=?",
+                (proposal.policy_decision_id,),
+            ).fetchone()
+            thought_origin = db.execute(
+                "SELECT generated_by FROM thoughts WHERE id=?",
+                (proposal.thought_id,),
+            ).fetchone()
+        if (origin is None or origin["trigger"] != "six_organ_lab_cycle"
+                or origin["selected_action"] != proposal.selected_tendency
+                or thought_origin is None or thought_origin["generated_by"] !=
+                "neural_policy:" + proposal.policy_decision_id):
+            raise PermissionError("Book origin requires original six-organ policy and thought")
         _, newest_id = self.host.corpus._verified_policy(proposal)
         if newest_id != proposal.policy_decision_id:
             raise PermissionError("Stale policy cannot originate a new book goal")
