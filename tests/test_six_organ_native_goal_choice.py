@@ -96,6 +96,17 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         from pretorius_lab.embodied_access import STATIONS
         path = self.root / "unseen-exploration-mind"
         rt = SixOrganRuntime.open(path, neural_config=config())
+        # Original world fixture positioning, NOT a Doctor-chosen route:
+        # leave the threshold BEFORE the native chooser can record a LOOK.
+        # The source-visible threshold always contains a bookshelf cue,
+        # which would exercise the existing remembered-cue route instead
+        # of the first-time discovery branch this test isolates.
+        self.subject.embodied.move(
+            "station:hall", event_id="unseen_fixture_to_hall"
+        )
+        self.subject.embodied.move(
+            "station:bedroom", event_id="unseen_fixture_to_bedroom"
+        )
         with self.host(rt) as session:
             chooser = NativeLaboratoryGoalChooser(session, authorized=True)
             proposal = chooser._native_policy()
