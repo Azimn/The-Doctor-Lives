@@ -136,7 +136,7 @@ class NativeWorkPursuit:
         self.state = state
 
     def originate(self, proposal):
-        """Require a real LOCAL look, original persist policy, and bench viability."""
+        """Require an original-world witnessed bench, neural origin and real viability."""
         if self.state is not None:
             raise RuntimeError("A native work commitment already exists")
         from .organs import CognitiveProposal
@@ -148,9 +148,17 @@ class NativeWorkPursuit:
             raise PermissionError("Stale Noesis goal origin")
         at = self.host.subject.embodied.verify()["station"]
         scenes = _verified_looks(self.host.subject.embodied)
-        if not any(e["after_station"] == at and
-                   "workbench" in e["offered_payload"]["perceived_features"]
-                   for e, _ in scenes):
+        # A source-authenticated earlier LOOK remains a real observation
+        # after physical rest or travel. Require the actual original-world
+        # workbench cue and a source-defined route back to its seen station;
+        # never originate from an unseen map affordance or operator hint.
+        # The new commitment, once originated by this ORIGINAL neural
+        # policy, persists through later movement and cold restart.
+        if not any(
+                "workbench" in e["offered_payload"]["perceived_features"]
+                and (e["after_station"] == at or
+                     EndogenousBookPursuit._route(at, e["after_station"]) is not None)
+                for e, _ in scenes):
             return WorkReceipt("no_situated_goal", None, selected_tendency=proposal.selected_tendency)
         if EndogenousBookPursuit._route(at, "station:bench") is None and at != "station:bench":
             return WorkReceipt("no_situated_goal", None, selected_tendency=proposal.selected_tendency)
