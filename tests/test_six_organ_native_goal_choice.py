@@ -440,6 +440,53 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             "host_selected_route": True
         }, sort_keys=True))
 
+    def test_original_book_goal_rejects_policy_trigger_swap_before_world_action(self):
+        """An unrelated-policy EXPLORE cannot replay a real six-organ book goal.
+
+        The original source-backed book origin and its neural thought remain
+        intact; ONLY the originating policy trigger changes. This is a
+        deliberately adversarial fixture, never an autonomous R4 completion.
+        """
+        from doctor_lives.lab_endogenous_book_task import _KEY
+        self.install_fixture()
+        rt = SixOrganRuntime.open(
+            self.root / "book-origin-trigger-mind", neural_config=config()
+        )
+        with self.host(rt) as session:
+            chooser = NativeLaboratoryGoalChooser(session, authorized=True)
+            created = chooser.step()
+            self.assertEqual((created.kind, created.status, created.selected_tendency),
+                             ("read_book", "goal_created", "explore"))
+            envelope = json.loads(rt._port.brain.store.meta(_KEY))
+            state = envelope["payload"]
+            self.assertEqual(state["id"], created.goal_id)
+            with rt._port.brain.store.connect() as db:
+                policy = db.execute(
+                    "SELECT trigger,selected_action FROM policy_decisions WHERE id=?",
+                    (state["origin_policy_id"],)
+                ).fetchone()
+                thought = db.execute(
+                    "SELECT generated_by FROM thoughts WHERE id=?",
+                    (state["origin_thought_id"],)
+                ).fetchone()
+            self.assertEqual(tuple(policy), ("six_organ_lab_cycle", "explore"))
+            self.assertEqual(
+                thought["generated_by"],
+                "neural_policy:" + state["origin_policy_id"]
+            )
+            before = self.subject.embodied.verify()["revision"]
+            with rt._port.brain.store.transaction() as db:
+                db.execute(
+                    "UPDATE policy_decisions SET trigger=? WHERE id=?",
+                    ("unrelated_neural_policy", state["origin_policy_id"])
+                )
+            self.assertEqual(json.loads(rt._port.brain.store.meta(_KEY)), envelope)
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or unauthorized endogenous"):
+                chooser.book.status()
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or unauthorized endogenous"):
+                chooser.step(authorized_world_action=True)
+            self.assertEqual(self.subject.embodied.verify()["revision"], before)
+
     def test_original_rest_goal_rejects_policy_trigger_swap_before_world_action(self):
         """Rest may not inherit a same-tendency policy from another trigger."""
         path = self.root / "rest-origin-trigger-mind"
