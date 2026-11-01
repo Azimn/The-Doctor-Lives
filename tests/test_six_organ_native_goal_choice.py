@@ -226,6 +226,89 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             ]
         self.assertEqual(sum(e["action"]["op"] == "read" for e in reads), 1)
 
+    def test_completed_original_rest_allows_existing_book_goal_after_restart(self):
+        """Completed rest is history; only two LIVE goals are a conflict.
+
+        This is an explicitly host-orchestrated negative/positive lifecycle
+        regression, NOT evidence of three uncoached autonomous activities.
+        The goals originate in separate original six-organ neural policies,
+        and both completions require original physical source receipts.
+        """
+        fixture = self.install_fixture()
+        path = self.root / "completed-rest-book-mind"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        epoch = self.subject.verify()["world_epoch"]
+        with self.host(rt) as session:
+            chooser = NativeLaboratoryGoalChooser(
+                session, authorized=True, enable_sustained_work=True
+            )
+            book = chooser.step()
+            self.assertEqual((book.kind, book.status, book.selected_tendency),
+                             ("read_book", "goal_created", "explore"))
+            for _ in range(4):
+                self.assertEqual(
+                    len(session.cycle(authorized_world_action=True).ports_used), 6
+                )
+            for _ in range(12):
+                proposal = chooser._native_policy()
+                if proposal.selected_tendency == "avoid":
+                    break
+            else:
+                self.fail("Original six-organ neural AVOID never emerged")
+            rest = chooser._originate_rest(proposal)
+            self.assertEqual(rest.status, "goal_created")
+            self.assertNotEqual(rest.goal_id, book.goal_id)
+            # A genuinely pending rest and book must STILL fail closed.
+            with self.assertRaisesRegex(RuntimeError, "Competing pending goals"):
+                chooser.step(authorized_world_action=True)
+            for _ in range(12):
+                finished = chooser._continue_rest(
+                    chooser._load_rest(), True
+                )
+                if finished.status == "completed":
+                    break
+            else:
+                self.fail("Original physical rest never completed")
+            self.assertEqual(chooser._load_rest()["phase"], "complete")
+            self.assertEqual(chooser.book.status().goal_id, book.goal_id)
+            memory = rt._port.brain.store.get_memory(finished.memory_id)
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertTrue(memory["source"].startswith(
+                "laboratory-home:action:"
+            ))
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(path)
+        with self.host(reopened) as session:
+            chooser = NativeLaboratoryGoalChooser(
+                session, authorized=True, enable_sustained_work=True
+            )
+            self.assertEqual(chooser._load_rest()["phase"], "complete")
+            self.assertEqual(chooser.book.status().goal_id, book.goal_id)
+            for _ in range(30):
+                result = chooser.step(authorized_world_action=True)
+                self.assertEqual(result.kind, "read_book")
+                self.assertEqual(result.goal_id, book.goal_id)
+                if result.status == "completed":
+                    break
+            else:
+                self.fail("Historical completed rest blocked original book READ")
+            read_memory = reopened._port.brain.store.get_memory(result.memory_id)
+            self.assertIn(fixture["pages"][0], read_memory["text"])
+            self.assertEqual(read_memory["evidence_class"], "lived_runtime_memory")
+            self.assertEqual(self.subject.verify()["world_epoch"], epoch)
+        with self.world._open() as db:
+            reads = [
+                json.loads(row[0]) for row in
+                db.execute("SELECT payload FROM books_events")
+            ]
+            rests = [
+                json.loads(row[0]) for row in
+                db.execute("SELECT envelope FROM rhythm_events")
+                if "ng_" in row[0]
+            ]
+        self.assertEqual(sum(e["action"]["op"] == "read" for e in reads), 1)
+        self.assertEqual(len(rests), 1)
+
     def test_native_explore_pursues_real_book_without_second_goal_prompt(self):
         fixture = self.install_fixture()
         path = self.root / "book-mind"
