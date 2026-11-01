@@ -121,25 +121,45 @@ class R4WitnessTests(unittest.TestCase):
         self.assertFalse(inspect_neural_origins(self.root)["work"]["record_consistency_only"])
 
     def test_original_neural_policy_pressure_is_read_only_and_never_r4_credit(self):
-        # Instrumentation exposes ONLY bounded numeric candidate scores from
-        # canonical source rows. It cannot create a policy, goal or receipt.
+        # Synthetic fixture mirrors the exact original BrainStore policy_decisions
+        # column layout and stores scores in canonical top-level JSON columns.
+        # This tests read-only formatting, NEVER grants autonomous R4 credit.
         with sqlite3.connect(self.root / "state/brain.sqlite3") as db:
-            db.execute("ALTER TABLE policy_decisions ADD COLUMN id TEXT")
-            db.execute("ALTER TABLE policy_decisions ADD COLUMN state_pressure_json TEXT")
-            db.execute("UPDATE policy_decisions SET id='p1', state_pressure_json=?",
-                       (json.dumps({"policy_scores": {
-                           "avoid": 0.6, "explore": 0.2,
-                           "private_thought": "never forward"}}),))
-            db.execute("INSERT INTO policy_decisions VALUES (?,?,?,?)",
-                       ("six_organ_lab_cycle", "avoid", "p2",
-                        json.dumps({"scores": {"avoid": 0.8, "persist": 0.1}})))
+            db.execute("DROP TABLE policy_decisions")
+            db.execute("""CREATE TABLE policy_decisions(
+                id TEXT PRIMARY KEY, tick INTEGER, created_at TEXT, trigger TEXT,
+                selected_action TEXT, base_action_scores_json TEXT,
+                state_pressure_json TEXT, action_scores_json TEXT,
+                candidate_record_ids_json TEXT, selected_record_ids_json TEXT,
+                neural_tick INTEGER, neural_checkpoint_sha256 TEXT,
+                policy_version TEXT)""")
+            rows = [
+                ("p1", "explore",
+                 {"avoid": 0.2, "explore": 0.7, "private_thought": "never forward"},
+                 {"avoid": 0.45, "explore": 0.45},
+                 {"combined": {"avoid": -0.03, "explore": 0.05},
+                  "private_thought": "secret"}),
+                ("p2", "avoid",
+                 {"avoid": 0.8, "persist": 0.1},
+                 {"avoid": 0.5, "persist": 0.5},
+                 {"combined": {"avoid": 0.03, "persist": -0.02}}),
+            ]
+            for pid, chosen, scores, base, pressure in rows:
+                db.execute("""INSERT INTO policy_decisions(
+                    id,trigger,selected_action,action_scores_json,
+                    base_action_scores_json,state_pressure_json)
+                    VALUES(?,?,?,?,?,?)""",
+                    (pid, "six_organ_lab_cycle", chosen,
+                     json.dumps(scores), json.dumps(base), json.dumps(pressure)))
         before = (self.root / "state/brain.sqlite3").read_bytes()
         diagnostic = inspect_native_policy_pressure(self.root, limit=2)
         self.assertTrue(diagnostic["available"])
         self.assertEqual([x["selected_tendency"] for x in diagnostic["recent_decisions"]],
                          ["explore", "avoid"])
         self.assertEqual(diagnostic["recent_decisions"][0]["candidate_scores"],
-                         {"policy_scores": {"avoid": 0.6, "explore": 0.2}})
+                         {"action_scores": {"avoid": 0.2, "explore": 0.7},
+                          "base_action_scores": {"avoid": 0.45, "explore": 0.45},
+                          "pressure_combined": {"avoid": -0.03, "explore": 0.05}})
         self.assertFalse(diagnostic["autonomy_credit"])
         self.assertFalse(diagnostic["causal_neural_origin_proven"])
         self.assertNotIn("private_thought", json.dumps(diagnostic))
@@ -150,7 +170,6 @@ class R4WitnessTests(unittest.TestCase):
                          diagnostic)
         with self.assertRaises(ValueError):
             inspect_native_policy_pressure(self.root, limit=1000)
-
 
     def test_real_archived_brainstore_nonempty_candidate_scores(self):
         """Regression against exact archived real BrainStore, never a synthetic database.
