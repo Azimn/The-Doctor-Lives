@@ -88,6 +88,54 @@ def inspect_neural_origins(workspace: Path) -> dict:
         return dict(sorted(result.items()))
 
 
+
+def inspect_native_policy_pressure(workspace: Path, *, limit: int = 16) -> dict:
+    """Read-only recent original neural choices for diagnosing R4 starvation.
+
+    This is independent process observation, not an additional policy,
+    intervention, source authentication or causal autonomy witness. Preserve
+    only numeric candidate score fields, never private thought or raw telemetry.
+    """
+    import math
+    if type(limit) is not int or not 1 <= limit <= 64:
+        raise ValueError("Bounded neural diagnostic horizon required")
+    with closing(_read_db(Path(workspace) / "state" / "brain.sqlite3")) as db:
+        columns = {row[1] for row in db.execute("PRAGMA table_info(policy_decisions)")}
+        required = {"id", "trigger", "selected_action", "state_pressure_json"}
+        if not required.issubset(columns):
+            return {"available": False, "reason": "source_columns_unavailable",
+                    "read_only": True, "autonomy_credit": False}
+        rows = db.execute(
+            "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
+            "WHERE trigger='six_organ_lab_cycle' ORDER BY rowid DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    decisions = []
+    for policy_id, tendency, raw in reversed(rows):
+        pressure = json.loads(raw)
+        if type(pressure) is not dict:
+            raise RuntimeError("Original neural pressure is not a mapping")
+        score_fields = {}
+        for key in ("scores", "policy_scores", "action_scores", "normalized_scores"):
+            value = pressure.get(key)
+            if type(value) is dict:
+                numeric = {
+                    name: round(float(number), 8)
+                    for name, number in value.items()
+                    if type(name) is str and type(number) in (int, float)
+                    and math.isfinite(number)
+                }
+                if numeric:
+                    score_fields[key] = dict(sorted(numeric.items()))
+        decisions.append({
+            "policy_id": policy_id, "selected_tendency": tendency,
+            "candidate_scores": score_fields,
+        })
+    return {"available": True, "recent_decisions": decisions,
+            "read_only": True, "autonomy_credit": False,
+            "causal_neural_origin_proven": False}
+
+
 def sample(workspace: Path, *, process_alive: bool, elapsed_seconds: float,
            baseline_world_receipts: int | None = None) -> dict:
     if type(process_alive) is not bool or elapsed_seconds < 0:
@@ -180,7 +228,8 @@ def sample(workspace: Path, *, process_alive: bool, elapsed_seconds: float,
         "failure_class_candidate": classification,
         "world_receipts": world, "world_receipt_total": total,
         "world_receipt_delta_from_initial": delta,
-        "brain": {"policy_counts": policies, "unverified_lived_action_rows": memories},
+        "brain": {"policy_counts": policies, "unverified_lived_action_rows": memories,
+                  "native_policy_pressure_diagnostic": inspect_native_policy_pressure(workspace)},
         "operator_ledger_diagnostic_only": {
             "entries": sum(counts.values()),
             "event_counts": dict(sorted(counts.items())),
