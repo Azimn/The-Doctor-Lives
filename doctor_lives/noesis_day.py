@@ -116,7 +116,16 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
 
 def _complete_daily_motor(bridge: DoctorHomeBridge, policy_id: str,
                           event_id: str, memory_id: str) -> None:
-    """Record only the already source-admitted action in the ONE BrainStore."""
+    """Atomically admit one original motor and its verified bodily recovery.
+
+    A genuine daily rest is a sixty-minute ORIGINAL Laboratory event. Its
+    source-backed lived memory licenses six existing ten-minute canonical
+    relaxation opportunities, exactly once. This is not a new Noesis choice,
+    an invented rest, or a change to physical fatigue/finite supplies.
+    The same transaction commits both the original motor completion and
+    original-brain homeostasis, including after a cold recovery.
+    """
+    from .lab_home_bridge import _row
     store = bridge.doctor.brain.store
     with store.transaction() as db:
         row = db.execute(
@@ -131,6 +140,44 @@ def _complete_daily_motor(bridge: DoctorHomeBridge, policy_id: str,
                 or evidence.get("motor_event_id") != event_id
                 or evidence.get("motor_memory_id") not in (None, memory_id)):
             raise PermissionError("Daily motor completion does not match original policy")
+        if evidence.get("motor_completion") == "admitted":
+            if evidence.get("motor_memory_id") != memory_id:
+                raise PermissionError("Completed motor cannot change its lived memory")
+            return  # Cold replay cannot relax the same body a second time.
+        if evidence.get("motor_completion") not in (None, "pending"):
+            raise PermissionError("Unrecognized original motor completion state")
+
+        if row["selected_action"] == "rest":
+            # Full original physics replay verifies epoch, body/home cursors,
+            # hash chain, physical station and state transition, not merely
+            # a self-hashed receipt. No engineer telemetry enters memory.
+            world = bridge.subject.verify()
+            with bridge.world._open() as world_db:
+                original, event_hash = _row(world_db, "rhythm_events", event_id)
+            memory = db.execute(
+                "SELECT source,text,evidence_class,active FROM memories WHERE id=?",
+                (memory_id,),
+            ).fetchone()
+            if (original.get("event_id") != event_id
+                    or original.get("op") != "rest"
+                    or original.get("args") != {}
+                    or original.get("station") != "station:bedroom"
+                    or original.get("world_epoch") != world["world_epoch"]
+                    or type(original.get("subject")) is not dict
+                    or memory is None
+                    or memory["active"] != 1
+                    or memory["evidence_class"] != "lived_runtime_memory"
+                    or memory["source"] != "laboratory-home:action:" + event_hash
+                    or memory["text"] != original["subject"].get("inner")):
+                raise PermissionError(
+                    "Daily rest lacks its matching original physical/lived receipt"
+                )
+            brain = bridge.doctor.brain
+            for _ in range(6):
+                tick = store.advance_tick(db)
+                brain._relax_needs(db, tick)
+                brain._update_commitments_due(db, tick)
+
         evidence["motor_completion"] = "admitted"
         evidence["motor_memory_id"] = memory_id
         db.execute("UPDATE policy_decisions SET state_pressure_json=? WHERE id=?",
