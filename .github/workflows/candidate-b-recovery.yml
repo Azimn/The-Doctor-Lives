@@ -14,6 +14,7 @@ on:
       - doctor_lives/lab_native_goal_choice.py
       - doctor_lives/preview_native.py
       - tests/test_candidate_b_native_work.py
+      - tests/test_six_organ_native_goal_choice.py
       - doctor_lives/lab_baselines.py
       - tests/test_candidate_b_baselines.py
       - .github/workflows/candidate-b-recovery.yml
@@ -114,3 +115,8 @@ jobs:
           PYTHONPATH: donor-laboratory:donor-sensus
           PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
         run: python -m unittest discover -s tests -p test_candidate_b_native_work.py -v
+      - name: Verify original neural book-rest lifecycle and source-rest homeostatic recovery
+        env:
+          PYTHONPATH: donor-laboratory:donor-sensus
+          PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
+        run: python -m unittest discover -s tests -p test_six_organ_native_goal_choice.py -v
