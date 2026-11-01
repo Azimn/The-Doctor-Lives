@@ -290,12 +290,16 @@ class NativeLaboratoryGoalChooser:
                     "read_book", book.goal_id, book.memory_id,
                     selected_tendency="explore",
                 )
-            # The situated cue must come from a source-verified local LOOK.
-            # "explore" alone never invents a book.
+            # A source-verified bookshelf LOOK, including one witnessed in
+            # an earlier room, can anchor a durable EXPLORE book intention.
+            # The route is host-provided, not a newly invented neural goal.
+            # Without a witnessed, reachable cue EXPLORE only moves one hop.
             scene = next((
                 event for event, proof in _verified_looks(self.host.subject.embodied)
-                if event["after_station"] == station
-                and "bookshelves" in event["offered_payload"]["perceived_features"]
+                if "bookshelves" in event["offered_payload"]["perceived_features"]
+                and (event["after_station"] == station or
+                     EndogenousBookPursuit._route(
+                         station, event["after_station"]) is not None)
             ), None)
             if scene is None:
                 return self._move_to_remembered_cue(proposal, authorized_world_action)
