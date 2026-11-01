@@ -5,6 +5,7 @@ was selected after the host provided an opportunity.
 """
 from __future__ import annotations
 
+import gc
 import importlib.util
 import os
 from pathlib import Path
@@ -27,7 +28,7 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         from pretorius_lab.home_life import HomeLife
         from pretorius_lab.daily_rhythm import DailyRhythm
         self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self._cleanup_test_resources)
         root = Path(self.tmp.name)
         self.state = root / "brain"
         self.world = root / "world.sqlite3"
@@ -35,6 +36,13 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         HomeLife(self.lab).initialize()
         DailyRhythm(self.lab).initialize()
         self.source = Path(os.environ["PRETORIUS_PINNED_AFFECTUS_ROOT"])
+
+    def _cleanup_test_resources(self):
+        # sqlite3's context manager commits but does not close. Collect
+        # unreferenced original-world/BrainStore handles before Windows
+        # removes the temporary directory. Do not suppress a real lock error.
+        gc.collect()
+        self.tmp.cleanup()
 
     def test_six_organs_real_physics_and_canonical_weather_continue(self):
         from pretorius_lab.subject_port import SubjectPort
@@ -181,15 +189,15 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         """Real original neural policy and pinned world, no autonomy claim."""
         from pretorius_lab.subject_port import SubjectPort
         from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
-        from doctor_lives.neural import DEFAULT_CONFIG
-        from unittest.mock import patch
         subject = SubjectPort(self.lab)
         subject.embodied.move("station:hall", event_id="six_rest_test_hall")
         subject.embodied.move("station:bedroom", event_id="six_rest_test_bedroom")
-        config = dict(DEFAULT_CONFIG)
-        config.update(neurons=128, sensory_dim=64, avg_recurrent_degree=8,
-                      input_degree=4, action_population_size=8, seed=1842)
-        runtime = SixOrganRuntime.open(self.state, neural_config=config)
+        # The original 4,096-neuron profile and an explicit fatigue
+        # precondition reproduce the observed AVOID attractor. This is a
+        # targeted original-neural regression, NOT an uncoached R4 trial.
+        runtime = SixOrganRuntime.open(self.state)
+        with runtime._port.brain.store.transaction() as db:
+            db.execute("UPDATE needs SET actual=0.95,felt=0.95 WHERE key='fatigue'")
         session = SixOrganLaboratoryCycle(
             runtime, subject, affectus_source=self.source,
             renderer=lambda _: "I remember the room.", authorized=True,
