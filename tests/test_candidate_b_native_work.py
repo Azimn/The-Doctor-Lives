@@ -193,6 +193,64 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
             "independent_three_goal_acceptance": False,
         }, sort_keys=True))
 
+    def test_original_neural_work_goal_survives_departure_from_seen_bench(self):
+        """An original policy may commit to a previously SEEN bench.
+
+        The relocation here is external fixture setup, not an autonomous
+        rest/book/work sequence. No physical work or R4 credit is claimed.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            proposal = chooser._native_policy()
+            self.assertIn(proposal.selected_tendency, ("explore", "persist"))
+            # A map-defined workbench without an actual LOOK cannot
+            # originate a goal, even when the original neural policy exists.
+            unseen = chooser.work.originate(proposal)
+            self.assertEqual(unseen.status, "no_situated_goal")
+            self.assertIsNone(unseen.goal_id)
+            observed = self.subject.embodied.look(
+                event_id="external-fixture-witnessed-workbench")
+            self.assertIn("workbench",
+                          observed["offered_payload"]["perceived_features"])
+            self.subject.embodied.move(
+                "station:hall", event_id="external-fixture-work-hall")
+            self.subject.embodied.move(
+                "station:bedroom", event_id="external-fixture-work-bedroom")
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:bedroom")
+            created = chooser.work.originate(proposal)
+            self.assertEqual(created.status, "goal_created")
+            self.assertIsNotNone(created.goal_id)
+            self.assertEqual(chooser.work._load()["phase"], "travel")
+            self.assertEqual(chooser.work._load()["origin_policy_id"],
+                             proposal.policy_decision_id)
+            denied = chooser.step(authorized_world_action=False)
+            self.assertEqual((denied.kind, denied.status, denied.goal_id),
+                             ("work", "authorization_required", created.goal_id))
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(self.state)
+        with self.session(reopened) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            self.assertEqual(chooser.work._load()["id"], created.goal_id)
+            self.assertEqual(chooser.work._load()["phase"], "travel")
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:bedroom")
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events"
+            ).fetchone()[0], 0)
+        print("B_SEEN_WORK_CUE_PERSISTENCE=" + json.dumps({
+            "original_neural_origin": True,
+            "original_world_look": True,
+            "external_fixture_relocation": True,
+            "cold_goal_reopen": True,
+            "physical_work_completed": False,
+            "uncoached_r4_credit": False,
+        }, sort_keys=True))
+
     def test_original_neural_exploration_can_revisit_only_a_physically_seen_cue(self):
         """Source-backed single movement, not a new or completed R4 goal.
 
