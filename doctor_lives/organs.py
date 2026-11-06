@@ -412,6 +412,15 @@ class SixOrganRuntime:
             self, subject_port, authorized=authorized
         )
 
+    def bind_conclave(self, *, enabled: bool = False):
+        """Opt-in bounded esoteric interpretation sharing this BrainStore.
+
+        No extra mind, selector, autobiographical write path, renderer ingress,
+        or physical authority. Host admission checks remain mandatory.
+        """
+        from .conclave import Conclave
+        return Conclave(self._port.brain.store, enabled=enabled)
+
     def checkpoint(self) -> dict[str, Any]:
         """Persist the SAME canonical neural checkpoint and brain state.
 
