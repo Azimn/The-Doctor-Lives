@@ -7,6 +7,12 @@ class PerceivedRegulatoryPressureTests(unittest.TestCase):
     prefix = "I am in the kitchen. There is daylight enough to see. "
     actions = ("advance", "eat", "prepare_meal", "brew_tea", "rest", "sleep")
 
+    def test_all_situated_motors_use_real_neural_vocabulary(self):
+        from doctor_lives.neural import ACTIONS
+        from doctor_lives.noesis_situated_choice import NEURAL_AFFORDANCE_MAP
+        self.assertTrue(set(NEURAL_AFFORDANCE_MAP.values()) <= set(ACTIONS))
+        self.assertIn("brew_tea", NEURAL_AFFORDANCE_MAP)
+
     def test_neutral_perception_has_no_artificial_need(self):
         scores, cues = perceived_regulatory_pressure(
             self.prefix + "There is a prepared meal to eat.", self.actions)

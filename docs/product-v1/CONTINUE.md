@@ -15,3 +15,7 @@ Prior successful offline installation jobs: Linux 124897362738 and Windows 12489
 ## November 24 follow-up
 
 Previous candidate ccc4abd4e6eb5f75aa922a1887426a4e3214e3ec: 20/22 workflow runs successful. Candidate B recovery 45454012694 failed due to fixture attempting a noncanonical genesis; independent life 45454012681 failed again with only eight rest goals. Both original installer jobs passed. New increment replaces fixture setup with authentic physical events; integrates a source-bound Corpus fatigue projection into the sustained native runtime and daily fallback; daily fallback no longer actuates an abstract movement before its situated choice. No autonomy credit is claimed. Inspect newest head and check exact logs, then implement persistent competition among needs, work, rest, and reading including lawful navigation, interruption and recovery. Preserve actual goal-origin witness and all tests.
+
+## Subsequent correction
+
+Linux job 138712074062 on 5832a234e55390a398873c190ce7f3b8c4ede3de verified the full-host physical-fatigue projection but uncovered an absent neural tendency (connect) when tea was offered. Corrected to existing persist with a whole-map validity guard. Extended the real daily host test to require actual preparation/eating/tea, resource consumption, persisted source memory, and cold openings. All daily physical completions now authenticate the exact receipt and first-person memory. Check newest PR head's pinned CI before further promotion.

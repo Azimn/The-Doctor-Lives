@@ -138,6 +138,52 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertEqual(audit["physical_authority"], "none")
         self.assertEqual(subject.rhythm.audit_state(), before)
         runtime.checkpoint()
+        # Do not stop at an audited proposal. Exercise the same public daily
+        # host used by the native operator. Every iteration cold-opens the
+        # original brain, selects its own feasible action, and commits
+        # through the original Laboratory bridge.
+        actions = set()
+        for _ in range(5):
+            prior = subject.rhythm.audit_state()
+            result = run_daily_life_cycle(
+                self.state, Path(self.tmp.name) / "body-fixture.sqlite3",
+                affectus_source=self.source, authorize_world=True)
+            self.assertEqual(len(result["all_six_ports_invoked"]), 6)
+            self.assertTrue(result["one_subject_delivery"])
+            self.assertIsNotNone(result["daily_noesis_policy_id"])
+            receipt = result["world_effect"]
+            self.assertIsNotNone(receipt)
+            self.assertEqual(receipt["status"], "admitted")
+            selected = result["daily_noesis_selected"]
+            self.assertEqual(receipt["action"], selected)
+            self.assertIn(selected, result["world_feasible_actions"])
+            from doctor_lives.lab_home_bridge import _row
+            with world._open() as world_db:
+                event, event_hash = _row(world_db, "rhythm_events", receipt["event_id"])
+            self.assertEqual(event["op"], selected)
+            store = SixOrganRuntime.open(self.state)._port.brain.store
+            memory = store.get_memory(receipt["memory_id"])
+            self.assertEqual(memory["source"], "laboratory-home:action:" + event_hash)
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertEqual(sum(m["source"] == memory["source"]
+                                 for m in store.memories(False)), 1)
+            after = subject.rhythm.audit_state()
+            if selected == "brew_tea":
+                for key in ("water", "tea", "fuel"):
+                    self.assertEqual(after["supplies"][key], prior["supplies"][key] - 1)
+                self.assertLess(after["thirst"], prior["thirst"])
+            elif selected == "prepare_meal":
+                for key in ("water", "fuel", "rations"):
+                    self.assertEqual(after["supplies"][key], prior["supplies"][key] - 1)
+                self.assertTrue(after["meal_ready"])
+            elif selected == "eat":
+                self.assertFalse(after["meal_ready"])
+                self.assertLess(after["hunger"], prior["hunger"])
+            actions.add(selected)
+            if {"brew_tea", "prepare_meal", "eat"} <= actions:
+                break
+        self.assertTrue({"brew_tea", "prepare_meal", "eat"} <= actions,
+                        f"Unfulfilled domestic needs; observed {actions}")
 
     def test_product_daily_host_reconciles_actual_physical_fatigue(self):
         """Full host cycle consumes real Corpus state, never a mock body."""

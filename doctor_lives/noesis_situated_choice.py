@@ -25,10 +25,12 @@ DAILY_BODY_VERSION = "noesis-situated-choice-v0.4-body"
 # vocabulary still has ten abstract tendencies, not physical work commands.
 NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist",
                          "clean": "persist", "light": "explore",
-                         "extinguish": "avoid", "brew_tea": "connect",
+                         "extinguish": "avoid", "brew_tea": "persist",
                          "prepare_meal": "persist", "eat": "avoid",
                          "rest": "avoid", "sleep": "avoid",
                          "advance": "persist"}
+if not set(NEURAL_AFFORDANCE_MAP.values()) <= set(ACTIONS):
+    raise RuntimeError("Situated motor map references an absent neural tendency")
 MEMORY_WEIGHT = 0.60
 NEURAL_WEIGHT = 0.20
 # Bounded, grammar-specific instruction comprehension, not unrestricted LLM text

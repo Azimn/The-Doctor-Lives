@@ -148,31 +148,37 @@ def _complete_daily_motor(bridge: DoctorHomeBridge, policy_id: str,
         if evidence.get("motor_completion") not in (None, "pending"):
             raise PermissionError("Unrecognized original motor completion state")
 
-        if row["selected_action"] == "rest":
-            # Full original physics replay verifies epoch, body/home cursors,
-            # hash chain, physical station and state transition, not merely
-            # a self-hashed receipt. No engineer telemetry enters memory.
-            world = bridge.subject.verify()
-            with bridge.world._open() as world_db:
-                original, event_hash = _row(world_db, "rhythm_events", event_id)
-            memory = db.execute(
-                "SELECT source,text,evidence_class,active FROM memories WHERE id=?",
-                (memory_id,),
-            ).fetchone()
-            if (original.get("event_id") != event_id
-                    or original.get("op") != "rest"
-                    or original.get("args") != {}
-                    or original.get("station") != "station:bedroom"
-                    or original.get("world_epoch") != world["world_epoch"]
-                    or type(original.get("subject")) is not dict
-                    or memory is None
-                    or memory["active"] != 1
-                    or memory["evidence_class"] != "lived_runtime_memory"
-                    or memory["source"] != "laboratory-home:action:" + event_hash
-                    or memory["text"] != original["subject"].get("inner")):
-                raise PermissionError(
-                    "Daily rest lacks its matching original physical/lived receipt"
-                )
+        # Every physical daily action, not only rest, must have the exact
+        # original world receipt and matching canonical first-person memory.
+        action = row["selected_action"]
+        if action not in NEURAL_AFFORDANCE_MAP:
+            raise PermissionError("Unrecognized daily motor")
+        world = bridge.subject.verify()
+        with bridge.world._open() as world_db:
+            original, event_hash = _row(world_db, "rhythm_events", event_id)
+        memory = db.execute(
+            "SELECT source,text,evidence_class,active,external FROM memories WHERE id=?",
+            (memory_id,),
+        ).fetchone()
+        frame = original.get("subject")
+        expected = frame.get("inner") if type(frame) is dict else None
+        # Pinned SubjectPort adapts this one historical rhythm projection.
+        if action == "advance" and type(expected) is str:
+            expected = "I notice time passing. " + expected
+        if (original.get("event_id") != event_id
+                or original.get("op") != action
+                or original.get("args") != physical_args(action)
+                or original.get("world_epoch") != world["world_epoch"]
+                or (action == "rest" and original.get("station") != "station:bedroom")
+                or memory is None or memory["active"] != 1 or memory["external"]
+                or memory["evidence_class"] != "lived_runtime_memory"
+                or memory["source"] != "laboratory-home:action:" + event_hash
+                or memory["text"] != expected):
+            label = "rest" if action == "rest" else "motor"
+            raise PermissionError(
+                f"Daily {label} lacks its matching original physical/lived receipt"
+            )
+        if action == "rest":
             brain = bridge.doctor.brain
             for _ in range(6):
                 tick = store.advance_tick(db)
@@ -293,6 +299,14 @@ def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
         updated = json.loads(row["state_pressure_json"])
         if updated.get("motor_event_id") not in (None, event_id):
             raise PermissionError("Decision bound to another event")
+        prior_rows = db.execute(
+            "SELECT state_pressure_json FROM policy_decisions "
+            "WHERE trigger='noesis_situated_choice' AND id!=?",
+            (choice.policy_id,),
+        ).fetchall()
+        if any(json.loads(prior["state_pressure_json"]).get("motor_event_id") == event_id
+               for prior in prior_rows):
+            raise PermissionError("Daily event ID already bound to another Noesis decision")
         updated["motor_event_id"] = event_id
         updated["motor_authorization"] = "authorized"
         db.execute("UPDATE policy_decisions SET state_pressure_json=? WHERE id=?",

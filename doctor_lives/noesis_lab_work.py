@@ -157,7 +157,7 @@ def verify_noesis_work_replay(
     can create a fresh bridge reservation or first-person autobiography.
     """
     from .lab_home_bridge import _stable
-    from .noesis_situated_choice import VERSION, OUTCOME_VERSION
+    from .noesis_situated_choice import VERSION, OUTCOME_VERSION, DAILY_BODY_VERSION
 
     path = bridge._intent_path()
     if not path.is_file():
@@ -182,7 +182,7 @@ def verify_noesis_work_replay(
         if evidence.get("motor_event_id") != event_id:
             continue
         if (decision["selected_action"] != action
-                or decision["policy_version"] not in (VERSION, OUTCOME_VERSION)
+                or decision["policy_version"] not in (VERSION, OUTCOME_VERSION, DAILY_BODY_VERSION)
                 or evidence.get("version") != decision["policy_version"]
                 or evidence.get("selector_authority") != "original_noesis"
                 or evidence.get("physical_authority") != "none"
