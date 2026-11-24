@@ -104,6 +104,7 @@ def select_with_original_noesis(
     author_day_goal: bool = False,
     interoception_enabled: bool = False,
     active_commitment: tuple[str, str] | None = None,
+    habit_bridge=None,
 ) -> dict[str, Any]:
     """Commit one original-brain choice and detailed engineer-only audit.
 
@@ -215,6 +216,17 @@ def select_with_original_noesis(
         weight = min(0.15, COMMITMENT_WEIGHT * importance / DEFAULT_IMPORTANCE)
         commitment_scores["continue_commitment"] = weight
         final["continue_commitment"] += weight
+    habit_scores = {action: 0.0 for action in feasible_actions}
+    habit_ids = []
+    habit_counts = {}
+    if habit_bridge is not None:
+        if not interoception_enabled:
+            raise PermissionError("Household habits require situated perception")
+        from .lab_habits import verified_habit_pressure
+        habit_scores, habit_ids, habit_counts = verified_habit_pressure(
+            brain, habit_bridge, observation_memory_id, feasible_actions)
+        for action in feasible_actions:
+            final[action] += habit_scores[action]
     selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
     active_version = (DAILY_BODY_VERSION if interoception_enabled else
                       OUTCOME_VERSION if outcome_learning_enabled else VERSION)
@@ -228,6 +240,10 @@ def select_with_original_noesis(
         "interoception_enabled": interoception_enabled,
         "perceived_body_cues": list(body_cues),
         "interoceptive_contributions": body_scores,
+        "habit_enabled": habit_bridge is not None,
+        "habit_contributions": habit_scores,
+        "habit_practice_counts": habit_counts,
+        "habit_source_memory_ids": habit_ids,
         "commitment_contributions": commitment_scores,
         "active_commitment_id": commitment["id"] if commitment else None,
         "telos_commitment_id": telos_id,
@@ -264,8 +280,8 @@ def select_with_original_noesis(
              selected_action, json.dumps(native, sort_keys=True),
              json.dumps(evidence, sort_keys=True),
              json.dumps(final, sort_keys=True),
-             json.dumps([observation_memory_id] + eligible),
-             json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
+             json.dumps(list(dict.fromkeys([observation_memory_id] + eligible + habit_ids))),
+             json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
              int(brain.neural.tick), checkpoint, active_version),
         )
         if selected_action == "continue_commitment":
@@ -288,7 +304,7 @@ def select_with_original_noesis(
             VALUES(?,?,?,?,?,?,?)""",
             (tid, brain.store.tick, subject_thought, "noesis_situated_choice",
              "noesis_situated_choice:" + pid,
-             json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
+             json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
              json.dumps(final, sort_keys=True)),
         )
         # Construct a bounded intention from Noesis's own selected cognitive
