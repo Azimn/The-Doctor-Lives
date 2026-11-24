@@ -47,7 +47,8 @@ class NativeLaboratoryGoalChooser:
     def __init__(self, session, *, authorized: bool = False,
                  enable_sustained_work: bool = False,
                  enable_recurring_goals: bool = False,
-                 enable_commitment_competition: bool = False):
+                 enable_commitment_competition: bool = False,
+                 enable_telos: bool = False):
         from .lab_six_organ_session import SixOrganLaboratoryCycle
         if type(session) is not SixOrganLaboratoryCycle or authorized is not True:
             raise PermissionError("Trusted opt-in six-organ Laboratory host needed")
@@ -67,6 +68,9 @@ class NativeLaboratoryGoalChooser:
                 enable_commitment_competition and not enable_sustained_work):
             raise ValueError("Commitment competition requires native work capability")
         self.enable_commitment_competition = enable_commitment_competition
+        if type(enable_telos) is not bool:
+            raise TypeError("Telos integration requires explicit enablement")
+        self.enable_telos = enable_telos
         self.work = None
         if enable_sustained_work:
             from .lab_native_work_goal import NativeWorkPursuit
@@ -257,6 +261,15 @@ class NativeLaboratoryGoalChooser:
         """A host provides an opportunity and permission, never goal/destination."""
         if type(authorized_world_action) is not bool:
             raise TypeError("Typed world authorization required")
+        if self.enable_telos and authorized_world_action:
+            from .lab_telos import sync_native_commitments
+            sync_native_commitments(self)
+            result = self._step(authorized_world_action=authorized_world_action)
+            sync_native_commitments(self)
+            return result
+        return self._step(authorized_world_action=authorized_world_action)
+
+    def _step(self, *, authorized_world_action: bool):
         rest = self._load_rest()
         book = self.book.status()
         work = self.work._load() if self.work is not None else None

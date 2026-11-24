@@ -234,6 +234,13 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
 
     def test_product_competing_body_need_interrupts_and_resumes_same_work(self):
         """Physical thirst competes with a real work goal; the goal survives cold restart."""
+        self._exercise_competing_body_need(False)
+
+    def test_product_telos_commitment_survives_thirst_and_closes_only_on_real_work(self):
+        """Canonical commitment remains subject-visible during actual interruption."""
+        self._exercise_competing_body_need(True)
+
+    def _exercise_competing_body_need(self, enable_telos):
         from doctor_lives.lab_runtime import run_native_laboratory
         runtime = SixOrganRuntime.open(self.state, neural_config=small_neural())
         with self.session(runtime) as host:
@@ -256,10 +263,27 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
                 self.state, self.root / "original.sqlite3", affectus_source=self.donor,
                 steps=1, allow_world_actions=True, enable_sustained_work=True,
                 enable_recurring_goals=True, enable_commitment_competition=True,
+                enable_telos=enable_telos,
             )["receipts"][0]
             self.assertEqual(outcome["goal_id"], original.goal_id)
-            cold = SixOrganRuntime.open(self.state)._port.brain.store
+            cold_brain = SixOrganRuntime.open(self.state)._port.brain
+            cold = cold_brain.store
             active = json.loads(cold.meta(WORK_KEY))["payload"]
+            if enable_telos:
+                with cold.connect() as db:
+                    commitment = dict(db.execute(
+                        "SELECT * FROM commitments WHERE id=?",
+                        ("telos_" + original.goal_id,),
+                    ).fetchone())
+                self.assertEqual(commitment["source"], "telos:native:" + saved["origin_policy_id"])
+                self.assertEqual(commitment["status"], "kept" if outcome["status"] == "completed" else "open")
+                with self.assertRaises(PermissionError):
+                    cold_brain.resolve_commitment(commitment["id"], "invented completion")
+                if outcome["status"] == "completed":
+                    self.assertEqual(commitment["outcome"], cold.get_memory(outcome["memory_id"])["text"])
+                else:
+                    self.assertIn(commitment["id"], [c["id"] for c in cold.open_commitments()])
+                    self.assertIsNone(commitment["outcome"])
             self.assertEqual(active["origin_policy_id"], saved["origin_policy_id"])
             if outcome["status"] == "commitment_interrupted":
                 actions.append(outcome["interrupting_action"])
@@ -268,6 +292,8 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
                                      (outcome["competition_policy_id"],)).fetchone()
                 evidence = json.loads(row[0])
                 self.assertEqual(evidence["active_commitment_id"], original.goal_id)
+                self.assertEqual(evidence.get("telos_commitment_id"),
+                                 "telos_" + original.goal_id if enable_telos else None)
                 self.assertIn("continue_commitment", evidence["candidate_final_scores"])
                 self.assertEqual(evidence["motor_completion"], "admitted")
                 self.assertGreater(evidence["interoceptive_contributions"][outcome["interrupting_action"]], 0)

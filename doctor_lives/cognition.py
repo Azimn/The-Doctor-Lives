@@ -1091,9 +1091,11 @@ class PretoriusBrain:
 
     def resolve_commitment(self, commitment_id: str, outcome: str, kept: bool = True) -> None:
         with self.store.transaction() as conn:
-            row = conn.execute("SELECT id FROM commitments WHERE id=?", (commitment_id,)).fetchone()
+            row = conn.execute("SELECT id,source FROM commitments WHERE id=?", (commitment_id,)).fetchone()
             if row is None:
                 raise KeyError(commitment_id)
+            if row["source"].startswith("telos:native:"):
+                raise PermissionError("Native Telos commitment closes only with its source-verified goal")
             status = "kept" if kept else "released"
             conn.execute(
                 "UPDATE commitments SET status=?,updated_tick=?,outcome=? WHERE id=?",

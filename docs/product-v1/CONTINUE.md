@@ -49,3 +49,7 @@ M6 source pin 62f372c47959d1f577be1e980d4ae191981ac83d supplies the backup no-re
 ## Canonical Conclave reflection
 
 Conclave was previously an opt-in isolated kernel. Its world_verified stimulus now requires matching canonical lived text (bounded prefix only); a real receipt cannot authorize unrelated words. The actual native operator now offers a source-completed reading to the five existing methods, then original Noesis retrieves/deliberates on one generated question. Reading becomes considered, not automatically true; canonical thought, policy, source and question digest are linked. Cold retry reuses existing thought instead of fabricating a second deliberation. Host tradition mapping disclosed. Actual runtime test and forgery negative added. This does not complete Phantasmagorium or general open-ended agency.
+
+## Telos in canonical commitments
+
+Native reading/work/rest intention envelopes remain authoritative; actual authorized chooser synchronizes a source-bound row in the existing commitments table before/after each opportunity. Existing Noesis/Ipseity can retrieve it, situated continuation cites it, and generic commitment-resolution calls cannot close it. Completion uses the exact world event and lived memory; archived work/reading commitments remain kept. Tests require interruption, preserved open commitment, denied invented completion and actual kept outcome, plus two retained read commitments. The importance preserves the existing default, not a tuned motivation model. No separate planner or new brain. Pending end-to-end qualification.
