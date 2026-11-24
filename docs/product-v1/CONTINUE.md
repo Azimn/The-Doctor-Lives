@@ -19,3 +19,7 @@ Previous candidate ccc4abd4e6eb5f75aa922a1887426a4e3214e3ec: 20/22 workflow runs
 ## Subsequent correction
 
 Linux job 138712074062 on 5832a234e55390a398873c190ce7f3b8c4ede3de verified the full-host physical-fatigue projection but uncovered an absent neural tendency (connect) when tea was offered. Corrected to existing persist with a whole-map validity guard. Extended the real daily host test to require actual preparation/eating/tea, resource consumption, persisted source memory, and cold openings. All daily physical completions now authenticate the exact receipt and first-person memory. Check newest PR head's pinned CI before further promotion.
+
+## Domestic navigation integration candidate
+
+The latest qualified daily test step on 7ae4a41 includes actual food and tea preparation/eating. The dependent integration branch adds concrete household travel to the existing situated selector rather than an independent planner. Routes are host-provided from established house topology, not claims of independently learned navigation. No remote resource contents are exposed. Exact motor args are committed and checked, and cold recovery preempts new native decisions. New end-to-end test starts in the bedroom and requires lawful travel and consumption. Await exact head CI and integrate only when verified.

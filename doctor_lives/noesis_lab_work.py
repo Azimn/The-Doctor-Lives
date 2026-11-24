@@ -207,7 +207,9 @@ def inspected_noesis_motor_bindings(bridge: DoctorHomeBridge, event_id: str) -> 
         if audit.get("motor_event_id") == event_id:
             out.append({"selected_action":row["selected_action"],
                         "selector_authority":audit.get("selector_authority"),
-                        "motor_authorization":audit.get("motor_authorization")})
+                        "motor_authorization":audit.get("motor_authorization"),
+                        "motor_op":audit.get("motor_op"),
+                        "motor_args":audit.get("motor_args")})
     return tuple(out)
 
 

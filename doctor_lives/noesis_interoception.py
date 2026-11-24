@@ -20,17 +20,17 @@ _PREFIX = re.compile(
 _CUES = (
     (
         ("I feel worn out and find it hard to concentrate.", "worn_out",
-         {"rest": 0.18, "sleep": 0.20}),
-        ("I am getting tired.", "tired", {"rest": 0.09, "sleep": 0.04}),
+         {"rest": 0.18, "sleep": 0.20, "seek_bedroom": 0.18}),
+        ("I am getting tired.", "tired", {"rest": 0.09, "sleep": 0.04, "seek_bedroom": 0.09}),
     ),
     (
         ("I am painfully hungry.", "painfully_hungry",
-         {"eat": 0.20, "prepare_meal": 0.16}),
+         {"eat": 0.20, "prepare_meal": 0.16, "seek_kitchen": 0.18}),
         ("I could do with something to eat.", "hungry",
-         {"eat": 0.10, "prepare_meal": 0.08}),
+         {"eat": 0.10, "prepare_meal": 0.08, "seek_kitchen": 0.09}),
     ),
     (
-        ("My mouth is dry.", "thirsty", {"brew_tea": 0.20}),
+        ("My mouth is dry.", "thirsty", {"brew_tea": 0.20, "seek_kitchen": 0.20}),
     ),
 )
 

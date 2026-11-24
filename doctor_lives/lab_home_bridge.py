@@ -283,7 +283,14 @@ class DoctorHomeBridge:
             # canonical binding still fails closed.
             if bindings and not (
                 len(bindings) == 1
-                and bindings[0]["selected_action"] == op
+                and (
+                    (bindings[0]["selected_action"] == op
+                     and bindings[0]["motor_op"] in (None, op)
+                     and bindings[0]["motor_args"] in (None, args))
+                    or (bindings[0]["selected_action"] in ("seek_kitchen", "seek_bedroom")
+                        and op == "walk" and bindings[0]["motor_op"] == op
+                        and bindings[0]["motor_args"] == args)
+                )
                 and bindings[0]["selector_authority"] == "original_noesis"
                 and bindings[0]["motor_authorization"] == "authorized"
             ):

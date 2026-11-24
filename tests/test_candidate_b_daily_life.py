@@ -138,12 +138,13 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertEqual(audit["physical_authority"], "none")
         self.assertEqual(subject.rhythm.audit_state(), before)
         runtime.checkpoint()
-        # Do not stop at an audited proposal. Exercise the same public daily
-        # host used by the native operator. Every iteration cold-opens the
-        # original brain, selects its own feasible action, and commits
-        # through the original Laboratory bridge.
+        # Begin the authorized sequence elsewhere in his established house.
+        # No host action or destination is passed into the production loop.
+        subject.act("walk", event_id="body-fixture-leave-kitchen", station="station:hall")
+        subject.act("walk", event_id="body-fixture-return-bedroom", station="station:bedroom")
         actions = set()
-        for _ in range(5):
+        visits = []
+        for _ in range(9):
             prior = subject.rhythm.audit_state()
             result = run_daily_life_cycle(
                 self.state, Path(self.tmp.name) / "body-fixture.sqlite3",
@@ -159,8 +160,14 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
             self.assertIn(selected, result["world_feasible_actions"])
             from doctor_lives.lab_home_bridge import _row
             with world._open() as world_db:
-                event, event_hash = _row(world_db, "rhythm_events", receipt["event_id"])
-            self.assertEqual(event["op"], selected)
+                if receipt["motor_op"] == "walk":
+                    event, event_hash = _row(world_db, "embodied_events", receipt["event_id"])
+                    self.assertEqual(event["kind"], "move")
+                    self.assertEqual(event["after_station"], receipt["motor_args"]["station"])
+                    visits.append(event["after_station"])
+                else:
+                    event, event_hash = _row(world_db, "rhythm_events", receipt["event_id"])
+                    self.assertEqual(event["op"], selected)
             store = SixOrganRuntime.open(self.state)._port.brain.store
             memory = store.get_memory(receipt["memory_id"])
             self.assertEqual(memory["source"], "laboratory-home:action:" + event_hash)
@@ -182,6 +189,9 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
             actions.add(selected)
             if {"brew_tea", "prepare_meal", "eat"} <= actions:
                 break
+        self.assertIn("seek_kitchen", actions)
+        self.assertIn("station:hall", visits)
+        self.assertIn("station:kitchen", visits)
         self.assertTrue({"brew_tea", "prepare_meal", "eat"} <= actions,
                         f"Unfulfilled domestic needs; observed {actions}")
 

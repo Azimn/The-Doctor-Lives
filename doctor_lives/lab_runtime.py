@@ -613,6 +613,17 @@ def run_native_laboratory(
         subject = SubjectPort(SpatialHabitat(world))
         epoch = subject.verify()["world_epoch"]
         receipts = []
+        from .noesis_day import pending_daily_action_ids, reconcile_pending_daily_action
+        preflight_bridge = runtime.bind_laboratory(subject, authorized=True)
+        daily_pending = pending_daily_action_ids(preflight_bridge)
+        if daily_pending and (
+            runtime._port.brain.store.meta(SixOrganLaboratoryCycle._PENDING) is not None
+            or runtime._port.brain.store.meta(SixOrganLaboratoryCycle._PENDING_REST) is not None
+        ):
+            raise RuntimeError("Conflicting daily and six-organ motor reservations")
+        if daily_pending and not allow_world_actions:
+            raise PermissionError("Pending daily motor requires world authorization")
+        recovered_daily = reconcile_pending_daily_action(preflight_bridge) if daily_pending else ()
         with SixOrganLaboratoryCycle(
             runtime, subject, affectus_source=affectus_source,
             renderer=source_only_renderer, authorized=True,
@@ -629,7 +640,16 @@ def run_native_laboratory(
             try:
                 # Recovery of a reserved six-organ motor consumes this host
                 # opportunity. Do not select another goal in the same pulse.
-                if session.recovered_world_action is not None:
+                if recovered_daily:
+                    receipts.append({
+                        "status": "recovered_daily_action",
+                        "kind": None, "goal_id": None,
+                        "memory_id": recovered_daily[-1]["memory_id"],
+                        "selected_tendency": None,
+                        "host_selected_goal_mapping": False,
+                        "host_selected_route": False,
+                    })
+                elif session.recovered_world_action is not None:
                     receipts.append({
                         "status": "recovered_world_action",
                         "kind": None, "goal_id": None, "memory_id": None,

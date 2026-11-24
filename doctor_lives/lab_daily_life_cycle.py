@@ -91,7 +91,7 @@ def run_daily_life_cycle(
                     "weather_state_digest": cycle.canonical_weather_digest,
                     "selected_tendency": cycle.selected_tendency,
                     "movement_status": cycle.movement_status,
-                    "world_feasible_actions": list(offered),
+                    "world_feasible_actions": list(selected.options if selected else offered),
                     "daily_noesis_policy_id": selected.policy_id if selected else None,
                     "daily_noesis_selected": selected.action if selected else None,
                     "world_effect": action,

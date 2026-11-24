@@ -28,7 +28,8 @@ NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist",
                          "extinguish": "avoid", "brew_tea": "persist",
                          "prepare_meal": "persist", "eat": "avoid",
                          "rest": "avoid", "sleep": "avoid",
-                         "advance": "persist"}
+                         "advance": "persist", "seek_kitchen": "persist",
+                         "seek_bedroom": "avoid"}
 if not set(NEURAL_AFFORDANCE_MAP.values()) <= set(ACTIONS):
     raise RuntimeError("Situated motor map references an absent neural tendency")
 MEMORY_WEIGHT = 0.60
@@ -200,11 +201,18 @@ def select_with_original_noesis(
              json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
              int(brain.neural.tick), checkpoint, active_version),
         )
-        subject_thought = (
-            "I judge that " + selected_action
-            + (" is the action I should try next." if interoception_enabled or author_day_goal
-               else " is the action I should try next at the workbench.")
-        )
+        if selected_action in ("seek_kitchen", "seek_bedroom"):
+            subject_thought = (
+                "I intend to make my way to the kitchen."
+                if selected_action == "seek_kitchen"
+                else "I intend to make my way to the bedroom."
+            )
+        else:
+            subject_thought = (
+                "I judge that " + selected_action
+                + (" is the action I should try next." if interoception_enabled or author_day_goal
+                   else " is the action I should try next at the workbench.")
+            )
         db.execute(
             """INSERT INTO thoughts
             (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
