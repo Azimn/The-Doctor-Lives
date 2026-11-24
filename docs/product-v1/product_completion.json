@@ -406,7 +406,8 @@
       "acceptance": "No reserved motor executes on public read-only opens; authorized recovery has one receipt; no extra same-pulse motor; exact head CI",
       "status": "implemented",
       "evidence": [
-        "81282b002640158bac3b8e44a3a5593889d894bc; test added but not executed"
+        "81282b002640158bac3b8e44a3a5593889d894bc; test added but not executed",
+        "7ae4a41 Linux 138713326813: 10 daily, 9 persistent work, 13 native book/rest tests passed; Windows 138713327695 daily step passed. Exact-head final regression still required."
       ]
     },
     {
@@ -424,7 +425,8 @@
         "PR #109 comment 7139862968: original R4 SQLite diagnosis; 31 simulated hours in 600 seconds, physical fatigue 0 versus mental fatigue felt .757, hunger/thirst 10. Implemented bounded first-person regulatory pressure on local situated Noesis; navigation and general cycle coupling remain open; tests pending.",
         "At ccc4abd4: 20 of 22 workflow runs passed, pinned-body fixture failed on both platforms because custom genesis was prohibited; independent R4 again recorded eight rest completions, no other distinct kind. Replaced fixture with original source actions, added transactional physical-fatigue projection to the production native and daily paths, and made daily host use non-actuating six-organ pulse followed by exactly one situated motor. New tests pending.",
         "5832a234 Linux job 138712074062: full daily-host physical fatigue projection and all other eight regressions passed; domestic fixture reached actual selector and exposed KeyError connect (absent neural tendency). Fixed tea mapping to existing persist, added vocabulary guard, and extended integration to require independently selected tea, food preparation and eating with real finite resources and persisted receipts; pending exact-head tests. Also tightened daily motor completion for every actual world action and prevented cross-policy event ID reuse.",
-        "Linux 7ae4a41 daily-host step 11 succeeded, including expanded real tea/meal/eating fixture. Staged subsequent household navigation in integration/pretorius-v1-domestic-navigation: original situated policy competes over need-relevant kitchen/bedroom travel, source-reviewed route gives one adjacent motor per choice, bound exact op/args; native startup recovers daily reservations before new goals. Real host test now starts away from resources. Not qualified until exact-head tests and integration into release branch."
+        "Linux 7ae4a41 daily-host step 11 succeeded, including expanded real tea/meal/eating fixture. Staged subsequent household navigation in integration/pretorius-v1-domestic-navigation: original situated policy competes over need-relevant kitchen/bedroom travel, source-reviewed route gives one adjacent motor per choice, bound exact op/args; native startup recovers daily reservations before new goals. Real host test now starts away from resources. Not qualified until exact-head tests and integration into release branch.",
+        "6fa5e112 pinned Linux 138715031143 step 11 passed including actual bedroom-to-kitchen travel, meal, tea, eating, source memories and cold reopen. Step 12 persistent work also passed. Added explicit pre-world route crash, target substitution, denied read-only recovery, authorized exactly-once native recovery, and conflicting reservation preflight. New head qualification pending."
       ]
     },
     {

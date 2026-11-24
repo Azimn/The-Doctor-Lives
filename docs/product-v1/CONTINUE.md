@@ -23,3 +23,5 @@ Linux job 138712074062 on 5832a234e55390a398873c190ce7f3b8c4ede3de verified the 
 ## Domestic navigation integration candidate
 
 The latest qualified daily test step on 7ae4a41 includes actual food and tea preparation/eating. The dependent integration branch adds concrete household travel to the existing situated selector rather than an independent planner. Routes are host-provided from established house topology, not claims of independently learned navigation. No remote resource contents are exposed. Exact motor args are committed and checked, and cold recovery preempts new native decisions. New end-to-end test starts in the bedroom and requires lawful travel and consumption. Await exact head CI and integrate only when verified.
+
+Navigation Linux integration step passed on 6fa5e112, including actual travel and domestic needs. Added a dedicated route crash-window test and preflight conflict protection; verify new head before merging dependent PR #110 into the completion branch. Do not treat the bounded domestic path as seven-day general autonomy.

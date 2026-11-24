@@ -284,6 +284,8 @@ def reconcile_pending_daily_action(bridge: DoctorHomeBridge) -> tuple[dict, ...]
     """
     if not isinstance(bridge, DoctorHomeBridge):
         raise TypeError("Original Laboratory bridge required for recovery")
+    if len(pending_daily_action_ids(bridge)) > 1:
+        raise RuntimeError("Multiple pending daily motors require integrity review")
     from .lab_home_bridge import _ACTION_DOMAINS
     store = bridge.doctor.brain.store
     with store.connect() as db:
@@ -344,6 +346,8 @@ def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
         raise PermissionError("Subject's cognitive preference is not motor permission")
     if type(choice) is not DailyChoice:
         raise TypeError("Actual original Noesis decision required")
+    if pending_daily_action_ids(bridge):
+        raise PermissionError("Recover the prior daily motor before authorizing another")
     store = bridge.doctor.brain.store
     with store.connect() as db:
         row = db.execute(

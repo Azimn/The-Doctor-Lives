@@ -85,6 +85,9 @@ def select_with_original_noesis(
         for a in feasible_actions
     ) or len(set(feasible_actions)) != len(feasible_actions):
         raise ValueError("Unrecognized or duplicate physical offers")
+    if not interoception_enabled and any(
+            a in ("seek_kitchen", "seek_bedroom") for a in feasible_actions):
+        raise PermissionError("Household route requires the admitted body-cue policy")
     observation = brain.store.get_memory(observation_memory_id)
     if (observation is None or not observation["active"]
             or observation["evidence_class"] != "lived_runtime_memory"

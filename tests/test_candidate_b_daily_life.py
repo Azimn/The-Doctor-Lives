@@ -195,6 +195,72 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertTrue({"brew_tea", "prepare_meal", "eat"} <= actions,
                         f"Unfulfilled domestic needs; observed {actions}")
 
+    def test_household_route_denies_target_swap_and_recovers_before_new_native_goal(self):
+        """Actual Noesis chooses a route; fault injection only interrupts its motor."""
+        import json
+        from unittest.mock import patch
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.noesis_day import (
+            offer_daily_opportunity, act_on_noesis_choice, pending_daily_action_ids,
+        )
+        from doctor_lives.lab_home_bridge import _row
+
+        subject = SubjectPort(self.lab)
+        subject.act("walk", event_id="route-fixture-hall", station="station:hall")
+        subject.act("walk", event_id="route-fixture-bedroom", station="station:bedroom")
+        for i in range(2):
+            subject.act("advance", event_id=f"route-fixture-day-{i}", minutes=240)
+        subject.act("sleep", event_id="route-fixture-sleep")
+        for i in range(2):
+            subject.act("advance", event_id=f"route-fixture-night-{i}", minutes=240)
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(subject, authorized=True)
+        choice = offer_daily_opportunity(bridge)
+        self.assertEqual(choice.action, "seek_kitchen")
+        event_id = "route-fixture-crash-before-world"
+        with patch.object(bridge, "act", side_effect=RuntimeError("injected pre-world crash")):
+            with self.assertRaisesRegex(RuntimeError, "pre-world crash"):
+                act_on_noesis_choice(bridge, choice, event_id=event_id, authorized=True)
+        runtime.checkpoint()
+        self.assertEqual(pending_daily_action_ids(bridge), (choice.policy_id,))
+        self.assertEqual(subject.embodied.verify()["station"], "station:bedroom")
+        with bridge.doctor.brain.store.connect() as db:
+            audit = json.loads(db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (choice.policy_id,)).fetchone()[0])
+        self.assertEqual(audit["motor_op"], "walk")
+        self.assertEqual(audit["motor_args"], {"station": "station:hall"})
+        # A substituted destination is not authorized by this policy.
+        with self.assertRaises(PermissionError):
+            bridge.act("walk", event_id=event_id, station="station:threshold")
+        with self.assertRaisesRegex(PermissionError, "requires world authorization"):
+            run_native_laboratory(
+                self.state, self.world, affectus_source=self.source,
+                allow_world_actions=False, enable_sustained_work=True)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM embodied_events WHERE event_id=?",
+                (event_id,)).fetchone()[0], 0)
+        result = run_native_laboratory(
+            self.state, self.world, affectus_source=self.source, steps=4,
+            allow_world_actions=True, enable_sustained_work=True)
+        self.assertEqual(result["status"], "recovered_daily_action")
+        self.assertEqual(result["steps"], 1)
+        self.assertEqual(subject.embodied.verify()["station"], "station:hall")
+        with self.lab._open() as db:
+            event, digest = _row(db, "embodied_events", event_id)
+            self.assertEqual(event["after_station"], "station:hall")
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM embodied_events WHERE event_id=?",
+                (event_id,)).fetchone()[0], 1)
+        reopened = SixOrganRuntime.open(self.state)
+        recovered_bridge = reopened.bind_laboratory(subject, authorized=True)
+        self.assertEqual(pending_daily_action_ids(recovered_bridge), ())
+        memory = reopened._port.brain.store.get_memory(result["receipts"][0]["memory_id"])
+        self.assertEqual(memory["source"], "laboratory-home:action:" + digest)
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+
     def test_product_daily_host_reconciles_actual_physical_fatigue(self):
         """Full host cycle consumes real Corpus state, never a mock body."""
         import json

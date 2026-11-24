@@ -37,6 +37,13 @@ def run_daily_life_cycle(
         runtime = SixOrganRuntime.open(state)
         subject = SubjectPort(SpatialHabitat(world))
         epoch = subject.verify()["world_epoch"]
+        preflight_bridge = runtime.bind_laboratory(subject, authorized=True)
+        preflight_pending = pending_daily_action_ids(preflight_bridge)
+        if len(preflight_pending) > 1 or (preflight_pending and (
+            runtime._port.brain.store.meta(SixOrganLaboratoryCycle._PENDING) is not None
+            or runtime._port.brain.store.meta(SixOrganLaboratoryCycle._PENDING_REST) is not None
+        )):
+            raise RuntimeError("Conflicting canonical motor reservations")
         with SixOrganLaboratoryCycle(
             runtime, subject, affectus_source=Path(affectus_source),
             renderer=renderer, authorized=True,
