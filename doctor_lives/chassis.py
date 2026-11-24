@@ -178,6 +178,7 @@ class PretoriusBrainPort:
         reserved = (
             "laboratory-home:", "virtual-world:",
             "sensus-pilot-verified:", "mock-robot-fixture:",
+            "phantasmagorium:dream-recollection:",
         )
         claimed = event.get("source")
         # In particular, an untrusted report with an invented Laboratory

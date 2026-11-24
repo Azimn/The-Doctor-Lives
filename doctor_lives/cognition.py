@@ -1358,8 +1358,12 @@ class PretoriusBrain:
                         record_ids=(item.record_id,),
                     ),
                     subjective_source=SubjectiveSourceAttribution(
-                        SubjectiveSourceKind.UNKNOWN,
-                        CertaintyBand.MODERATE,
+                        SubjectiveSourceKind.DREAMED
+                        if item.provenance.evidence_class == "dreamed_not_lived"
+                        else SubjectiveSourceKind.UNKNOWN,
+                        CertaintyBand.HIGH
+                        if item.provenance.evidence_class == "dreamed_not_lived"
+                        else CertaintyBand.MODERATE,
                     ),
                     source_state_refs=(item.record_id,),
                 )

@@ -19,6 +19,7 @@ from .store import new_id
 def run_daily_life_cycle(
     state: str | Path, world: str | Path, *, affectus_source: str | Path,
     authorize_world: bool = False,
+    phantasmagorium_source=None,
 ) -> dict:
     if type(authorize_world) is not bool:
         raise TypeError("World authorization must be explicit")
@@ -27,6 +28,8 @@ def run_daily_life_cycle(
     from pretorius_lab.subject_port import SubjectPort
     from .lab_six_organ_session import SixOrganLaboratoryCycle
     from .organs import SixOrganRuntime
+    from .lab_phantasmagorium import configured_archive, sync_phantasmagorium
+    phanta = configured_archive(phantasmagorium_source)
 
     def renderer(text):
         if type(text) is not str or not text.startswith(("I ", "My ", "Mine ", "Me ")):
@@ -90,8 +93,11 @@ def run_daily_life_cycle(
                         )
                 # This contract is not R4 three-goal autonomy, only a single
                 # Noesis selection among authenticated local Lab affordances.
+                phanta_report = (sync_phantasmagorium(session.bridge, phanta)
+                                 if phanta and authorize_world else None)
                 outcome = {
                     "schema": "pretorius.candidate-b.one-brain-daily-cycle.v1",
+                    "phantasmagorium": phanta_report,
                     "world_epoch": epoch,
                     "all_six_ports_invoked": list(cycle.ports_used),
                     "one_subject_delivery": cycle.subjective_delivery_count == 1,

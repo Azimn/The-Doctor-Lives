@@ -167,7 +167,8 @@ def _recover_shipping_actions(bridge):
     return tuple(committed), recovered, tuple(uncommitted)
 
 
-def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
+def sleep_laboratory(state: Path, world: Path, *, event_id: str,
+                     phantasmagorium_source=None) -> dict:
     """Operator-requested, original-Lab physical sleep, never a Doctor goal.
 
     The original Laboratory must place the body in its actual bedroom first.
@@ -176,6 +177,8 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
     The next lab-run is the explicit wake/resume operation.
     """
     from .lab_home_bridge import _SAFE_ID
+    from .lab_phantasmagorium import configured_archive, sync_phantasmagorium
+    phanta = configured_archive(phantasmagorium_source)
     if type(event_id) is not str or not _SAFE_ID.fullmatch(event_id):
         raise ValueError("Stable bounded Laboratory sleep action ID required")
     with _exclusive_host(state, world):
@@ -231,6 +234,7 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
                 "Physical sleep requires the actual Laboratory bedroom"
             )
         result = bridge.act("sleep", event_id=event_id)
+        dream = sync_phantasmagorium(bridge, phanta) if phanta else None
         runtime.checkpoint()
         clock = engineer_time()
         subject_frames = [
@@ -245,6 +249,7 @@ def sleep_laboratory(state: Path, world: Path, *, event_id: str) -> dict:
             "abandoned": len(abandoned),
             "subject_frames": subject_frames,
             "physical_sleep_minutes": 480,
+            "phantasmagorium": dream,
             "clock": {"utc": clock.utc_iso, "beat": clock.beat},
         }
 
@@ -575,6 +580,7 @@ def run_native_laboratory(
     enable_conclave_reflection: bool = False,
     enable_telos: bool = False,
     enable_nested_rest: bool = False,
+    phantasmagorium_source=None,
 ) -> dict:
     """Offer bounded original six-organ goal opportunities on the shipping host.
 
@@ -609,6 +615,8 @@ def run_native_laboratory(
     from .lab_native_goal_choice import NativeLaboratoryGoalChooser
     from .lab_six_organ_session import SixOrganLaboratoryCycle
     from .organs import SixOrganRuntime
+    from .lab_phantasmagorium import configured_archive, sync_phantasmagorium
+    phanta = configured_archive(phantasmagorium_source)
 
     def source_only_renderer(subject: str) -> str:
         if type(subject) is not str or not subject.startswith(
@@ -670,6 +678,8 @@ def run_native_laboratory(
                         "host_selected_goal_mapping": False,
                         "host_selected_route": False,
                     })
+                if phanta and allow_world_actions:
+                    sync_phantasmagorium(session.bridge, phanta)
                 for _ in range(steps if not receipts else 0):
                     reflection = None
                     if enable_conclave_reflection and allow_world_actions:
@@ -683,6 +693,8 @@ def run_native_laboratory(
                     if (enable_conclave_reflection and allow_world_actions
                             and result.kind == "read_book" and result.status == "completed"):
                         reflection = reflect_completed_reading(chooser.book)
+                    phanta_report = (sync_phantasmagorium(session.bridge, phanta)
+                                     if phanta and allow_world_actions else None)
                     receipts.append({
                         "status": result.status,
                         "kind": result.kind,
@@ -694,6 +706,7 @@ def run_native_laboratory(
                         "competition_policy_id": result.competition_policy_id,
                         "interrupting_action": result.interrupting_action,
                         "conclave_reflection": reflection,
+                        "phantasmagorium": phanta_report,
                     })
                     if result.status in (
                         "completed", "already_complete", "exhausted",

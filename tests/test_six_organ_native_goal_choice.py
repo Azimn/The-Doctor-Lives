@@ -502,6 +502,54 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             "steps": i + 1, "host_selected_route": True
         }, sort_keys=True))
 
+    @unittest.skipUnless(os.environ.get("PRETORIUS_PHANTA_DONOR"),
+                         "Exact original Phantasmagorium archive required")
+    def test_original_phantasmagorium_two_physical_sleeps_and_cold_recall(self):
+        from doctor_lives.lab_runtime import sleep_laboratory
+        from doctor_lives.lab_phantasmagorium import STATE, SOURCE, _snapshot
+        from doctor_lives.chassis import PretoriusBrainPort
+        archive = Path(os.environ["PRETORIUS_PHANTA_DONOR"])
+        path = self.root / "original-dream-mind"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        bridge = rt.bind_laboratory(self.subject, authorized=True)
+        # Actual original world movement is fixture preparation, not an
+        # independent goal trial. Only the trusted host executes sleep.
+        from doctor_lives.lab_endogenous_book_task import EndogenousBookPursuit
+        for _ in range(12):
+            station = self.subject.embodied.verify()["station"]
+            if station == "station:bedroom":
+                break
+            hop = EndogenousBookPursuit._route(station, "station:bedroom")
+            bridge.act("walk", event_id="phanta-bedroom-" + str(_), station=hop)
+        self.assertEqual(self.subject.embodied.verify()["station"], "station:bedroom")
+        rt.checkpoint()
+        epoch = self.subject.verify()["world_epoch"]
+        first = sleep_laboratory(path, self.root / "lab.sqlite3", event_id="phanta-night-1",
+                                 phantasmagorium_source=archive)
+        self.assertEqual(first["phantasmagorium"]["sleep_index"], 1)
+        before = self.subject.rhythm.audit_state()["minute"]
+        replay = sleep_laboratory(path, self.root / "lab.sqlite3", event_id="phanta-night-1",
+                                  phantasmagorium_source=archive)
+        self.assertIsNone(replay["phantasmagorium"])
+        self.assertEqual(self.subject.rhythm.audit_state()["minute"], before)
+        second = sleep_laboratory(path, self.root / "lab.sqlite3", event_id="phanta-night-2",
+                                  phantasmagorium_source=archive)
+        self.assertEqual(second["phantasmagorium"]["sleep_index"], 2)
+        self.assertEqual(self.subject.rhythm.audit_state()["minute"] - before, 480)
+        cold = PretoriusBrainPort(path)
+        state = _snapshot(cold.brain.store.meta(STATE), epoch)
+        self.assertEqual(state["nights"], 2)
+        self.assertIn("dream_ecology/dream_journal.json", state["files"])
+        for m in cold.brain.store.memories(False):
+            if m["source"].startswith(SOURCE):
+                self.assertEqual(m["evidence_class"], "dreamed_not_lived")
+                self.assertTrue(m["external"])
+                self.assertTrue(m["text"].startswith("I recall a dream: "))
+        with self.assertRaises(PermissionError):
+            cold.ingest({"channel": "user", "source": SOURCE + "forged",
+                         "text": "I recall a dream: an invented experience."})
+        self.subject.verify()
+
     def test_product_active_reading_can_acquire_rest_intention_and_resume(self):
         from doctor_lives.lab_runtime import run_native_laboratory
         from doctor_lives.lab_endogenous_book_task import _KEY
