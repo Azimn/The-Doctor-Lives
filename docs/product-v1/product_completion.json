@@ -416,11 +416,12 @@
         "PT-002"
       ],
       "repository": "Azimn/The-Doctor-Lives",
-      "location": "doctor_lives/lab_native_goal_choice.py; lab_six_organ_session.py; cognition.py; preview_operator.py",
+      "location": "doctor_lives/lab_native_goal_choice.py; lab_six_organ_session.py; cognition.py; preview_operator.py; doctor_lives/noesis_interoception.py; doctor_lives/noesis_situated_choice.py; tests/test_noesis_interoception.py; tests/test_candidate_b_daily_life.py",
       "acceptance": "Diagnose rest-only native choices from authentic R4 source archive. General state-dependent improvement without forced goal sequence. Three distinct independently witnessed goal kinds and verified consequences.",
       "status": "failed",
       "evidence": [
-        "41322140122/124897765190: distinct kinds [rest], eight goals, original world verified, R4 FAIL"
+        "41322140122/124897765190: distinct kinds [rest], eight goals, original world verified, R4 FAIL",
+        "PR #109 comment 7139862968: original R4 SQLite diagnosis; 31 simulated hours in 600 seconds, physical fatigue 0 versus mental fatigue felt .757, hunger/thirst 10. Implemented bounded first-person regulatory pressure on local situated Noesis; navigation and general cycle coupling remain open; tests pending."
       ]
     },
     {
@@ -512,5 +513,5 @@
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "Inspect exact-head PR #109 CI and debug failures. Review original R4 archive 13090248279 and report 13091000742, then identify and correct general state-dependent executive behavior. Reconcile M6 divergence before promotion."
+  "next": "Inspect exact-head CI including real pinned body-cue fixture, debug failures. Continue R04 body-to-policy and goal arbitration: local action pressure does not yet route to kitchen or reconcile fatigue/time; preserve authority and no forced sequence. Reconcile M6 divergence before promotion."
 }

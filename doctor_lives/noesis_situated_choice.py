@@ -20,6 +20,7 @@ from .store import new_id, utc_now
 
 VERSION = "noesis-situated-choice-v0.2"
 OUTCOME_VERSION = "noesis-situated-choice-v0.3"
+DAILY_BODY_VERSION = "noesis-situated-choice-v0.4-body"
 # Grounded here in Noesis, not selected by the host. The existing neural motor
 # vocabulary still has ten abstract tendencies, not physical work commands.
 NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist",
@@ -56,6 +57,7 @@ def select_with_original_noesis(
     outcome_learning_enabled: bool = False,
     eligible_outcome_memory_ids: tuple[str, ...] = (),
     author_day_goal: bool = False,
+    interoception_enabled: bool = False,
 ) -> dict[str, Any]:
     """Commit one original-brain choice and detailed engineer-only audit.
 
@@ -66,7 +68,8 @@ def select_with_original_noesis(
     page text, numeric body data or a fabricated percept.
     """
     if (type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool
-            or type(outcome_learning_enabled) is not bool or type(author_day_goal) is not bool):
+            or type(outcome_learning_enabled) is not bool or type(author_day_goal) is not bool
+            or type(interoception_enabled) is not bool):
         raise TypeError("Research lesion switches must be explicit booleans")
     if type(observation_memory_id) is not str:
         raise TypeError("An original brain observation memory ID is required")
@@ -137,8 +140,18 @@ def select_with_original_noesis(
         # In opt-out controls, do not inspect or implicitly use outcome IDs.
         if type(eligible_outcome_memory_ids) is not tuple:
             raise TypeError("Outcome evidence IDs must be a tuple")
+    body_scores = {action: 0.0 for action in feasible_actions}
+    body_cues = ()
+    if interoception_enabled:
+        from .noesis_interoception import perceived_regulatory_pressure
+        body_scores, body_cues = perceived_regulatory_pressure(
+            observation["text"], feasible_actions,
+        )
+        for action in feasible_actions:
+            final[action] += body_scores[action]
     selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
-    active_version = OUTCOME_VERSION if outcome_learning_enabled else VERSION
+    active_version = (DAILY_BODY_VERSION if interoception_enabled else
+                      OUTCOME_VERSION if outcome_learning_enabled else VERSION)
 
     evidence = {
         "version": active_version,
@@ -146,6 +159,9 @@ def select_with_original_noesis(
         "eligible_verified_outcome_ids": eligible_outcomes,
         "used_outcome_memory_ids": used_outcomes,
         "outcome_contributions": outcome_scores,
+        "interoception_enabled": interoception_enabled,
+        "perceived_body_cues": list(body_cues),
+        "interoceptive_contributions": body_scores,
         "neural_affordance_map": {a: NEURAL_AFFORDANCE_MAP[a] for a in feasible_actions},
         "neural_prior_weight": NEURAL_WEIGHT,
         "learning_weight": MEMORY_WEIGHT,
@@ -184,7 +200,8 @@ def select_with_original_noesis(
         )
         subject_thought = (
             "I judge that " + selected_action
-            + " is the action I should try next at the workbench."
+            + (" is the action I should try next." if interoception_enabled or author_day_goal
+               else " is the action I should try next at the workbench.")
         )
         db.execute(
             """INSERT INTO thoughts

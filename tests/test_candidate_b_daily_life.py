@@ -82,6 +82,52 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertFalse(second["independent_three_activity_r4_proven"])
 
 
+    def test_daily_original_noesis_uses_perceived_needs_without_hidden_body(self):
+        """Actual pinned observation; isolated hunger/thirst fixture."""
+        import json
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.home_life import HomeLife
+        from pretorius_lab.daily_rhythm import DailyRhythm, initial_state
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import offer_daily_opportunity
+
+        world = SpatialHabitat.create(Path(self.tmp.name) / "body-fixture.sqlite3")
+        HomeLife(world).initialize()
+        subject = SubjectPort(world)
+        subject.embodied.move("station:hall", event_id="body-fixture-hall")
+        subject.embodied.move("station:kitchen", event_id="body-fixture-kitchen")
+        seed = initial_state()
+        seed.update(hunger=9, thirst=8, fatigue=0)
+        DailyRhythm(world).initialize(initial_state=seed)
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(subject, authorized=True)
+        choice = offer_daily_opportunity(bridge)
+        with runtime._port.brain.store.connect() as db:
+            row = db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (choice.policy_id,),
+            ).fetchone()
+        audit = json.loads(row["state_pressure_json"])
+        self.assertEqual(audit["version"], "noesis-situated-choice-v0.4-body")
+        self.assertEqual(audit["perceived_body_cues"], ["painfully_hungry", "thirsty"])
+        self.assertEqual(audit["observation_memory_id"], choice.observation_id)
+        contributions = audit["interoceptive_contributions"]
+        self.assertEqual(set(contributions), set(choice.options))
+        self.assertGreater(contributions["prepare_meal"], 0)
+        self.assertGreater(contributions["brew_tea"], 0)
+        self.assertEqual(contributions["advance"], 0)
+        for action in choice.options:
+            self.assertAlmostEqual(
+                audit["candidate_final_scores"][action],
+                audit["candidate_base_scores"][action]
+                + audit["outcome_contributions"][action] + contributions[action],
+            )
+        self.assertIn(choice.action, choice.options)
+        self.assertEqual(audit["physical_authority"], "none")
+        self.assertEqual(subject.rhythm.audit_state()["hunger"], 9)
+        self.assertEqual(subject.rhythm.audit_state()["thirst"], 8)
+        runtime.checkpoint()
+
     def test_original_daily_rest_couples_homeostasis_once_after_cold_reopen(self):
         """Source-backed physical rest, synthetic MOTOR fixture, NOT autonomous R4.
 

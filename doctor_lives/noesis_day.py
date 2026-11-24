@@ -108,6 +108,7 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
         outcome_learning_enabled=use_consequences,
         eligible_outcome_memory_ids=outcomes,
         author_day_goal=author_goal,
+        interoception_enabled=True,
     )
     return DailyChoice(choice["policy_decision_id"], choice["selected_action"],
                        observed["memory_id"], options)
