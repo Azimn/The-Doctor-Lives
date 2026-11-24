@@ -1,0 +1,516 @@
+{
+  "schema": "pretorius.product-completion.v1",
+  "objective": "Complete the existing Doctor Septimus Pretorius as one persistent embodied artificial individual; product and engineering qualification primary",
+  "as_of": "2026-11-24",
+  "branch": "release/pretorius-complete-v1",
+  "pr": 109,
+  "canonical_main": "784cff39d58a7fe46bb5e4ffc16e0284e6663c78",
+  "baseline_candidate_b": "8cf836a927cfbbbe5469d805831f3dac200568f2",
+  "m6": "62f372c47959d1f577be1e980d4ae191981ac83d",
+  "laboratory": "6e49795752835d64fa6fd63d16359669a1ca2ba7",
+  "donor_leads": {
+    "inhabitant": "7add1e04f4d49760ca1ebfb2c838450d23193bd9",
+    "duck": "30a11ea8308ebd0fc89a06bb994ab0e23bd02886",
+    "sensus": "802e459ee68950414347d5fa324484c034f57b81",
+    "affectus": "904bf11861700739ccc03d4b0d4340ff3422a7d3",
+    "ipseity": "e2d1dc3978c952e59d270a29e84704c8a1fe264a"
+  },
+  "package_hashes": {
+    "v32": "9b076a875cb10165b0c0fc5765d75f52f3acae099a3c6f89b92231e1e65a6d52",
+    "v31": "de5cac729e352414d0b267673f0c03aa5b53ae54244044bc92197045d4771fe9",
+    "v3": "576ca029a7671e5c16c82d235ac0fbec028601e33c4de648bd74ead874f29c8f"
+  },
+  "authority": {
+    "world": "Pretorius-Laboratory SQLite",
+    "subject": "canonical BrainStore and recurrent state",
+    "rendering": "subject-only Ipseity and communication release gateway",
+    "motor": "original Noesis plus trusted world gateway",
+    "donors": "mechanisms only; no foreign biography or independent brain",
+    "status": "provisional source inspection; service principal enforcement not fully audited"
+  },
+  "historical_substitutions": "Letters, correspondence, books, newspapers, clocks and visitors for modern digital life; no dropped functionality; details pending",
+  "requirements": [
+    {
+      "id": "R01",
+      "requirement": "Persistent world, individual, clock, replay",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_runtime.py; store.py; lab_recovery_census.py",
+      "status": "partial",
+      "evidence": "Candidate B recovery 41322140162",
+      "next": "Unify M6, verify seven-day and forced interruptions"
+    },
+    {
+      "id": "R02",
+      "requirement": "Reality/observation/belief/memory separation",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_home_bridge.py; evidence_authority.py; organs.py; ipseity_integration.py",
+      "status": "partial",
+      "evidence": "Candidate B Ipseity 41322140168",
+      "next": "Full entrypoint and hidden-state audit"
+    },
+    {
+      "id": "R03",
+      "requirement": "Grounded authorized action and communication",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_six_organ_session.py; conversation_claims.py; operator_conversation.py",
+      "status": "partial",
+      "evidence": "81282b002640158bac3b8e44a3a5593889d894bc; new motor tests pending",
+      "next": "Review M6 speech gateway and run 300-message held-out gate"
+    },
+    {
+      "id": "R04",
+      "requirement": "Independent goals, competence and physiology",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_native_goal_choice.py; lab_native_work_goal.py; noesis_day.py",
+      "status": "failed",
+      "evidence": "41322140122: eight rest goals, one distinct kind",
+      "next": "Diagnose policy tendency and physical time/need feedback; preserve goal provenance"
+    },
+    {
+      "id": "R05",
+      "requirement": "Durable learning mechanisms",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "noesis_consequences.py; experience_to_action.py; mnemosyne_pilot.py",
+      "status": "partial",
+      "evidence": "41322140126; 41322140183 historical candidate head",
+      "next": "Held-out skill, habit, belief and practice tests"
+    },
+    {
+      "id": "R06",
+      "requirement": "Shared temporal/social world",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_runtime.py; open_intentions.py; environment_port.py",
+      "status": "unknown",
+      "evidence": "No integrated reciprocal social proof inspected",
+      "next": "Audit Village/Web-Sim; shared clock and separate minds"
+    },
+    {
+      "id": "R07",
+      "requirement": "Stable revisable individuality",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "history.py; source_monitoring.py; cognition.py; projection.py",
+      "status": "partial",
+      "evidence": "Inherited canonical code and donor locks; new continuity not run",
+      "next": "Regression and protected migration"
+    },
+    {
+      "id": "R08",
+      "requirement": "Grounded multimodal interaction",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "operator_chat_web.py; speech_emission.py",
+      "status": "unknown",
+      "evidence": "Files located, not audited",
+      "next": "Scene snapshots and acknowledged speech; voice/media adapters"
+    },
+    {
+      "id": "R09",
+      "requirement": "Security, ethics, permissions",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_runtime.py; evidence_authority.py; ingress.py",
+      "status": "partial",
+      "evidence": "Motor permission defect repaired; unverified",
+      "next": "100 negative authority, 100 world integrity and privacy gates"
+    },
+    {
+      "id": "R10",
+      "requirement": "Reproducible evaluation",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "tools/run_uncoached_r4_trial.py; .github/workflows/",
+      "status": "partial",
+      "evidence": "Exact Candidate B CI; human equivalence not required by directive",
+      "next": "Engineering qualification and separately tracked scientific work"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "C01",
+      "component": "World, time, event ledger",
+      "requirements": [
+        "R01"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_runtime.py; Pretorius-Laboratory",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C02",
+      "component": "Perception, attention, body, motor",
+      "requirements": [
+        "R02",
+        "R04"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_six_organ_session.py; organs.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C03",
+      "component": "Episodic, semantic, working, procedural, prospective memory",
+      "requirements": [
+        "R02",
+        "R05"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "store.py; mnemosyne_pilot.py; recollection.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C04",
+      "component": "Beliefs, reconstruction, self-appraisal",
+      "requirements": [
+        "R02",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "reconsolidation.py; distortion.py; source_monitoring.py",
+      "status": "unknown",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C05",
+      "component": "Motivation, goals, life structure, habits, boredom",
+      "requirements": [
+        "R04",
+        "R05"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_native_goal_choice.py; cognition.py",
+      "status": "failed",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C06",
+      "component": "Values, morality, culture, taste, humor, bias",
+      "requirements": [
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "cognition.py; history.py",
+      "status": "unknown",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C07",
+      "component": "Emotion, mood, health, aging",
+      "requirements": [
+        "R04"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "canonical_affectus_weather.py; affectus_lab_pilot.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C08",
+      "component": "Skills, work, finances",
+      "requirements": [
+        "R04",
+        "R05"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_native_work_goal.py; noesis_day.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C09",
+      "component": "Relationships, recursive theory of mind, persistent NPCs",
+      "requirements": [
+        "R06",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Village integration TBD",
+      "status": "unknown",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C10",
+      "component": "Communication, claim/action verification, injection protection",
+      "requirements": [
+        "R03",
+        "R09"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "operator_conversation.py; conversation_claims.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C11",
+      "component": "Period equivalents to digital device and open world",
+      "requirements": [
+        "R06",
+        "R08"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Letters, visits, newspapers, clocks; implementation TBD",
+      "status": "unknown",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C12",
+      "component": "Multimodality",
+      "requirements": [
+        "R08"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Scene and acknowledged utterance adapters TBD",
+      "status": "unknown",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C13",
+      "component": "Neural substrate, state encoding, adaptation",
+      "requirements": [
+        "R05",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "neural.py; cognition.py; DONORS.lock.json",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C14",
+      "component": "Welfare, governance, evaluation",
+      "requirements": [
+        "R09",
+        "R10"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_recovery_census.py; CI; operator controls",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C15",
+      "component": "Conclave and Phantasmagorium",
+      "requirements": [
+        "R02",
+        "R05",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "conclave.py; phantasmagorium_bridge.py; organs.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    }
+  ],
+  "phases": [
+    {
+      "id": "P01",
+      "name": "Foundation freeze and evidence reconciliation",
+      "status": "in_progress"
+    },
+    {
+      "id": "P02",
+      "name": "Unified contracts, security and transactional substrate",
+      "status": "pending"
+    },
+    {
+      "id": "P03",
+      "name": "Executive integration within actual Pretorius",
+      "status": "pending"
+    },
+    {
+      "id": "P04",
+      "name": "Experiential learning engineering",
+      "status": "pending"
+    },
+    {
+      "id": "P05",
+      "name": "Epistemic, action and expression integrity",
+      "status": "pending"
+    },
+    {
+      "id": "P06",
+      "name": "Reciprocal developmental functions",
+      "status": "pending"
+    },
+    {
+      "id": "P07",
+      "name": "Human calibration (secondary research)",
+      "status": "secondary_research"
+    },
+    {
+      "id": "P08",
+      "name": "Personal psychology",
+      "status": "pending"
+    },
+    {
+      "id": "P09",
+      "name": "Sustained independent daily life",
+      "status": "pending"
+    },
+    {
+      "id": "P10",
+      "name": "Expressive relational individual",
+      "status": "pending"
+    },
+    {
+      "id": "P11",
+      "name": "Society and ecology",
+      "status": "pending"
+    },
+    {
+      "id": "P12",
+      "name": "Historical communication and grounded multimodality",
+      "status": "pending"
+    },
+    {
+      "id": "P13",
+      "name": "Advanced learning and efficiency",
+      "status": "pending"
+    },
+    {
+      "id": "P14",
+      "name": "Longitudinal and operational qualification",
+      "status": "pending"
+    },
+    {
+      "id": "P15",
+      "name": "Scientific qualification (secondary research)",
+      "status": "secondary_research"
+    },
+    {
+      "id": "P16",
+      "name": "Product release",
+      "status": "pending"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "PT-001",
+      "prerequisites": [],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "release/pretorius-complete-v1",
+      "acceptance": "Preserve original main and candidate pins; check M6 divergence and all donor licenses; reproduce baselines",
+      "status": "in_progress",
+      "evidence": [
+        "branch created",
+        "PR #109",
+        "main 784cff39d58a7fe46bb5e4ffc16e0284e6663c78",
+        "Candidate B 8cf836a927cfbbbe5469d805831f3dac200568f2",
+        "M6 62f372c47959d1f577be1e980d4ae191981ac83d; diverged 181 ahead/33 behind"
+      ]
+    },
+    {
+      "id": "PT-002",
+      "prerequisites": [],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "doctor_lives/lab_six_organ_session.py; lab_runtime.py; lab_daily_life_cycle.py; tests/test_candidate_b_daily_life.py",
+      "acceptance": "No reserved motor executes on public read-only opens; authorized recovery has one receipt; no extra same-pulse motor; exact head CI",
+      "status": "implemented",
+      "evidence": [
+        "81282b002640158bac3b8e44a3a5593889d894bc; test added but not executed"
+      ]
+    },
+    {
+      "id": "PT-003",
+      "prerequisites": [
+        "PT-001",
+        "PT-002"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "doctor_lives/lab_native_goal_choice.py; lab_six_organ_session.py; cognition.py; preview_operator.py",
+      "acceptance": "Diagnose rest-only native choices from authentic R4 source archive. General state-dependent improvement without forced goal sequence. Three distinct independently witnessed goal kinds and verified consequences.",
+      "status": "failed",
+      "evidence": [
+        "41322140122/124897765190: distinct kinds [rest], eight goals, original world verified, R4 FAIL"
+      ]
+    },
+    {
+      "id": "PT-004",
+      "prerequisites": [
+        "PT-001",
+        "PT-002"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "M6 integration/m6; Candidate B; operator conversation",
+      "acceptance": "Inspect exact path diff and restore reviewed missing M6 communication/semantic changes with no competing canonical state",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-005",
+      "prerequisites": [
+        "PT-001",
+        "PT-002"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "organs.py; store.py; evidence_authority.py; laboratory ports",
+      "acceptance": "One authority per state family, authenticated admission and crash replay; 100 negative access and 100 world integrity tests; 30 forced interruptions",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-006",
+      "prerequisites": [
+        "PT-003",
+        "PT-004",
+        "PT-005"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "cognition.py; noesis; memory; donor adapters",
+      "acceptance": "Complete psychology, skills, goals, learning, 30 matched fixture pairs, semantic and provenance gates",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-007",
+      "prerequisites": [
+        "PT-005",
+        "PT-006"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Conclave/Phantasmagorium; Laboratory/Village adapters",
+      "acceptance": "Integrate dreaming, relationships, independent supporting individuals and historical correspondence; no state leakage",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-008",
+      "prerequisites": [
+        "PT-004",
+        "PT-005"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "operator interfaces; provider adapters",
+      "acceptance": "Text, local/hosted inference, grounded images and acknowledged voice; failure and permission fallback",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-009",
+      "prerequisites": [
+        "PT-003",
+        "PT-005",
+        "PT-006",
+        "PT-007",
+        "PT-008"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "tests; workflows; packaging",
+      "acceptance": "30 seeded seven-day runs, 300 annotated claims, 100 semantic cases, 50+50 reconstruction cases, 200 fallback trials, clean installs, resource and security checks",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-010",
+      "prerequisites": [
+        "PT-009"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "release docs; migration; backup; operator controls",
+      "acceptance": "Exact-head green gates, migration rehearsal, installation, recovery; separately identify live device/soak qualification",
+      "status": "pending",
+      "evidence": []
+    }
+  ],
+  "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
+  "next": "Inspect exact-head PR #109 CI and debug failures. Review original R4 archive 13090248279 and report 13091000742, then identify and correct general state-dependent executive behavior. Reconcile M6 divergence before promotion."
+}
