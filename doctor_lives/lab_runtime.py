@@ -573,6 +573,7 @@ def run_native_laboratory(
     enable_recurring_goals: bool = False,
     enable_commitment_competition: bool = False,
     enable_conclave_reflection: bool = False,
+    enable_telos: bool = False,
 ) -> dict:
     """Offer bounded original six-organ goal opportunities on the shipping host.
 
@@ -590,6 +591,8 @@ def run_native_laboratory(
         raise TypeError("Sustained work enablement must be a boolean")
     if type(enable_conclave_reflection) is not bool:
         raise TypeError("Conclave reflection requires explicit enablement")
+    if type(enable_telos) is not bool:
+        raise TypeError("Telos requires explicit enablement")
     state, world, affectus_source = Path(state), Path(world), Path(affectus_source)
     if not affectus_source.is_dir():
         raise FileNotFoundError("Existing local pinned Affectus donor required")
@@ -643,6 +646,7 @@ def run_native_laboratory(
                 enable_sustained_work=enable_sustained_work,
                 enable_recurring_goals=enable_recurring_goals,
                 enable_commitment_competition=enable_commitment_competition,
+                enable_telos=enable_telos,
             )
             try:
                 # Recovery of a reserved six-organ motor consumes this host

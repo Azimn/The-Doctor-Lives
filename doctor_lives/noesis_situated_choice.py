@@ -206,9 +206,15 @@ def select_with_original_noesis(
         for action in feasible_actions:
             final[action] += body_scores[action]
     commitment_scores = {action: 0.0 for action in feasible_actions}
+    telos_id = None
     if commitment is not None:
-        commitment_scores["continue_commitment"] = COMMITMENT_WEIGHT
-        final["continue_commitment"] += COMMITMENT_WEIGHT
+        from .lab_telos import DEFAULT_IMPORTANCE, active_persistence
+        telos_id, importance = active_persistence(brain, commitment)
+        # Preserve the reviewed baseline persistence prior while attaching
+        # its contribution to the actual existing canonical commitment.
+        weight = min(0.15, COMMITMENT_WEIGHT * importance / DEFAULT_IMPORTANCE)
+        commitment_scores["continue_commitment"] = weight
+        final["continue_commitment"] += weight
     selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
     active_version = (DAILY_BODY_VERSION if interoception_enabled else
                       OUTCOME_VERSION if outcome_learning_enabled else VERSION)
@@ -224,6 +230,7 @@ def select_with_original_noesis(
         "interoceptive_contributions": body_scores,
         "commitment_contributions": commitment_scores,
         "active_commitment_id": commitment["id"] if commitment else None,
+        "telos_commitment_id": telos_id,
         "active_commitment_origin": commitment["origin_policy_id"] if commitment else None,
         "neural_affordance_map": {a: NEURAL_AFFORDANCE_MAP[a] for a in feasible_actions},
         "neural_prior_weight": NEURAL_WEIGHT,

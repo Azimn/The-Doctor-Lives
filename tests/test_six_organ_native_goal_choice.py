@@ -575,6 +575,7 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
                 path, self.root / "lab.sqlite3", affectus_source=Path(self.affectus),
                 steps=1, allow_world_actions=True, enable_sustained_work=True,
                 enable_recurring_goals=True, enable_commitment_competition=False,
+                enable_telos=True,
             )["receipts"][0]
             if result["kind"] != "read_book" or result["status"] != "completed":
                 continue
@@ -592,6 +593,12 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         cold = SixOrganRuntime.open(path)._port.brain.store
         archived = json.loads(cold.meta(BOOK_HISTORY + first["id"]))
         self.assertEqual(archived, {"payload": first, "sha256": _digest(first)})
+        with cold.connect() as db:
+            for record in records:
+                row = db.execute("SELECT status,outcome FROM commitments WHERE id=?",
+                                 ("telos_" + record["id"],)).fetchone()
+                self.assertEqual(row["status"], "kept")
+                self.assertEqual(row["outcome"], cold.get_memory(record["read_memory_id"])["text"])
         with self.world._open() as db:
             turn, _ = _row(db, "books_events", "eb_" + second["id"] + "_turn")
             self.assertEqual(turn["action"], {"op": "turn", "direction": 1, "book_id": "book:007"})
