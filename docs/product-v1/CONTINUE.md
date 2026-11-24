@@ -11,3 +11,7 @@ Immediate actions:
 4. Preserve one BrainStore, one authoritative physical world, no donor personal data, and no live-state writes. Qualification only after exact candidate execution.
 
 Prior successful offline installation jobs: Linux 124897362738 and Windows 124897362859 on Candidate B workflow 41322140122. This does not establish complete character autonomy. No final release tag or merge is authorized by this record.
+
+## November 24 follow-up
+
+Previous candidate ccc4abd4e6eb5f75aa922a1887426a4e3214e3ec: 20/22 workflow runs successful. Candidate B recovery 45454012694 failed due to fixture attempting a noncanonical genesis; independent life 45454012681 failed again with only eight rest goals. Both original installer jobs passed. New increment replaces fixture setup with authentic physical events; integrates a source-bound Corpus fatigue projection into the sustained native runtime and daily fallback; daily fallback no longer actuates an abstract movement before its situated choice. No autonomy credit is claimed. Inspect newest head and check exact logs, then implement persistent competition among needs, work, rest, and reading including lawful navigation, interruption and recovery. Preserve actual goal-origin witness and all tests.

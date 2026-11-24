@@ -41,6 +41,7 @@ def run_daily_life_cycle(
             runtime, subject, affectus_source=Path(affectus_source),
             renderer=renderer, authorized=True,
             recover_world_actions=authorize_world,
+            couple_physical_fatigue=True,
         ) as session:
             try:
                 # Reconcile a previously authorized Noesis motor BEFORE making
@@ -61,10 +62,11 @@ def run_daily_life_cycle(
                 deferred = pending if not authorize_world else ()
                 # All SIX canonical organs still participate, without a
                 # second physical effect in the same recovery opportunity.
-                cycle = session.cycle(
-                    authorized_world_action=authorize_world and not recovered
-                    and not recovered_six
-                )
+                # The daily host has one motor authority: its situated
+                # Noesis decision. The six-organ cycle remains a complete
+                # non-actuating cognition/perception opportunity, not a
+                # competing abstract motor that can preempt a bodily need.
+                cycle = session.cycle(authorized_world_action=False)
                 if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
                     raise RuntimeError("An incomplete six-organ cycle cannot act")
                 offered = real_affordances(session.bridge)

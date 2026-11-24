@@ -617,6 +617,7 @@ def run_native_laboratory(
             runtime, subject, affectus_source=affectus_source,
             renderer=source_only_renderer, authorized=True,
             recover_world_actions=allow_world_actions,
+            couple_physical_fatigue=enable_sustained_work,
         ) as session:
             # Reconcile shipping work/sleep intents before offering a new goal.
             # The six-organ session separately reconciles its own movement.

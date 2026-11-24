@@ -108,7 +108,8 @@ class SixOrganLaboratoryCycle:
     def __init__(self, runtime: SixOrganRuntime, subject_port, *,
                  affectus_source: str | Path, renderer: Callable[[str], str],
                  authorized: bool = False, seed: int = 1842,
-                 recover_world_actions: bool = True):
+                 recover_world_actions: bool = True,
+                 couple_physical_fatigue: bool = False):
         if not isinstance(runtime, SixOrganRuntime) or authorized is not True:
             raise PermissionError("Explicit same-brain research host authorization")
         if not callable(renderer):
@@ -124,6 +125,9 @@ class SixOrganLaboratoryCycle:
             or store.meta(self._PENDING_REST) is not None
         ):
             raise PermissionError("Pending six-organ motor requires world authorization")
+        if type(couple_physical_fatigue) is not bool:
+            raise TypeError("Physical fatigue coupling must be explicit")
+        self.couple_physical_fatigue = couple_physical_fatigue
         self.runtime = runtime
         self.subject = subject_port
         self.bridge = runtime.bind_laboratory(subject_port, authorized=True)
@@ -557,6 +561,9 @@ class SixOrganLaboratoryCycle:
         body = self.subject.home.audit_state()["body"]
         if not isinstance(body, dict):
             raise RuntimeError("Missing source-verified physical body")
+        if self.couple_physical_fatigue:
+            from .lab_corpus_regulation import reconcile_fatigue
+            reconcile_fatigue(self.bridge, actual["memory_id"])
 
         # MNEMOSYNE: same original concern/recall policy. Weather changes
         # its recall cost, not question text or source authority.

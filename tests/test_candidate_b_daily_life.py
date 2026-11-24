@@ -87,18 +87,30 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         import json
         from pretorius_lab.habitat_v2 import SpatialHabitat
         from pretorius_lab.home_life import HomeLife
-        from pretorius_lab.daily_rhythm import DailyRhythm, initial_state
+        from pretorius_lab.daily_rhythm import DailyRhythm
         from pretorius_lab.subject_port import SubjectPort
         from doctor_lives.noesis_day import offer_daily_opportunity
 
         world = SpatialHabitat.create(Path(self.tmp.name) / "body-fixture.sqlite3")
         HomeLife(world).initialize()
+        DailyRhythm(world).initialize()
         subject = SubjectPort(world)
-        subject.embodied.move("station:hall", event_id="body-fixture-hall")
-        subject.embodied.move("station:kitchen", event_id="body-fixture-kitchen")
-        seed = initial_state()
-        seed.update(hunger=9, thirst=8, fatigue=0)
-        DailyRhythm(world).initialize(initial_state=seed)
+        # Never reseed the canonical genesis: build hunger and thirst by
+        # replayable original physical time, sleep, and ordinary activity.
+        subject.act("walk", event_id="body-fixture-hall", station="station:hall")
+        subject.act("walk", event_id="body-fixture-bedroom", station="station:bedroom")
+        for i in range(2):
+            subject.act("advance", event_id=f"body-fixture-day-{i}", minutes=240)
+        subject.act("sleep", event_id="body-fixture-sleep")
+        for i in range(2):
+            subject.act("advance", event_id=f"body-fixture-night-{i}", minutes=240)
+        subject.act("walk", event_id="body-fixture-back-hall", station="station:hall")
+        subject.act("walk", event_id="body-fixture-kitchen", station="station:kitchen")
+        subject.act("clean", event_id="body-fixture-clean")
+        before = subject.rhythm.audit_state()
+        self.assertLess(before["fatigue"], 4)
+        self.assertGreaterEqual(before["hunger"], 7)
+        self.assertGreaterEqual(before["thirst"], 6)
         runtime = SixOrganRuntime.open(self.state)
         bridge = runtime.bind_laboratory(subject, authorized=True)
         choice = offer_daily_opportunity(bridge)
@@ -124,9 +136,53 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
             )
         self.assertIn(choice.action, choice.options)
         self.assertEqual(audit["physical_authority"], "none")
-        self.assertEqual(subject.rhythm.audit_state()["hunger"], 9)
-        self.assertEqual(subject.rhythm.audit_state()["thirst"], 8)
+        self.assertEqual(subject.rhythm.audit_state(), before)
         runtime.checkpoint()
+
+    def test_product_daily_host_reconciles_actual_physical_fatigue(self):
+        """Full host cycle consumes real Corpus state, never a mock body."""
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_corpus_regulation import KEY, reconcile_fatigue
+
+        subject = SubjectPort(self.lab)
+        runtime = SixOrganRuntime.open(self.state)
+        runtime.checkpoint()
+        first = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=False)
+        self.assertTrue(first["one_subject_delivery"])
+        self.assertEqual(len(first["all_six_ports_invoked"]), 6)
+        reopened = SixOrganRuntime.open(self.state)
+        store = reopened._port.brain.store
+        initial = json.loads(store.meta(KEY))
+        self.assertEqual(initial["physical_fatigue"], 2)
+        with store.connect() as db:
+            actual = db.execute(
+                "SELECT actual FROM needs WHERE key='fatigue'").fetchone()[0]
+        self.assertAlmostEqual(actual, 0.23)
+        bridge = reopened.bind_laboratory(subject, authorized=True)
+        before = store.state_version
+        self.assertFalse(reconcile_fatigue(bridge, initial["observation_id"]))
+        self.assertEqual(store.state_version, before)
+        subject.act("advance", event_id="fatigue-fixture-exertion", minutes=240)
+        # A prior observation cannot be used to consume a new physical state.
+        with self.assertRaises(PermissionError):
+            reconcile_fatigue(bridge, initial["observation_id"])
+        reopened.checkpoint()
+        second = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=False)
+        self.assertEqual(len(second["all_six_ports_invoked"]), 6)
+        final = SixOrganRuntime.open(self.state)._port.brain.store
+        updated = json.loads(final.meta(KEY))
+        self.assertEqual(updated["physical_fatigue"], 3)
+        self.assertEqual(updated["minute"], initial["minute"] + 240)
+        with final.connect() as db:
+            actual = db.execute(
+                "SELECT actual FROM needs WHERE key='fatigue'").fetchone()[0]
+        self.assertAlmostEqual(actual, 0.32)
+        self.assertNotEqual(updated["observation_id"], initial["observation_id"])
 
     def test_original_daily_rest_couples_homeostasis_once_after_cold_reopen(self):
         """Source-backed physical rest, synthetic MOTOR fixture, NOT autonomous R4.
