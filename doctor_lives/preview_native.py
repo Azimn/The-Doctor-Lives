@@ -159,6 +159,7 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
         "competition_policy_id": receipt.get("competition_policy_id"),
         "interrupting_action": receipt.get("interrupting_action"),
         "conclave_reflection": receipt.get("conclave_reflection"),
+        "phantasmagorium": receipt.get("phantasmagorium"),
     }
     if receipt["goal_id"] is not None:
         event.update(_intent_source(state, receipt["goal_id"]))
