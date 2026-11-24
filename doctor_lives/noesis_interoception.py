@@ -59,4 +59,31 @@ def perceived_regulatory_pressure(
                     if action in scores:
                         scores[action] = min(0.20, scores[action] + pressure)
                 break
+    # A need can require an enabling action before its direct remedy is
+    # feasible. The source itself says whether the room is dark; local
+    # source-feasible alternatives determine whether there is a usable lamp.
+    # This is a means to an existing perceived need, not a new motivation.
+    # No numeric supplies, unseen food or hidden room state enter Noesis.
+    kitchen = observation.startswith("I am in my kitchen. ")
+    dark = "It is too dark to make out the furnishings clearly." in prefix.group(0)
+    relief = max(
+        (0.20 if "thirsty" in cues else 0.0),
+        (0.16 if "painfully_hungry" in cues else 0.08 if "hungry" in cues else 0.0),
+    )
+    if kitchen and dark and "light" in scores and relief:
+        direct = ("brew_tea" in scores and "thirsty" in cues
+                  or "eat" in scores and ("hungry" in cues or "painfully_hungry" in cues)
+                  or "prepare_meal" in scores and ("hungry" in cues or "painfully_hungry" in cues))
+        if not direct:
+            scores["light"] = relief
+    # A witnessed dirty surface is a feasible cleaning offer from the
+    # original physics. Only promote cleaning as a prerequisite when the
+    # visible kitchen has no prepared meal, food is not known exhausted,
+    # and a hungry subject cannot currently prepare or eat it.
+    if (kitchen and not dark and "clean" in scores
+            and ("hungry" in cues or "painfully_hungry" in cues)
+            and remainder.startswith("I have no meal prepared.")
+            and "I have run out of stored food provisions." not in remainder
+            and "prepare_meal" not in scores and "eat" not in scores):
+        scores["clean"] = 0.16 if "painfully_hungry" in cues else 0.08
     return scores, tuple(cues)

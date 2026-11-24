@@ -47,6 +47,36 @@ class PerceivedRegulatoryPressureTests(unittest.TestCase):
             self.assertEqual(scores["eat"], 0)
             self.assertNotIn("painfully_hungry", cues)
 
+    def test_dark_kitchen_relief_can_require_light_before_tea(self):
+        options = ("light", "advance", "continue_commitment")
+        dark = "I am in my kitchen. It is too dark to make out the furnishings clearly. "
+        scores, cues = perceived_regulatory_pressure(
+            dark + "My mouth is dry.", options)
+        self.assertEqual(cues, ("thirsty",))
+        self.assertEqual(scores["light"], 0.20)
+        self.assertEqual(scores["advance"], 0)
+        self.assertEqual(scores["continue_commitment"], 0)
+        neutral, _ = perceived_regulatory_pressure(dark, options)
+        self.assertEqual(neutral["light"], 0)
+        elsewhere, _ = perceived_regulatory_pressure(
+            dark.replace("my kitchen", "my bedroom") + "My mouth is dry.", options)
+        self.assertEqual(elsewhere["light"], 0)
+        already_feasible, _ = perceived_regulatory_pressure(
+            dark + "My mouth is dry.", options + ("brew_tea",))
+        self.assertEqual(already_feasible["light"], 0)
+
+    def test_hungry_kitchen_prerequisite_does_not_invent_provisions(self):
+        prefix = "I am in my kitchen. There is daylight enough to see. I am painfully hungry. "
+        options = ("clean", "advance")
+        pressure, _ = perceived_regulatory_pressure(prefix + "I have no meal prepared.", options)
+        self.assertGreater(pressure["clean"], 0)
+        empty, _ = perceived_regulatory_pressure(
+            prefix + "I have no meal prepared. I have run out of stored food provisions.", options)
+        self.assertEqual(empty["clean"], 0)
+        ready, _ = perceived_regulatory_pressure(
+            prefix + "There is a prepared meal to eat.", options + ("eat",))
+        self.assertEqual(ready["clean"], 0)
+
     def test_moderate_and_urgent_hunger_are_distinct(self):
         moderate, _ = perceived_regulatory_pressure(
             self.prefix + "I could do with something to eat.", ("eat",))

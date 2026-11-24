@@ -282,6 +282,65 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
         self.assertEqual(self.subject.embodied.verify()["station"], "station:bench")
         self.subject.verify()
 
+    def test_product_nighttime_thirst_resolves_prerequisite_without_losing_project(self):
+        """Actual source darkness cannot cause work/kitchen oscillation."""
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.lab_home_bridge import _row
+        runtime = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(runtime) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            original = chooser.step(authorized_world_action=False)
+            self.assertEqual((original.kind, original.status), ("work", "goal_created"))
+            saved = chooser.work._load()
+            runtime.checkpoint()
+        # Use actual clock transitions (initial 06:00); nighttime light is
+        # absent, thirst is urgent, and the original lamp has finite oil.
+        for i in range(3):
+            self.subject.act("advance", event_id=f"night-need-fixture-{i}", minutes=240)
+        before = self.subject.rhythm.audit_state()
+        self.assertGreaterEqual(before["thirst"], 6)
+        self.assertGreaterEqual(before["minute"] % 1440, 1080)
+        interruptions = []
+        for _ in range(12):
+            result = run_native_laboratory(
+                self.state, self.root / "original.sqlite3", affectus_source=self.donor,
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=True,
+            )["receipts"][0]
+            self.assertEqual(result["goal_id"], original.goal_id)
+            current = SixOrganRuntime.open(self.state)._port.brain.store
+            self.assertEqual(json.loads(current.meta(WORK_KEY))["payload"]["origin_policy_id"],
+                             saved["origin_policy_id"])
+            if result["status"] == "commitment_interrupted":
+                action = result["interrupting_action"]
+                interruptions.append(action)
+                with current.connect() as db:
+                    audit = json.loads(db.execute(
+                        "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                        (result["competition_policy_id"],)).fetchone()[0])
+                self.assertEqual(audit["motor_completion"], "admitted")
+                self.assertEqual(audit["active_commitment_id"], original.goal_id)
+                if action in ("light", "brew_tea"):
+                    with self.world._open() as db:
+                        event, digest = _row(db, "rhythm_events", audit["motor_event_id"])
+                    self.assertEqual(event["op"], action)
+                    self.assertEqual(event["station"], "station:kitchen")
+                    self.assertEqual(current.get_memory(result["memory_id"])["source"],
+                                     "laboratory-home:action:" + digest)
+                if action == "brew_tea":
+                    break
+        self.assertIn("seek_kitchen", interruptions)
+        self.assertIn("light", interruptions)
+        self.assertIn("brew_tea", interruptions)
+        self.assertLess(interruptions.index("light"), interruptions.index("brew_tea"))
+        after = self.subject.rhythm.audit_state()
+        self.assertLess(after["thirst"], before["thirst"])
+        self.assertLess(after["supplies"]["oil"], before["supplies"]["oil"])
+        self.assertLess(after["supplies"]["tea"], before["supplies"]["tea"])
+        self.assertEqual(self.subject.embodied.verify()["station"], "station:kitchen")
+        self.subject.verify()
+
     def test_product_recurring_work_preserves_completed_project_and_real_consumption(self):
         """Two separate neural work origins, actual world outcomes and cold continuity."""
         from doctor_lives.lab_runtime import run_native_laboratory

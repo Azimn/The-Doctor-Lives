@@ -33,3 +33,7 @@ The prior independent trial (45469476744) achieved actual book reading and labor
 ## Active commitment competition
 
 A dependent increment makes the canonical situated Noesis compare an existing authenticated work/book intention against real perceived bodily alternatives. Only an actual positive need offer competes. The original daily motor executes selected bodily actions; continuation is never a world command. An interruption retains the original goal and book resumption uses a real return route. Product preview enabled, legacy fixture paths remain explicit controls. Qualification must prove both a real bodily interruption and later completion of the SAME work commitment. No new mind or independent planner.
+
+## Source-diagnosed prerequisite reasoning
+
+Recurrence and competition both passed Linux/Windows lifecycle and recovery. Promoted cc385837 to draft completion branch. Recurrence independent run 45482901657 authenticated six completed goals in all three required kinds; workflow failed because archival regression assumed all real archives were negative. Corrected this stale invariant, not the acceptance gate. Competition trial 45483196418 still missed rest. Artifact 14965290075 exposed kitchen/work oscillation (nine seek_kitchen decisions, no tea, final thirst 9, oil 5 and tea 3): dark kitchen blocked direct relief, but lamp-lighting was absent from need competition. Added bounded source-perceived prerequisite pressure and real nighttime test. Full product and reproducible R4 remain open. Proceed with recurring reading and broader integration.

@@ -63,8 +63,8 @@
       "repository": "Azimn/The-Doctor-Lives",
       "locations": "lab_native_goal_choice.py; lab_native_work_goal.py; noesis_day.py",
       "status": "failed",
-      "evidence": "41322140122: eight rest goals, one distinct kind",
-      "next": "Diagnose policy tendency and physical time/need feedback; preserve goal provenance"
+      "evidence": "Run 45482901657 authenticated 3 distinct types and 6 completed goals; archival regression assumed every trial negative, failed. Later cc385837 run 45483196418 authenticated 2 types, 3 goals; 14 interruptions and kitchen-route oscillation after darkness. Full life not consistently qualified.",
+      "next": "Fix prerequisite action selection, re-run independent trial; preserve gate and complete longer-term goals."
     },
     {
       "id": "R05",
@@ -428,7 +428,8 @@
         "Linux 7ae4a41 daily-host step 11 succeeded, including expanded real tea/meal/eating fixture. Staged subsequent household navigation in integration/pretorius-v1-domestic-navigation: original situated policy competes over need-relevant kitchen/bedroom travel, source-reviewed route gives one adjacent motor per choice, bound exact op/args; native startup recovers daily reservations before new goals. Real host test now starts away from resources. Not qualified until exact-head tests and integration into release branch.",
         "6fa5e112 pinned Linux 138715031143 step 11 passed including actual bedroom-to-kitchen travel, meal, tea, eating, source memories and cold reopen. Step 12 persistent work also passed. Added explicit pre-world route crash, target substitution, denied read-only recovery, authorized exactly-once native recovery, and conflicting reservation preflight. New head qualification pending.",
         "7ae4a41 independent source audit run 45469476744: genuine read_book and work completed, two distinct kinds; rest not observed, R4 still failed. 1095f361 navigation: all 9 triggered workflows passed, all four Linux/Windows physical/life jobs green (45470289610). Promoted exact tested commit to release branch. New dependent recurrent-work increment keeps sealed history, requires distinct original policy and physical viability, enables recurrence in actual preview operator, extends read-only auditor to preserve same activity-kind counting. Qualification pending.",
-        "Staged active commitment competition on dependent branch: actual original Noesis compares a verified active book/work origin against positive perceived need affordances. Cognitive continuation has no motor grant; bodily interruption uses exact existing daily motor, preserves same active goal; book return travel checks original sighting. Actual preview enabled; new end-to-end work interruption, tea, resume test awaits exact-head CI. Bounded .10 persistence engineering prior, not generalized human goal planning."
+        "Staged active commitment competition on dependent branch: actual original Noesis compares a verified active book/work origin against positive perceived need affordances. Cognitive continuation has no motor grant; bodily interruption uses exact existing daily motor, preserves same active goal; book return travel checks original sighting. Actual preview enabled; new end-to-end work interruption, tea, resume test awaits exact-head CI. Bounded .10 persistence engineering prior, not generalized human goal planning.",
+        "Both recurrence and competition passed all platform life/recovery jobs (45482901793, 45483197043); exact cc385837 promoted to completion branch, not main. R4 recurrence trial 45482901657 source-authenticated all 3 types, 6 completions; archive regression had hardcoded negative. Competition trial 45483196418 still 2 types, 3 goals; actual archived source artifact 14965290075 showed nine seek_kitchen interruptions and oscillating return to work, no tea, fatigue 1 thirst 9 at end, finite oil and tea available; source darkness prevented local relief. Added source-perceived prerequisite lighting/cleaning and real nighttime fixture. Archive test now checks unchanged exact 3-kind gate against actual report. Pending qualification."
       ]
     },
     {
@@ -520,5 +521,5 @@
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "Qualify recurrence and active competition PRs; integrate only green exact-head commits; then implement recurring book choices and resource replenishment, finish M6 reconciliation and long-run product verification."
+  "next": "Qualify prerequisite reasoning and archive regression; rerun independent full-life; implement recurrent reading and resource-aware blocked goals; preserve exact-source verification."
 }
