@@ -37,6 +37,8 @@ class NativeGoalChoiceReceipt:
     selected_tendency: str | None = None
     host_selected_goal_mapping: bool = True
     host_selected_route: bool = True
+    competition_policy_id: str | None = None
+    interrupting_action: str | None = None
 
 
 class NativeLaboratoryGoalChooser:
@@ -44,7 +46,8 @@ class NativeLaboratoryGoalChooser:
 
     def __init__(self, session, *, authorized: bool = False,
                  enable_sustained_work: bool = False,
-                 enable_recurring_goals: bool = False):
+                 enable_recurring_goals: bool = False,
+                 enable_commitment_competition: bool = False):
         from .lab_six_organ_session import SixOrganLaboratoryCycle
         if type(session) is not SixOrganLaboratoryCycle or authorized is not True:
             raise PermissionError("Trusted opt-in six-organ Laboratory host needed")
@@ -59,6 +62,10 @@ class NativeLaboratoryGoalChooser:
                 enable_recurring_goals and not enable_sustained_work):
             raise ValueError("Recurring commitments require native work capability")
         self.enable_recurring_goals = enable_recurring_goals
+        if type(enable_commitment_competition) is not bool or (
+                enable_commitment_competition and not enable_sustained_work):
+            raise ValueError("Commitment competition requires native work capability")
+        self.enable_commitment_competition = enable_commitment_competition
         self.work = None
         if enable_sustained_work:
             from .lab_native_work_goal import NativeWorkPursuit
@@ -225,6 +232,26 @@ class NativeLaboratoryGoalChooser:
             raise PermissionError("Goal origin is not the newest canonical policy")
         return proposal
 
+    def _consider_interruption(self, kind, goal_id, authorized):
+        if not self.enable_commitment_competition or not authorized:
+            return None
+        from .noesis_day import compete_with_commitment, act_on_noesis_choice
+        from .lab_native_work_goal import WORK_KEY
+        from .lab_endogenous_book_task import _KEY as BOOK_KEY
+        from .store import new_id
+        key = WORK_KEY if kind == "work" else BOOK_KEY
+        choice = compete_with_commitment(self.host, commitment_key=key, goal_id=goal_id)
+        if choice is None or choice.action == "continue_commitment":
+            return None
+        effect = act_on_noesis_choice(
+            self.host.bridge, choice, event_id=new_id("commitment_need"), authorized=True)
+        # No change to the active goal's sealed origin, phase or step count.
+        # The next host opportunity competes again or resumes the same goal.
+        return NativeGoalChoiceReceipt(
+            "commitment_interrupted", kind, goal_id, effect["memory_id"],
+            competition_policy_id=choice.policy_id, interrupting_action=choice.action,
+        )
+
     def step(self, *, authorized_world_action: bool = False):
         """A host provides an opportunity and permission, never goal/destination."""
         if type(authorized_world_action) is not bool:
@@ -242,6 +269,12 @@ class NativeLaboratoryGoalChooser:
                 if work["phase"] != "blocked":
                     raise RuntimeError("Unreviewed competing work and rest")
                 return self._continue_rest(rest, authorized_world_action)
+            # Do not supersede a previously selected concrete work motor.
+            if work["phase"] in ("travel", "blocked"):
+                interruption = self._consider_interruption(
+                    "work", work["id"], authorized_world_action)
+                if interruption is not None:
+                    return interruption
             result = self.work.step(
                 authorized=authorized_world_action, new_policy=self._native_policy
             )
@@ -260,6 +293,10 @@ class NativeLaboratoryGoalChooser:
                     "complete", "exhausted")):
             raise RuntimeError("Competing pending goals require explicit review")
         if book.goal_id is not None and book.phase not in ("complete", "exhausted"):
+            interruption = self._consider_interruption(
+                "read_book", book.goal_id, authorized_world_action)
+            if interruption is not None:
+                return interruption
             result = self.book.step(
                 authorized_world_action=authorized_world_action
             )

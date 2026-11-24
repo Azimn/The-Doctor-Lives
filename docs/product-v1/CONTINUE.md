@@ -29,3 +29,7 @@ Navigation Linux integration step passed on 6fa5e112, including actual travel an
 ## November 24 recurring commitments
 
 The prior independent trial (45469476744) achieved actual book reading and laboratory work, two distinct kinds; the unchanged three-kind gate failed. All nine navigation workflows on 1095f361 passed, including both platforms' physical and life-cycle jobs. The completion branch now includes that exact tested commit. A dependent increment implements repeatable native work with atomic historical archival, distinct neural origin, real finite material feasibility, and independent witness support. The actual preview uses it; legacy research fixtures retain their original one-shot contract. Await new integration tests. No full-product completion claim.
+
+## Active commitment competition
+
+A dependent increment makes the canonical situated Noesis compare an existing authenticated work/book intention against real perceived bodily alternatives. Only an actual positive need offer competes. The original daily motor executes selected bodily actions; continuation is never a world command. An interruption retains the original goal and book resumption uses a real return route. Product preview enabled, legacy fixture paths remain explicit controls. Qualification must prove both a real bodily interruption and later completion of the SAME work commitment. No new mind or independent planner.

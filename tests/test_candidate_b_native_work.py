@@ -232,6 +232,56 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
             "independent_three_goal_acceptance": False,
         }, sort_keys=True))
 
+    def test_product_competing_body_need_interrupts_and_resumes_same_work(self):
+        """Physical thirst competes with a real work goal; the goal survives cold restart."""
+        from doctor_lives.lab_runtime import run_native_laboratory
+        runtime = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(runtime) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            original = chooser.step(authorized_world_action=False)
+            self.assertEqual((original.kind, original.status), ("work", "goal_created"))
+            saved = chooser.work._load()
+            runtime.checkpoint()
+        # Authentic source fixture: ordinary elapsed time causes thirst.
+        # No policy, goal, fatigue number or physical genesis is fabricated.
+        self.subject.act("advance", event_id="competition-fixture-time-a", minutes=240)
+        self.subject.act("advance", event_id="competition-fixture-time-b", minutes=240)
+        before = self.subject.rhythm.audit_state()
+        self.assertGreaterEqual(before["thirst"], 6)
+        actions = []
+        result = None
+        for _ in range(16):
+            outcome = run_native_laboratory(
+                self.state, self.root / "original.sqlite3", affectus_source=self.donor,
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=True,
+            )["receipts"][0]
+            self.assertEqual(outcome["goal_id"], original.goal_id)
+            cold = SixOrganRuntime.open(self.state)._port.brain.store
+            active = json.loads(cold.meta(WORK_KEY))["payload"]
+            self.assertEqual(active["origin_policy_id"], saved["origin_policy_id"])
+            if outcome["status"] == "commitment_interrupted":
+                actions.append(outcome["interrupting_action"])
+                with cold.connect() as db:
+                    row = db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                                     (outcome["competition_policy_id"],)).fetchone()
+                evidence = json.loads(row[0])
+                self.assertEqual(evidence["active_commitment_id"], original.goal_id)
+                self.assertIn("continue_commitment", evidence["candidate_final_scores"])
+                self.assertEqual(evidence["motor_completion"], "admitted")
+                self.assertGreater(evidence["interoceptive_contributions"][outcome["interrupting_action"]], 0)
+                self.assertEqual(active["phase"], saved["phase"])
+            if outcome["status"] == "completed":
+                result = outcome
+                break
+        self.assertIn("seek_kitchen", actions)
+        self.assertIn("brew_tea", actions)
+        self.assertLess(self.subject.rhythm.audit_state()["thirst"], before["thirst"])
+        self.assertIsNotNone(result, "Interrupted work was not completed after need relief")
+        self.assertEqual(self.subject.embodied.verify()["station"], "station:bench")
+        self.subject.verify()
+
     def test_product_recurring_work_preserves_completed_project_and_real_consumption(self):
         """Two separate neural work origins, actual world outcomes and cold continuity."""
         from doctor_lives.lab_runtime import run_native_laboratory

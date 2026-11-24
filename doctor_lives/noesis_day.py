@@ -184,6 +184,48 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
 
 
 
+def compete_with_commitment(session, *, commitment_key: str, goal_id: str) -> DailyChoice | None:
+    """Compete over actual bodily needs and one existing, verified intention.
+
+    The current original goal is neither replaced nor completed by this
+    opportunity. No physical continuation command exists. If Noesis chooses
+    continuation, the caller resumes the existing goal's own motor procedure.
+    If a bodily action wins, its usual exact daily motor reservation applies.
+    """
+    from .lab_six_organ_session import SixOrganLaboratoryCycle
+    from .noesis_interoception import perceived_regulatory_pressure
+    if type(session) is not SixOrganLaboratoryCycle:
+        raise TypeError("Actual same-brain six-organ session required")
+    bridge = session.bridge
+    if pending_daily_action_ids(bridge):
+        raise RuntimeError("Prior daily motor must reconcile")
+    observed = bridge.observe()
+    def bodily_options(observed):
+        options = daily_affordances(bridge, observed)
+        contributions, _ = perceived_regulatory_pressure(
+            observed["subject"]["inner"], options)
+        return tuple(a for a in options if contributions[a] > 0.0)
+    if not bodily_options(observed):
+        return None
+    cycle = session.cycle(authorized_world_action=False)
+    if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
+        raise RuntimeError("Incomplete six-organ commitment opportunity")
+    observed = bridge.observe()
+    alternatives = bodily_options(observed)
+    if not alternatives:
+        return None
+    options = tuple(sorted((*alternatives, "continue_commitment")))
+    choice = select_with_original_noesis(
+        bridge.doctor.brain,
+        observation_memory_id=observed["memory_id"],
+        eligible_read_memory_ids=(), feasible_actions=options,
+        author_day_goal=False, interoception_enabled=True,
+        active_commitment=(commitment_key, goal_id),
+    )
+    return DailyChoice(choice["policy_decision_id"], choice["selected_action"],
+                       observed["memory_id"], options)
+
+
 def _complete_daily_motor(bridge: DoctorHomeBridge, policy_id: str,
                           event_id: str, memory_id: str) -> None:
     """Atomically admit one original motor and its verified bodily recovery.
@@ -346,6 +388,8 @@ def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
         raise PermissionError("Subject's cognitive preference is not motor permission")
     if type(choice) is not DailyChoice:
         raise TypeError("Actual original Noesis decision required")
+    if choice.action == "continue_commitment":
+        raise PermissionError("Continuation is a cognitive decision, not a world motor")
     if pending_daily_action_ids(bridge):
         raise PermissionError("Recover the prior daily motor before authorizing another")
     store = bridge.doctor.brain.store
