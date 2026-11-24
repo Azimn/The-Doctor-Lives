@@ -1360,9 +1360,12 @@ class PretoriusBrain:
                     subjective_source=SubjectiveSourceAttribution(
                         SubjectiveSourceKind.DREAMED
                         if item.provenance.evidence_class == "dreamed_not_lived"
+                        else SubjectiveSourceKind.SELF_OBSERVED
+                        if item.provenance.evidence_class == "self_observed_expression"
                         else SubjectiveSourceKind.UNKNOWN,
                         CertaintyBand.HIGH
-                        if item.provenance.evidence_class == "dreamed_not_lived"
+                        if item.provenance.evidence_class in (
+                            "dreamed_not_lived", "self_observed_expression")
                         else CertaintyBand.MODERATE,
                     ),
                     source_state_refs=(item.record_id,),

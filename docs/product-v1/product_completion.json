@@ -55,7 +55,7 @@
       "locations": "lab_six_organ_session.py; conversation_claims.py; operator_conversation.py",
       "status": "partial",
       "evidence": "81282b002640158bac3b8e44a3a5593889d894bc; new motor tests pending",
-      "next": "Review M6 speech gateway and run 300-message held-out gate"
+      "next": "Qualify existing speech acknowledgment reuse; web-client delivery and voice; held-out grounded dialogue."
     },
     {
       "id": "R04",
@@ -237,7 +237,7 @@
       "repository": "Azimn/The-Doctor-Lives",
       "location": "operator_conversation.py; conversation_claims.py",
       "status": "partial",
-      "evidence": "Initial inventory only; no new qualification asserted"
+      "evidence": "Existing grounded conversation and original speech_emission.py journal joined for actual interactive terminal output; source-specific self-observed expression, canonical event/memory atomic, uncertain sink never auto-repeats. Browser acknowledgment, voice and 300-turn qualification remain."
     },
     {
       "id": "C11",
@@ -284,7 +284,7 @@
       "repository": "Azimn/The-Doctor-Lives",
       "location": "lab_recovery_census.py; CI; operator controls",
       "status": "partial",
-      "evidence": "Initial inventory only; no new qualification asserted"
+      "evidence": "Restored exact M6 independent process observer and tests; host-health evidence only. Recovery c814c0c installed Linux/Windows green. Longer live operation and full governance gate pending."
     },
     {
       "id": "C15",
@@ -445,7 +445,8 @@
       "status": "in_progress",
       "evidence": [
         "Reconciled exact M6 62f372c backup no-replace change into current integration candidate; identified additional restore race where late competing state could be deleted by broad cleanup. New restore stages and hashes complete archives, publishes individual authorities with kernel no-replace (brain last), only removes owned published files on failure. Installed wheel test injects competing empty backup dir and each restore destination. Cross-filesystem multi-authority publish not atomic under hard kill; no unknown path deletion. Pending Windows/Linux wheel qualification. Other M6 observer and daily CLI differences remain under review.",
-        "5b550ba installed Windows race test failed: competing directory assertion fired, likely unresolved Windows temp alias prevented injection (backup resolves destinations). Normalize fixture paths and explicitly witness each injection. Requalification required; no claim of successful race protection until pass."
+        "5b550ba installed Windows race test failed: competing directory assertion fired, likely unresolved Windows temp alias prevented injection (backup resolves destinations). Normalize fixture paths and explicitly witness each injection. Requalification required; no claim of successful race protection until pass.",
+        "Recovered original M6 process observer and tests unchanged from 62f372c4. Reuse existing speech journal in actual interactive terminal; atomic canonical self-observed expression; browser/voice still outstanding."
       ]
     },
     {

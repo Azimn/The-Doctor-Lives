@@ -30,7 +30,8 @@ REVIEWED_LOCAL_RESEARCH = {"open_inference.py": {"urllib"},
                            "semantic_intentions.py": {"urllib"}}
 REVIEWED_LOCAL_TRANSPORT = {"local_ollama_transport.py": {"http"}}
 REVIEWED_LOOPBACK_UI = {"operator_chat_web.py": {"http"}}
-REVIEWED_PINNED_ORGANOID = {"phantasmagorium_bridge.py": {"subprocess"}}
+REVIEWED_PINNED_ORGANOID = {"phantasmagorium_bridge.py": {"subprocess"},
+                           "lab_phantasmagorium.py": {"subprocess"}}
 
 MODEL_PROVIDER_ROOTS = {
     "urllib", "requests", "httpx", "http", "openai", "anthropic",
@@ -138,10 +139,20 @@ def run() -> dict:
                      and isinstance(n.func, ast.Attribute)
                      and n.func.attr == "run"]
             expected_hash = "31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8"
-            if (len(calls) != 1 or expected_hash not in content
-                    or '[sys.executable, "-I", "-c", WORKER, str(self.archive), method]' not in content
-                    or "shell=True" in content
-                    or "def verify_archive(" not in content):
+            if file.name == "phantasmagorium_bridge.py":
+                required = (expected_hash, "def verify_archive(",
+                            '[sys.executable, "-I", "-c", WORKER, str(self.archive), method]')
+            else:
+                # Persistent facade: same exact source pin, rechecked in the
+                # isolated worker before import. No arbitrary executable or shell.
+                required = ("from .phantasmagorium_bridge import verify_archive, DONOR_SHA256",
+                            "archive = verify_archive(archive)",
+                            'hashlib.sha256(archive.read_bytes()).hexdigest() != request["pin"]',
+                            '"pin": DONOR_SHA256',
+                            '[sys.executable, "-I", "-c", WORKER, str(archive)]',
+                            "timeout=30", "TemporaryDirectory(")
+            if (len(calls) != 1 or not all(x in content for x in required)
+                    or "shell=True" in content):
                 raise AssertionError("Unreviewed isolated Phantasmagorium subprocess")
             audits[file.name] = "exact-digest offline organoid donor, isolated process; no subject renderer"
         if file.name in AUTHORIZED_LOCAL_MODULES:

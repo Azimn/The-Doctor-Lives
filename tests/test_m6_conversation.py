@@ -104,6 +104,47 @@ class ActualConversationTests(unittest.TestCase):
         self.channel=OperatorConversation(self.root/"subject/brain",
                                           self.root/"subject/world.sqlite3")
 
+    def test_expression_only_after_actual_sink_and_cold_replay(self):
+        from doctor_lives.speech_emission import SpeechSinkAck, digest
+        from doctor_lives.operator_conversation import OperatorConversation
+        reply = self.channel.submit("Good evening.", request_id="expression_test_01")
+        store = self.channel.doctor.brain.store
+        source = "operator-expression:" + reply["turn_id"]
+        self.assertFalse(any(m["source"] == source for m in store.memories(False)))
+        writes = []
+        def sink(text, key):
+            writes.append(text)
+            return SpeechSinkAck(key, "test-local-terminal", digest(text))
+        first = self.channel.publish_reply(reply["turn_id"], sink)
+        cold = OperatorConversation(self.root/"subject/brain", self.root/"subject/world.sqlite3")
+        self.assertEqual(cold.publish_reply(reply["turn_id"], sink), first)
+        self.assertEqual(writes, [reply["text"]])
+        record = store.get_memory(first["memory_id"])
+        self.assertEqual(record["evidence_class"], "self_observed_expression")
+        self.assertEqual(record["source"], source)
+        self.assertIn("I see my words appear", record["text"])
+        self.assertFalse(first["human_receipt_proven"])
+        self.assertFalse(first["factual_claim_authority"])
+        self.assertFalse(any(c["memory_id"] == record["id"] for c in cold.verified_claims()
+                             if "memory_id" in c))
+        with self.assertRaises(PermissionError):
+            cold.doctor.ingest({"channel": "user", "source": source, "text": "Fake acknowledgment."})
+
+    def test_expression_uncertain_output_never_repeated(self):
+        from doctor_lives.speech_emission import SpeechEmissionUncertain
+        reply = self.channel.submit("Good morning.", request_id="expression_test_02")
+        writes = []
+        def lost(text, key):
+            writes.append(text)
+            raise OSError("lost after write")
+        with self.assertRaises(OSError):
+            self.channel.publish_reply(reply["turn_id"], lost)
+        with self.assertRaises(SpeechEmissionUncertain):
+            self.channel.publish_reply(reply["turn_id"], lost)
+        self.assertEqual(len(writes), 1)
+        self.assertFalse(any(m["source"] == "operator-expression:" + reply["turn_id"]
+                             for m in self.channel.doctor.brain.store.memories(False)))
+
     def _reported_outgoing(self, reply):
         """Source ledger reports must carry the original outgoing measurements."""
         return {
