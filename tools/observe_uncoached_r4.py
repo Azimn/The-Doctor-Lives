@@ -45,7 +45,8 @@ def inspect_neural_origins(workspace: Path) -> dict:
         rows = db.execute(
             "SELECT key,value FROM meta WHERE key IN (?,?,?) "
             "OR key LIKE 'six_organ_native_rest_history_v1:%' "
-            "OR key LIKE 'six_organ_native_work_history_v1:%'",
+            "OR key LIKE 'six_organ_native_work_history_v1:%' "
+            "OR key LIKE 'six_organ_endogenous_book_history_v1:%'",
             tuple(_NATIVE_KEYS),
         ).fetchall()
         result = {}
@@ -54,10 +55,13 @@ def inspect_neural_origins(workspace: Path) -> dict:
             goal = envelope["payload"]
             if type(goal) is not dict:
                 raise RuntimeError("Canonical native goal payload is not a mapping")
-            history = next((kind for kind in ("rest", "work")
-                            if row["key"].startswith("six_organ_native_" + kind + "_history_v1:")), None)
+            histories = {"rest": "six_organ_native_rest_history_v1:",
+                         "work": "six_organ_native_work_history_v1:",
+                         "read_book": "six_organ_endogenous_book_history_v1:"}
+            history = next((kind for kind, prefix in histories.items()
+                            if row["key"].startswith(prefix)), None)
             if history is not None:
-                prefix = "six_organ_native_" + history + "_history_v1:"
+                prefix = histories[history]
                 if row["key"] != prefix + goal["id"] or goal["phase"] != "complete":
                     raise RuntimeError("Malformed historical canonical goal")
                 output_kind = history + "_history:" + goal["id"]

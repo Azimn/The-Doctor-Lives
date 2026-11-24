@@ -209,7 +209,7 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                         activity["kind"] + ":" + activity["goal_id"]
                         if activity["kind"] and activity["goal_id"]
                         else "native_laboratory_goal_opportunity")
-                    if activity["status"] in ("moved", "opened", "completed"):
+                    if activity["status"] in ("moved", "opened", "turned", "completed"):
                         report["last_action"] = activity["status"]
                         report["last_action_origin"] = "original_neural_tendency_host_mapped"
                     if activity["status"] == "commitment_interrupted":

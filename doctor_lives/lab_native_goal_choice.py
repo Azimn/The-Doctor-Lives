@@ -54,7 +54,6 @@ class NativeLaboratoryGoalChooser:
         self.host = session
         self.runtime = session.runtime
         self.store = session.runtime._port.brain.store
-        self.book = EndogenousBookPursuit(session, authorized=True)
         self._load_rest()
         if type(enable_sustained_work) is not bool:
             raise TypeError("Native work capability requires a typed opt-in")
@@ -62,6 +61,8 @@ class NativeLaboratoryGoalChooser:
                 enable_recurring_goals and not enable_sustained_work):
             raise ValueError("Recurring commitments require native work capability")
         self.enable_recurring_goals = enable_recurring_goals
+        self.book = EndogenousBookPursuit(
+            session, authorized=True, recurring=enable_recurring_goals)
         if type(enable_commitment_competition) is not bool or (
                 enable_commitment_competition and not enable_sustained_work):
             raise ValueError("Commitment competition requires native work capability")
@@ -353,7 +354,19 @@ class NativeLaboratoryGoalChooser:
                         self.host.subject.habitat).catalog())
                 except LabError:
                     available_books = False
-                if prior_book_complete or not available_books:
+                if self.enable_recurring_goals:
+                    available_books = self.book.has_reading_opportunity()
+                # Recency of genuine completed activities affects whether
+                # an exploration can return to reading. This is bounded
+                # host goal mapping, not a required round-robin schedule.
+                prefer_new_read = False
+                if self.enable_recurring_goals and prior_book_complete and available_books and work:
+                    read_memory = self.store.get_memory(book.memory_id)
+                    work_memory = self.store.get_memory(work["memory_id"])
+                    prefer_new_read = (
+                        read_memory is not None and work_memory is not None
+                        and work_memory["created_tick"] > read_memory["created_tick"])
+                if (prior_book_complete and not prefer_new_read) or not available_books:
                     if work is not None and not self.enable_recurring_goals:
                         return NativeGoalChoiceReceipt(
                             "already_complete", "work", work["id"],
@@ -361,7 +374,8 @@ class NativeLaboratoryGoalChooser:
                         )
                     alternative = self.work.originate(
                         proposal, allow_recurrence=self.enable_recurring_goals)
-                    if work is not None and alternative.goal_id is None:
+                    if work is not None and alternative.goal_id is None and not (
+                            self.enable_recurring_goals and prior_book_complete and available_books):
                         return NativeGoalChoiceReceipt(
                             "no_situated_goal", None, None, selected_tendency="explore")
                     if alternative.goal_id is not None:
@@ -370,9 +384,11 @@ class NativeLaboratoryGoalChooser:
                             alternative.memory_id,
                             selected_tendency=alternative.selected_tendency
                         )
-            if book.goal_id is not None:
-                # Exhausted or completed once: never accidentally reopen
-                # the original volume or start an alias of the old goal.
+            if book.goal_id is not None and not (
+                    self.enable_recurring_goals and prior_book_complete
+                    and self.book.has_reading_opportunity()):
+                # Completed legacy fixture or no actual remaining reading:
+                # preserve history rather than reissue the old page.
                 return NativeGoalChoiceReceipt(
                     "already_complete" if prior_book_complete else "exhausted",
                     "read_book", book.goal_id, book.memory_id,

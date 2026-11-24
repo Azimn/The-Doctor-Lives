@@ -54,7 +54,7 @@ def _cue_is_perceived(cue: str, first_person_observation: str) -> bool:
 
 _ACTIVE_COMMITMENTS = {
     "six_organ_native_work_intention_v1": ("travel", "blocked"),
-    "six_organ_endogenous_book_goal_v1": ("search", "open", "read"),
+    "six_organ_endogenous_book_goal_v1": ("search", "open", "turn", "read"),
 }
 # Engineering prior for persistence, bounded below pressing bodily pressure.
 COMMITMENT_WEIGHT = 0.10

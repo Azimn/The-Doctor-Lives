@@ -502,6 +502,48 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             "steps": i + 1, "host_selected_route": True
         }, sort_keys=True))
 
+    def test_product_recurring_reading_preserves_next_page_and_sealed_history(self):
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.lab_endogenous_book_task import _KEY, BOOK_HISTORY, _digest
+        from doctor_lives.lab_home_bridge import _row
+        fixture = self.install_fixture()
+        path = self.root / "recurring-reading-mind"
+        runtime = SixOrganRuntime.open(path, neural_config=config())
+        runtime.checkpoint()
+        records = []
+        for _ in range(60):
+            result = run_native_laboratory(
+                path, self.root / "lab.sqlite3", affectus_source=Path(self.affectus),
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=False,
+            )["receipts"][0]
+            if result["kind"] != "read_book" or result["status"] != "completed":
+                continue
+            store = SixOrganRuntime.open(path)._port.brain.store
+            records.append(json.loads(store.meta(_KEY))["payload"])
+            if len(records) == 2:
+                break
+        self.assertEqual(len(records), 2, "No second original exploratory reading completion")
+        first, second = records
+        self.assertNotEqual(first["id"], second["id"])
+        self.assertNotEqual(first["origin_policy_id"], second["origin_policy_id"])
+        self.assertEqual((first["target_page"], second["target_page"]), (1, 2))
+        self.assertEqual(first["target"], "book:007")
+        self.assertEqual(second["target"], first["target"])
+        cold = SixOrganRuntime.open(path)._port.brain.store
+        archived = json.loads(cold.meta(BOOK_HISTORY + first["id"]))
+        self.assertEqual(archived, {"payload": first, "sha256": _digest(first)})
+        with self.world._open() as db:
+            turn, _ = _row(db, "books_events", "eb_" + second["id"] + "_turn")
+            self.assertEqual(turn["action"], {"op": "turn", "direction": 1, "book_id": "book:007"})
+            for i, record in enumerate(records):
+                event, digest = _row(db, "books_events", "eb_" + record["id"] + "_read")
+                memory = cold.get_memory(record["read_memory_id"])
+                self.assertEqual(event["page_receipt"]["page_number"], i + 1)
+                self.assertEqual(memory["source"], "laboratory-home:action:" + digest)
+                self.assertIn(fixture["pages"][i], memory["text"])
+        self.subject.verify()
+
     def _originate_rest_after_real_episodes(self, chooser):
         for i in range(12):
             result = chooser.step()

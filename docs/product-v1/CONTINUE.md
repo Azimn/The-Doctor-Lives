@@ -37,3 +37,7 @@ A dependent increment makes the canonical situated Noesis compare an existing au
 ## Source-diagnosed prerequisite reasoning
 
 Recurrence and competition both passed Linux/Windows lifecycle and recovery. Promoted cc385837 to draft completion branch. Recurrence independent run 45482901657 authenticated six completed goals in all three required kinds; workflow failed because archival regression assumed all real archives were negative. Corrected this stale invariant, not the acceptance gate. Competition trial 45483196418 still missed rest. Artifact 14965290075 exposed kitchen/work oscillation (nine seek_kitchen decisions, no tea, final thirst 9, oil 5 and tea 3): dark kitchen blocked direct relief, but lamp-lighting was absent from need competition. Added bounded source-perceived prerequisite pressure and real nighttime test. Full product and reproducible R4 remain open. Proceed with recurring reading and broader integration.
+
+## Recurring reading continuity
+
+Dependent increment uses original exploratory neural origin, verified local book sighting, actual page position and previously admitted physical reads. A fresh goal can continue an open book by turning one page; exact target page survives restart; prior completed goal is sealed in the same BrainStore. The read-only independent witness supports book history while R4 still counts only read_book, rest, work. Host recency-based mapping is disclosed, not general goal authorship. Closed partially read books and bookmarks remain open work. Qualify before promotion.
