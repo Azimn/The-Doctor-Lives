@@ -24,6 +24,48 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 PhantasmagoriumBridge(store, root / "missing.zip", enabled=True)
 
+    def test_canonical_snapshot_and_fiction_boundary(self):
+        from doctor_lives.lab_phantasmagorium import _snapshot, _digest, _nonfactual
+        import json
+        blank = _snapshot(None, "world-1")
+        self.assertEqual(blank["nights"], 0)
+        sealed = json.dumps({"payload": blank, "sha256": _digest(blank)})
+        self.assertEqual(_snapshot(sealed, "world-1"), blank)
+        with self.assertRaises(PermissionError):
+            _snapshot(sealed, "world-2")
+        packet = {"epistemic_status": "dreamed_not_lived", "marked": True,
+                  "factual_memory_eligible": False, "world_fact_authority": False,
+                  "tool_authority": False}
+        self.assertTrue(_nonfactual(packet, "dreamed_not_lived"))
+        for key in ("factual_memory_eligible", "world_fact_authority", "tool_authority"):
+            self.assertFalse(_nonfactual(dict(packet, **{key: True}), "dreamed_not_lived"))
+
+    @unittest.skipUnless(os.environ.get("PRETORIUS_PHANTA_DONOR"),
+                         "Exact v0.5 donor must be explicitly provided")
+    def test_actual_persistent_facade_two_nights_and_fancy(self):
+        from doctor_lives.lab_phantasmagorium import _run, _nonfactual
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        archive = verify_archive(os.environ["PRETORIUS_PHANTA_DONOR"])
+        request = {"pin": DONOR_SHA256, "files": {}, "day": 1, "seed": 42,
+                   "cues": ["I read a page of a book about the moon."],
+                   "op": "fancy", "scene": {"initial_scene": {"entities": [
+                       {"id": "book", "kind": "book", "properties": {"form": "bound volume"}},
+                       {"id": "page", "kind": "page", "properties": {"words": "The moon is cold."}},
+                   ], "relations": []}, "max_fragments": 4}}
+        fancy = _run(archive, request)
+        self.assertGreater(len(fancy["result"]["fragments"]), 0)
+        self.assertTrue(_nonfactual(fancy["result"], "hypothetical_only"))
+        request.update(files=fancy["files"], op="night", seed=123)
+        first = _run(archive, request)
+        self.assertTrue(_nonfactual(first["result"], "dreamed_not_lived"))
+        self.assertTrue(_nonfactual(first["recall"], "dreamed_not_lived"))
+        request.update(files=first["files"], day=2, seed=333)
+        second = _run(archive, request)
+        self.assertTrue(_nonfactual(second["result"], "dreamed_not_lived"))
+        self.assertEqual(second["result"]["day"], 2)
+        self.assertEqual(second["result"]["id"], first["result"]["id"] + 1)
+        self.assertIn("dream_ecology/dream_journal.json", second["files"])
+
     @unittest.skipUnless(os.environ.get("PRETORIUS_PHANTA_DONOR"),
                          "Exact v0.5 donor must be explicitly provided")
     def test_real_original_donor_fancy_and_dream_source_boundary(self):
