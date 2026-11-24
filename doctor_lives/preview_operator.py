@@ -235,7 +235,7 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                             workspace / "state",
                             workspace / "laboratory.sqlite3",
                             affectus_source=effective_native,
-                            authorize_world=True,
+                            authorize_world=True, enable_habits=True,
                         )
                         append_activity(
                             workspace, event="candidate_b_daily_life_pulse",

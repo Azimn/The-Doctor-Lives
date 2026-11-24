@@ -82,6 +82,60 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
         self.assertFalse(second["independent_three_activity_r4_proven"])
 
 
+    def test_original_article08_practice_influences_live_noesis_after_restart(self):
+        """Coached real tea practice, not an independent-life autonomy trial."""
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import offer_daily_opportunity
+        from doctor_lives.lab_habits import WEIGHT, verified_habit_pressure
+        subject = SubjectPort(self.lab)
+        rt = SixOrganRuntime.open(self.state)
+        bridge = rt.bind_laboratory(subject, authorized=True)
+        bridge.act("walk", event_id="habits-hall", station="station:hall")
+        bridge.act("walk", event_id="habits-kitchen", station="station:kitchen")
+        first = bridge.act("brew_tea", event_id="habits-first-tea")
+        bridge.act("walk", event_id="habits-hall-night", station="station:hall")
+        bridge.act("walk", event_id="habits-bedroom", station="station:bedroom")
+        # Actual physical time to bedtime, never a fabricated genesis.
+        remaining = 23 * 60 - subject.rhythm.audit_state()["minute"]
+        i = 0
+        while remaining:
+            amount = min(remaining, 240)
+            bridge.act("advance", event_id="habits-time-" + str(i), minutes=amount)
+            remaining -= amount
+            i += 1
+        bridge.act("sleep", event_id="habits-sleep")
+        bridge.act("walk", event_id="habits-wake-hall", station="station:hall")
+        bridge.act("walk", event_id="habits-wake-kitchen", station="station:kitchen")
+        second = bridge.act("brew_tea", event_id="habits-second-tea")
+        rt.checkpoint()
+        cold = SixOrganRuntime.open(self.state)
+        bridge = cold.bind_laboratory(subject, authorized=True)
+        before = subject.rhythm.audit_state()
+        choice = offer_daily_opportunity(bridge, enable_habits=True)
+        store = cold._port.brain.store
+        with store.connect() as db:
+            policy = json.loads(db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                                           (choice.policy_id,)).fetchone()[0])
+        self.assertEqual(policy["habit_contributions"]["brew_tea"], WEIGHT)
+        self.assertEqual(policy["habit_practice_counts"], {"tea": 2, "tidy": 0})
+        self.assertEqual(policy["habit_source_memory_ids"], [first["memory_id"], second["memory_id"]])
+        self.assertEqual(subject.rhythm.audit_state(), before)
+        self.assertAlmostEqual(policy["candidate_final_scores"]["brew_tea"],
+            policy["candidate_base_scores"]["brew_tea"]
+            + policy["outcome_contributions"]["brew_tea"]
+            + policy["interoceptive_contributions"]["brew_tea"] + WEIGHT)
+        with self.assertRaises(PermissionError):
+            verified_habit_pressure(cold._port.brain, bridge, second["memory_id"], ("brew_tea",))
+        self.assertFalse((self.state / "habits.sqlite3").exists())
+        control = offer_daily_opportunity(bridge, enable_habits=False)
+        with store.connect() as db:
+            control_policy = json.loads(db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                                                    (control.policy_id,)).fetchone()[0])
+        self.assertEqual(control_policy["habit_contributions"]["brew_tea"], 0)
+        self.assertEqual(control_policy["habit_source_memory_ids"], [])
+        subject.verify()
+
     def test_daily_original_noesis_uses_perceived_needs_without_hidden_body(self):
         """Actual pinned observation; isolated hunger/thirst fixture."""
         import json

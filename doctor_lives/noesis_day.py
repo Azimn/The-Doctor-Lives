@@ -147,9 +147,11 @@ def daily_affordances(bridge: DoctorHomeBridge, observation: dict) -> tuple[str,
 
 
 def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = True,
-                            use_consequences: bool = True) -> DailyChoice:
+                            use_consequences: bool = True,
+                            enable_habits: bool = False) -> DailyChoice:
     """One independent Noesis choice, without any operator action argument."""
-    if type(author_goal) is not bool or type(use_consequences) is not bool:
+    if (type(author_goal) is not bool or type(use_consequences) is not bool
+            or type(enable_habits) is not bool):
         raise TypeError("Typed researcher-lesion flags required")
     if pending_daily_action_ids(bridge):
         raise RuntimeError("A pending daily motor must reconcile before another choice")
@@ -178,6 +180,7 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
         eligible_outcome_memory_ids=outcomes,
         author_day_goal=author_goal,
         interoception_enabled=True,
+        habit_bridge=bridge if enable_habits else None,
     )
     return DailyChoice(choice["policy_decision_id"], choice["selected_action"],
                        observed["memory_id"], options)
