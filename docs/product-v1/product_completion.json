@@ -442,8 +442,10 @@
       "repository": "Azimn/The-Doctor-Lives",
       "location": "M6 integration/m6; Candidate B; operator conversation",
       "acceptance": "Inspect exact path diff and restore reviewed missing M6 communication/semantic changes with no competing canonical state",
-      "status": "pending",
-      "evidence": []
+      "status": "in_progress",
+      "evidence": [
+        "Reconciled exact M6 62f372c backup no-replace change into current integration candidate; identified additional restore race where late competing state could be deleted by broad cleanup. New restore stages and hashes complete archives, publishes individual authorities with kernel no-replace (brain last), only removes owned published files on failure. Installed wheel test injects competing empty backup dir and each restore destination. Cross-filesystem multi-authority publish not atomic under hard kill; no unknown path deletion. Pending Windows/Linux wheel qualification. Other M6 observer and daily CLI differences remain under review."
+      ]
     },
     {
       "id": "PT-005",
@@ -522,5 +524,5 @@
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "Qualify prerequisite and reading-continuity increments. Resolve actual failures, then add resource acquisition, complete M6 reliability reconciliation and broader component behavior tests."
+  "next": "Check source prerequisite and recurrent reading exact-head CI; qualify installed-wheel safe recovery branch; integrate green increments; continue actual source-grounded remaining organs and extended independent operation."
 }

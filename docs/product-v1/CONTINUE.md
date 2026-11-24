@@ -41,3 +41,7 @@ Recurrence and competition both passed Linux/Windows lifecycle and recovery. Pro
 ## Recurring reading continuity
 
 Dependent increment uses original exploratory neural origin, verified local book sighting, actual page position and previously admitted physical reads. A fresh goal can continue an open book by turning one page; exact target page survives restart; prior completed goal is sealed in the same BrainStore. The read-only independent witness supports book history while R4 still counts only read_book, rest, work. Host recency-based mapping is disclosed, not general goal authorship. Closed partially read books and bookmarks remain open work. Qualify before promotion.
+
+## Safe archive and restore publication
+
+M6 source pin 62f372c47959d1f577be1e980d4ae191981ac83d supplies the backup no-replace fix. Also close the actual restore race: stage verified copies on target filesystems, publish each without replacement, brain directory last, clean up only proven owned files on failure. Installed wheel regression injects competing backup/restore paths with real source archive. This protects identity custody, not R4. Cross-filesystem publication is not atomic under hard process kill; do not claim that qualification. Await installed Linux/Windows tests.

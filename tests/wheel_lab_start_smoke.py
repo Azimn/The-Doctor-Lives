@@ -162,6 +162,53 @@ def main():
         assert backup_result["status"] == "backed_up"
         assert (archive / "brain" / "pretorius_recurrent.npz").is_file()
         assert (archive / "action-intents.sqlite3").is_file()
+        # Fault-inject only the competing path creation at the real publish
+        # boundary. Use installed production backup/restore and actual
+        # canonical crash-window source, not fake databases or a mocked copy.
+        from unittest.mock import patch
+        from doctor_lives.lab_backup import backup as actual_backup, restore as actual_restore
+        from doctor_lives.lab_preview import _publish_noreplace as real_publish
+        race_backup = root / "competing-backup"
+        def backup_collision(staged, destination):
+            if destination == race_backup:
+                destination.mkdir()
+            return real_publish(staged, destination)
+        try:
+            with patch("doctor_lives.lab_preview._publish_noreplace", side_effect=backup_collision):
+                actual_backup(brain_path, world_path, race_backup)
+        except OSError:
+            pass
+        else:
+            raise AssertionError("Backup clobbered a competing empty directory")
+        assert race_backup.is_dir() and list(race_backup.iterdir()) == []
+        for rival_kind in ("world", "journal", "brain"):
+            race_brain = root / ("racing-brain-" + rival_kind)
+            race_world = root / ("racing-world-" + rival_kind + ".sqlite3")
+            race_journal = Path(str(race_world) + ".doctor-action-intents.sqlite3")
+            rival = {"brain": race_brain, "world": race_world, "journal": race_journal}[rival_kind]
+            sentinel = b"competing writer; do not replace or delete"
+            def restore_collision(staged, destination):
+                if destination == rival:
+                    if rival_kind == "brain":
+                        destination.mkdir()
+                    else:
+                        destination.write_bytes(sentinel)
+                return real_publish(staged, destination)
+            try:
+                with patch("doctor_lives.lab_preview._publish_noreplace", side_effect=restore_collision):
+                    actual_restore(archive, race_brain, race_world)
+            except OSError:
+                pass
+            else:
+                raise AssertionError("Restore clobbered competing " + rival_kind)
+            for candidate in (race_brain, race_world, race_journal):
+                if candidate == rival:
+                    if rival_kind == "brain":
+                        assert candidate.is_dir() and list(candidate.iterdir()) == []
+                    else:
+                        assert candidate.read_bytes() == sentinel
+                else:
+                    assert not candidate.exists(), "Failed restore left a partial owned authority"
         restored_brain = root / "restored-brain"
         restored_world = root / "restored-world.sqlite3"
         restore_result = json.loads(_run([
