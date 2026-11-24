@@ -184,7 +184,8 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
 
 
 
-def compete_with_commitment(session, *, commitment_key: str, goal_id: str) -> DailyChoice | None:
+def compete_with_commitment(session, *, commitment_key: str, goal_id: str,
+                            allow_native_rest: bool = False):
     """Compete over actual bodily needs and one existing, verified intention.
 
     The current original goal is neither replaced nor completed by this
@@ -194,24 +195,49 @@ def compete_with_commitment(session, *, commitment_key: str, goal_id: str) -> Da
     """
     from .lab_six_organ_session import SixOrganLaboratoryCycle
     from .noesis_interoception import perceived_regulatory_pressure
+    from .organs import CognitiveProposal
+    from .noesis_situated_choice import _verified_active_commitment
+    if type(allow_native_rest) is not bool:
+        raise TypeError("Native restorative intention permission must be explicit")
     if type(session) is not SixOrganLaboratoryCycle:
         raise TypeError("Actual same-brain six-organ session required")
     bridge = session.bridge
     if pending_daily_action_ids(bridge):
         raise RuntimeError("Prior daily motor must reconcile")
     observed = bridge.observe()
-    def bodily_options(observed):
+    def bodily_pressure(observed):
         options = daily_affordances(bridge, observed)
         contributions, _ = perceived_regulatory_pressure(
             observed["subject"]["inner"], options)
-        return tuple(a for a in options if contributions[a] > 0.0)
-    if not bodily_options(observed):
+        return {a: contributions[a] for a in options if contributions[a] > 0.0}
+    pressure = bodily_pressure(observed)
+    if not pressure:
         return None
     cycle = session.cycle(authorized_world_action=False)
     if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
         raise RuntimeError("Incomplete six-organ commitment opportunity")
+    # The existing native AVOID tendency may originate an independent
+    # restorative intention while a meaningful project is still active.
+    # A fresh authenticated fatigue cue and genuine feasible rest/route
+    # must be at least as pressing as other observed bodily alternatives.
+    # Do not turn a sleep choice into a rest or reuse a stale policy.
+    rest_pressure = max(pressure.get("rest", 0), pressure.get("seek_bedroom", 0))
+    if (allow_native_rest and cycle.selected_tendency == "avoid"
+            and rest_pressure > 0 and rest_pressure >= max(pressure.values())):
+        brain = bridge.doctor.brain
+        _verified_active_commitment(brain, (commitment_key, goal_id))
+        with brain.store.connect() as db:
+            origin = db.execute(
+                "SELECT id,selected_action,trigger FROM policy_decisions ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+            thought = db.execute("SELECT id FROM thoughts WHERE generated_by=?",
+                                 ("neural_policy:" + origin["id"],)).fetchall()
+        if (origin["trigger"] != "six_organ_lab_cycle"
+                or origin["selected_action"] != "avoid" or len(thought) != 1):
+            raise PermissionError("Rest interruption lacks current original avoid policy")
+        return CognitiveProposal(origin["id"], thought[0]["id"], "avoid")
     observed = bridge.observe()
-    alternatives = bodily_options(observed)
+    alternatives = tuple(bodily_pressure(observed))
     if not alternatives:
         return None
     options = tuple(sorted((*alternatives, "continue_commitment")))

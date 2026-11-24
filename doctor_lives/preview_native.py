@@ -145,6 +145,7 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
         allow_world_actions=True, enable_sustained_work=True,
         enable_recurring_goals=True, enable_commitment_competition=True,
         enable_conclave_reflection=True, enable_telos=True,
+        enable_nested_rest=True,
     )
     receipt = result["receipts"][-1]
     event = {
