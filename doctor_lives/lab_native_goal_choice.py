@@ -43,7 +43,8 @@ class NativeLaboratoryGoalChooser:
     """Bounded native-policy arbitration, one original BrainStore, one world."""
 
     def __init__(self, session, *, authorized: bool = False,
-                 enable_sustained_work: bool = False):
+                 enable_sustained_work: bool = False,
+                 enable_recurring_goals: bool = False):
         from .lab_six_organ_session import SixOrganLaboratoryCycle
         if type(session) is not SixOrganLaboratoryCycle or authorized is not True:
             raise PermissionError("Trusted opt-in six-organ Laboratory host needed")
@@ -54,6 +55,10 @@ class NativeLaboratoryGoalChooser:
         self._load_rest()
         if type(enable_sustained_work) is not bool:
             raise TypeError("Native work capability requires a typed opt-in")
+        if type(enable_recurring_goals) is not bool or (
+                enable_recurring_goals and not enable_sustained_work):
+            raise ValueError("Recurring commitments require native work capability")
+        self.enable_recurring_goals = enable_recurring_goals
         self.work = None
         if enable_sustained_work:
             from .lab_native_work_goal import NativeWorkPursuit
@@ -312,12 +317,16 @@ class NativeLaboratoryGoalChooser:
                 except LabError:
                     available_books = False
                 if prior_book_complete or not available_books:
-                    if work is not None:
+                    if work is not None and not self.enable_recurring_goals:
                         return NativeGoalChoiceReceipt(
                             "already_complete", "work", work["id"],
                             work["memory_id"], selected_tendency="explore"
                         )
-                    alternative = self.work.originate(proposal)
+                    alternative = self.work.originate(
+                        proposal, allow_recurrence=self.enable_recurring_goals)
+                    if work is not None and alternative.goal_id is None:
+                        return NativeGoalChoiceReceipt(
+                            "no_situated_goal", None, None, selected_tendency="explore")
                     if alternative.goal_id is not None:
                         return NativeGoalChoiceReceipt(
                             alternative.status, "work", alternative.goal_id,
@@ -355,12 +364,16 @@ class NativeLaboratoryGoalChooser:
                 selected_tendency=proposal.selected_tendency
             )
         if proposal.selected_tendency == "persist" and self.work is not None:
-            if work is not None:
+            if work is not None and not self.enable_recurring_goals:
                 return NativeGoalChoiceReceipt(
                     "already_complete", "work", work["id"], work["memory_id"],
                     selected_tendency="persist"
                 )
-            result = self.work.originate(proposal)
+            result = self.work.originate(
+                proposal, allow_recurrence=self.enable_recurring_goals)
+            if work is not None and result.goal_id is None:
+                return NativeGoalChoiceReceipt("no_situated_goal", None, None,
+                                               selected_tendency="persist")
             if result.goal_id is None:
                 return self._move_to_remembered_cue(proposal, authorized_world_action)
             return NativeGoalChoiceReceipt(

@@ -130,18 +130,14 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 assert raw is not None, "missing canonical goal"
                 envelope = json.loads(raw[0])
                 intent = envelope["payload"]
-                if kind == "rest" and intent.get("id") != gid:
-                    # The one canonical rest intention advances to a NEW
-                    # genuinely neural goal. A prior sealed completion is
-                    # immutable history in that SAME canonical BrainStore,
-                    # not invalidated by replacing the active slot. Inspect
-                    # only the exact prior ID, never an unbounded alias.
-                    historical_key = "six_organ_native_rest_history_v1:" + gid
+                if kind in ("rest", "work") and intent.get("id") != gid:
+                    # Same original completion, now archived under its exact ID.
+                    historical_key = "six_organ_native_" + kind + "_history_v1:" + gid
                     historical = db.execute(
                         "SELECT value FROM meta WHERE key=?",
                         (historical_key,),
                     ).fetchone()
-                    assert historical is not None, "missing sealed historical rest"
+                    assert historical is not None, "missing sealed historical goal"
                     envelope = json.loads(historical[0])
                     intent = envelope["payload"]
                 assert _digest(intent) == envelope["sha256"], "tampered goal"
@@ -404,15 +400,14 @@ def verify_external_origin_witness(path: Path | None, expected: dict) -> dict:
             expected_row = expected.get(goal_id)
             if expected_row is None:
                 continue
-            if kind.startswith("rest_history:"):
-                # An archived rest is still a REST, not a new fourth class.
-                # Bind its witness key to exactly the authenticated goal ID.
-                if (kind != "rest_history:" + str(goal_id)
-                        or expected_row["kind"] != "rest"):
+            if kind.startswith(("rest_history:", "work_history:")):
+                historical_kind = kind.split("_history:", 1)[0]
+                if (kind != historical_kind + "_history:" + str(goal_id)
+                        or expected_row["kind"] != historical_kind):
                     raise PermissionError(
                         "independent_origin_source_mismatch:" + str(goal_id)
                     )
-                kind = "rest"
+                kind = historical_kind
             if (expected_row["kind"] != kind
                     or row.get("origin_policy_id") != expected_row["origin_policy_id"]
                     or row.get("origin_thought_id") != expected_row["origin_thought_id"]
@@ -448,12 +443,15 @@ def evaluate(workspace: Path, *, origin_witness: Path | None = None) -> dict:
         # every original ledger's chain and complete book custody.
         with closing(_db(Path(workspace) / "state" / "brain.sqlite3")) as db:
             goals = []
-            for key in ("six_organ_endogenous_book_goal_v1",
-                        "six_organ_native_rest_intention_v1",
-                        "six_organ_native_work_intention_v1"):
-                row = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
-                if row:
-                    goals.append(json.loads(row[0])["payload"])
+            for row in db.execute(
+                "SELECT value FROM meta WHERE key IN (?,?,?) "
+                "OR key LIKE 'six_organ_native_rest_history_v1:%' "
+                "OR key LIKE 'six_organ_native_work_history_v1:%'",
+                ("six_organ_endogenous_book_goal_v1",
+                 "six_organ_native_rest_intention_v1",
+                 "six_organ_native_work_intention_v1"),
+            ):
+                goals.append(json.loads(row[0])["payload"])
         if any(g.get("world_epoch") != proof["world_epoch"] for g in goals):
             raise PermissionError("goal_world_epoch_mismatches_replayed_authority")
         evidence["source_pinned_original_laboratory_sha"] = ORIGINAL_LAB_SHA

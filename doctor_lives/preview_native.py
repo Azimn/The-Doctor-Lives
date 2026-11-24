@@ -142,7 +142,8 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
     from .lab_runtime import run_native_laboratory
     result = run_native_laboratory(
         state, world, affectus_source=affectus_source, steps=1,
-        allow_world_actions=True, enable_sustained_work=True
+        allow_world_actions=True, enable_sustained_work=True,
+        enable_recurring_goals=True,
     )
     receipt = result["receipts"][-1]
     event = {

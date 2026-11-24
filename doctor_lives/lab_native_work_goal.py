@@ -16,6 +16,7 @@ from .lab_endogenous_book_task import EndogenousBookPursuit, _verified_looks
 from .noesis_lab_work import _feasible_work, propose_noesis_work, execute_noesis_work
 
 WORK_KEY = "six_organ_native_work_intention_v1"
+WORK_HISTORY = "six_organ_native_work_history_v1:"
 _SCHEMA = "pretorius.native-work-intention.v1"
 _GOAL = "I want to undertake worthwhile work at my laboratory bench."
 _PHASES = frozenset(("travel", "blocked", "execute", "complete"))
@@ -128,17 +129,30 @@ class NativeWorkPursuit:
         except (ValueError, KeyError, TypeError, AttributeError) as exc:
             raise RuntimeError("Corrupt or forged native work intention") from exc
 
-    def _save(self, state):
+    def _save(self, state, *, archive_completed=None):
         with self.store.transaction() as db:
+            if archive_completed is not None:
+                prior = db.execute("SELECT value FROM meta WHERE key=?", (WORK_KEY,)).fetchone()
+                if (prior is None or archive_completed["phase"] != "complete"
+                        or json.loads(prior["value"])["payload"] != archive_completed
+                        or archive_completed["id"] == state["id"]):
+                    raise RuntimeError("Work changed before historical archival")
+                key = WORK_HISTORY + archive_completed["id"]
+                if db.execute("SELECT 1 FROM meta WHERE key=?", (key,)).fetchone():
+                    raise RuntimeError("Duplicate historical work archival")
+                self.store.set_meta(key, prior["value"], db)
             self.store.set_meta(
                 WORK_KEY, _stable({"payload": state, "sha256": _hash(state)}), db
             )
             self.store.bump_state_version(db)
         self.state = state
 
-    def originate(self, proposal):
-        """Require an original-world witnessed bench, neural origin and real viability."""
-        if self.state is not None:
+    def originate(self, proposal, *, allow_recurrence=False):
+        """A new neural policy may create a new project, never replay old work."""
+        if type(allow_recurrence) is not bool:
+            raise TypeError("Recurring work requires an explicit product mode")
+        prior = self._load()
+        if prior is not None and (not allow_recurrence or prior["phase"] != "complete"):
             raise RuntimeError("A native work commitment already exists")
         from .organs import CognitiveProposal
         if (type(proposal) is not CognitiveProposal or
@@ -202,7 +216,9 @@ class NativeWorkPursuit:
             "work_policy_id": None, "selected_action": None,
             "memory_id": None,
         }
-        self._save(record)
+        if prior is not None and prior["origin_policy_id"] == proposal.policy_decision_id:
+            raise PermissionError("Historical work cannot be reissued under the same neural origin")
+        self._save(record, archive_completed=prior)
         return WorkReceipt("goal_created", ident, selected_tendency=proposal.selected_tendency)
 
     def step(self, *, authorized: bool, new_policy):

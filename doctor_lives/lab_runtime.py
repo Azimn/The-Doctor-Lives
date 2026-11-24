@@ -570,6 +570,7 @@ def run_native_laboratory(
     state: Path, world: Path, *, affectus_source: Path,
     steps: int = 1, allow_world_actions: bool = False,
     enable_sustained_work: bool = False,
+    enable_recurring_goals: bool = False,
 ) -> dict:
     """Offer bounded original six-organ goal opportunities on the shipping host.
 
@@ -636,6 +637,7 @@ def run_native_laboratory(
             chooser = NativeLaboratoryGoalChooser(
                 session, authorized=True,
                 enable_sustained_work=enable_sustained_work,
+                enable_recurring_goals=enable_recurring_goals,
             )
             try:
                 # Recovery of a reserved six-organ motor consumes this host

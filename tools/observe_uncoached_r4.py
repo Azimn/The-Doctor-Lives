@@ -44,7 +44,8 @@ def inspect_neural_origins(workspace: Path) -> dict:
         db.row_factory = sqlite3.Row
         rows = db.execute(
             "SELECT key,value FROM meta WHERE key IN (?,?,?) "
-            "OR key LIKE 'six_organ_native_rest_history_v1:%'",
+            "OR key LIKE 'six_organ_native_rest_history_v1:%' "
+            "OR key LIKE 'six_organ_native_work_history_v1:%'",
             tuple(_NATIVE_KEYS),
         ).fetchall()
         result = {}
@@ -53,15 +54,13 @@ def inspect_neural_origins(workspace: Path) -> dict:
             goal = envelope["payload"]
             if type(goal) is not dict:
                 raise RuntimeError("Canonical native goal payload is not a mapping")
-            history_prefix = "six_organ_native_rest_history_v1:"
-            if row["key"].startswith(history_prefix):
-                # Keep each completed rest independently visible even after
-                # a later genuine rest takes the active canonical slot.
-                # The observer never creates, repairs or promotes these goals.
-                if (row["key"] != history_prefix + goal["id"]
-                        or goal["phase"] != "complete"):
-                    raise RuntimeError("Malformed historical canonical rest")
-                output_kind = "rest_history:" + goal["id"]
+            history = next((kind for kind in ("rest", "work")
+                            if row["key"].startswith("six_organ_native_" + kind + "_history_v1:")), None)
+            if history is not None:
+                prefix = "six_organ_native_" + history + "_history_v1:"
+                if row["key"] != prefix + goal["id"] or goal["phase"] != "complete":
+                    raise RuntimeError("Malformed historical canonical goal")
+                output_kind = history + "_history:" + goal["id"]
             else:
                 output_kind = _NATIVE_KEYS[row["key"]]
             policy_id = goal["origin_policy_id"]

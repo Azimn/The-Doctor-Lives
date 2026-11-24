@@ -232,6 +232,54 @@ print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
             "independent_three_goal_acceptance": False,
         }, sort_keys=True))
 
+    def test_product_recurring_work_preserves_completed_project_and_real_consumption(self):
+        """Two separate neural work origins, actual world outcomes and cold continuity."""
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.lab_native_work_goal import WORK_HISTORY
+        from doctor_lives.lab_home_bridge import _row
+        runtime = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        runtime.checkpoint()
+        first = None
+        second = None
+        records = []
+        for _ in range(35):
+            receipt = run_native_laboratory(
+                self.state, self.root / "original.sqlite3",
+                affectus_source=self.donor, steps=1,
+                allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True,
+            )["receipts"][0]
+            if receipt["kind"] != "work" or receipt["status"] != "completed":
+                continue
+            current = SixOrganRuntime.open(self.state)._port.brain.store
+            record = json.loads(current.meta(WORK_KEY))["payload"]
+            records.append(record)
+            if first is None:
+                first = receipt
+            else:
+                second = receipt
+                break
+        self.assertIsNotNone(first, "No original work completion")
+        self.assertIsNotNone(second, "No second independently selected feasible project")
+        self.assertNotEqual(first["goal_id"], second["goal_id"])
+        self.assertNotEqual(first["memory_id"], second["memory_id"])
+        self.assertNotEqual(records[0]["origin_policy_id"], records[1]["origin_policy_id"])
+        cold = SixOrganRuntime.open(self.state)._port.brain.store
+        archived = json.loads(cold.meta(WORK_HISTORY + first["goal_id"]))
+        self.assertEqual(archived["payload"], records[0])
+        self.assertEqual(archived["sha256"], _hash(records[0]))
+        for record in records:
+            memory = cold.get_memory(record["memory_id"])
+            with self.world._open() as db:
+                event, digest = _row(db, "rhythm_events", "ng_" + record["id"] + "_work")
+                self.assertEqual(db.execute(
+                    "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                    ("ng_" + record["id"] + "_work",)).fetchone()[0], 1)
+            self.assertEqual(memory["source"], "laboratory-home:action:" + digest)
+            self.assertEqual(event["op"], record["selected_action"])
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.subject.verify()
+
     def test_original_neural_work_intention_survives_real_darkness_without_ghost_work(self):
         """A real original bench cue can sustain a temporarily blocked goal.
 
