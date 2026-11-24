@@ -502,6 +502,65 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             "steps": i + 1, "host_selected_route": True
         }, sort_keys=True))
 
+    def test_product_conclave_reads_real_page_and_changes_original_retrieval_context(self):
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.lab_conclave_reflection import PREFIX, reflect_completed_reading
+        from doctor_lives.conclave import Conclave
+        from doctor_lives.lab_endogenous_book_task import EndogenousBookPursuit
+        import hashlib
+        fixture = self.install_fixture()
+        path = self.root / "conclave-mind"
+        runtime = SixOrganRuntime.open(path, neural_config=config())
+        runtime.checkpoint()
+        report = None
+        for _ in range(36):
+            result = run_native_laboratory(
+                path, self.root / "lab.sqlite3", affectus_source=Path(self.affectus),
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_conclave_reflection=True,
+            )["receipts"][0]
+            if result["kind"] == "read_book" and result["status"] == "completed":
+                report = result["conclave_reflection"]
+                self.assertIsNotNone(report)
+                break
+        self.assertIsNotNone(report, "Real book completion did not enter Conclave")
+        cold = SixOrganRuntime.open(path)
+        store = cold._port.brain.store
+        memory = store.get_memory(report["memory_id"])
+        self.assertIn(fixture["pages"][0], memory["text"])
+        self.assertEqual(memory["source_event_id"], report["source_event_id"])
+        readings = Conclave(store, enabled=True).readings(report["context_key"])
+        chosen = next(r for r in readings if r.id == report["reading_id"])
+        self.assertEqual(chosen.state, "considered")
+        self.assertTrue(all(r.truth_status == "neither" for r in readings))
+        self.assertEqual(chosen.source_event_id, memory["source_event_id"])
+        self.assertEqual(hashlib.sha256(chosen.question.encode()).hexdigest(),
+                         report["question_sha256"])
+        with store.connect() as db:
+            policy = db.execute("SELECT * FROM policy_decisions WHERE id=?",
+                                (report["policy_id"],)).fetchone()
+            self.assertEqual(json.loads(policy["state_pressure_json"])["decision_text_sha256"],
+                             report["question_sha256"])
+            thought = db.execute("SELECT * FROM thoughts WHERE id=?",
+                                 (report["thought_id"],)).fetchone()
+            self.assertEqual(thought["generated_by"], "neural_policy:" + report["policy_id"])
+            self.assertEqual(json.loads(thought["source_record_ids_json"]),
+                             report["retrieved_record_ids"])
+        self.assertFalse(report["motor_authority"])
+        self.assertFalse(report["lived_fact_created"])
+        self.assertEqual(json.loads(store.meta(PREFIX + report["goal_id"])), report)
+        with self.host(cold) as host:
+            book = EndogenousBookPursuit(host, authorized=True, recurring=True)
+            before = (len(store.memories(False)), self.subject.verify()["head_hash"])
+            self.assertEqual(reflect_completed_reading(book), report)
+            self.assertEqual((len(store.memories(False)), self.subject.verify()["head_hash"]),
+                             before)
+        with store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM policy_decisions WHERE trigger=?",
+                ("conclave_reading_" + report["goal_id"],),
+            ).fetchone()[0], 1)
+
     def test_product_recurring_reading_preserves_next_page_and_sealed_history(self):
         from doctor_lives.lab_runtime import run_native_laboratory
         from doctor_lives.lab_endogenous_book_task import _KEY, BOOK_HISTORY, _digest

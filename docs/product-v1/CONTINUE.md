@@ -45,3 +45,7 @@ Dependent increment uses original exploratory neural origin, verified local book
 ## Safe archive and restore publication
 
 M6 source pin 62f372c47959d1f577be1e980d4ae191981ac83d supplies the backup no-replace fix. Also close the actual restore race: stage verified copies on target filesystems, publish each without replacement, brain directory last, clean up only proven owned files on failure. Installed wheel regression injects competing backup/restore paths with real source archive. This protects identity custody, not R4. Cross-filesystem publication is not atomic under hard process kill; do not claim that qualification. Await installed Linux/Windows tests.
+
+## Canonical Conclave reflection
+
+Conclave was previously an opt-in isolated kernel. Its world_verified stimulus now requires matching canonical lived text (bounded prefix only); a real receipt cannot authorize unrelated words. The actual native operator now offers a source-completed reading to the five existing methods, then original Noesis retrieves/deliberates on one generated question. Reading becomes considered, not automatically true; canonical thought, policy, source and question digest are linked. Cold retry reuses existing thought instead of fabricating a second deliberation. Host tradition mapping disclosed. Actual runtime test and forgery negative added. This does not complete Phantasmagorium or general open-ended agency.

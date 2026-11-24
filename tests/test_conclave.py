@@ -128,9 +128,13 @@ class ConclaveKernelTests(unittest.TestCase):
             ))
         self._event_fixture("world:real1", verified=True)
         admitted = self.kernel.interpret(Stimulus(
-            "world:real1", "world_verified", "garden_1", "fire"
-        ), spokes=("agrippan-wheel",))
+            "world:real1", "world_verified", "garden_1", "A verified perception"
+        ), spokes=("brunian-memory",))
         self.assertEqual(admitted[0].source_kind, "world_verified")
+        with self.assertRaises(PermissionError):
+            self.kernel.interpret(Stimulus(
+                "world:real1", "world_verified", "garden_1", "fire"
+            ), spokes=("agrippan-wheel",))
 
     def test_no_dream_source_laundering(self):
         dream = Stimulus("dream:d1", "dreamed", "sleep_1",

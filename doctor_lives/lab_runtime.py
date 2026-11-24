@@ -572,6 +572,7 @@ def run_native_laboratory(
     enable_sustained_work: bool = False,
     enable_recurring_goals: bool = False,
     enable_commitment_competition: bool = False,
+    enable_conclave_reflection: bool = False,
 ) -> dict:
     """Offer bounded original six-organ goal opportunities on the shipping host.
 
@@ -587,6 +588,8 @@ def run_native_laboratory(
         raise TypeError("World-action permission must be a boolean")
     if type(enable_sustained_work) is not bool:
         raise TypeError("Sustained work enablement must be a boolean")
+    if type(enable_conclave_reflection) is not bool:
+        raise TypeError("Conclave reflection requires explicit enablement")
     state, world, affectus_source = Path(state), Path(world), Path(affectus_source)
     if not affectus_source.is_dir():
         raise FileNotFoundError("Existing local pinned Affectus donor required")
@@ -662,9 +665,18 @@ def run_native_laboratory(
                         "host_selected_route": False,
                     })
                 for _ in range(steps if not receipts else 0):
+                    reflection = None
+                    if enable_conclave_reflection and allow_world_actions:
+                        from .lab_conclave_reflection import reflect_completed_reading
+                        # Reconcile a read completed before a crash or
+                        # before this product capability was enabled.
+                        reflect_completed_reading(chooser.book)
                     result = chooser.step(
                         authorized_world_action=allow_world_actions
                     )
+                    if (enable_conclave_reflection and allow_world_actions
+                            and result.kind == "read_book" and result.status == "completed"):
+                        reflection = reflect_completed_reading(chooser.book)
                     receipts.append({
                         "status": result.status,
                         "kind": result.kind,
@@ -675,6 +687,7 @@ def run_native_laboratory(
                         "host_selected_route": result.host_selected_route,
                         "competition_policy_id": result.competition_policy_id,
                         "interrupting_action": result.interrupting_action,
+                        "conclave_reflection": reflection,
                     })
                     if result.status in (
                         "completed", "already_complete", "exhausted",
