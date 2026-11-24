@@ -339,9 +339,24 @@ class EndogenousBookPursuit:
         # A book choice can only follow a source-backed LOOK, and a later
         # relocation cannot silently turn a stale sighting into world truth.
         proof = self.books.memory_hint(state["target"])
-        if (proof is None or proof["station"] != station
-                or proof["memory_id"] != state["target_sighting"]):
-            raise RuntimeError("Selected book no longer has current source evidence")
+        if proof is None or proof["memory_id"] != state["target_sighting"]:
+            raise RuntimeError("Selected book no longer has original source evidence")
+        if proof["station"] != station:
+            # A previously selected volume may be left behind while a
+            # different need wins. Preserve its exact intent and sighting,
+            # then physically return before opening/reading it.
+            hop = self._route(station, proof["station"])
+            if hop is None:
+                raise RuntimeError("No source-defined return route to selected book")
+            consequence = self.host._execute_movement(proposal, hop)
+            if consequence.status not in ("admitted", "already_admitted"):
+                raise RuntimeError("Book resumption travel lacks lived consequence")
+            state["steps"] += 1
+            self._save(state)
+            return EndogenousTaskReceipt(
+                "moved", state["id"], state["phase"], hop,
+                consequence.memory_id, "original-neural-explore-with-situated-evidence",
+            )
         op = state["phase"]
         receipt = self.host.book_action(
             state["target"], op, event_id="eb_" + state["id"] + "_" + op,

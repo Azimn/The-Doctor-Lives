@@ -212,6 +212,13 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                     if activity["status"] in ("moved", "opened", "completed"):
                         report["last_action"] = activity["status"]
                         report["last_action_origin"] = "original_neural_tendency_host_mapped"
+                    if activity["status"] == "commitment_interrupted":
+                        report["last_action"] = activity["interrupting_action"]
+                        report["last_action_origin"] = "original_noesis_competing_bodily_need"
+                        report["current_activity"] = (
+                            "daily_life:" + activity["interrupting_action"]
+                            + "; suspended:" + activity["kind"] + ":" + activity["goal_id"]
+                        )
                     # When an endogenous book/rest goal is already complete
                     # (or has no situated target), return to genuine native
                     # physical opportunities rather than endlessly replaying

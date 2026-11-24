@@ -571,6 +571,7 @@ def run_native_laboratory(
     steps: int = 1, allow_world_actions: bool = False,
     enable_sustained_work: bool = False,
     enable_recurring_goals: bool = False,
+    enable_commitment_competition: bool = False,
 ) -> dict:
     """Offer bounded original six-organ goal opportunities on the shipping host.
 
@@ -638,6 +639,7 @@ def run_native_laboratory(
                 session, authorized=True,
                 enable_sustained_work=enable_sustained_work,
                 enable_recurring_goals=enable_recurring_goals,
+                enable_commitment_competition=enable_commitment_competition,
             )
             try:
                 # Recovery of a reserved six-organ motor consumes this host
@@ -671,6 +673,8 @@ def run_native_laboratory(
                         "selected_tendency": result.selected_tendency,
                         "host_selected_goal_mapping": result.host_selected_goal_mapping,
                         "host_selected_route": result.host_selected_route,
+                        "competition_policy_id": result.competition_policy_id,
+                        "interrupting_action": result.interrupting_action,
                     })
                     if result.status in (
                         "completed", "already_complete", "exhausted",

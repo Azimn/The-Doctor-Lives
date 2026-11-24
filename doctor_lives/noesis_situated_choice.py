@@ -29,7 +29,7 @@ NEURAL_AFFORDANCE_MAP = {"experiment": "explore", "repair": "persist",
                          "prepare_meal": "persist", "eat": "avoid",
                          "rest": "avoid", "sleep": "avoid",
                          "advance": "persist", "seek_kitchen": "persist",
-                         "seek_bedroom": "avoid"}
+                         "seek_bedroom": "avoid", "continue_commitment": "persist"}
 if not set(NEURAL_AFFORDANCE_MAP.values()) <= set(ACTIONS):
     raise RuntimeError("Situated motor map references an absent neural tendency")
 MEMORY_WEIGHT = 0.60
@@ -52,6 +52,48 @@ def _cue_is_perceived(cue: str, first_person_observation: str) -> bool:
     return normalize(cue) in normalize(first_person_observation)
 
 
+_ACTIVE_COMMITMENTS = {
+    "six_organ_native_work_intention_v1": ("travel", "blocked"),
+    "six_organ_endogenous_book_goal_v1": ("search", "open", "read"),
+}
+# Engineering prior for persistence, bounded below pressing bodily pressure.
+COMMITMENT_WEIGHT = 0.10
+
+
+def _verified_active_commitment(brain, ref):
+    if (type(ref) is not tuple or len(ref) != 2
+            or ref[0] not in _ACTIVE_COMMITMENTS or type(ref[1]) is not str):
+        raise PermissionError("Canonical active commitment reference required")
+    key, goal_id = ref
+    raw = brain.store.meta(key)
+    if raw is None:
+        raise PermissionError("Missing canonical commitment")
+    envelope = json.loads(raw)
+    goal = envelope["payload"]
+    digest = hashlib.sha256(json.dumps(
+        goal, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode()).hexdigest()
+    if (digest != envelope.get("sha256") or goal["id"] != goal_id
+            or goal["phase"] not in _ACTIVE_COMMITMENTS[key]):
+        raise PermissionError("Commitment is not active and source-bound")
+    with brain.store.connect() as db:
+        origin = db.execute(
+            "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
+            (goal["origin_policy_id"],),
+        ).fetchone()
+        thought = db.execute(
+            "SELECT generated_by FROM thoughts WHERE id=?",
+            (goal["origin_thought_id"],),
+        ).fetchone()
+    tendencies = (("explore", "persist") if key.startswith("six_organ_native_work")
+                  else ("explore",))
+    if (origin is None or origin["trigger"] != "six_organ_lab_cycle"
+            or origin["selected_action"] not in tendencies or thought is None
+            or thought["generated_by"] != "neural_policy:" + goal["origin_policy_id"]):
+        raise PermissionError("Commitment lacks its canonical neural origin")
+    return goal
+
+
 def select_with_original_noesis(
     brain, *, observation_memory_id: str,
     eligible_read_memory_ids: tuple[str, ...],
@@ -61,6 +103,7 @@ def select_with_original_noesis(
     eligible_outcome_memory_ids: tuple[str, ...] = (),
     author_day_goal: bool = False,
     interoception_enabled: bool = False,
+    active_commitment: tuple[str, str] | None = None,
 ) -> dict[str, Any]:
     """Commit one original-brain choice and detailed engineer-only audit.
 
@@ -88,6 +131,13 @@ def select_with_original_noesis(
     if not interoception_enabled and any(
             a in ("seek_kitchen", "seek_bedroom") for a in feasible_actions):
         raise PermissionError("Household route requires the admitted body-cue policy")
+    if ("continue_commitment" in feasible_actions) != (active_commitment is not None):
+        raise PermissionError("Continuation must reference an actual active commitment")
+    commitment = None
+    if active_commitment is not None:
+        if not interoception_enabled or author_day_goal:
+            raise PermissionError("Commitment competition requires bodily perception")
+        commitment = _verified_active_commitment(brain, active_commitment)
     observation = brain.store.get_memory(observation_memory_id)
     if (observation is None or not observation["active"]
             or observation["evidence_class"] != "lived_runtime_memory"
@@ -155,6 +205,10 @@ def select_with_original_noesis(
         )
         for action in feasible_actions:
             final[action] += body_scores[action]
+    commitment_scores = {action: 0.0 for action in feasible_actions}
+    if commitment is not None:
+        commitment_scores["continue_commitment"] = COMMITMENT_WEIGHT
+        final["continue_commitment"] += COMMITMENT_WEIGHT
     selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
     active_version = (DAILY_BODY_VERSION if interoception_enabled else
                       OUTCOME_VERSION if outcome_learning_enabled else VERSION)
@@ -168,6 +222,9 @@ def select_with_original_noesis(
         "interoception_enabled": interoception_enabled,
         "perceived_body_cues": list(body_cues),
         "interoceptive_contributions": body_scores,
+        "commitment_contributions": commitment_scores,
+        "active_commitment_id": commitment["id"] if commitment else None,
+        "active_commitment_origin": commitment["origin_policy_id"] if commitment else None,
         "neural_affordance_map": {a: NEURAL_AFFORDANCE_MAP[a] for a in feasible_actions},
         "neural_prior_weight": NEURAL_WEIGHT,
         "learning_weight": MEMORY_WEIGHT,
@@ -204,7 +261,9 @@ def select_with_original_noesis(
              json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
              int(brain.neural.tick), checkpoint, active_version),
         )
-        if selected_action in ("seek_kitchen", "seek_bedroom"):
+        if selected_action == "continue_commitment":
+            subject_thought = "I intend to continue what I was doing."
+        elif selected_action in ("seek_kitchen", "seek_bedroom"):
             subject_thought = (
                 "I intend to make my way to the kitchen."
                 if selected_action == "seek_kitchen"

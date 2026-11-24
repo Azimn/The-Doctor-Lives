@@ -143,7 +143,7 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
     result = run_native_laboratory(
         state, world, affectus_source=affectus_source, steps=1,
         allow_world_actions=True, enable_sustained_work=True,
-        enable_recurring_goals=True,
+        enable_recurring_goals=True, enable_commitment_competition=True,
     )
     receipt = result["receipts"][-1]
     event = {
@@ -154,6 +154,8 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
         "same_original_brain": result["same_original_brain"],
         "original_world_epoch_unchanged": result["original_world_epoch_unchanged"],
         "source_attestation_independent": False,
+        "competition_policy_id": receipt.get("competition_policy_id"),
+        "interrupting_action": receipt.get("interrupting_action"),
     }
     if receipt["goal_id"] is not None:
         event.update(_intent_source(state, receipt["goal_id"]))
