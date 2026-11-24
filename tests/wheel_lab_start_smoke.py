@@ -97,7 +97,7 @@ def main():
     assert console and Path(console).parent == Path(sys.executable).parent
 
     with tempfile.TemporaryDirectory(prefix="pretorius-wheel-smoke-") as temp:
-        root = Path(temp)
+        root = Path(temp).resolve()
         # Operator P0: prove the installed, non-editable offline wheel itself
         # creates the ONE canonical brain and original Laboratory from scratch.
         # This is genesis, not Pretorius's lived experience or an R4 goal.
@@ -169,9 +169,11 @@ def main():
         from doctor_lives.lab_backup import backup as actual_backup, restore as actual_restore
         from doctor_lives.lab_preview import _publish_noreplace as real_publish
         race_backup = root / "competing-backup"
+        injected = []
         def backup_collision(staged, destination):
-            if destination == race_backup:
+            if destination.resolve() == race_backup.resolve():
                 destination.mkdir()
+                injected.append("backup")
             return real_publish(staged, destination)
         try:
             with patch("doctor_lives.lab_preview._publish_noreplace", side_effect=backup_collision):
@@ -180,6 +182,7 @@ def main():
             pass
         else:
             raise AssertionError("Backup clobbered a competing empty directory")
+        assert injected == ["backup"], "Backup collision was not injected"
         assert race_backup.is_dir() and list(race_backup.iterdir()) == []
         for rival_kind in ("world", "journal", "brain"):
             race_brain = root / ("racing-brain-" + rival_kind)
@@ -188,7 +191,8 @@ def main():
             rival = {"brain": race_brain, "world": race_world, "journal": race_journal}[rival_kind]
             sentinel = b"competing writer; do not replace or delete"
             def restore_collision(staged, destination):
-                if destination == rival:
+                if destination.resolve() == rival.resolve():
+                    injected.append(rival_kind)
                     if rival_kind == "brain":
                         destination.mkdir()
                     else:
@@ -201,6 +205,7 @@ def main():
                 pass
             else:
                 raise AssertionError("Restore clobbered competing " + rival_kind)
+            assert injected[-1] == rival_kind, "Restore collision was not injected"
             for candidate in (race_brain, race_world, race_journal):
                 if candidate == rival:
                     if rival_kind == "brain":

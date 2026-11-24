@@ -444,7 +444,8 @@
       "acceptance": "Inspect exact path diff and restore reviewed missing M6 communication/semantic changes with no competing canonical state",
       "status": "in_progress",
       "evidence": [
-        "Reconciled exact M6 62f372c backup no-replace change into current integration candidate; identified additional restore race where late competing state could be deleted by broad cleanup. New restore stages and hashes complete archives, publishes individual authorities with kernel no-replace (brain last), only removes owned published files on failure. Installed wheel test injects competing empty backup dir and each restore destination. Cross-filesystem multi-authority publish not atomic under hard kill; no unknown path deletion. Pending Windows/Linux wheel qualification. Other M6 observer and daily CLI differences remain under review."
+        "Reconciled exact M6 62f372c backup no-replace change into current integration candidate; identified additional restore race where late competing state could be deleted by broad cleanup. New restore stages and hashes complete archives, publishes individual authorities with kernel no-replace (brain last), only removes owned published files on failure. Installed wheel test injects competing empty backup dir and each restore destination. Cross-filesystem multi-authority publish not atomic under hard kill; no unknown path deletion. Pending Windows/Linux wheel qualification. Other M6 observer and daily CLI differences remain under review.",
+        "5b550ba installed Windows race test failed: competing directory assertion fired, likely unresolved Windows temp alias prevented injection (backup resolves destinations). Normalize fixture paths and explicitly witness each injection. Requalification required; no claim of successful race protection until pass."
       ]
     },
     {
