@@ -574,6 +574,7 @@ def run_native_laboratory(
     enable_commitment_competition: bool = False,
     enable_conclave_reflection: bool = False,
     enable_telos: bool = False,
+    enable_nested_rest: bool = False,
 ) -> dict:
     """Offer bounded original six-organ goal opportunities on the shipping host.
 
@@ -647,6 +648,7 @@ def run_native_laboratory(
                 enable_recurring_goals=enable_recurring_goals,
                 enable_commitment_competition=enable_commitment_competition,
                 enable_telos=enable_telos,
+                enable_nested_rest=enable_nested_rest,
             )
             try:
                 # Recovery of a reserved six-organ motor consumes this host

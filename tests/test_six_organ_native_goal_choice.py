@@ -502,6 +502,85 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
             "steps": i + 1, "host_selected_route": True
         }, sort_keys=True))
 
+    def test_product_active_reading_can_acquire_rest_intention_and_resume(self):
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.lab_endogenous_book_task import _KEY
+        from doctor_lives.lab_home_bridge import _row
+        self.install_fixture()
+        path = self.root / "nested-rest-mind"
+        rt = SixOrganRuntime.open(path, neural_config=config())
+        with self.host(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=True,
+                enable_nested_rest=True, enable_telos=True,
+            )
+            original = chooser.step()
+            self.assertEqual((original.kind, original.status), ("read_book", "goal_created"))
+            book_before = chooser.book._load()
+            # Explicit source fixture preparation, not an independent trial:
+            # real chores and ordinary elapsed time cause fatigue while
+            # actually eating/drinking avoid stronger competing needs.
+            self.subject.act("walk", event_id="nested-rest-hall", station="station:hall")
+            self.subject.act("walk", event_id="nested-rest-kitchen", station="station:kitchen")
+            self.subject.act("prepare_meal", event_id="nested-rest-meal")
+            self.subject.act("eat", event_id="nested-rest-eat")
+            self.subject.act("clean", event_id="nested-rest-clean")
+            self.subject.act("brew_tea", event_id="nested-rest-tea")
+            self.subject.act("advance", event_id="nested-rest-elapse", minutes=120)
+            body = self.subject.rhythm.audit_state()
+            self.assertGreaterEqual(body["fatigue"], 4)
+            # Offer bounded original cognitive opportunities without forcing
+            # a tendency or a preferred world action. During this explicit
+            # fixture setup we leave a continue decision unactuated.
+            originated = None
+            for _ in range(20):
+                outcome = chooser._consider_interruption("read_book", original.goal_id, True)
+                if outcome is not None and outcome.kind == "rest":
+                    originated = outcome
+                    break
+            self.assertIsNotNone(originated, "No original fatigue-related avoid intention")
+            self.assertEqual(originated.status, "goal_created")
+            self.assertEqual(originated.selected_tendency, "avoid")
+            self.assertEqual(chooser.book._load(), book_before)
+            rt.checkpoint()
+        rested = None
+        for _ in range(12):
+            result = run_native_laboratory(
+                path, self.root / "lab.sqlite3", affectus_source=Path(self.affectus),
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=True,
+                enable_nested_rest=True, enable_telos=True,
+            )["receipts"][0]
+            self.assertEqual(result["goal_id"], originated.goal_id)
+            cold = SixOrganRuntime.open(path)._port.brain.store
+            self.assertEqual(json.loads(cold.meta(_KEY))["payload"], book_before)
+            if result["status"] == "completed":
+                rested = result
+                break
+        self.assertIsNotNone(rested)
+        with self.world._open() as db:
+            event, digest = _row(db, "rhythm_events", "ng_" + originated.goal_id + "_rest")
+            self.assertEqual(event["op"], "rest")
+        cold = SixOrganRuntime.open(path)._port.brain.store
+        self.assertEqual(cold.get_memory(rested["memory_id"])["source"],
+                         "laboratory-home:action:" + digest)
+        self.assertIn("telos_" + original.goal_id, [c["id"] for c in cold.open_commitments()])
+        # Resume with the original book intention and motor authority.
+        for _ in range(24):
+            result = run_native_laboratory(
+                path, self.root / "lab.sqlite3", affectus_source=Path(self.affectus),
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=False,
+                enable_telos=True,
+            )["receipts"][0]
+            self.assertEqual(result["goal_id"], original.goal_id)
+            if result["status"] == "completed":
+                break
+        else:
+            self.fail("Original interrupted book did not resume")
+        self.subject.verify()
+
     def test_product_conclave_reads_real_page_and_changes_original_retrieval_context(self):
         from doctor_lives.lab_runtime import run_native_laboratory
         from doctor_lives.lab_conclave_reflection import PREFIX, reflect_completed_reading

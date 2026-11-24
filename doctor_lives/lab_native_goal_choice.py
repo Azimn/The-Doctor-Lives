@@ -48,7 +48,8 @@ class NativeLaboratoryGoalChooser:
                  enable_sustained_work: bool = False,
                  enable_recurring_goals: bool = False,
                  enable_commitment_competition: bool = False,
-                 enable_telos: bool = False):
+                 enable_telos: bool = False,
+                 enable_nested_rest: bool = False):
         from .lab_six_organ_session import SixOrganLaboratoryCycle
         if type(session) is not SixOrganLaboratoryCycle or authorized is not True:
             raise PermissionError("Trusted opt-in six-organ Laboratory host needed")
@@ -71,6 +72,10 @@ class NativeLaboratoryGoalChooser:
         if type(enable_telos) is not bool:
             raise TypeError("Telos integration requires explicit enablement")
         self.enable_telos = enable_telos
+        if type(enable_nested_rest) is not bool or (
+                enable_nested_rest and not enable_commitment_competition):
+            raise ValueError("Nested rest requires actual competing commitments")
+        self.enable_nested_rest = enable_nested_rest
         self.work = None
         if enable_sustained_work:
             from .lab_native_work_goal import NativeWorkPursuit
@@ -245,7 +250,22 @@ class NativeLaboratoryGoalChooser:
         from .lab_endogenous_book_task import _KEY as BOOK_KEY
         from .store import new_id
         key = WORK_KEY if kind == "work" else BOOK_KEY
-        choice = compete_with_commitment(self.host, commitment_key=key, goal_id=goal_id)
+        rest = self._load_rest()
+        allow_rest = (self.enable_nested_rest
+                      and (rest is None or rest["phase"] == "complete")
+                      and self._new_physical_rest_need())
+        choice = compete_with_commitment(
+            self.host, commitment_key=key, goal_id=goal_id,
+            allow_native_rest=allow_rest,
+        )
+        from .organs import CognitiveProposal
+        if type(choice) is CognitiveProposal:
+            if not allow_rest:
+                raise PermissionError("Unexpected restorative commitment")
+            # Original book/work phase and origin remain untouched. Native
+            # rest now owns one subsequent opportunity at a time until its
+            # authentic consequence closes it; then the project resumes.
+            return self._originate_rest(choice)
         if choice is None or choice.action == "continue_commitment":
             return None
         effect = act_on_noesis_choice(
@@ -280,7 +300,8 @@ class NativeLaboratoryGoalChooser:
             # Noesis-origin rest intention. Complete that temporary recovery
             # before resuming the original work goal, across cold restarts.
             if rest is not None and rest["phase"] != "complete":
-                if work["phase"] != "blocked":
+                if work["phase"] != "blocked" and not (
+                        self.enable_nested_rest and work["phase"] == "travel"):
                     raise RuntimeError("Unreviewed competing work and rest")
                 return self._continue_rest(rest, authorized_world_action)
             # Do not supersede a previously selected concrete work motor.
@@ -305,7 +326,9 @@ class NativeLaboratoryGoalChooser:
         if (rest is not None and rest["phase"] != "complete"
                 and book.goal_id is not None and book.phase not in (
                     "complete", "exhausted")):
-            raise RuntimeError("Competing pending goals require explicit review")
+            if not self.enable_nested_rest:
+                raise RuntimeError("Competing pending goals require explicit review")
+            return self._continue_rest(rest, authorized_world_action)
         if book.goal_id is not None and book.phase not in ("complete", "exhausted"):
             interruption = self._consider_interruption(
                 "read_book", book.goal_id, authorized_world_action)

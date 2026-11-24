@@ -63,7 +63,7 @@
       "repository": "Azimn/The-Doctor-Lives",
       "locations": "lab_native_goal_choice.py; lab_native_work_goal.py; noesis_day.py",
       "status": "failed",
-      "evidence": "Run 45482901657 authenticated 3 distinct types and 6 completed goals; archival regression assumed every trial negative, failed. Later cc385837 run 45483196418 authenticated 2 types, 3 goals; 14 interruptions and kitchen-route oscillation after darkness. Full life not consistently qualified.",
+      "evidence": "1df5d11 independent trial 45489418761 authenticated 4 goals (2 readings, 2 work), original source replay, but no independently originated rest. Source artifact 14967501334 contains real 480-minute sleep during active reading and 5 native avoid decisions; old chooser disallows separate rest intention while book active. Sleep is not R4 rest credit. Nested rest allows fresh actual avoid + physically feasible fatigue pressure when not subordinate to another stronger need; genuine separate rest goal preserved beside book/work; exact gate unchanged.",
       "next": "Fix prerequisite action selection, re-run independent trial; preserve gate and complete longer-term goals."
     },
     {
@@ -525,5 +525,5 @@
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "Qualify actual Conclave and Telos runtime, independent life trials and recovery. Continue general goal competition, replenishment, Phantasmagorium donor (exact archive not located), Expression/social world."
+  "next": "Qualify nested-rest and Telos/Conclave/recovery; do not count sleep as rest or weaken R4; then full life and remaining organs."
 }
