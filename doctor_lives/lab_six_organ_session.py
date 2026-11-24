@@ -107,11 +107,23 @@ class SixOrganLaboratoryCycle:
 
     def __init__(self, runtime: SixOrganRuntime, subject_port, *,
                  affectus_source: str | Path, renderer: Callable[[str], str],
-                 authorized: bool = False, seed: int = 1842):
+                 authorized: bool = False, seed: int = 1842,
+                 recover_world_actions: bool = True):
         if not isinstance(runtime, SixOrganRuntime) or authorized is not True:
             raise PermissionError("Explicit same-brain research host authorization")
         if not callable(renderer):
             raise TypeError("Renderer must be a callback accepting subject text")
+        if type(recover_world_actions) is not bool:
+            raise TypeError("Recovery world permission must be a boolean")
+        # Opening a session can replay a reserved motor which has not yet
+        # reached the world. A read-only caller cannot authorize that replay.
+        # Fail before binding donors or admitting a new perception.
+        store = runtime._port.brain.store
+        if not recover_world_actions and (
+            store.meta(self._PENDING) is not None
+            or store.meta(self._PENDING_REST) is not None
+        ):
+            raise PermissionError("Pending six-organ motor requires world authorization")
         self.runtime = runtime
         self.subject = subject_port
         self.bridge = runtime.bind_laboratory(subject_port, authorized=True)
@@ -131,8 +143,11 @@ class SixOrganLaboratoryCycle:
         )
         # Recover a world action that committed before brain admission,
         # once the SAME original brain/weather is reopened from its store.
-        self._reconcile_pending()
-        self._reconcile_pending_rest()
+        self.recovered_world_action = None
+        if recover_world_actions:
+            movement = self._reconcile_pending()
+            rest = self._reconcile_pending_rest()
+            self.recovered_world_action = movement if movement is not None else rest
         if len({
             id(runtime.noesis._port), id(runtime.mnemosyne._port),
             id(runtime.affectus._port), id(runtime.sensus._port),

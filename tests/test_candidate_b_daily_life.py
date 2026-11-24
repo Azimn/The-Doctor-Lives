@@ -274,6 +274,45 @@ class CandidateBDailyLifeIntegration(unittest.TestCase):
             self.assertEqual(again._port.brain.store.tick, after)
             self.assertIsNone(replay._reconcile_pending_rest())
 
+    def test_read_only_public_hosts_cannot_execute_reserved_six_rest(self):
+        from doctor_lives.lab_runtime import run_native_laboratory
+
+        runtime, session, proposal = self._original_six_rest_session()
+        session._reserve_rest(proposal)
+        event_id = session._rest_event_id(proposal.policy_decision_id)
+        session.close()
+        for call in (
+            lambda: run_daily_life_cycle(
+                self.state, self.world, affectus_source=self.source,
+                authorize_world=False),
+            lambda: run_native_laboratory(
+                self.state, self.world, affectus_source=self.source,
+                allow_world_actions=False),
+        ):
+            with self.assertRaisesRegex(PermissionError, "requires world authorization"):
+                call()
+            with self.lab._open() as db:
+                self.assertEqual(db.execute(
+                    "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                    (event_id,),
+                ).fetchone()[0], 0)
+            reopened = SixOrganRuntime.open(self.state)
+            self.assertIsNotNone(reopened._port.brain.store.meta(
+                "six_organ_lab_pending_verified_rest_v1"))
+        result = run_native_laboratory(
+            self.state, self.world, affectus_source=self.source,
+            allow_world_actions=True, steps=4)
+        self.assertEqual(result["status"], "recovered_world_action")
+        self.assertEqual(result["steps"], 1)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        reopened = SixOrganRuntime.open(self.state)
+        self.assertIsNone(reopened._port.brain.store.meta(
+            "six_organ_lab_pending_verified_rest_v1"))
+
     def test_original_six_rest_rejects_wrong_station_and_substituted_memory(self):
         from unittest.mock import patch
         from doctor_lives.lab_home_bridge import _row

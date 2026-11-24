@@ -616,6 +616,7 @@ def run_native_laboratory(
         with SixOrganLaboratoryCycle(
             runtime, subject, affectus_source=affectus_source,
             renderer=source_only_renderer, authorized=True,
+            recover_world_actions=allow_world_actions,
         ) as session:
             # Reconcile shipping work/sleep intents before offering a new goal.
             # The six-organ session separately reconciles its own movement.
@@ -625,7 +626,17 @@ def run_native_laboratory(
                 enable_sustained_work=enable_sustained_work,
             )
             try:
-                for _ in range(steps):
+                # Recovery of a reserved six-organ motor consumes this host
+                # opportunity. Do not select another goal in the same pulse.
+                if session.recovered_world_action is not None:
+                    receipts.append({
+                        "status": "recovered_world_action",
+                        "kind": None, "goal_id": None, "memory_id": None,
+                        "selected_tendency": None,
+                        "host_selected_goal_mapping": False,
+                        "host_selected_route": False,
+                    })
+                for _ in range(steps if not receipts else 0):
                     result = chooser.step(
                         authorized_world_action=allow_world_actions
                     )

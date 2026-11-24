@@ -40,12 +40,16 @@ def run_daily_life_cycle(
         with SixOrganLaboratoryCycle(
             runtime, subject, affectus_source=Path(affectus_source),
             renderer=renderer, authorized=True,
+            recover_world_actions=authorize_world,
         ) as session:
             try:
                 # Reconcile a previously authorized Noesis motor BEFORE making
                 # another decision. The original world receipt is idempotent;
                 # no new operator goal or physical action is inferred.
+                recovered_six = session.recovered_world_action is not None
                 pending = pending_daily_action_ids(session.bridge)
+                if recovered_six and pending:
+                    raise RuntimeError("Conflicting six-organ and daily motor reservations")
                 # A read-only opportunity must NEVER replay a reserved motor.
                 # When permission exists, recover its single original world
                 # effect first. Recovery consumes this host opportunity: a
@@ -59,13 +63,16 @@ def run_daily_life_cycle(
                 # second physical effect in the same recovery opportunity.
                 cycle = session.cycle(
                     authorized_world_action=authorize_world and not recovered
+                    and not recovered_six
                 )
                 if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
                     raise RuntimeError("An incomplete six-organ cycle cannot act")
                 offered = real_affordances(session.bridge)
                 selected = None
                 action = None
-                if offered and not recovered and not deferred:
+                if (offered and not recovered and not deferred
+                        and not recovered_six
+                        and cycle.movement_status == "not_executed"):
                     selected = offer_daily_opportunity(session.bridge)
                     if authorize_world:
                         action = act_on_noesis_choice(
@@ -88,7 +95,12 @@ def run_daily_life_cycle(
                     "world_effect": action,
                     "reconciled_prior_noesis_actions": list(recovered),
                     "pending_prior_noesis_actions": list(deferred),
-                    "new_motor_suppressed_for_recovery": bool(recovered or deferred),
+                    "reconciled_prior_six_organ_action": recovered_six,
+                    "new_motor_suppressed_for_recovery": bool(
+                        recovered or deferred or recovered_six
+                    ),
+                    "daily_motor_suppressed_for_six_organ_effect":
+                        cycle.movement_status != "not_executed",
                     "host_offered_opportunity": True,
                     "world_action_authorized": authorize_world,
                     "self_selected_sustained_goal_proven": False,
