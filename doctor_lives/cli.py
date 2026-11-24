@@ -136,6 +136,10 @@ def main(argv=None) -> int:
                 emit(conversation.submit(a.text,request_id=a.request_id,
                                          day=a.day,model=a.local_model))
                 return 0
+            from .speech_emission import SpeechSinkAck, digest
+            def terminal_sink(text, key):
+                print(text, flush=True)
+                return SpeechSinkAck(key, "terminal", digest(text))
             print("Pretorius operator chat. Type /quit to exit.")
             while True:
                 try:
@@ -146,7 +150,7 @@ def main(argv=None) -> int:
                     break
                 if value:
                     reply=conversation.submit(value,day=a.day,model=a.local_model)
-                    print(reply["text"])
+                    conversation.publish_reply(reply["turn_id"], terminal_sink)
             return 0
     # The CLI is a human report, NOT a trusted physical-world provider.
     # Never hand it raw Experience construction or caller-chosen world proof.

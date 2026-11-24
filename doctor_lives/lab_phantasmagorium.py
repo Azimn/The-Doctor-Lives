@@ -123,6 +123,9 @@ def _run(archive, request):
     raw = _stable(request)
     if len(raw) > LIMIT:
         raise ValueError("Phantasmagorium request exceeds continuity budget")
+    archive = verify_archive(archive)
+    if request.get("pin") != DONOR_SHA256:
+        raise PermissionError("Exact original donor pin required")
     proc = subprocess.run([sys.executable, "-I", "-c", WORKER, str(archive)],
                           input=raw, capture_output=True, text=True,
                           encoding="utf-8", timeout=30, cwd=archive.parent)
