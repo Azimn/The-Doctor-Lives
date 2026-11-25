@@ -580,9 +580,9 @@
       },
       {
         "organ": "Mnemosyne",
-        "location": "organs.py; canonical_background.py; cognition.py; source_monitoring.py; small_tower.py; canonical_background.py",
+        "location": "organs.py; canonical_background.py; cognition.py; source_monitoring.py; small_tower.py; canonical_background.py; tower_procedure.py",
         "status": "integration_pending_ci",
-        "next": "Original CASCADE heartbeat and endogenous recollection run at committed source-tick boundaries including ongoing physical activities by default. Verify unchanged original physical revision, cursor and busy state after wake; idle-only and zero retained as controls. Longitudinal spontaneous cognition, sleep consolidation and continuous wall-clock cadence remain unqualified."
+        "next": "Original CASCADE heartbeat and endogenous recollection run at committed source-tick boundaries including ongoing physical activities by default. Verify unchanged original physical revision, cursor and busy state after wake; idle-only and zero retained as controls. Longitudinal spontaneous cognition, sleep consolidation and continuous wall-clock cadence remain unqualified. Repeated source-authenticated adjacent successful actions now contribute a bounded, context-dependent procedural preference; failure can suppress it. Physical competence remains in original Tower. Longitudinal positive evidence and material skill generalization remain."
       },
       {
         "organ": "Noesis",

@@ -20,6 +20,21 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertIsNone(first_step(graph, "library", "laboratory"))
         self.assertIsNone(first_step(graph, "library", "library"))
 
+    def test_procedural_sequence_requires_independent_success_and_current_cue(self):
+        from doctor_lives.tower_procedure import appraise, CAP
+        def event(action,i,success=True,room="I am in my kitchen and hearth."):
+            return {"action":action,"room":room,"success":success,
+                    "source":"event-"+str(i),"memory_id":"mem-"+str(i)}
+        room="I am in my kitchen and hearth."
+        pair=[event("cook",1),event("tea",2)]
+        history=pair+[event("cook",3),event("tea",4),event("cook",5)]
+        scores,ids=appraise(history,room,("tea","eat"))
+        self.assertEqual(scores["tea"],CAP)
+        self.assertEqual(ids["tea"],["mem-1","mem-2","mem-3","mem-4"])
+        self.assertEqual(appraise(pair+[event("cook",3)],room,("tea",))[0]["tea"],0)
+        self.assertEqual(appraise(history+[event("tea",6,False),event("cook",7)],room,("tea",))[0]["tea"],0)
+        self.assertEqual(appraise(history,"another room",("tea",))[0]["tea"],0)
+
     def test_independent_outcomes_saturate_and_reverse(self):
         from doctor_lives.tower_development import _appraise
         good = [("work", True, "memory-" + str(i), "source-" + str(i))
@@ -106,6 +121,10 @@ class OriginalTowerTests(unittest.TestCase):
         appraisals = json.loads(policy["state_pressure_json"])
         self.assertEqual(appraisals["abstract_policy_id"], choice["abstract_policy_id"])
         self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
+        procedure = appraisals["procedural_memory"]
+        self.assertTrue(procedure["enabled"])
+        self.assertEqual(set(procedure["contributions"]),set(choice["offers"]))
+        self.assertTrue(all(0 <= v <= .025 for v in procedure["contributions"].values()))
         prospective = appraisals["prospective_goals"]
         self.assertEqual(set(prospective["scores"]), set(choice["offers"]))
         self.assertTrue(all(0 <= v <= .065 for v in prospective["scores"].values()))

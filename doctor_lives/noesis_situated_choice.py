@@ -412,6 +412,12 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
         from .tower_development import verified_consequence_pressure
         outcome_scores, outcome_ids = verified_consequence_pressure(
             brain, tower_provider, observation, tuple(by_key))
+    procedure_scores = dict.fromkeys(by_key, 0.0)
+    procedure_ids = {key: [] for key in by_key}
+    if tower_provider is not None:
+        from .tower_procedure import verified_sequences
+        procedure_scores, procedure_ids = verified_sequences(
+            brain, tower_provider, observation, tuple(by_key))
     prospective = None
     if tower_provider is not None:
         from .tower_prospective import assess
@@ -435,19 +441,24 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
         specific = max(-.05, min(.05, specific))
         base[key] = NEURAL_WEIGHT * abstract["action_scores"][tendency]
         goal_pressure = prospective["scores"][key] if prospective else 0.0
-        scores[key] = base[key] + regulatory_pressure.get(key, 0.0) + specific + outcome_scores[key] + goal_pressure
+        scores[key] = (base[key] + regulatory_pressure.get(key, 0.0) + specific
+                       + outcome_scores[key] + goal_pressure + procedure_scores[key])
         local[key] = {"tendency": tendency, "cue": cue,
                       "commitment": commitment, "specific_pressure": specific,
                       "prospective_pressure": goal_pressure,
+                      "procedural_pressure": procedure_scores[key],
+                      "procedural_memory_ids": procedure_ids[key],
                       "developmental_pressure": outcome_scores[key],
                       "developmental_memory_ids": outcome_ids[key],
                       "source_ids": appraisal["source_ids"],
                       "families": families}
         candidate_ids.extend(appraisal["source_ids"]["history"])
         candidate_ids.extend(outcome_ids[key])
+        candidate_ids.extend(procedure_ids[key])
     selected = max(sorted(scores), key=scores.get)
     selected_ids = list(dict.fromkeys([observation_memory_id]
-                        + local[selected]["source_ids"]["history"] + outcome_ids[selected]))
+                        + local[selected]["source_ids"]["history"] + outcome_ids[selected]
+                        + procedure_ids[selected]))
     evidence = {"version": "noesis-world-affordance-v1",
                 "abstract_policy_id": abstract["policy_decision_id"],
                 "observation_memory_id": observation_memory_id,
@@ -467,6 +478,10 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                                     "world_authority": False, "motor_authority": False,
                                     "lived_fact_authority": False},
                 "prospective_goals": prospective,
+                "procedural_memory": {"enabled": tower_provider is not None,
+                                      "version": "tower-contextual-procedure-v1",
+                                      "contributions": procedure_scores,
+                                      "source_memory_ids": procedure_ids},
                 "developmental_history": {"enabled": tower_provider is not None,
                                           "version": "tower-contextual-consequence-v1",
                                           "contributions": outcome_scores,
