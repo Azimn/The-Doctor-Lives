@@ -24,6 +24,7 @@ MANIFEST = Path(__file__).with_name("data") / "small_tower_source.json"
 BINDING = "small-tower:world-binding-v1"
 CURSOR = "small-tower:source-cursor-v1"
 PENDING = "small-tower:pending-world-request-v1"
+BACKGROUND_CLOCK = "small-tower:background-clock-v1"
 MAP = {
     "sleep":"avoid", "rest":"avoid", "eat":"avoid", "cook":"persist",
     "tea":"persist", "prepare":"persist", "diary":"create", "read":"explore",
@@ -240,8 +241,57 @@ def _choose(runtime, snapshot, observation_id):
     return choice,decision["policy_decision_id"]
 
 
+def _background_clock(store):
+    """Canonical operational watermark, not a new cognitive state."""
+    raw = store.meta(BACKGROUND_CLOCK)
+    if raw is None:
+        return {"source_ticks": 0, "since_wake": 0, "pending_wake": None}
+    clock = json.loads(raw)
+    if (set(clock) != {"source_ticks", "since_wake", "pending_wake"}
+            or type(clock["source_ticks"]) is not int
+            or type(clock["since_wake"]) is not int
+            or not 0 <= clock["since_wake"] <= clock["source_ticks"]
+            or (clock["pending_wake"] is not None
+                and (type(clock["pending_wake"]) is not str
+                     or not clock["pending_wake"].startswith("tower:")))):
+        raise RuntimeError("Invalid canonical Tower background clock")
+    return clock
+
+
+def _write_background_clock(store, clock, db):
+    store.set_meta(BACKGROUND_CLOCK, json.dumps(clock, sort_keys=True), db)
+
+
+def _reconcile_background_clock(state, store):
+    clock = _background_clock(store)
+    wake_id = clock["pending_wake"]
+    if wake_id is None:
+        return clock
+    # A completed ledger receipt is authoritative even if the host died
+    # before acknowledging it in BrainStore. An absent reservation means
+    # cognition never started; carry the source debt into the next boundary.
+    from .cascade_background import BackgroundLedger
+    ledger = BackgroundLedger(state)
+    ledger.assert_reconciled()
+    with ledger.connect() as db:
+        row = db.execute("SELECT status,receipt FROM wakes WHERE id=?", (wake_id,)).fetchone()
+    if row is not None:
+        if row["status"] != "completed" or not row["receipt"]:
+            raise RuntimeError("Unresolved Tower background wake")
+        receipt = json.loads(row["receipt"])
+        if (receipt.get("schema") != "canonical-cascade-wake-v1"
+                or receipt.get("wake_id") != wake_id):
+            raise RuntimeError("Invalid Tower background wake receipt")
+        clock["since_wake"] = 0
+    clock["pending_wake"] = None
+    with store.transaction() as db:
+        _write_background_clock(store, clock, db)
+        store.bump_state_version(db)
+    return clock
+
+
 def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
-                    _background_lease=None, _background_due_after=None):
+                    _background_lease=None, _background_every_ticks=0):
     """One original cognitive opportunity or continuation of an active action."""
     from .lab_runtime import _exclusive_host
     from .organs import SixOrganRuntime
@@ -265,6 +315,7 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
         _bind(runtime,provider,snapshot)
         port=VirtualWorldEnvironmentPort(runtime,provider,authorized=True)
         store=runtime._port.brain.store
+        clock = _reconcile_background_clock(state, store)
         raw=store.meta(PENDING)
         if raw:
             request=json.loads(raw)
@@ -285,16 +336,30 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                 store.bump_state_version(db)
         result=provider.pulse(request)
         snapshot=_admit_events(runtime,provider,port)
+        elapsed = result["elapsed"]
+        if (result["requestId"] != request["id"] or type(elapsed) is not int
+                or not 0 <= elapsed <= request["steps"]):
+            raise RuntimeError("Invalid Tower source clock receipt")
+        # A replay here means the source committed but the canonical pending
+        # request was not acknowledged. Count it once in the same transaction
+        # that clears that request, including after a cold restart.
+        clock["source_ticks"] += elapsed
+        clock["since_wake"] += elapsed
+        due = (_background_lease is not None
+               and _background_every_ticks > 0
+               and not result["replayed"] and not result["busy"]
+               and not result["deceased"]
+               and clock["since_wake"] >= _background_every_ticks)
+        if due:
+            clock["pending_wake"] = "tower:" + request["id"]
         with store.transaction() as db:
             store.set_meta("small-tower:receipt:"+request["id"],json.dumps(result,sort_keys=True),db)
+            _write_background_clock(store, clock, db)
             db.execute("DELETE FROM meta WHERE key=?",(PENDING,))
             store.bump_state_version(db)
         runtime.checkpoint()
         background = None
-        if (_background_lease is not None
-                and type(_background_due_after) is int
-                and not result["replayed"] and not result["busy"]
-                and not result["deceased"] and result["elapsed"] >= _background_due_after):
+        if due:
             # Same brain, same host lease. Physical time does not advance
             # during this private wake. Source receipt is already durable.
             import time
@@ -303,10 +368,12 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                 state, runtime, journal, lease_id=_background_lease,
                 wake_id="tower:"+request["id"], now_ms=time.time_ns()//1_000_000,
                 ticks=1)
+            clock = _reconcile_background_clock(state, store)
         return {"schema":"doctor-small-tower-pulse.v1","world_epoch":provider.world_epoch,
                 "policy_id":request["policyRef"],"choice":request["choice"],
                 "source_receipt":result,"subject_narrative":snapshot["narrative"],
                 "background_receipt":background,
+                "background_clock":clock,
                 "same_canonical_brain":True,"parallel_tower_chooser":False}
 
 
@@ -366,25 +433,21 @@ def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
     pulses = []
     background_receipts = []
     status = "budget_complete"
-    since_wake = 0
     try:
         for index in range(opportunities):
             result = run_tower_pulse(
                 state, source, world, authorize=True, steps=steps,
                 _background_lease=lease_id,
-                _background_due_after=max(0, background_every_ticks-since_wake))
+                _background_every_ticks=background_every_ticks)
             receipt = result["source_receipt"]
             pulses.append({"request_id": receipt["requestId"],
                            "policy_id": result["policy_id"], "choice": result["choice"],
                            "source_ticks": receipt["elapsed"],
                            "source_cursor": receipt["cursor"], "replayed": receipt["replayed"],
                            "busy": receipt["busy"], "deceased": receipt["deceased"]})
-            if not receipt["replayed"]:
-                since_wake += receipt["elapsed"]
             background = result["background_receipt"]
             if background is not None:
                 background_receipts.append(background)
-                since_wake = 0
             if receipt["deceased"]:
                 status = "deceased"
                 break
@@ -400,5 +463,6 @@ def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
             "wall_seconds": time.monotonic() - started,
             "pulses": pulses, "background_receipts": background_receipts,
             "background_every_source_ticks": background_every_ticks,
+            "background_clock": result["background_clock"],
             "engineer_only": True,
             "operator_supplied_goals": False}

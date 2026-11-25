@@ -81,8 +81,23 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertEqual(recovered["pulses"][0]["request_id"],pending["id"])
             self.assertTrue(recovered["pulses"][0]["replayed"])
             self.assertEqual(recovered["new_source_ticks"],0)
+            recovered_clock = recovered["background_clock"]
+            self.assertEqual(recovered_clock["source_ticks"],
+                             recovered["recovered_source_ticks"])
+            self.assertEqual(recovered_clock["since_wake"],
+                             recovered["recovered_source_ticks"])
             self.assertEqual(provider.snapshot(),committed)
             self.assertIsNone(SixOrganRuntime.open(state)._port.brain.store.meta(PENDING))
+            # A separate invocation and newly authorized lease must retain
+            # the exact committed source ticks, even with no eligible wake.
+            split = run_tower_life(state,source,world,authorize=True,opportunities=1,
+                                   steps=100,background_every_ticks=100000)
+            self.assertFalse(split["background_receipts"])
+            self.assertEqual(split["background_clock"]["source_ticks"],
+                             recovered_clock["source_ticks"] + split["new_source_ticks"])
+            self.assertEqual(split["background_clock"]["since_wake"],
+                             split["background_clock"]["source_ticks"])
+            self.assertIsNone(split["background_clock"]["pending_wake"])
             # Cold-open every opportunity through the actual canonical host.
             life=run_tower_life(state,source,world,authorize=True,opportunities=8,steps=100,
                                 background_every_ticks=1)
@@ -93,6 +108,9 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertTrue(any(p["policy_id"] for p in life["pulses"]))
             self.assertGreater(provider.snapshot()["cursor"],committed["cursor"])
             self.assertTrue(life["background_receipts"])
+            self.assertEqual(life["background_clock"]["source_ticks"],
+                             split["background_clock"]["source_ticks"] + life["new_source_ticks"])
+            self.assertIsNone(life["background_clock"]["pending_wake"])
             by_request={p["request_id"]:p for p in life["pulses"]}
             for wake in life["background_receipts"]:
                 pulse=by_request[wake["wake_id"].removeprefix("tower:")]
