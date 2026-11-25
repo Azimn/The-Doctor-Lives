@@ -105,6 +105,7 @@ def select_with_original_noesis(
     interoception_enabled: bool = False,
     active_commitment: tuple[str, str] | None = None,
     habit_bridge=None,
+    developmental_history_enabled: bool = False,
 ) -> dict[str, Any]:
     """Commit one original-brain choice and detailed engineer-only audit.
 
@@ -116,8 +117,11 @@ def select_with_original_noesis(
     """
     if (type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool
             or type(outcome_learning_enabled) is not bool or type(author_day_goal) is not bool
-            or type(interoception_enabled) is not bool):
+            or type(interoception_enabled) is not bool
+            or type(developmental_history_enabled) is not bool):
         raise TypeError("Research lesion switches must be explicit booleans")
+    if developmental_history_enabled and not outcome_learning_enabled:
+        raise ValueError("Developmental history requires outcome learning")
     if type(observation_memory_id) is not str:
         raise TypeError("An original brain observation memory ID is required")
     if type(eligible_read_memory_ids) is not tuple or any(
@@ -185,8 +189,11 @@ def select_with_original_noesis(
     eligible_outcomes = []
     used_outcomes = []
     if outcome_learning_enabled:
-        from .noesis_consequences import consequence_pressure
-        outcome_scores, eligible_outcomes, used_outcomes = consequence_pressure(
+        from .noesis_consequences import (consequence_pressure,
+                                           developmental_consequence_pressure)
+        appraisal = (developmental_consequence_pressure if developmental_history_enabled
+                     else consequence_pressure)
+        outcome_scores, eligible_outcomes, used_outcomes = appraisal(
             brain, observation=observation["text"],
             verified_outcome_memory_ids=eligible_outcome_memory_ids,
             feasible_actions=feasible_actions,
@@ -234,6 +241,9 @@ def select_with_original_noesis(
     evidence = {
         "version": active_version,
         "outcome_learning_enabled": outcome_learning_enabled,
+        "developmental_history_enabled": developmental_history_enabled,
+        "developmental_history_version": ("work-history-appraisal-v2"
+                                          if developmental_history_enabled else None),
         "eligible_verified_outcome_ids": eligible_outcomes,
         "used_outcome_memory_ids": used_outcomes,
         "outcome_contributions": outcome_scores,
@@ -280,7 +290,7 @@ def select_with_original_noesis(
              selected_action, json.dumps(native, sort_keys=True),
              json.dumps(evidence, sort_keys=True),
              json.dumps(final, sort_keys=True),
-             json.dumps(list(dict.fromkeys([observation_memory_id] + eligible + habit_ids))),
+             json.dumps(list(dict.fromkeys([observation_memory_id] + eligible + eligible_outcomes + habit_ids))),
              json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
              int(brain.neural.tick), checkpoint, active_version),
         )
