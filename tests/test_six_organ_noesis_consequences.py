@@ -274,19 +274,10 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertEqual(proposed.supporting_memory_ids, ())
 
 
-    def test_repeated_real_work_history_changes_appraisal_in_same_worn_context(self):
+    def _two_owned_wear_episodes_with_both_choices(self):
+        """Actual physical history, with one reagent reserved for the probe."""
         from doctor_lives.lab_endogenous_book_task import EndogenousBookPursuit
-        def choose(enabled):
-            return propose_noesis_work(
-                self.bridge, learning_enabled=False, neural_prior_enabled=False,
-                outcome_learning_enabled=enabled,
-                developmental_history_enabled=enabled,
-            )
-        def execute(proposal, event_id):
-            return execute_noesis_work(
-                self.bridge, decision_id=proposal.decision_id,
-                event_id=event_id, authorized_world_action=True,
-            )["world"]["memory_id"]
+        from doctor_lives.noesis_lab_work import _feasible_work
         def travel(destination, prefix):
             for i in range(12):
                 current = self.subject.embodied.verify()["station"]
@@ -296,40 +287,106 @@ class NoesisActualConsequenceTests(unittest.TestCase):
                 self.assertIsNotNone(target)
                 self.bridge.act("walk", event_id=f"{prefix}-{i}", station=target)
             self.fail("Physical route did not arrive")
-        first = self.create_one_real_consequence()
-        early = choose(True)
-        early_audit = self.policy_audit(early.decision_id)[1]
-        self.assertEqual(early.action, "repair")
-        repair = execute(early, "development-repair")
+
+        # Operator preparation is not eligible as owned developmental experience.
+        self.bridge.act("repair", event_id="development-fixture-repair")
         self.assertEqual(self.state()["apparatus"], 3)
-        # Lawful test setup: physical rest, not a mental-state edit.
-        travel("station:bedroom", "development-outbound")
-        self.bridge.act("rest", event_id="development-rest-1")
-        self.bridge.act("rest", event_id="development-rest-2")
-        travel("station:bench", "development-return")
-        self.bridge.act("clean", event_id="development-clean")
-        second = execute(choose(False), "development-experiment-2")
-        self.assertEqual(self.state()["apparatus"], 2)
-        # Recover once more before the third independent experiment.
-        travel("station:bedroom", "development-outbound-2")
-        self.bridge.act("rest", event_id="development-rest-3")
-        travel("station:bench", "development-return-2")
-        third = execute(choose(False), "development-experiment-3")
+        ids = []
+        for i in range(2):
+            proposal = propose_noesis_work(
+                self.bridge, learning_enabled=False, neural_prior_enabled=False,
+                outcome_learning_enabled=False,
+            )
+            self.assertEqual(proposal.action, "experiment")
+            outcome = execute_noesis_work(
+                self.bridge, decision_id=proposal.decision_id,
+                event_id=f"development-experiment-{i}", authorized_world_action=True,
+            )
+            ids.append(outcome["world"]["memory_id"])
+            travel("station:bedroom", f"development-outbound-{i}")
+            self.bridge.act("rest", event_id=f"development-rest-{i}")
+            travel("station:bench", f"development-return-{i}")
+            self.bridge.act("clean", event_id=f"development-clean-{i}")
         self.assertEqual(self.state()["apparatus"], 1)
-        # Restore the physical opportunity without changing work history.
-        travel("station:bedroom", "development-outbound-3")
-        self.bridge.act("rest", event_id="development-rest-4")
-        travel("station:bench", "development-return-3")
-        self.bridge.act("clean", event_id="development-clean-2")
-        later = choose(True)
-        audit = self.policy_audit(later.decision_id)[1]
-        self.assertIn("experiment", later.candidate_scores)
-        self.assertIn("repair", later.candidate_scores)
-        self.assertEqual(later.action, "repair")
-        self.assertLess(audit["outcome_contributions"]["experiment"],
-                        early_audit["outcome_contributions"]["experiment"])
-        self.assertEqual(set(later.supporting_memory_ids), {first, second, third, repair})
-        self.assertEqual(self.actions("experiment"), 3)
+        self.assertEqual(self.state()["supplies"]["reagents"], 1)
+        self.assertEqual(set(_feasible_work(self.bridge)), {"experiment", "repair"})
+        return ids
+
+    def _development_probe(self, *, enabled=True, neural=False, legacy=False):
+        return propose_noesis_work(
+            self.bridge, learning_enabled=False, neural_prior_enabled=neural,
+            outcome_learning_enabled=enabled,
+            developmental_history_enabled=enabled and not legacy,
+        )
+
+    def _set_episode_active(self, memory_id, active):
+        store = self.port.brain.store
+        with store.transaction() as db:
+            if active:
+                db.execute("UPDATE memories SET active=1 WHERE id=?", (memory_id,))
+            else:
+                store.archive_memory(db, memory_id, store.tick, "controlled history lesion")
+            store.bump_state_version(db)
+
+    def test_repeated_real_work_history_strengthens_appraisal_at_fixed_opportunity(self):
+        first, second = self._two_owned_wear_episodes_with_both_choices()
+        state = self.state()
+        later = self._development_probe()
+        self._set_episode_active(first, False)
+        single = self._development_probe()
+        self._set_episode_active(first, True)
+        restored = self._development_probe()
+        for probe in (later, single, restored):
+            self.assertEqual(set(probe.candidate_scores), {"experiment", "repair"})
+            self.assertEqual(probe.action, "repair")
+            self.assertEqual(probe.observation_memory_id, later.observation_memory_id)
+        self.assertEqual(set(later.supporting_memory_ids), {first, second})
+        self.assertEqual(single.supporting_memory_ids, (second,))
+        self.assertAlmostEqual(single.candidate_scores["experiment"], -0.08)
+        self.assertAlmostEqual(later.candidate_scores["experiment"], -0.12)
+        self.assertEqual(restored.candidate_scores, later.candidate_scores)
+        self.assertEqual(self.state(), state)
+
+    def test_accumulation_reverses_choice_under_declared_matched_prior(self):
+        """Causal threshold control, not an uncoached neural-policy trial."""
+        from unittest.mock import patch
+        from doctor_lives.neural import ACTIONS
+        first, second = self._two_owned_wear_episodes_with_both_choices()
+        state = self.state()
+        # Declared controlled prior: 0.20 * (0.75 - 0.25) = 0.10 margin.
+        # This is between one and two developmental wear increments.
+        prior = dict.fromkeys(ACTIONS, 0.0)
+        prior.update(explore=0.75, persist=0.25)
+
+        def probe(**kwargs):
+            with patch.object(self.port.brain.neural, "action_scores", return_value=prior):
+                return self._development_probe(neural=True, **kwargs)
+
+        full = probe()
+        withheld = probe(enabled=False)
+        legacy = probe(legacy=True)
+        self._set_episode_active(first, False)
+        single = probe()
+        self._set_episode_active(first, True)
+        restored = probe()
+        self.port.save()
+        self.port = PretoriusBrainPort(self.port.brain.state_dir)
+        self.bridge = DoctorHomeBridge(self.port, self.subject, authorized=True)
+        reopened = probe()
+        for result in (full, withheld, legacy, single, restored, reopened):
+            self.assertEqual(set(result.candidate_scores), {"experiment", "repair"})
+            self.assertEqual(result.observation_memory_id, full.observation_memory_id)
+        self.assertEqual(withheld.action, "experiment")
+        self.assertEqual(single.action, "experiment")
+        self.assertEqual(full.action, "repair")
+        self.assertEqual(restored.action, "repair")
+        self.assertEqual(reopened.action, "repair")
+        # Historical legacy rule already repairs after a single episode.
+        self.assertEqual(legacy.action, "repair")
+        self.assertEqual(single.supporting_memory_ids, (second,))
+        self.assertEqual(set(reopened.supporting_memory_ids), {first, second})
+        self.assertEqual(self.state(), state)
+        self.assertEqual(self.actions("experiment"), 2)
         self.assertEqual(self.actions("repair"), 1)
 
 
@@ -361,10 +418,10 @@ class DevelopmentalAppraisalTests(unittest.TestCase):
             )
         one, _, used = evaluate(["1"])
         self.assertEqual(used, ["1"])
-        self.assertAlmostEqual(one["experiment"], -0.6)
+        self.assertAlmostEqual(one["experiment"], -0.08)
         repeated, eligible, used = evaluate(list(records))
-        self.assertAlmostEqual(repeated["experiment"], -1.125)
-        self.assertAlmostEqual(repeated["repair"], 0.3)
+        self.assertAlmostEqual(repeated["experiment"], -0.15)
+        self.assertAlmostEqual(repeated["repair"], 0.04)
         self.assertEqual(len(used), 5)
         self.assertNotIn("foreign", eligible)
         self.assertEqual(evaluate(["1", "alias"])[0], one)
