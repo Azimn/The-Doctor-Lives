@@ -218,9 +218,13 @@ def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
             pressure[key]=amount
         if ("I am in my bedchamber." in text or "I am in my laboratory." in text):
             pressure["move_library"]=amount
-    from .tower_regulation import verified_appraisal
-    for key, amount in verified_appraisal(brain.store, brain.store.get_memory(observation_id),
+    from .tower_regulation import verified_appraisal, remembered_supply
+    current_memory = brain.store.get_memory(observation_id)
+    for key, amount in verified_appraisal(brain.store, current_memory,
                                           offers, scene["admitted_lines"]).items():
+        pressure[key] = max(amount, pressure.get(key, 0.0))
+    supply = remembered_supply(brain.store, current_memory, offers)
+    for key, amount in supply["scores"].items():
         pressure[key] = max(amount, pressure.get(key, 0.0))
     if "provisions are running low" in text:
         pressure["move_garden"]=.18
@@ -254,6 +258,7 @@ def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
                         "host_mapped_abstract_tendency":False,
                         "abstract_policy_id":decision["abstract_policy_id"],
                         "selector_authority":"original_noesis",
+                        "remembered_supply":supply,
                         "corpus":{"source_memory_id":body["source_memory_id"],"band":body["band"],
                                   "projection_applied":body["projection_applied"]},
                         "sensus":{"tick":scene["tick"],"source_memory_id":scene["source_memory_id"],

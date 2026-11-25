@@ -46,6 +46,15 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertEqual(appraisal(worn,bedroom_offers,remembered),{"rest":.14,"sleep":.20})
         self.assertEqual(appraisal(["I am in my bedchamber."],bedroom_offers,remembered),{})
 
+    def test_remembered_supply_need_survives_departure_until_verified_attempt(self):
+        from doctor_lives.tower_regulation import supply_appraisal
+        shortage = "I can see Stores shelf. I can see that my fuel is running low."
+        self.assertEqual(supply_appraisal(shortage,set(),{"gather_fuel","walk"}),{"gather_fuel":.16})
+        self.assertEqual(supply_appraisal(shortage,{"I gathered fallen wood for the hearth."},{"gather_fuel"}),{})
+        self.assertEqual(supply_appraisal("I can see Stores shelf.",set(),{"gather_fuel"}),{})
+        self.assertEqual(supply_appraisal("I can see that my fuel is running low.",set(),{"gather_fuel"}),{})
+        self.assertEqual(supply_appraisal(shortage,set(),{"walk"}),{})
+
     def test_repeated_single_activity_is_not_a_procedural_sequence(self):
         from doctor_lives.tower_procedure import appraise
         episodes = [{"action":"rest","room":"bedchamber","success":True,
