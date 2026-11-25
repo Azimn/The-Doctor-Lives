@@ -26,6 +26,12 @@ CAPACITY_RECEIPTS = 520
 CAPACITY_WATCHDOG_SECONDS = 3600
 
 
+def _capacity_stop_reason(observation_stop, error):
+    if error:
+        return "operator_error" if error.startswith("operator_") else "witness_or_operator_error"
+    return observation_stop
+
+
 def _capacity_result(data, *, progress_reached, operator_error):
     """Missing observations are not evidence of psychological incapacity.
 
@@ -179,6 +185,8 @@ def main():
                 )
                 if stop_code != 0:
                     error = "operator_did_not_cleanly_stop:" + stop_stderr[-400:]
+            elif error is None:
+                error = "operator_exited_before_graceful_stop"
             try:
                 proc.wait(timeout=60)
             except subprocess.TimeoutExpired:
@@ -225,17 +233,19 @@ def main():
             if final_sample else None),
         "source_authentication_performed": False, "autonomy_credit": False,
     }
+    source_status = data["status"]
+    source_three_distinct = data.get("three_distinct_uncoached", False)
     if error:
         data["status"] = "FAIL"
         data["three_distinct_uncoached"] = False
         data.setdefault("problems", []).append(error)
     if args.capacity_receipts is not None:
-        source_status = data["status"]
         data["source_audit_status"] = source_status
+        data["source_audit_three_distinct_uncoached"] = source_three_distinct
         data["capacity_observation"] = {
             "minimum_world_receipt_delta": args.capacity_receipts,
             "progress_reached_while_alive": progress_reached,
-            "stop_reason": stop_reason,
+            "stop_reason": _capacity_stop_reason(stop_reason, error),
             "watchdog_seconds": args.seconds,
             "receipt_count_is_not_autonomy_credit": True,
             "missing_behavior_is_not_incapacity": True,

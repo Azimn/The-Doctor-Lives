@@ -273,6 +273,19 @@ class R4WitnessTests(unittest.TestCase):
 
 
 class R4CapacityVerdictTests(unittest.TestCase):
+    def test_early_operator_exit_is_not_watchdog(self):
+        from tools.run_uncoached_r4_trial import _capacity_stop_reason
+        self.assertEqual(_capacity_stop_reason("watchdog", "operator_return_code_2"),
+                         "operator_error")
+        self.assertEqual(_capacity_stop_reason("watchdog", "operator_exited_before_graceful_stop"),
+                         "operator_error")
+        self.assertEqual(_capacity_stop_reason("receipt_progress_target", "operator_did_not_terminate"),
+                         "operator_error")
+        self.assertEqual(_capacity_stop_reason("watchdog", None), "watchdog")
+        self.assertEqual(_capacity_stop_reason("receipt_progress_target", None), "receipt_progress_target")
+        self.assertEqual(_capacity_stop_reason("watchdog", "independent_final_witness_error:ValueError"),
+                         "witness_or_operator_error")
+
     def test_capacity_requires_source_pass_and_progress(self):
         from tools.run_uncoached_r4_trial import _capacity_result
         data = {"status": "PASS", "problems": []}

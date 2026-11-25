@@ -1181,10 +1181,62 @@
         "original_source_replay": true,
         "zero_operator_errors": true,
         "missing_activity": "INCONCLUSIVE; nonzero CI exit; no incapacity inference",
-        "motivation_changes": false
+        "motivation_changes": false,
+        "owner_confirmed_parameters": true
       },
-      "status": "implementation_candidate_ci_pending",
-      "throughput_profile": "open; historic aggregate receipt progress verified, per-function timings not available"
+      "status": "operator_transport_repair_candidate_ci_pending",
+      "throughput_profile": "open; historic aggregate receipt progress verified, per-function timings not available",
+      "capacity_run_evidence": {
+        "head": "e8f7240d4eea98e2de2af27090ec494ff9defc6e",
+        "run": 45659716892,
+        "job": 139372479980,
+        "status": "FAIL",
+        "validated_goals": 9,
+        "independent_origin_observations": 59,
+        "activities": [
+          "read_book",
+          "rest",
+          "work"
+        ],
+        "world_receipts": 492,
+        "live_receipts": 491,
+        "elapsed_seconds": 2177.598,
+        "operator_error": "preview-start: textual signal exceeds bounded capacity",
+        "operator_return_code": 2,
+        "original_physics_replay": true,
+        "source_artifact": 15047263957,
+        "source_artifact_sha256": "77cd1f6fcfb9190362f32b289107b1e19a87369d76c02f822b20272b8c1c9793",
+        "diagnostic_artifact": 15047099203,
+        "diagnostic_artifact_sha256": "2e550ed801193595c863d4fed69aa63768f343dcf1a9c9186c9b981605bdf39a",
+        "rest_receipts": [
+          "ng_eb1e2bef3a39937122198dc5_rest",
+          "ng_5cb8a6455de00f1d4407db54_rest"
+        ],
+        "full_suite": {
+          "run": 45659716927,
+          "job": 139365962259,
+          "discovered": 876,
+          "passed": 605,
+          "skipped": 271,
+          "failed": 0
+        },
+        "workflows": {
+          "passed": 21,
+          "failed": 1
+        }
+      },
+      "operator_repair": {
+        "donor": "synthetic-ipseity 0.9.11 unchanged",
+        "donor_signal_limit": 1000,
+        "archived_memory": {
+          "id": "mem_1e146627db70499ab0e036e2c5a57f93",
+          "length": 7629,
+          "sha256": "dbcd65645db1e2629d6ae8686bc7ca5c24733d2a64a86397499d2552db8ec1bc"
+        },
+        "scope": "output transport only; lossless bounded fragments through same donor; restart-persistent offsets/digests only; exact reconstructed text before original renderer; no cognitive input or history changes; early-exit diagnostic correction",
+        "status": "candidate; exact-head CI pending",
+        "universal_first_person_coverage": "not qualified; no change to recurrent ingress"
+      }
     },
     "character_fidelity_observation": {
       "status": "unqualified",
