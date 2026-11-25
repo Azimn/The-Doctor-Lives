@@ -453,7 +453,7 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertTrue(audit["developmental_history_enabled"])
         self.assertAlmostEqual(audit["outcome_contributions"]["experiment"], -0.12)
         self.assertEqual(set(audit["used_outcome_memory_ids"]), {first, second})
-        self.assertEqual(daily.observation_memory_id, native.observation_memory_id)
+        self.assertEqual(daily.observation_id, native.observation_memory_id)
         self.assertEqual(self.state(), state)
 
 

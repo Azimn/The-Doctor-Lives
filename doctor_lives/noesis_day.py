@@ -7,6 +7,8 @@ current independently maintained world state. No second planner or BrainStore.
 """
 from __future__ import annotations
 
+from contextlib import closing
+
 from dataclasses import dataclass
 import json
 import sqlite3
@@ -88,7 +90,7 @@ def pending_daily_action_ids(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     """
     if not isinstance(bridge, DoctorHomeBridge):
         raise TypeError("Original Laboratory bridge required for pending-action audit")
-    with bridge.doctor.brain.store.connect() as db:
+    with closing(bridge.doctor.brain.store.connect()) as db:
         rows = db.execute(
             "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
             "WHERE trigger='noesis_situated_choice' ORDER BY rowid"
@@ -235,7 +237,7 @@ def compete_with_commitment(session, *, commitment_key: str, goal_id: str,
             and rest_pressure > 0 and rest_pressure >= max(pressure.values())):
         brain = bridge.doctor.brain
         _verified_active_commitment(brain, (commitment_key, goal_id))
-        with brain.store.connect() as db:
+        with closing(brain.store.connect()) as db:
             origin = db.execute(
                 "SELECT id,selected_action,trigger FROM policy_decisions ORDER BY rowid DESC LIMIT 1"
             ).fetchone()
@@ -365,7 +367,7 @@ def reconcile_pending_daily_action(bridge: DoctorHomeBridge) -> tuple[dict, ...]
         raise RuntimeError("Multiple pending daily motors require integrity review")
     from .lab_home_bridge import _ACTION_DOMAINS
     store = bridge.doctor.brain.store
-    with store.connect() as db:
+    with closing(store.connect()) as db:
         rows = db.execute(
             "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
             "WHERE trigger='noesis_situated_choice' ORDER BY rowid"
@@ -428,7 +430,7 @@ def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
     if pending_daily_action_ids(bridge):
         raise PermissionError("Recover the prior daily motor before authorizing another")
     store = bridge.doctor.brain.store
-    with store.connect() as db:
+    with closing(store.connect()) as db:
         row = db.execute(
             "SELECT id,selected_action,trigger,policy_version,state_pressure_json "
             "FROM policy_decisions WHERE id=?", (choice.policy_id,)

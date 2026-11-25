@@ -7,6 +7,8 @@ it with its own choice. All world and memory receipts stay with their owners.
 """
 from __future__ import annotations
 
+from contextlib import closing
+
 from dataclasses import dataclass
 import json
 import sqlite3
@@ -181,7 +183,7 @@ def verify_noesis_work_replay(
     path = bridge._intent_path()
     if not path.is_file():
         raise PermissionError("No preexisting Doctor-owned work reservation")
-    with sqlite3.connect(path, timeout=30) as db:
+    with closing(sqlite3.connect(path, timeout=30)) as db:
         row = db.execute(
             "SELECT request_json,status FROM doctor_action_intents WHERE event_id=?",
             (event_id,),
@@ -190,7 +192,7 @@ def verify_noesis_work_replay(
             or row[1] not in ("pending", "complete")):
         raise PermissionError("No matching preexisting Doctor-owned work reservation")
 
-    with bridge.doctor.brain.store.connect() as db:
+    with closing(bridge.doctor.brain.store.connect()) as db:
         rows = db.execute(
             "SELECT id,selected_action,policy_version,state_pressure_json "
             "FROM policy_decisions WHERE trigger='noesis_situated_choice'"
@@ -215,7 +217,7 @@ def verify_noesis_work_replay(
 
 def inspected_noesis_motor_bindings(bridge: DoctorHomeBridge, event_id: str) -> tuple[dict, ...]:
     """Read every source-owned reservation of this ID, including M2 actions."""
-    with bridge.doctor.brain.store.connect() as db:
+    with closing(bridge.doctor.brain.store.connect()) as db:
         rows = db.execute(
             "SELECT selected_action,state_pressure_json FROM policy_decisions "
             "WHERE trigger='noesis_situated_choice'"
@@ -247,7 +249,7 @@ def execute_noesis_work(
     if type(decision_id) is not str or not decision_id:
         raise ValueError("Original canonical policy ID required")
     from .noesis_situated_choice import VERSION, OUTCOME_VERSION
-    with bridge.doctor.brain.store.connect() as db:
+    with closing(bridge.doctor.brain.store.connect()) as db:
         rows = db.execute(
             "SELECT id,selected_action,policy_version,state_pressure_json FROM policy_decisions "
             "WHERE id=? AND trigger='noesis_situated_choice' "

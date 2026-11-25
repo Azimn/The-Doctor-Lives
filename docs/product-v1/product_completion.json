@@ -472,7 +472,9 @@
       "location": "cognition.py; noesis; memory; donor adapters",
       "acceptance": "Complete psychology, skills, goals, learning, 30 matched fixture pairs, semantic and provenance gates",
       "status": "pending",
-      "evidence": []
+      "evidence": [
+        "Unified 9b34d86 pinned real Laboratory CI job 138889993515 ran 12 tests, 11 passed; daily/native combined developmental appraisal test errored on DailyChoice.observation_memory_id (actual field observation_id). Corrected field, preserved all evidence and state assertions. Explicitly close read-only SQLite connections in daily/native Noesis and situated commitment verification. Exact-head CI pending."
+      ]
     },
     {
       "id": "PT-007",

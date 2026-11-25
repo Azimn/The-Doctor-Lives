@@ -10,6 +10,8 @@ manual. Host-verified physical offers remain an external environmental input.
 """
 from __future__ import annotations
 
+from contextlib import closing
+
 import hashlib
 import json
 import re
@@ -76,7 +78,7 @@ def _verified_active_commitment(brain, ref):
     if (digest != envelope.get("sha256") or goal["id"] != goal_id
             or goal["phase"] not in _ACTIVE_COMMITMENTS[key]):
         raise PermissionError("Commitment is not active and source-bound")
-    with brain.store.connect() as db:
+    with closing(brain.store.connect()) as db:
         origin = db.execute(
             "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
             (goal["origin_policy_id"],),
