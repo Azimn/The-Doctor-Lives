@@ -91,8 +91,9 @@ def parser() -> argparse.ArgumentParser:
             if name=="tower-run":
                 x.add_argument("--opportunities",type=int,default=20)
                 x.add_argument("--interval-seconds",type=float,default=0.0)
-                x.add_argument("--background-every-ticks",type=int,default=0,
-                               help="Offer one bounded CASCADE wake after this many actual world ticks at an idle boundary; 0 disables")
+                from .small_tower import DEFAULT_BACKGROUND_EVERY_TICKS
+                x.add_argument("--background-every-ticks",type=int,default=DEFAULT_BACKGROUND_EVERY_TICKS,
+                               help="Offer one bounded CASCADE wake after this many actual world ticks at an idle boundary; 0 is an explicit research control")
         else:
             x.add_argument("--port",type=int,default=8767)
             x.add_argument("--model",default="qwen3:1.5b")

@@ -105,6 +105,8 @@ class OriginalTowerTests(unittest.TestCase):
             recovered=run_tower_life(state,source,world,authorize=True,opportunities=1)
             self.assertEqual(recovered["pulses"][0]["request_id"],pending["id"])
             self.assertTrue(recovered["pulses"][0]["replayed"])
+            self.assertEqual(recovered["background_every_source_ticks"],
+                             small_tower.DEFAULT_BACKGROUND_EVERY_TICKS)
             self.assertEqual(recovered["new_source_ticks"],0)
             recovered_clock = recovered["background_clock"]
             self.assertEqual(recovered_clock["source_ticks"],

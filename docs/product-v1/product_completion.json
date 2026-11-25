@@ -681,6 +681,53 @@
         "status": "reconciliation_required"
       }
     ],
-    "qualification": "No new passing CI or causal behavioral result claimed. Preserve original qualification gates and prior register."
+    "qualification": "No new passing CI or causal behavioral result claimed. Preserve original qualification gates and prior register.",
+    "default_background": {
+      "status": "integration_pending_ci",
+      "cadence_source_ticks": 100,
+      "entrypoints": [
+        "tower-run",
+        "run_tower_life"
+      ],
+      "control": "0 explicitly disables; one-shot operator pulse and web endpoint are separate manual paths",
+      "qualification": "Default runner now schedules the existing original CASCADE and Mnemosyne bounded wake; no claim that 100 ticks is an optimal psychological cadence."
+    },
+    "donor_review": [
+      {
+        "repository": "Azimn/Jelly-Psiduck",
+        "ref": "47b5b9e9c5fcc050e63c26a7033185562152bda7",
+        "scope": "README source reconnaissance only",
+        "next": "Recover graded interoception, associative drift, unresolved concern recurrence, deferred inner-ear input and prospective feedback into existing canonical interfaces; no separate Jelly subject store.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/Pretorius-Connectome",
+        "ref": "5ee5c6b28e51ab84161b1956fcfc2329ab6499ea",
+        "scope": "README source reconnaissance only",
+        "next": "Reconcile canonical archive and retrieval cues, preserve provenance and absent-memory rejection; do not treat synthetic overlay or FlyWire pilot as established semantic recall.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/Kurzweil-Brain-Experiments",
+        "ref": "d98086619f1b218742607adb33e611b637484760",
+        "scope": "README source reconnaissance only",
+        "next": "Recover context-dependent developmental learning and matched-rich exposure controls; preserve failure of target-specific attractor and prevent broad creation bias.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/The-Inhabitant-Integrated-Organ-Structure",
+        "ref": "8dbb4ed5b8d7661056d9eecf3fc8bd4e4c269d2e",
+        "scope": "README source reconnaissance only",
+        "next": "Map restricted organ responsibilities, portable expression/voice, commitment lifecycle, evidence classes and interruption survival to the nine-organ directive; draft is not independent release evidence.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/Pretorius-Neural-Network",
+        "ref": "c7d9fc5c9a113aafcda07b7fe8302d3b6dc3fe71",
+        "scope": "README source reconnaissance only",
+        "next": "Audit BioCircuit recurrent mechanisms and phenotype training, identify source-recovery gaps; preserve missing original 30 training records and unreproduced CHIMERA result.",
+        "status": "mechanism_level_reconciliation_required"
+      }
+    ]
   }
 }

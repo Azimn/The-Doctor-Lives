@@ -25,6 +25,7 @@ BINDING = "small-tower:world-binding-v1"
 CURSOR = "small-tower:source-cursor-v1"
 PENDING = "small-tower:pending-world-request-v1"
 BACKGROUND_CLOCK = "small-tower:background-clock-v1"
+DEFAULT_BACKGROUND_EVERY_TICKS = 100
 MAP = {
     "sleep":"avoid", "rest":"avoid", "eat":"avoid", "cook":"persist",
     "tea":"persist", "prepare":"persist", "diary":"create", "read":"explore",
@@ -400,13 +401,15 @@ def initialize_tower(state, source, world, *, epoch, neural_config=None):
 
 
 def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
-                   steps=100, interval_seconds=0.0, background_every_ticks=0):
+                   steps=100, interval_seconds=0.0,
+                   background_every_ticks=DEFAULT_BACKGROUND_EVERY_TICKS):
     """Run bounded, unprompted physical opportunities using the same host.
 
     No chosen goal, room, or action is supplied by this runner. Each pulse
     persists before the next; a reserved request is recovered by the existing
     bridge. A stopped process grants no authority to simulate downtime.
     The counts are actual source ticks, not hours or elapsed wall time.
+    Background cognition participates by default; zero is an explicit research control.
     """
     import math
     import time
