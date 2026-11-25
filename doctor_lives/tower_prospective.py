@@ -94,6 +94,16 @@ def unavailable_activity(action, destination, room, feasible, known):
     if destination == room:
         return None if action in feasible else "currently_unavailable"
     prior = known.get(destination)
+    if prior and action == "tea" and action not in prior["offers"]:
+        perception = prior.get("observed_text", "")
+        if ("I can see Stores shelf." in perception
+                and "I can see Kettle." in perception
+                and "I can see that my tea is running low." in perception
+                and not prior.get("replenishment_memory_ids")):
+            # A finite missing ingredient is not restored by elapsed time.
+            # A relevant witnessed replenishment can justify a fresh check,
+            # but does not itself establish that tea is now available.
+            return "awaiting_observed_replenishment"
     if prior and action not in prior["offers"] and prior["elapsed"] < 100:
         return "recently_observed_unavailable"
     return None
@@ -109,14 +119,28 @@ def last_room_offers(store, prefix):
             if row["key"].startswith("small-tower:receipt:"):
                 elapsed += payload["elapsed"]
                 continue
-            memory = db.execute("SELECT id,text,source,active,external,evidence_class FROM memories WHERE id=?", (payload["observation_id"],)).fetchone()
+            memory = db.execute("SELECT id,text,source,active,external,evidence_class,created_tick FROM memories WHERE id=?", (payload["observation_id"],)).fetchone()
             if (not memory or not memory["active"] or memory["external"]
                     or memory["evidence_class"] != "lived_runtime_memory"
                     or not memory["source"].startswith(prefix + "observation:")):
                 continue
             room = _room(memory["text"])
             if room and room not in known:
-                known[room] = {"memory_id":memory["id"],"offers":payload["offers"],"elapsed":elapsed}
+                known[room] = {"memory_id":memory["id"],"offers":payload["offers"],
+                               "elapsed":elapsed,"observed_text":memory["text"]}
+                if room == "kitchen":
+                    # Relevant actions are actual admitted physical outcomes,
+                    # not hidden inventory or a timer. These may warrant
+                    # rechecking a previously unavailable tea offer.
+                    relevant = ("I traded provisions with the caller on terms I chose.",
+                                "I opened a package delivered through the post.",
+                                "I gathered fallen wood for the hearth.",
+                                "I drew a measured supply of water.")
+                    known[room]["replenishment_memory_ids"] = [r["id"] for r in db.execute(
+                        "SELECT id,text FROM memories WHERE active=1 AND external=0 "
+                        "AND evidence_class='lived_runtime_memory' AND source LIKE ? "
+                        "AND created_tick>? ORDER BY created_tick,id",
+                        (prefix+"action:%",memory["created_tick"])) if r["text"] in relevant]
             if len(known) == len(ROOMS):
                 break
     return known

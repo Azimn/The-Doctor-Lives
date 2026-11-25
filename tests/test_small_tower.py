@@ -96,6 +96,23 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertIsNone(unavailable_activity("read","library","kitchen",{"move_library"},known))
         self.assertIsNone(unavailable_activity("read","library","kitchen",{"move_library"},{}))
 
+    def test_finite_tea_shortage_does_not_reactivate_by_elapsed_time(self):
+        from doctor_lives.tower_prospective import unavailable_activity
+        scene = "I am in my kitchen and hearth. I can see Kettle. I can see Stores shelf. I can see that my tea is running low."
+        prior = {"offers":["eat","cook"],"elapsed":800,"observed_text":scene,
+                 "replenishment_memory_ids":[]}
+        known = {"kitchen":prior}
+        self.assertEqual(unavailable_activity("tea","kitchen","garden",{"move_kitchen"},known),
+                         "awaiting_observed_replenishment")
+        self.assertIsNone(unavailable_activity("tea","kitchen","kitchen",{"tea"},known))
+        self.assertEqual(unavailable_activity("tea","kitchen","kitchen",{"eat"},known),
+                         "currently_unavailable")
+        prior["replenishment_memory_ids"] = ["verified-source-outcome"]
+        self.assertIsNone(unavailable_activity("tea","kitchen","garden",{"move_kitchen"},known))
+        prior["replenishment_memory_ids"] = []
+        prior["observed_text"] = "I am in my kitchen and hearth. I can see Kettle."
+        self.assertIsNone(unavailable_activity("tea","kitchen","garden",{"move_kitchen"},known))
+
     def test_repeated_single_activity_is_not_a_procedural_sequence(self):
         from doctor_lives.tower_procedure import appraise
         episodes = [{"action":"rest","room":"bedchamber","success":True,

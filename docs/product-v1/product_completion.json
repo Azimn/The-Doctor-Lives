@@ -792,7 +792,7 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "exact_head_attempt_interrupted_by_observed_availability_loop",
+      "status": "duration_and_ten_organs_passed_at_prior_head_procedural_and_finite_supply_deferral_open",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false,
       "offline_kit": {
@@ -905,6 +905,30 @@
           "defect": "Live retest demonstrated deferred-owned read commitment still leaked through independent local state-policy commitment family. Source policy 85a540eab94b4bcabacc2aac6575b02c, read goal telos_prospective_policy_f93cb9dc9db24d45a176826405315dde, specific persistence pressure 0.02499673973684476.",
           "repair": "Keep all owned commitments in conscious capture and abstract decision history; exclude deferred IDs from per-offer action appraisal access only. No new organ or learning."
         }
+      },
+      "exact_head_attempt_66b106d": {
+        "head": "66b106d0c65453688b701d79e06f465a17012fde",
+        "start_ticks": 2642,
+        "end_ticks": 5672,
+        "additional_ticks": 3030,
+        "receipt_ticks": 3030,
+        "organ_checks": "10/10",
+        "supporting_checks": "8/9",
+        "history_entries": 2295,
+        "initial_history_entries": 1327,
+        "completed_activities": 115,
+        "independent_sleeps": 5,
+        "private_wakes": 25,
+        "busy_wakes": 10,
+        "qualification": false,
+        "missing": "procedural_sequence_positive_use; no eligible distinct-step reuse opportunity after second actual practice",
+        "checkpoint_sha256": "12b6b2492c65745ea00b5d33a4798f88e95cd34e06a975d515205a929797459f",
+        "source_epoch": "p3-sleep-1000c316ce1d438f8f3397942364aa01"
+      },
+      "finite_supply_followup": {
+        "status": "candidate",
+        "cause": "Actual continuation showed the open tea intention reactivated every 100 source ticks even though the last admitted kitchen observation showed low tea and no legal tea offer. Timer-driven pointless return to kitchen.",
+        "repair": "Existing prospective deferral uses the last admitted stores/kettle/low-tea perception and actual relevant replenishment outcomes; fresh feasible offer immediately supersedes deferral. Retain ownership, do not grant action or assert inventory from absence; no new learning mechanism."
       }
     },
     "ipseity_causal_test": {
