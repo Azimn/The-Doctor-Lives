@@ -771,7 +771,10 @@
       "records": 279,
       "assistant_turns": 545,
       "original_adapter_recovered": false,
-      "training_executed": false
+      "training_executed": false,
+      "bundled_exact_blob": "doctor_lives/data/expression/pretorius_lora_dataset_v19_279_diversified_prompts.jsonl",
+      "bundle_verified_blob": "8290de25b9daeb230fb4b519b9383b110e197704",
+      "prior_failure": "Cross-repository Actions checkout failed before qualification; exact original Git blob now bundled, no source verification weakened."
     },
     "longitudinal_qualification": {
       "entrypoint": "tools/qualify_tower_life.py",
