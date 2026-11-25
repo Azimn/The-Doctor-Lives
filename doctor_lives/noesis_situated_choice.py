@@ -403,6 +403,8 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     imaginative_cues = retrieval_motifs(brain.store, observation_source)
     owned = None
     admission = None
+    if brain.store.meta("small-tower:world-binding-v1") is not None and tower_provider is None:
+        raise PermissionError("Bound Tower choice cannot use the legacy selector fixture")
     if tower_provider is not None:
         from .tower_ipseity import TowerIpseity
         if type(subject) is not TowerIpseity or subject.brain is not brain:

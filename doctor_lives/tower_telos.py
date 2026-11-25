@@ -33,7 +33,11 @@ def reserve_intention(store, db, request, *, subject=None):
         raise PermissionError("Tower intention lacks its own canonical Noesis origin")
     # The motor reservation must be preceded by my own admitted decision.
     audit = db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",(policy_id,)).fetchone()
-    if json.loads(audit["state_pressure_json"]).get("ipseity",{}).get("required"):
+    bound=db.execute("SELECT value FROM meta WHERE key='small-tower:world-binding-v1'").fetchone()
+    required=json.loads(audit["state_pressure_json"]).get("ipseity",{}).get("required")
+    if bound is not None and not required:
+        raise PermissionError("Bound Tower cannot reserve a decision outside Synthetic Ipseity")
+    if required:
         from .tower_ipseity import RECORD
         own = db.execute("SELECT value FROM meta WHERE key=?",(RECORD+"decision:"+policy_id,)).fetchone()
         if own is None or json.loads(own["value"])["content"][0]["text"] != thoughts[0]["text"]:

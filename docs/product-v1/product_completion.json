@@ -62,8 +62,8 @@
       "requirement": "Independent goals, competence and physiology",
       "repository": "Azimn/The-Doctor-Lives",
       "locations": "lab_native_goal_choice.py; lab_native_work_goal.py; noesis_day.py",
-      "status": "failed",
-      "evidence": "1df5d11 independent trial 45489418761 authenticated 4 goals (2 readings, 2 work), original source replay, but no independently originated rest. Source artifact 14967501334 contains real 480-minute sleep during active reading and 5 native avoid decisions; old chooser disallows separate rest intention while book active. Sleep is not R4 rest credit. Nested rest allows fresh actual avoid + physically feasible fatigue pressure when not subordinate to another stronger need; genuine separate rest goal preserved beside book/work; exact gate unchanged.",
+      "status": "partial",
+      "evidence": "Exact 5bba8ad independent R4 PASS 45548799763 / 138988547124, 5 validated goals, all 3 activities; full 21 workflow passes. Longitudinal competence remains open.",
       "next": "Fix prerequisite action selection, re-run independent trial; preserve gate and complete longer-term goals."
     },
     {
@@ -544,7 +544,7 @@
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "Qualify canonical concrete Tower action competition and durable private clock; inspect actual integrated life for repetition, physical survival, and learning. Complete Tower outcome/habit, skill, social and dream integration, migration, R4 and security/device gates.",
+  "next": "Finish universal first-person coverage, exact imagination donor deployment, three-day ten-organ qualification, then background cognition and developmental learning, donor reconciliation, multimodal social interaction.",
   "pre_village_world": {
     "repository": "Azimn/Septimus---Web-Sim",
     "source_pin": "2e2ffb0658dea77da4b6cece1b783ad236bf30ff",
@@ -565,7 +565,7 @@
         "role": "linchpin and owning subject; mandatory central experiential authority",
         "location": "organs.py; tower_ipseity.py; phenomenology.py; models.py; projection.py; chassis.py; ipseity_integration.py; first_person_governance.py; cognition.py",
         "status": "controlled_causal_behavior_passed_linux; full_no_bypass_pending",
-        "next": "Executed original Tower matched Ipseity commitment-access impairment test passed on Linux at commit 5278b90eb528b5b076e9e03dad698a542cfd6eb4. Intact: rest, goal kept. Impaired: move_library, goal open. Source ingress now commits owned acquisition before cognition in same transaction; local Expression uses recalled own thoughts and present frame. Latest head needs CI; original donor affect, imagination, broader longitudinal and uncoached no-bypass qualification remain. Direct original donor Affectus felt-report admission and Phantasmagorium dream/fancy admission now occur within their canonical transactions; new prospective intentions are admitted atomically at formation. Latest-head verification required; no claim that all raw latent signals are conscious or that every legacy Laboratory path has no bypass."
+        "next": "Executed original Tower matched Ipseity commitment-access impairment test passed on Linux at commit 5278b90eb528b5b076e9e03dad698a542cfd6eb4. Intact: rest, goal kept. Impaired: move_library, goal open. Source ingress now commits owned acquisition before cognition in same transaction; local Expression uses recalled own thoughts and present frame. Latest head needs CI; original donor affect, imagination, broader longitudinal and uncoached no-bypass qualification remain. Direct original donor Affectus felt-report admission and Phantasmagorium dream/fancy admission now occur within their canonical transactions; new prospective intentions are admitted atomically at formation. Latest-head verification required; no claim that all raw latent signals are conscious or that every legacy Laboratory path has no bypass. All typed Tower ingress channels now require owned pre-recurrent admission; bound legacy selector and motor bypass rejected; explicit conscious decision context linked to history. New coverage regression pending. Universal coverage not qualified."
       },
       {
         "organ": "Sensus",
@@ -741,15 +741,17 @@
       "status": "verified Git blob bytes before commit"
     },
     "latest_r4": {
-      "head": "49b1e66c14cfbb97c3ae7b47d4243d5c7a863eea",
-      "run": 45523213794,
-      "job": 138907382886,
-      "verdict": "FAIL",
+      "head": "5bba8adc4eb43703d8113e5fd78fd310218af147",
+      "run": 45548799763,
+      "job": 138988547124,
+      "verdict": "PASS",
       "observed": [
         "read_book",
+        "rest",
         "work"
       ],
-      "unfinished": "rest travel",
+      "validated_goals": 5,
+      "origin_observations": 33,
       "observation_seconds": 600,
       "gate_changed": false
     },
@@ -774,7 +776,17 @@
       "training_executed": false,
       "bundled_exact_blob": "doctor_lives/data/expression/pretorius_lora_dataset_v19_279_diversified_prompts.jsonl",
       "bundle_verified_blob": "8290de25b9daeb230fb4b519b9383b110e197704",
-      "prior_failure": "Cross-repository Actions checkout failed before qualification; exact original Git blob now bundled, no source verification weakened."
+      "prior_failure": "Cross-repository Actions checkout failed before qualification; exact original Git blob now bundled, no source verification weakened.",
+      "qualification": {
+        "head": "5bba8adc4eb43703d8113e5fd78fd310218af147",
+        "run": 45548799650,
+        "job": 138984734493,
+        "status": "passed",
+        "training_records": 223,
+        "validation_records": 28,
+        "test_records": 28
+      },
+      "next_experiment": "Owner requests approximately 1B base model first; no model selected or trained."
     },
     "longitudinal_qualification": {
       "entrypoint": "tools/qualify_tower_life.py",
@@ -840,7 +852,7 @@
       },
       "specific_defect": "fixed-priority single Conclave reading sent to Noesis; independent baseline R4 pass did not establish multi-reading evaluation",
       "repair": "all available eligible interpretations, individual provenance, one existing Noesis decision, no new organ or learning mechanism",
-      "status": "repair_committed_pending_successor_ci",
+      "status": "repaired_and_exact_head_ci_passed",
       "baseline_workflows": {
         "success": 20,
         "failure": 1
@@ -852,7 +864,16 @@
         "training_executed": false
       },
       "universal_first_person_coverage": "not qualified",
-      "donor_backed_imagination": "open; exact donor deployment and positive qualification outstanding"
+      "donor_backed_imagination": "open; exact donor deployment and positive qualification outstanding",
+      "qualified_head": "5bba8adc4eb43703d8113e5fd78fd310218af147",
+      "qualified_workflows": 21,
+      "suite": {
+        "run": 45548799732,
+        "discovered": 861,
+        "passed": 590,
+        "skipped": 271,
+        "failed": 0
+      }
     }
   }
 }

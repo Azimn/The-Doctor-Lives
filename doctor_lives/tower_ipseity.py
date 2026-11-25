@@ -91,17 +91,42 @@ class TowerIpseity:
         self.store.bump_state_version(db)
         return entry
 
-    def record_ingress(self,db,*,source,kind,text,memory_id,event_id,external,tick,digest):
-        """Commit first-person acquisition before recurrent thought, with the memory."""
+    def validate_ingress(self, exp, projected):
+        """Require the existing typed ingress projection, not a new raw gateway."""
+        if first_person_line(exp.text)!=exp.text or not _FIRST.match(exp.text):
+            raise PermissionError("Tower input must be natural first-person experience")
+        if projected is None:
+            if (exp.source.startswith("local-emission:")
+                    and exp.kind in ("confirmed_written_utterance","perceived_utterance")):
+                return
+            raise PermissionError("Tower input requires the canonical ingress projector")
+        if (type(projected) is not PhenomenalEvent or projected.subject_id!="pretorius"
+                or projected.subject_text!=exp.text
+                or SubjectRendererCapability.read(SubjectFrame.from_events((projected,)))!=(exp.text,)):
+            raise PermissionError("Projected experience differs from admitted subject")
+
+    def record_ingress(self,db,*,source,kind,text,memory_id,event_id,external,tick,digest,projected=None):
+        """Commit all supported ingress channels before recurrent thought."""
         communication=source.startswith("local-conversation:")
-        organ=("Expression" if kind=="confirmed_written_utterance" else
-               "Corpus" if ":action:" in source else "Sensus")
-        attribution=(SubjectiveSourceKind.TOLD if communication else
-                     SubjectiveSourceKind.SELF_OBSERVED if organ=="Expression" else SubjectiveSourceKind.LIVED)
-        event=self.event(organ,text,PhenomenalMode.SELF_PERCEPTION if organ=="Expression"
-                         else PhenomenalMode.PERCEPT,
-                         (memory_id,) if communication else (memory_id,event_id),
-                         attribution=attribution,external=communication or external,
+        if source.startswith("virtual-world:small-tower:") or communication or source.startswith("local-emission:"):
+            # Preserve existing source-bound replay format byte for byte.
+            organ=("Expression" if kind=="confirmed_written_utterance" else
+                   "Corpus" if ":action:" in source else "Sensus")
+            attribution=(SubjectiveSourceKind.TOLD if communication else
+                         SubjectiveSourceKind.SELF_OBSERVED if organ=="Expression" else SubjectiveSourceKind.LIVED)
+            mode=PhenomenalMode.SELF_PERCEPTION if organ=="Expression" else PhenomenalMode.PERCEPT
+            refs=(memory_id,) if communication else (memory_id,event_id)
+            reported=communication or external
+        else:
+            if projected is None:
+                raise PermissionError("Non-world input lacks typed provenance")
+            mode=projected.mode
+            attribution=projected.subjective_source.kind
+            organ=("Corpus" if mode==PhenomenalMode.BODILY_SENSATION else
+                   "Mnemosyne" if mode==PhenomenalMode.RECOLLECTION else "Sensus")
+            refs=(memory_id,event_id,*projected.source_state_refs)
+            reported=external or projected.objective_provenance.external
+        event=self.event(organ,text,mode,refs,attribution=attribution,external=reported,
                          digest=digest,tick=tick)
         return self.record(db,("communication:" if communication else "acquisition:")+memory_id,
                            (event,),phase="communication" if communication else "acquisition",tick=tick)

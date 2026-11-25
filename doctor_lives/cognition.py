@@ -507,16 +507,16 @@ class PretoriusBrain:
             "classifier": "PretoriusBrain.ingest",
         }
 
-    def ingest(self, exp: Experience) -> dict[str, Any]:
+    def ingest(self, exp: Experience, *, projected_event: PhenomenalEvent | None = None) -> dict[str, Any]:
         if not exp.text.strip():
             raise ValueError("experience text is required")
         subject=None
         subject_digest=None
-        if (self.store.meta("small-tower:world-binding-v1") is not None
-                and exp.source.startswith(("virtual-world:small-tower:","local-conversation:","local-emission:"))):
+        if self.store.meta("small-tower:world-binding-v1") is not None:
             from .tower_ipseity import TowerIpseity
             subject=TowerIpseity(self)
             subject_digest=self.store.digest()
+            subject.validate_ingress(exp, projected_event)
         with self.store.transaction() as conn:
             tick = self.store.advance_tick(conn)
             evidence_class = "external_statement" if exp.external else "lived_runtime_memory"
@@ -539,7 +539,8 @@ class PretoriusBrain:
             )
             if subject is not None:
                 subject.record_ingress(conn,source=exp.source,kind=exp.kind,text=exp.text,
-                    memory_id=memory_id,event_id=event_id,external=exp.external,tick=tick,digest=subject_digest)
+                    memory_id=memory_id,event_id=event_id,external=exp.external,tick=tick,digest=subject_digest,
+                    projected=projected_event)
             self._update_needs(conn, tick, exp)
             self._update_relationship(conn, tick, exp, event_id)
             self._maybe_add_concern(conn, tick, exp)
@@ -1003,6 +1004,20 @@ class PretoriusBrain:
                 owned = {rid:event[1].subject_text for rid,event in tower_subject.owned_events()}
                 with tower_subject.cognitive_access(owned):
                     return self.think(trigger,decision_text=decision_text,bridge_enabled=bridge_enabled)
+        if tower_subject is not None and decision_text is not None:
+            from .first_person_governance import first_person_line
+            line=first_person_line(decision_text)
+            if line.startswith("I cannot make sense of"):
+                raise PermissionError("Unsafe conscious decision context")
+            decision_text=line
+            from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+            context_event=tower_subject.event("Noesis",line,PhenomenalMode.INTERNAL_THOUGHT,
+                attribution=SubjectiveSourceKind.UNKNOWN)
+            with self.store.transaction() as db:
+                context_entry=tower_subject.record(db,new_id("thought-context"),(context_event,),
+                                                   phase="thought_context")
+        else:
+            context_entry=None
         direct_ranked_all, ranked_all = self._ranked_memory_sets(
             48, query=decision_text, audit=True
         )
@@ -1012,6 +1027,8 @@ class PretoriusBrain:
             direct_history_ranked=direct_ranked_all,
             bridge_enabled=bridge_enabled,
         )
+        if context_entry is not None:
+            state_pressure["ipseity_context"]={"key":context_entry["key"],"sha256":context_entry["sha256"]}
         tendency = max(scores, key=scores.get)
         candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
         if not candidates:

@@ -210,7 +210,7 @@ class PretoriusBrainPort:
             frame = SubjectFrame.from_events((projected.event,))
             if SubjectRendererCapability.read(frame) != (projected.experience.text,):
                 raise PermissionError("Tower cognition cannot bypass owned first-person ingress")
-        result = self.brain.ingest(projected.experience)
+        result = self.brain.ingest(projected.experience, projected_event=projected.event)
         result["ingress"] = {
             "channel": projected.channel.value,
             "raw_sha256": projected.raw_sha256,
