@@ -108,6 +108,7 @@ def _main(cancellation):
     p.add_argument("--seconds", type=int, default=90)
     p.add_argument("--capacity-receipts", type=int, default=None,
                    help="Minimum original-world receipt growth, not elapsed time or autonomy credit")
+    p.add_argument("--profile", action="store_true", help="Diagnostic-only instrumented operator; not the default qualification run")
     p.add_argument("--report", type=Path, required=True)
     args = p.parse_args()
     if not 30 <= args.seconds <= 3600:
@@ -126,6 +127,11 @@ def _main(cancellation):
     origins_path = args.report.with_suffix(".origins.jsonl")
     stdout_path = args.report.with_suffix(".operator.stdout.txt")
     stderr_path = args.report.with_suffix(".operator.stderr.txt")
+    profile_path = args.report.with_suffix(".operator-profile.jsonl")
+    parent_profile = {"witness": [], "origins": []}
+    if args.profile:
+        start = [str(vpy), str(Path(__file__).with_name("profile_r4_boundaries.py")),
+                 "--output", str(profile_path), "--"] + start[len(doctor_args):]
     error, final_sample, baseline, proc = None, None, None, None
     last_origins, last_origin_alive, origin_snapshots = None, None, 0
     began = time.monotonic()
@@ -145,12 +151,15 @@ def _main(cancellation):
          stderr_path.open("w", encoding="utf-8") as operator_stderr:
         def record(alive):
             nonlocal baseline, final_sample
+            t0, c0 = time.perf_counter_ns(), time.process_time_ns()
             result = sample(
                 workspace, process_alive=alive,
                 elapsed_seconds=time.monotonic() - began,
                 baseline_world_receipts=baseline,
             )
             # A sample that crossed the actual process exit earns no live credit.
+            if args.profile:
+                parent_profile["witness"].append([time.perf_counter_ns()-t0, time.process_time_ns()-c0])
             result["process_alive_at_start"] = alive
             result["process_alive_at_end"] = bool(alive and proc is not None and proc.poll() is None)
             result["process_alive"] = result["process_alive_at_start"] and result["process_alive_at_end"]
@@ -166,7 +175,10 @@ def _main(cancellation):
             # Independently sample actual canonical rows while the installed
             # Doctor process runs. This is not a fabricated goal or an
             # attestation that a self-consistent DB row came from a neural act.
+            t0, c0 = time.perf_counter_ns(), time.process_time_ns()
             current = inspect_neural_origins(workspace)
+            if args.profile:
+                parent_profile["origins"].append([time.perf_counter_ns()-t0, time.process_time_ns()-c0])
             alive = bool(alive and proc is not None and proc.poll() is None)
             if current == last_origins and alive == last_origin_alive:
                 return
@@ -286,6 +298,11 @@ def _main(cancellation):
         note_error("external_cancellation")
     data["audit_elapsed_seconds"] = time.monotonic() - audit_started
     data["audit_return_code"] = audit_returncode
+    if args.profile:
+        data["diagnostic_profile"] = {"operator_jsonl": profile_path.name,
+            "parent_readonly_samples_wall_cpu_ns": parent_profile,
+            "audit_elapsed_seconds": data["audit_elapsed_seconds"],
+            "diagnostic_only": True, "autonomy_credit": False}
     data["original_diagnostic_files"] = {
         path.name: {"bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
         for path in (stdout_path, stderr_path, audit_stdout, audit_stderr, source_report)
@@ -322,7 +339,34 @@ def _main(cancellation):
         audit_status=source_status, audit_problems=source_problems)
     termination["final_observation_elapsed_seconds"] = final_sample["elapsed_seconds"] if final_sample else None
     termination["final_witness_receipt_delta"] = final_sample["world_receipt_delta_from_initial"] if final_sample else None
-    termination["final_receipt_count_is_source_audit_verified"] = bool(final_sample and data.get("original_source_world_verified"))
+    # The final source replay authenticates original physics; separately
+    # compare the exact pre/post audit receipt identities. Neither raw
+    # witness counts nor a successful audit alone prove this equality.
+    same_receipts = False
+    if final_sample is not None and data.get("original_source_world_verified"):
+        try:
+            post = sample(workspace, process_alive=False, elapsed_seconds=time.monotonic()-began,
+                          baseline_world_receipts=baseline)
+            same_receipts = post["world_receipts"] == final_sample["world_receipts"]
+            if not same_receipts:
+                note_error("independent_final_receipt_identity_changed_during_audit")
+        except (OSError, ValueError, RuntimeError, sqlite3.DatabaseError) as exc:
+            note_error("independent_final_receipt_recheck_error:" + str(exc))
+    termination["final_receipt_count_is_source_audit_verified"] = same_receipts
+    termination["authenticated_final_receipt_delta"] = (
+        final_sample["world_receipt_delta_from_initial"] if same_receipts else None)
+    if error:
+        termination = classify(initiator=stop_reason, requested_elapsed=stop_requested_elapsed,
+            watchdog_seconds=args.seconds, progress=progress_reached,
+            operator_returncode=proc.returncode if proc else None, errors=errors, diagnostics=diagnostics,
+            cancelled_signal=cancellation[0] if cancellation else None,
+            audit_status=source_status, audit_problems=source_problems) | {
+                "final_observation_elapsed_seconds": final_sample["elapsed_seconds"] if final_sample else None,
+                "final_witness_receipt_delta": final_sample["world_receipt_delta_from_initial"] if final_sample else None,
+                "final_receipt_count_is_source_audit_verified": same_receipts,
+                "authenticated_final_receipt_delta": final_sample["world_receipt_delta_from_initial"] if same_receipts else None,
+            }
+    data["operator_run_error"] = error
     data["termination"] = termination
     if error:
         data["status"] = "FAIL"
