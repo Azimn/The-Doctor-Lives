@@ -89,6 +89,39 @@ def deferred_need(action, narrative, latest_store, last_garden, room, feasible):
     return None
 
 
+def unavailable_activity(action, destination, room, feasible, known):
+    """A remembered intention need not cause repeated travel to a blocked task."""
+    if destination == room:
+        return None if action in feasible else "currently_unavailable"
+    prior = known.get(destination)
+    if prior and action not in prior["offers"] and prior["elapsed"] < 100:
+        return "recently_observed_unavailable"
+    return None
+
+
+def last_room_offers(store, prefix):
+    """Read original choice receipts and their associated admitted observations."""
+    known = {}
+    with closing(store.connect()) as db:
+        elapsed = 0
+        for row in db.execute("SELECT key,value FROM meta WHERE key LIKE 'small-tower:choice:%' OR key LIKE 'small-tower:receipt:%' ORDER BY rowid DESC"):
+            payload = json.loads(row["value"])
+            if row["key"].startswith("small-tower:receipt:"):
+                elapsed += payload["elapsed"]
+                continue
+            memory = db.execute("SELECT id,text,source,active,external,evidence_class FROM memories WHERE id=?", (payload["observation_id"],)).fetchone()
+            if (not memory or not memory["active"] or memory["external"]
+                    or memory["evidence_class"] != "lived_runtime_memory"
+                    or not memory["source"].startswith(prefix + "observation:")):
+                continue
+            room = _room(memory["text"])
+            if room and room not in known:
+                known[room] = {"memory_id":memory["id"],"offers":payload["offers"],"elapsed":elapsed}
+            if len(known) == len(ROOMS):
+                break
+    return known
+
+
 def assess(brain, provider, observation, offers, abstract, affordance_map, *, owned_commitments=None):
     from .small_tower import SmallTowerSource
     if type(provider) is not SmallTowerSource:
@@ -128,15 +161,17 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
     supplies = remembered_supply(store, observation, offers)
     latest_store = next((t for t in [observation["text"]] + [m["text"] for m in memories]
                          if "I can see Stores shelf." in t), None)
-    def defer(action):
-        return deferred_need(action, observation["text"], latest_store,
-                             supplies.get("last_garden"), room, keys)
+    known = last_room_offers(store, prefix)
+    def defer(action, destination):
+        return (deferred_need(action, observation["text"], latest_store,
+                              supplies.get("last_garden"), room, keys)
+                or unavailable_activity(action, destination, room, keys, known))
     for goal in active:
         if goal["epoch"] != current.world_epoch:
             raise PermissionError("Foreign prospective commitment")
         if owned_commitments is not None and owned_commitments.get(goal["id"]) != "I still intend to "+goal["description"]+".":
             continue
-        reason = defer(goal["target"])
+        reason = defer(goal["target"], goal["room"])
         if reason:
             deferred[goal["id"]] = reason
             continue
@@ -161,7 +196,7 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
         # location where a prior self-selected task physically succeeded.
         for row in past:
             action = row["selected_action"]
-            if action not in ACTIONS or defer(action):
+            if action not in ACTIONS:
                 continue
             evidence = json.loads(row["state_pressure_json"])
             prior = store.get_memory(evidence["observation_memory_id"])
@@ -171,7 +206,7 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
                 continue
             dest = _room(prior["text"])
             move = "move_" + dest if dest else None
-            if move not in keys or (dest, action) in seen or dest == room:
+            if move not in keys or (dest, action) in seen or dest == room or defer(action, dest):
                 continue
             raw = store.meta("telos:tower-outcome:" + row["id"])
             if not raw:
@@ -203,7 +238,7 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
                 candidates[move] = candidate
     return {"scores": scores, "links": links, "candidates": candidates,
             "room": room, "active_ids": [g["id"] for g in active],
-            "deferred_owned_goals": deferred}
+            "deferred_owned_goals": deferred, "recent_room_offers": known}
 
 
 def reserve(store, db, request, *, subject=None):

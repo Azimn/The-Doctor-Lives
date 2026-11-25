@@ -792,7 +792,7 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "actual_cross_head_longitudinal_rehearsal_underway_not_qualified",
+      "status": "exact_head_attempt_interrupted_by_observed_availability_loop",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false,
       "offline_kit": {
@@ -879,6 +879,27 @@
           "repair": "Existing prospective appraisal defers appetite-satisfied, last-observed-not-low or recently observed unavailable resource goals; no commitment deletion, completion fabrication or new learning; explicit reasons in policy receipt.",
           "status": "live_retest_underway"
         }
+      },
+      "attempt_289ed4c": {
+        "head": "289ed4ce900939a2877c94cbdaafafb84e0528eb",
+        "start_ticks": 1197,
+        "end_ticks": 2597,
+        "new_ticks": 1400,
+        "start_history": 522,
+        "start_history_sha256": "6a8c83778b78e33c26b8e6e873e4ec0e3891ff4b44c6c8a468d9d5c049938d55",
+        "original_source_kit": "8de5273 source and renderer; runtime ac0fca6 plus exact four changed blob hashes",
+        "alive": true,
+        "independent_sleep": true,
+        "busy_background": true,
+        "food_harvest": "one to nine actual source stores after own tend",
+        "failure": "owned reading goal routed back to library despite recent missing read offer, produced alternating library/kitchen choices; stopped at reconciled boundary, no pending request",
+        "procedural_positive_use": false,
+        "expression_not_run": true,
+        "qualification": false
+      },
+      "availability_repair": {
+        "status": "candidate",
+        "scope": "same existing prospective appraisal remembers last actual room offers; defer currently unavailable or recently observed unavailable task without deleting ownership; ordinary 100-source-tick recheck; no new organ or learning mechanism"
       }
     },
     "ipseity_causal_test": {

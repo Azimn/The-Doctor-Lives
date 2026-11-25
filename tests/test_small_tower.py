@@ -86,6 +86,16 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertEqual(deferred_need("tend","I am in my kitchen and hearth.",stores+" I can see that my edible provisions are running low.",{"offers":["walk"],"elapsed":3},"kitchen",{"move_garden"}),"recently_observed_unavailable")
         self.assertIsNone(deferred_need("rest","I am in my bedchamber.",stores,None,"bedchamber",{"rest"}))
 
+    def test_owned_unavailable_activity_defers_travel_until_recheck(self):
+        from doctor_lives.tower_prospective import unavailable_activity
+        known = {"library":{"offers":["diary"],"elapsed":3}}
+        self.assertEqual(unavailable_activity("read","library","library",{"diary"},{}),"currently_unavailable")
+        self.assertEqual(unavailable_activity("read","library","kitchen",{"move_library"},known),"recently_observed_unavailable")
+        self.assertIsNone(unavailable_activity("read","library","library",{"read"},known))
+        known["library"]["elapsed"]=100
+        self.assertIsNone(unavailable_activity("read","library","kitchen",{"move_library"},known))
+        self.assertIsNone(unavailable_activity("read","library","kitchen",{"move_library"},{}))
+
     def test_repeated_single_activity_is_not_a_procedural_sequence(self):
         from doctor_lives.tower_procedure import appraise
         episodes = [{"action":"rest","room":"bedchamber","success":True,
