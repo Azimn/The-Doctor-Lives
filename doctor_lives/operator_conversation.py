@@ -160,15 +160,17 @@ class OperatorConversation:
             return {"called":False,"tokens":0,"latency_ms":0.0,"draft":""}
         if not valid_local_model(model):
             raise ValueError("Invalid local Ollama model")
-        prompt = ("Speak naturally to the operator about the conversation. "
-                  "Do not invent Pretorius actions or memories. If describing "
-                  "his past, ONLY repeat one of the exact first-person sentences "
-                  "in verified_claims. Otherwise avoid first-person accounts. "
-                  "Only source-qualified firsthand claims are allowed.\n"
-                  +json.dumps({"operator_utterance":question,
-                    "verified_claims":[v["text"] for v in verified[-8:]]},
-                    ensure_ascii=False))
-        payload=json.dumps({"model":model,"prompt":prompt,"stream":False,
+        from .first_person_governance import first_person_line, renderer_instruction, admissible_output
+        from .models import SubjectRendererCapability
+        # The exact existing admitted user communication and subjective
+        # experience, not a JSON packet of facts, ids or engineering state.
+        frame = self.doctor.subject_frame(question)
+        prompt = "\n".join(first_person_line(line)
+                           for line in SubjectRendererCapability.read(frame))
+        instruction = renderer_instruction(
+            "Speak naturally in first person. Do not invent actions or memories. "
+            "Do not claim unverified firsthand events. Preserve uncertainty.")
+        payload=json.dumps({"model":model,"prompt":prompt,"system":instruction,"stream":False,
                             "options":{"temperature":0,"num_predict":128}}).encode()
         start=time.monotonic()
         try:
@@ -178,6 +180,8 @@ class OperatorConversation:
             tokens=int(response.get("eval_count",0))
             if not isinstance(draft,str) or tokens < 0:
                 raise ValueError("Invalid model reply")
+            if draft and not admissible_output(draft):
+                draft = ""
         except (OSError,ValueError,TimeoutError,UnicodeError):
             draft=""; tokens=0
         return {"called":True,"tokens":tokens,

@@ -142,8 +142,9 @@ class SixOrganLaboratoryCycle:
         self.weather = CanonicalWeather(
             runtime._port, donor_root=affectus_source, seed=seed,
         )
+        from .first_person_governance import govern_renderer
         self.ipseity = runtime.synthetic_ipseity.open_durable_delivery(
-            renderer=renderer,
+            renderer=govern_renderer(renderer) if couple_physical_fatigue else renderer,
         )
         # Recover a world action that committed before brain admission,
         # once the SAME original brain/weather is reopened from its store.
@@ -571,7 +572,8 @@ class SixOrganLaboratoryCycle:
             0.12 - _G * modulation.rehearsal_bias))
         mnemonic = self.mnemosyne.deliberate(recall_cost=recall_cost)
         if mnemonic.action == "recall":
-            self.mnemosyne.reflect_selected_recollection()
+            self.mnemosyne.reflect_selected_recollection(
+                reconstruct=self.couple_physical_fatigue)
 
         # NOESIS: unchanged native neural selector, temporarily modulated.
         with original_noesis_weather(
