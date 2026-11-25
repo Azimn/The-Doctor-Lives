@@ -274,6 +274,65 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertEqual(proposed.supporting_memory_ids, ())
 
 
+    def test_repeated_real_work_history_changes_appraisal_in_same_worn_context(self):
+        from doctor_lives.lab_endogenous_book_task import EndogenousBookPursuit
+        def choose(enabled):
+            return propose_noesis_work(
+                self.bridge, learning_enabled=False, neural_prior_enabled=False,
+                outcome_learning_enabled=enabled,
+                developmental_history_enabled=enabled,
+            )
+        def execute(proposal, event_id):
+            return execute_noesis_work(
+                self.bridge, decision_id=proposal.decision_id,
+                event_id=event_id, authorized_world_action=True,
+            )["world"]["memory_id"]
+        def travel(destination, prefix):
+            for i in range(12):
+                current = self.subject.embodied.verify()["station"]
+                if current == destination:
+                    return
+                target = EndogenousBookPursuit._route(current, destination)
+                self.assertIsNotNone(target)
+                self.bridge.act("walk", event_id=f"{prefix}-{i}", station=target)
+            self.fail("Physical route did not arrive")
+        first = self.create_one_real_consequence()
+        early = choose(True)
+        early_audit = self.policy_audit(early.decision_id)[1]
+        self.assertEqual(early.action, "repair")
+        repair = execute(early, "development-repair")
+        self.assertEqual(self.state()["apparatus"], 3)
+        # Lawful test setup: physical rest, not a mental-state edit.
+        travel("station:bedroom", "development-outbound")
+        self.bridge.act("rest", event_id="development-rest-1")
+        self.bridge.act("rest", event_id="development-rest-2")
+        travel("station:bench", "development-return")
+        self.bridge.act("clean", event_id="development-clean")
+        second = execute(choose(False), "development-experiment-2")
+        self.assertEqual(self.state()["apparatus"], 2)
+        # Recover once more before the third independent experiment.
+        travel("station:bedroom", "development-outbound-2")
+        self.bridge.act("rest", event_id="development-rest-3")
+        travel("station:bench", "development-return-2")
+        third = execute(choose(False), "development-experiment-3")
+        self.assertEqual(self.state()["apparatus"], 1)
+        # Restore the physical opportunity without changing work history.
+        travel("station:bedroom", "development-outbound-3")
+        self.bridge.act("rest", event_id="development-rest-4")
+        travel("station:bench", "development-return-3")
+        self.bridge.act("clean", event_id="development-clean-2")
+        later = choose(True)
+        audit = self.policy_audit(later.decision_id)[1]
+        self.assertIn("experiment", later.candidate_scores)
+        self.assertIn("repair", later.candidate_scores)
+        self.assertEqual(later.action, "repair")
+        self.assertLess(audit["outcome_contributions"]["experiment"],
+                        early_audit["outcome_contributions"]["experiment"])
+        self.assertEqual(set(later.supporting_memory_ids), {first, second, third, repair})
+        self.assertEqual(self.actions("experiment"), 3)
+        self.assertEqual(self.actions("repair"), 1)
+
+
 class DevelopmentalAppraisalTests(unittest.TestCase):
     def test_distinct_histories_change_bounded_appraisal_not_world_authority(self):
         from types import SimpleNamespace
