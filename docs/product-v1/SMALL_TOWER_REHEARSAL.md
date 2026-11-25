@@ -82,3 +82,7 @@ Run `python -m tools.qualify_tower_life --workspace <fresh directory> --tower-so
 ## Governing ten-organ correction
 
 Synthetic Ipseity is the tenth full organ and the linchpin of the entire individual. All nine existing organs remain mandatory. Conscious content must be owned and used as first-person experience, not merely rendered as such at output. The historical six-port compatibility class name does not define the product organ count. Full no-bypass qualification and a matched first-person-continuity causal action test are mandatory.
+
+### Mandatory first-person cognitive route
+
+`SyntheticIpseityOrgan.tower_experience()` supplies the original typed `PhenomenalEvent` and `SubjectFrame` boundary on the same canonical brain. Source-verified acquisitions and chosen intentions append to a durable hash-linked, ordered canonical history. Each ordinary situated decision consumes first-person percepts, actual affordances, felt bodily/motivational state, recollections, prior thoughts, uncertain Conclave associations, nonfactual imaginative cues and owned intentions. Native prospective pressure and canonical commitment appraisal require the re-owned natural-language intention; direct raw commitment rows are not a substitute. Motor reservation checks the corresponding admitted decision. Latent donor appraisal remains separate from awareness. Legacy controlled fixtures without a Tower provider are explicitly not a product no-bypass path. Remaining outputs and longitudinal acceptance must be independently tested.

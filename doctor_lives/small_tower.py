@@ -186,6 +186,7 @@ def _admit_events(runtime, provider, port):
     for row in snapshot["events"]:
         receipt = provider.event_receipt(row)
         admitted = port._admit(receipt, kind=receipt.kind)
+        runtime.synthetic_ipseity.tower_experience().acquisition(admitted.memory_id)
         from .tower_affectus import advance as advance_affectus
         advance_affectus(runtime, provider, receipt, admitted.memory_id)
         from .tower_telos import reconcile_intention
@@ -243,7 +244,8 @@ def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
         decision = select_world_affordance(
             brain, observation_memory_id=observation_id, observation_source=observation_source,
             narrative=scene["admitted_lines"], offers=offers, affordance_map=MAP,
-            regulatory_pressure=pressure, tower_provider=provider)
+            regulatory_pressure=pressure, tower_provider=provider,
+            subject=runtime.synthetic_ipseity.tower_experience())
     choice, scores = decision["selected_action"], decision["action_scores"]
     with brain.store.transaction() as db:
         brain.store.set_meta("small-tower:choice:"+decision["policy_decision_id"],
@@ -354,6 +356,7 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
             else:
                 observation=provider._observation(snapshot)
                 perceived=port._admit(observation,kind="observation")
+                runtime.synthetic_ipseity.tower_experience().acquisition(perceived.memory_id)
                 from .tower_affectus import advance as advance_affectus
                 weather,_=advance_affectus(runtime,provider,observation,perceived.memory_id)
                 from .tower_sensus import bind_scene

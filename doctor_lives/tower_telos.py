@@ -31,6 +31,13 @@ def reserve_intention(store, db, request):
             or policy["selected_action"] != action or len(thoughts) != 1
             or not thoughts[0]["text"].startswith("I intend to ")):
         raise PermissionError("Tower intention lacks its own canonical Noesis origin")
+    # The motor reservation must be preceded by my own admitted decision.
+    audit = db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",(policy_id,)).fetchone()
+    if json.loads(audit["state_pressure_json"]).get("ipseity",{}).get("required"):
+        from .tower_ipseity import RECORD
+        own = db.execute("SELECT value FROM meta WHERE key=?",(RECORD+"decision:"+policy_id,)).fetchone()
+        if own is None or json.loads(own["value"])["content"][0]["text"] != thoughts[0]["text"]:
+            raise PermissionError("Motor intention has not been admitted by its owning subject")
     description = thoughts[0]["text"].removeprefix("I intend to ").rstrip(".")
     rid = intention_id(policy_id)
     source = SOURCE_PREFIX + "tower:" + policy_id

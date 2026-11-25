@@ -73,7 +73,7 @@ def _active(store):
     return result
 
 
-def assess(brain, provider, observation, offers, abstract, affordance_map):
+def assess(brain, provider, observation, offers, abstract, affordance_map, *, owned_commitments=None):
     from .small_tower import SmallTowerSource
     if type(provider) is not SmallTowerSource:
         raise PermissionError("Original Tower required")
@@ -110,6 +110,8 @@ def assess(brain, provider, observation, offers, abstract, affordance_map):
     for goal in active:
         if goal["epoch"] != current.world_epoch:
             raise PermissionError("Foreign prospective commitment")
+        if owned_commitments is not None and owned_commitments.get(goal["id"]) != "I still intend to "+goal["description"]+".":
+            continue
         key = goal["target"] if goal["room"] == room else first_step(graph, room, goal["room"])
         if key in keys:
             scores[key] = min(PRESSURE, scores[key] + PRESSURE * goal["importance"])
@@ -162,7 +164,7 @@ def assess(brain, provider, observation, offers, abstract, affordance_map):
             # Use the original abstract tendency as a prospective appraisal.
             # No new target is fabricated and a journey is never forced.
             strength = float(abstract["action_scores"][affordance_map[action]])
-            if strength < .1:
+            if strength <= 0.0:
                 continue
             candidate = {"target": action, "room": dest, "epoch": current.world_epoch,
                          "prior_policy_id": row["id"], "prior_memory_id": memory["id"],
@@ -204,6 +206,12 @@ def reserve(store, db, request):
                    "VALUES(?,?,?,?,'open',NULL,?,NULL,?,NULL)",
                    (rid, row["tick"], store.tick, goal["description"], goal["importance"], PREFIX + pid))
         store.set_meta(key, raw, db)
+        from .store import new_id
+        db.execute("INSERT INTO thoughts (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json) "
+                   "VALUES(?,?,?,?,?,?,?)",
+                   (new_id("thought"),store.tick,"I intend to "+goal["description"]+".",
+                    "ipseity_prospective_intention","ipseity_prospective:"+pid,
+                    json.dumps([goal["prior_memory_id"]]),"{}"))
     # No timeout or unrelated action can claim fulfillment. The protected
     # prospective commitment remains open through interruptions and restart.
 

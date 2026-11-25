@@ -359,7 +359,7 @@ def select_with_original_noesis(
 
 def select_world_affordance(brain, *, observation_memory_id, observation_source,
                             narrative, offers, affordance_map, regulatory_pressure,
-                            tower_provider=None):
+                            tower_provider=None, subject=None):
     """Original Noesis concrete choice on a trusted world's admitted perception.
 
     The adapter supplies feasible offers and bounded physical cue pressure,
@@ -401,9 +401,25 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     interpretation_cues = conclave.cues(interpretation_context)
     from .tower_phantasmagorium import retrieval_motifs
     imaginative_cues = retrieval_motifs(brain.store, observation_source)
-    retrieval_context = " ".join((context, *interpretation_cues, *imaginative_cues))
-    abstract = brain.think("small_tower_native_opportunity", decision_text=context)
-    direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
+    owned = None
+    admission = None
+    if tower_provider is not None:
+        from .tower_ipseity import TowerIpseity
+        if type(subject) is not TowerIpseity or subject.brain is not brain:
+            raise PermissionError("Ordinary Tower cognition requires its owning Synthetic Ipseity organ")
+        from .models import SubjectRendererCapability
+        frame, owned, admission = subject.capture(observation, narrative, offers,
+                                                   interpretation_cues, imaginative_cues)
+        context = " ".join(SubjectRendererCapability.read(frame))
+        retrieval_context = context
+        with subject.cognitive_access(owned):
+            abstract = brain.think("small_tower_native_opportunity", decision_text=context)
+            direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
+    else:
+        # Legacy controlled selector fixtures do not claim product no-bypass.
+        retrieval_context = " ".join((context, *interpretation_cues, *imaginative_cues))
+        abstract = brain.think("small_tower_native_opportunity", decision_text=context)
+        direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
     base, scores, local, candidate_ids = {}, {}, {}, [observation_memory_id]
     by_key = {o["key"]: o for o in offers}
     outcome_scores = dict.fromkeys(by_key, 0.0)
@@ -421,15 +437,23 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     prospective = None
     if tower_provider is not None:
         from .tower_prospective import assess
-        prospective = assess(brain, tower_provider, observation, offers, abstract, affordance_map)
+        prospective = assess(brain, tower_provider, observation, offers, abstract, affordance_map,
+                             owned_commitments=owned)
     for key in sorted(by_key):
         offer = by_key[key]
         tendency = affordance_map[key]
         # Common words such as "could" must not activate the same commitment
         # for every alternative. Offer labels remain actual perceived options.
         cue = key.replace("_", " ") + " " + offer["text"][8:]
-        _, _, appraisal = brain._state_policy_scores(
-            ranked, decision_text=cue, direct_history_ranked=direct)
+        if subject is not None:
+            # The actual first-person offered action, not an engineer key,
+            # is the conscious semantic cue competing with my own intentions.
+            with subject.cognitive_access(owned):
+                _, _, appraisal = brain._state_policy_scores(
+                    ranked, decision_text=offer["text"], direct_history_ranked=direct)
+        else:
+            _, _, appraisal = brain._state_policy_scores(
+                ranked, decision_text=cue, direct_history_ranked=direct)
         families = appraisal["families"]
         # A relevant commitment is an action-specific persistence pressure,
         # even if its concrete continuation happens to map to explore/create.
@@ -477,6 +501,11 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                 "phantasmagorium": {"retrieval_cues": list(imaginative_cues),
                                     "world_authority": False, "motor_authority": False,
                                     "lived_fact_authority": False},
+                "ipseity": {"required": tower_provider is not None,
+                            "admission_key": admission["key"] if admission else None,
+                            "admission_sha256": admission["sha256"] if admission else None,
+                            "owned_commitments": owned,
+                            "conscious_query_sha256": hashlib.sha256(context.encode()).hexdigest()},
                 "prospective_goals": prospective,
                 "procedural_memory": {"enabled": tower_provider is not None,
                                       "version": "tower-contextual-procedure-v1",
@@ -491,6 +520,12 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                 "candidate_base_scores": base,
                 "candidate_final_scores": scores}
     pid, tid = new_id("policy"), new_id("thought")
+    intention = "I intend to " + by_key[selected]["text"][8:]
+    owned_selection = None
+    if subject is not None:
+        from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+        owned_selection = subject.event("Noesis",intention,PhenomenalMode.INTENTION,
+                                        (pid,tid),attribution=SubjectiveSourceKind.SELF_OBSERVED)
     with brain.store.transaction() as db:
         db.execute(
             """INSERT INTO policy_decisions
@@ -507,9 +542,11 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
             """INSERT INTO thoughts
             (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
             VALUES(?,?,?,?,?,?,?)""",
-            (tid, brain.store.tick, "I intend to " + by_key[selected]["text"][8:],
+            (tid, brain.store.tick, intention,
              "noesis_world_affordance", "noesis_world_affordance:" + pid,
              json.dumps(selected_ids), json.dumps(scores, sort_keys=True)))
+        if owned_selection is not None:
+            subject.record(db,"decision:"+pid,(owned_selection,),phase="decision")
         brain.store.bump_state_version(db)
     return {"policy_decision_id": pid, "abstract_policy_id": abstract["policy_decision_id"],
             "selected_action": selected, "action_scores": scores, "appraisals": local}

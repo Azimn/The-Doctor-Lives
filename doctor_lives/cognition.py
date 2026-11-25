@@ -569,8 +569,12 @@ class PretoriusBrain:
         terms: set[str] = set()
         for row in self.store.open_concerns():
             terms |= self._tokens(str(row["description"]))
+        owned = getattr(self, "_ipseity_owned_commitments", None)
         for row in self.store.open_commitments():
-            terms |= self._tokens(str(row["description"]))
+            if owned is None:
+                terms |= self._tokens(str(row["description"]))
+            elif row["id"] in owned:
+                terms |= self._tokens(owned[row["id"]])
         return terms
 
     def _salience(self, row: dict[str, Any], now_tick: int, open_terms: set[str]) -> float:
@@ -782,8 +786,11 @@ class PretoriusBrain:
             add("relationships", "challenge", 0.035 * negative)
             add("relationships", "avoid", 0.025 * negative)
 
+        owned = getattr(self, "_ipseity_owned_commitments", None)
         for item in self.store.open_commitments():
-            commitment_tokens = self._tokens(str(item["description"]))
+            if owned is not None and item["id"] not in owned:
+                continue
+            commitment_tokens = self._tokens(str(item["description"]) if owned is None else owned[item["id"]])
             if item.get("actor"):
                 commitment_tokens |= self._tokens(str(item["actor"]))
             if not decision_tokens or not (commitment_tokens & decision_tokens):
