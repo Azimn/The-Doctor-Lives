@@ -7,6 +7,7 @@ is for game/simulation worlds, NOT robotic hardware or a general trust sandbox.
 """
 from __future__ import annotations
 
+from contextlib import closing
 from dataclasses import dataclass
 import re
 from typing import Protocol, runtime_checkable
@@ -126,7 +127,7 @@ class VirtualWorldEnvironmentPort:
         port = self._runtime._port
         # Reconcile after a crash between world effect and brain memory: the
         # provider owns the durable effect/receipt, BrainStore owns acquisition.
-        with port.brain.store.connect() as conn:
+        with closing(port.brain.store.connect()) as conn:
             saved = conn.execute(
                 "SELECT id,text,evidence_class FROM memories WHERE source=?",
                 (source,),

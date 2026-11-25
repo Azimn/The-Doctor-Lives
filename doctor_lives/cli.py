@@ -79,15 +79,18 @@ def parser() -> argparse.ArgumentParser:
             bg.add_argument("--wake-id",required=True)
             bg.add_argument("--now-ms",type=int,required=True,help="Original scheduler timestamp; repeat exactly for replay")
             bg.add_argument("--ticks",type=int,default=1)
-    for name in ("tower-init","tower-pulse","tower-serve"):
+    for name in ("tower-init","tower-pulse","tower-run","tower-serve"):
         x=sp.add_parser(name, help="Original Small Tower, canonical Doctor rehearsal")
         x.add_argument("--tower-source",type=Path,required=True)
         x.add_argument("--world",type=Path,required=True)
         if name=="tower-init":
             x.add_argument("--epoch",required=True)
-        elif name=="tower-pulse":
+        elif name in ("tower-pulse","tower-run"):
             x.add_argument("--steps",type=int,default=100)
             x.add_argument("--authorize-world",action="store_true")
+            if name=="tower-run":
+                x.add_argument("--opportunities",type=int,default=20)
+                x.add_argument("--interval-seconds",type=float,default=0.0)
         else:
             x.add_argument("--port",type=int,default=8767)
             x.add_argument("--model",default="qwen3:1.5b")
@@ -154,10 +157,14 @@ def main(argv=None) -> int:
         from .tower_web import serve
         return serve(a.state,a.tower_source,a.world,port=a.port,model=a.model,
                      authorize_world=a.authorize_world)
-    if a.cmd in ("tower-init","tower-pulse"):
-        from .small_tower import initialize_tower, run_tower_pulse
+    if a.cmd in ("tower-init","tower-pulse","tower-run"):
+        from .small_tower import initialize_tower, run_tower_pulse, run_tower_life
         if a.cmd=="tower-init":
             emit(initialize_tower(a.state,a.tower_source,a.world,epoch=a.epoch))
+        elif a.cmd=="tower-run":
+            emit(run_tower_life(a.state,a.tower_source,a.world,authorize=a.authorize_world,
+                                steps=a.steps,opportunities=a.opportunities,
+                                interval_seconds=a.interval_seconds))
         else:
             emit(run_tower_pulse(a.state,a.tower_source,a.world,authorize=a.authorize_world,steps=a.steps))
         return 0

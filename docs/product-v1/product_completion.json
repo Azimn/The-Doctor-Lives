@@ -523,8 +523,29 @@
       "acceptance": "Exact-head green gates, migration rehearsal, installation, recovery; separately identify live device/soak qualification",
       "status": "pending",
       "evidence": []
+    },
+    {
+      "id": "PT-TOWER-01",
+      "prerequisites": [
+        "PT-005"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "doctor_lives/small_tower.py; doctor_lives/cli.py; doctor_lives/virtual_world_port.py; tests/test_small_tower.py",
+      "acceptance": "Canonical unprompted Tower run, exactly-once source effect and memory after interruption, platform qualification; separate multiday survival and full lifecycle gates",
+      "status": "implemented",
+      "evidence": [
+        "9b34d86 omitted prior independent Tower runner a2f1a5f; restored its implementation and regression without overwriting unified developmental history. Close actual leaked read connection, not just test cleanup. Exact-head CI pending."
+      ]
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "Qualify original Phantasmagorium live path using recovered exact archive; retain separate source artifact until redistribution reviewed. Continue Telos nested rest and independent-life qualification."
+  "next": "PR #124 is the primary candidate. Inspect exact-head CI, especially Tower recovery and native development. Complete bounded Tower lifecycle including source-clock-aligned CASCADE, source-backed sleep/dreams, skill and social learning, and safe migration; preserve unchanged Laboratory autonomy gate.",
+  "pre_village_world": {
+    "repository": "Azimn/Septimus---Web-Sim",
+    "source_pin": "2e2ffb0658dea77da4b6cece1b783ad236bf30ff",
+    "approved": "Small Tower pre-Village; one canonical Doctor",
+    "candidate_branch": "integration/pretorius-v1-unified-completion",
+    "pr": 124,
+    "migration": "pending; rehearsal only"
+  }
 }

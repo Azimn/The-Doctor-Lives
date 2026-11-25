@@ -307,3 +307,48 @@ def initialize_tower(state, source, world, *, epoch, neural_config=None):
         runtime.checkpoint()
         return {"schema":"doctor-small-tower-init.v1","world_epoch":epoch,
                 "subject_narrative":snapshot["narrative"],"new_rehearsal":True}
+
+
+def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
+                   steps=100, interval_seconds=0.0):
+    """Run bounded, unprompted physical opportunities using the same host.
+
+    No chosen goal, room, or action is supplied by this runner. Each pulse
+    persists before the next; a reserved request is recovered by the existing
+    bridge. A stopped process grants no authority to simulate downtime.
+    The counts are actual source ticks, not hours or elapsed wall time.
+    """
+    import math
+    import time
+    if authorize is not True:
+        raise PermissionError("Explicit bounded canonical world authorization required")
+    if type(opportunities) is not int or not 1 <= opportunities <= 1000:
+        raise ValueError("Opportunities must be an integer from 1 to 1000")
+    if type(steps) is not int or not 1 <= steps <= 1000:
+        raise ValueError("Steps must be an integer from 1 to 1000")
+    if (type(interval_seconds) not in (int, float)
+            or not math.isfinite(interval_seconds) or not 0 <= interval_seconds <= 60):
+        raise ValueError("Interval must be finite and between 0 and 60 seconds")
+    started = time.monotonic()
+    pulses = []
+    status = "budget_complete"
+    for index in range(opportunities):
+        result = run_tower_pulse(state, source, world, authorize=True, steps=steps)
+        receipt = result["source_receipt"]
+        pulses.append({"request_id": receipt["requestId"],
+                       "policy_id": result["policy_id"], "choice": result["choice"],
+                       "source_ticks": receipt["elapsed"],
+                       "source_cursor": receipt["cursor"], "replayed": receipt["replayed"],
+                       "busy": receipt["busy"], "deceased": receipt["deceased"]})
+        if receipt["deceased"]:
+            status = "deceased"
+            break
+        if interval_seconds and index + 1 < opportunities:
+            time.sleep(interval_seconds)
+    return {"schema": "doctor-small-tower-life.v1", "status": status,
+            "opportunities_completed": len(pulses),
+            "new_source_ticks": sum(p["source_ticks"] for p in pulses if not p["replayed"]),
+            "recovered_source_ticks": sum(p["source_ticks"] for p in pulses if p["replayed"]),
+            "wall_seconds": time.monotonic() - started,
+            "pulses": pulses, "engineer_only": True,
+            "operator_supplied_goals": False}

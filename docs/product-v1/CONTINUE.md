@@ -79,3 +79,8 @@ Original Synthetic Ipseity governor source from a70a7e9fc61ddf1706d27bfa0b0edf3c
 ## Small Tower pre-Village world
 
 Source branch Azimn/Septimus---Web-Sim integration/doctor-canonical-world-port, commit 0924fff64de70cfdcfcd7655cb274af4eeb2b2d3. Original finite economy, merchant, postal, preservation, gardening and social events retained. Exact Git blob manifest verified before local Node world subprocess. Existing VirtualWorldEnvironmentPort carries only first-person observation and source-qualified witnessed receipt, now with verified actor signals into original relationship updates. Original canonical policy selects a bounded mapped physical opportunity; Tower's own autonomous chooser is disabled. Dedicated new rehearsal required; no implicit physical-history transfer or production migration. Canonical request reserved before original world commit and replayed by stable ID. No second brain. Long-run survival, social/endurance and cross-repo qualification pending.
+
+
+## Unified PR #124 continuation
+
+The unified 9b34d86 candidate diverged from PR #122 at a2f1a5f by one independent life-runner commit. Its bounded runner, exact recovery regression and explicit SQLite close have now been ported into this unified branch without replacing developmental history or test cleanup. The approved pre-Village environment is Small Tower. Qualify the newest exact head; retain prior R4 passes and failures. Next implement verified clock/lifecycle coupling and multiday tests. No live migration or production promotion yet.

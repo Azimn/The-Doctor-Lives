@@ -18,3 +18,9 @@ The canonical background entrypoints reuse the historical bounded wake lease and
 ## Remaining qualification
 
 The current assembly is a fresh-rehearsal candidate. Cross-repository source qualification, multi-day uncoached physical survival, sustained witnessed relationship and memory evolution, and explicit migration of an inhabited Laboratory remain separate release gates. P4-P6 selected-recall rehearsal does not enable invented temporal distortion or fabricated emotional events. Tower-specific full six-organ coupling, verified dream/sleep transitions, authored correspondence, and device-level audio/visual perception remain to be qualified. The current visual interface is a semantic scene, not image perception.
+
+## Unified independent-life entrypoint
+
+    doctor-lives --state rehearsal/doctor tower-run --tower-source /path/to/pinned-tower --world rehearsal/tower.json --authorize-world --opportunities 20 --steps 100
+
+The original bounded foreground runner from a2f1a5f is now included in PR #124. No supplied goal or action. Each pulse opens the same persisted brain and recovers any reserved source request before starting another. Optional --interval-seconds paces opportunities; it is not a real-time simulation clock. No fabricated downtime. This is not a multiday survival pass or a live migration. Exact-head Linux and Windows qualification is required.
