@@ -384,8 +384,23 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
            for v in regulatory_pressure.values()):
         raise ValueError("Invalid bounded physical cue pressure")
     context = " ".join([*narrative, *(o["text"] for o in offers)])
+    # Conclave is a normal participant in this embodied opportunity, not a
+    # second chooser. Only the exact authenticated perception can seed it.
+    from .conclave import Conclave, Stimulus
+    conclave = Conclave(brain.store, enabled=True)
+    source_event = observation.get("source_event_id")
+    if not source_event:
+        raise PermissionError("Tower observation lacks canonical event provenance")
+    interpretation_context = "tower:" + hashlib.sha256(source_event.encode()).hexdigest()[:32]
+    readings = conclave.interpret(Stimulus(
+        source_event, "world_verified", interpretation_context,
+        observation["text"][:2000].strip()))
+    # Use the existing kernel's associations as retrieval cues, not as
+    # propositions about reality, physical offers, or instructions.
+    interpretation_cues = conclave.cues(interpretation_context)
+    retrieval_context = " ".join((context, *interpretation_cues))
     abstract = brain.think("small_tower_native_opportunity", decision_text=context)
-    direct, ranked = brain._ranked_memory_sets(48, query=context, audit=True)
+    direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
     base, scores, local, candidate_ids = {}, {}, {}, [observation_memory_id]
     by_key = {o["key"]: o for o in offers}
     for key in sorted(by_key):
@@ -421,6 +436,15 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                 "selector_authority": "original_noesis",
                 "physical_authority": "none",
                 "offer_appraisals": local,
+                "conclave": {
+                    "context_key": interpretation_context,
+                    "source_event_id": source_event,
+                    "reading_ids": [r.id for r in readings],
+                    "retrieval_cues": list(interpretation_cues),
+                    "retrieval_query_sha256": hashlib.sha256(retrieval_context.encode()).hexdigest(),
+                    "motor_authority": False,
+                    "lived_fact_authority": False,
+                },
                 "physical_cue_pressure": {k: regulatory_pressure.get(k, 0.0)
                                           for k in scores},
                 "candidate_base_scores": base,

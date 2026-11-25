@@ -552,5 +552,135 @@
     "candidate_branch": "integration/pretorius-v1-unified-completion",
     "pr": 124,
     "migration": "pending; rehearsal only"
+  },
+  "nine_organ_expansion": {
+    "directive": "2026-11-24 mandatory full nine-organ architecture",
+    "pr": 124,
+    "branch": "integration/pretorius-v1-unified-completion",
+    "starting_head": "1b406f75980eadedfc5ad8d7bcf3a68350c9c853",
+    "policy": "All nine required; Synthetic Ipseity remains shared experiential authority. Presence is not qualification. No competing brains, no scope reduction, no live history reset.",
+    "organs": [
+      {
+        "organ": "Sensus",
+        "location": "organs.py; virtual_world_port.py",
+        "status": "partial",
+        "next": "Full multimodal integration, uncertainty and attention"
+      },
+      {
+        "organ": "Corpus",
+        "location": "small_tower.py; virtual_world_port.py; organs.py",
+        "status": "partial",
+        "next": "Body and interoception fidelity, persistence and causal lifecycle"
+      },
+      {
+        "organ": "Affectus",
+        "location": "organs.py; cognition.py; canonical_affectus_weather.py",
+        "status": "partial",
+        "next": "Persistent temperament, affective feedback and development in Tower"
+      },
+      {
+        "organ": "Mnemosyne",
+        "location": "organs.py; canonical_background.py; cognition.py; source_monitoring.py",
+        "status": "partial",
+        "next": "Reconstruction, consolidation, procedural memory and forgetting in ordinary life"
+      },
+      {
+        "organ": "Noesis",
+        "location": "noesis_situated_choice.py; cognition.py; neural.py",
+        "status": "partial",
+        "next": "Concrete choices and recurrent state; full competence and long-horizon qualification"
+      },
+      {
+        "organ": "Expression",
+        "location": "speech_emission.py; operator_conversation.py",
+        "status": "partial",
+        "next": "Grounded verbal/nonverbal Tower interaction, voice and trained rendering"
+      },
+      {
+        "organ": "Telos",
+        "location": "lab_telos.py; noesis_situated_choice.py",
+        "status": "partial",
+        "next": "Tower-native goal creation, competing durable commitments, purpose and completion"
+      },
+      {
+        "organ": "Conclave",
+        "location": "conclave.py; lab_conclave_reflection.py; noesis_situated_choice.py",
+        "status": "integration_pending_ci",
+        "next": "Normal Tower decision retrieval now consumes exact-source associations; conflict reconciliation, reciprocal learning and causal influence remain open"
+      },
+      {
+        "organ": "Phantasmagorium",
+        "location": "phantasmagorium_bridge.py; lab_phantasmagorium.py",
+        "status": "partial",
+        "next": "Recover donor archive and connect ordinary Tower imagination, rehearsal and sleep"
+      }
+    ],
+    "supporting_systems": [
+      {
+        "mechanism": "Synthetic Ipseity",
+        "status": "partial"
+      },
+      {
+        "mechanism": "CASCADE",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Self-Reference Governor",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Endogenous cognition",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Developmental psychology",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Recurrent neural processing",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Source monitoring",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Habit formation",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Procedural learning",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Social cognition",
+        "status": "partial"
+      },
+      {
+        "mechanism": "35 Articles of Artificiality",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Pretorius neural research",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Jelly-Psiduck",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Connectome",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Kurzweil",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Inhabitant",
+        "status": "reconciliation_required"
+      }
+    ],
+    "qualification": "No new passing CI or causal behavioral result claimed. Preserve original qualification gates and prior register."
   }
 }

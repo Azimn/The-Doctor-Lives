@@ -43,6 +43,21 @@ class OriginalTowerTests(unittest.TestCase):
         appraisals = json.loads(policy["state_pressure_json"])
         self.assertEqual(appraisals["abstract_policy_id"], choice["abstract_policy_id"])
         self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
+        reflection = appraisals["conclave"]
+        from doctor_lives.conclave import Conclave
+        observation = store.get_memory(choice["observation_id"])
+        self.assertEqual(reflection["source_event_id"], observation["source_event_id"])
+        self.assertTrue(reflection["reading_ids"])
+        self.assertTrue(reflection["retrieval_cues"])
+        self.assertFalse(reflection["motor_authority"])
+        self.assertFalse(reflection["lived_fact_authority"])
+        reopened = Conclave(store, enabled=True)
+        readings = reopened.readings(reflection["context_key"])
+        self.assertEqual(set(reflection["reading_ids"]), {r.id for r in readings})
+        self.assertEqual(list(reopened.cues(reflection["context_key"])),
+                         reflection["retrieval_cues"])
+        self.assertTrue(all(r.source_event_id == observation["source_event_id"]
+                            for r in readings))
         self.assertIsNone(store.meta(PENDING))
         self.assertTrue(any(m["source"].startswith("virtual-world:small-tower:") for m in store.memories()))
         self.assertTrue(SmallTowerSource(source,world).snapshot()["revision"])
