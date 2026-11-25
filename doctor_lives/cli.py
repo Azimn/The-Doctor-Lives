@@ -66,6 +66,18 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
+    for name in ("background-lease","background-wake","background-revoke"):
+        bg=sp.add_parser(name,help="Bounded CASCADE operation on the one canonical Doctor")
+        bg.add_argument("--lease-id",required=True)
+        bg.add_argument("--authorize",action="store_true")
+        if name=="background-lease":
+            bg.add_argument("--total-ticks",type=int,required=True)
+            bg.add_argument("--max-ticks-per-wake",type=int,default=1)
+            bg.add_argument("--interval-ms",type=int,default=1000)
+            bg.add_argument("--expires-ms",type=int,required=True)
+        elif name=="background-wake":
+            bg.add_argument("--wake-id",required=True)
+            bg.add_argument("--ticks",type=int,default=1)
     for name in ("tower-init","tower-pulse"):
         x=sp.add_parser(name, help="Original Small Tower, canonical Doctor rehearsal")
         x.add_argument("--tower-source",type=Path,required=True)
@@ -122,6 +134,18 @@ def main(argv=None) -> int:
     if a.cmd in ("preview-start", "preview-status", "preview-stop", "preview-resume"):
         from .preview_operator import command
         return command(a.cmd, a.workspace, native_source=getattr(a, "native_affectus_source", None))
+    if a.cmd in ("background-lease","background-wake","background-revoke"):
+        from .canonical_background import BackgroundLease,issue,wake,revoke
+        import time
+        if a.cmd=="background-lease":
+            issue(a.state,BackgroundLease(a.lease_id,a.total_ticks,a.max_ticks_per_wake,
+                  a.interval_ms,a.expires_ms),authorized=a.authorize)
+        elif a.cmd=="background-wake":
+            emit(wake(a.state,lease_id=a.lease_id,wake_id=a.wake_id,now_ms=int(time.time()*1000),
+                      ticks=a.ticks,authorized=a.authorize))
+        else:
+            revoke(a.state,a.lease_id,authorized=a.authorize)
+        return 0
     if a.cmd in ("tower-init","tower-pulse"):
         from .small_tower import initialize_tower, run_tower_pulse
         if a.cmd=="tower-init":
