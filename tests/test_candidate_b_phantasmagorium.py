@@ -29,6 +29,30 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             sync_tower_phantasmagorium(None, object(), None, "invented", None)
 
+    def test_fancy_motif_requires_original_fiction_labels(self):
+        from doctor_lives.tower_phantasmagorium import verified_fancy_motifs
+        fragment = {"epistemic_status": "dreamed_not_lived", "marked": True,
+                    "factual_memory_eligible": False, "world_fact_authority": False,
+                    "tool_authority": False, "motif": "a clock made of clouds"}
+        result = dict(fragment, epistemic_status="hypothetical_only", fragments=[fragment])
+        self.assertEqual(verified_fancy_motifs(result), ("a clock made of clouds",))
+        with self.assertRaises(PermissionError):
+            verified_fancy_motifs(dict(result, fragments=[dict(fragment, world_fact_authority=True)]))
+
+    def test_missing_archive_not_silently_ignored_after_activation(self):
+        from unittest.mock import patch
+        from doctor_lives.tower_phantasmagorium import require_archive, CURSOR
+        with tempfile.TemporaryDirectory() as tmp:
+            store = BrainStore(Path(tmp) / "brain.sqlite3")
+            with patch.dict(os.environ, {"PRETORIUS_PHANTA_DONOR": ""}):
+                self.assertIsNone(require_archive(store))
+                with self.assertRaises(FileNotFoundError):
+                    require_archive(store, required=True)
+                with store.transaction() as db:
+                    store.set_meta(CURSOR, '{"epoch":"test","cursor":0}', db)
+                with self.assertRaises(FileNotFoundError):
+                    require_archive(store)
+
     def test_canonical_snapshot_and_fiction_boundary(self):
         from doctor_lives.lab_phantasmagorium import _snapshot, _digest, _nonfactual
         import json
@@ -60,6 +84,8 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
         fancy = _run(archive, request)
         self.assertGreater(len(fancy["result"]["fragments"]), 0)
         self.assertTrue(_nonfactual(fancy["result"], "hypothetical_only"))
+        from doctor_lives.tower_phantasmagorium import verified_fancy_motifs
+        self.assertTrue(verified_fancy_motifs(fancy["result"]))
         request.update(files=fancy["files"], op="night", seed=123)
         first = _run(archive, request)
         self.assertTrue(_nonfactual(first["result"], "dreamed_not_lived"))

@@ -611,8 +611,8 @@
       {
         "organ": "Phantasmagorium",
         "location": "phantasmagorium_bridge.py; lab_phantasmagorium.py; tower_phantasmagorium.py; small_tower.py",
-        "status": "integration_pending_ci_and_asset_deployment",
-        "next": "Original v0.5 archive found and locally SHA-256 verified (375642 bytes). Tower actual read/sleep admission now invokes the original donor when PRETORIUS_PHANTA_DONOR is configured. Qualify authentic donor-backed Tower runs, waking creative/prospective influence, sleep continuity and source recovery; release must not silently omit donor."
+        "status": "integration_pending_donor_backed_ci",
+        "next": "Original v0.5 archive locally recovered and SHA-256 verified. Actual Tower read/rest/sleep now reconcile via dedicated replay-safe cursor; marked waking motifs participate only in original Noesis retrieval. Strict archive-required startup option and no silent removal after activation. Qualify with original archive in end-to-end Tower CI; no claim of full spontaneous imagination or dream qualification."
       }
     ],
     "supporting_systems": [
@@ -736,6 +736,19 @@
       "affectus_blob": "0bd2394291efe9ff41fd59320ae00d37b3d7f007",
       "source_readme_blob": "bafbcf0ad0a9446e8e90d020d7476c3aa8e64f05",
       "status": "verified Git blob bytes before commit"
+    },
+    "latest_r4": {
+      "head": "49b1e66c14cfbb97c3ae7b47d4243d5c7a863eea",
+      "run": 45523213794,
+      "job": 138907382886,
+      "verdict": "FAIL",
+      "observed": [
+        "read_book",
+        "work"
+      ],
+      "unfinished": "rest travel",
+      "observation_seconds": 600,
+      "gate_changed": false
     }
   }
 }

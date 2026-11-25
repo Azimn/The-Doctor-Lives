@@ -181,8 +181,8 @@ def _admit_events(runtime, provider, port):
     store = runtime._port.brain.store
     cursor = int(store.meta(CURSOR) or 0)
     snapshot = provider.snapshot(cursor)
-    from .lab_phantasmagorium import configured_archive
-    archive = configured_archive()
+    from .tower_phantasmagorium import require_archive, sync_history
+    archive = require_archive(store)
     for row in snapshot["events"]:
         receipt = provider.event_receipt(row)
         admitted = port._admit(receipt, kind=receipt.kind)
@@ -190,9 +190,8 @@ def _admit_events(runtime, provider, port):
         advance_affectus(runtime, provider, receipt, admitted.memory_id)
         from .tower_telos import reconcile_intention
         reconcile_intention(store, provider, row, receipt, admitted.memory_id)
-        if archive is not None and receipt.kind == "action" and receipt.operation in ("read", "sleep"):
-            from .tower_phantasmagorium import sync_tower_phantasmagorium
-            sync_tower_phantasmagorium(store, provider, receipt, admitted.memory_id, archive)
+    if archive is not None:
+        sync_history(store, provider, snapshot, archive)
     with store.transaction() as db:
         store.set_meta(CURSOR, snapshot["cursor"], db)
         store.bump_state_version(db)
@@ -315,7 +314,8 @@ def _reconcile_background_clock(state, store):
 
 
 def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
-                    _background_lease=None, _background_every_ticks=0):
+                    _background_lease=None, _background_every_ticks=0,
+                    require_phantasmagorium=False):
     """One original cognitive opportunity or continuation of an active action."""
     from .lab_runtime import _exclusive_host
     from .organs import SixOrganRuntime
@@ -339,6 +339,8 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
         _bind(runtime,provider,snapshot)
         port=VirtualWorldEnvironmentPort(runtime,provider,authorized=True)
         store=runtime._port.brain.store
+        from .tower_phantasmagorium import require_archive
+        donor = require_archive(store, required=require_phantasmagorium)
         clock = _reconcile_background_clock(state, store)
         raw=store.meta(PENDING)
         if raw:
@@ -407,6 +409,7 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                 "source_receipt":result,"subject_narrative":snapshot["narrative"],
                 "background_receipt":background,
                 "background_clock":clock,
+                "phantasmagorium_configured":donor is not None,
                 "same_canonical_brain":True,"parallel_tower_chooser":False}
 
 
@@ -431,7 +434,8 @@ def initialize_tower(state, source, world, *, epoch, neural_config=None):
 
 def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
                    steps=100, interval_seconds=0.0,
-                   background_every_ticks=DEFAULT_BACKGROUND_EVERY_TICKS):
+                   background_every_ticks=DEFAULT_BACKGROUND_EVERY_TICKS,
+                   require_phantasmagorium=False):
     """Run bounded, unprompted physical opportunities using the same host.
 
     No chosen goal, room, or action is supplied by this runner. Each pulse
@@ -473,13 +477,15 @@ def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
             result = run_tower_pulse(
                 state, source, world, authorize=True, steps=steps,
                 _background_lease=lease_id,
-                _background_every_ticks=background_every_ticks)
+                _background_every_ticks=background_every_ticks,
+                require_phantasmagorium=require_phantasmagorium)
             receipt = result["source_receipt"]
             pulses.append({"request_id": receipt["requestId"],
                            "policy_id": result["policy_id"], "choice": result["choice"],
                            "source_ticks": receipt["elapsed"],
                            "source_cursor": receipt["cursor"], "replayed": receipt["replayed"],
-                           "busy": receipt["busy"], "deceased": receipt["deceased"]})
+                           "busy": receipt["busy"], "deceased": receipt["deceased"],
+                           "phantasmagorium_configured": result["phantasmagorium_configured"]})
             background = result["background_receipt"]
             if background is not None:
                 background_receipts.append(background)

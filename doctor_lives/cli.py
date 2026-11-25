@@ -88,6 +88,8 @@ def parser() -> argparse.ArgumentParser:
         elif name in ("tower-pulse","tower-run"):
             x.add_argument("--steps",type=int,default=100)
             x.add_argument("--authorize-world",action="store_true")
+            x.add_argument("--require-phantasmagorium",action="store_true",
+                           help="Fail before physical advancement if the original pinned imagination archive is missing")
             if name=="tower-run":
                 x.add_argument("--opportunities",type=int,default=20)
                 x.add_argument("--interval-seconds",type=float,default=0.0)
@@ -168,9 +170,11 @@ def main(argv=None) -> int:
             emit(run_tower_life(a.state,a.tower_source,a.world,authorize=a.authorize_world,
                                 steps=a.steps,opportunities=a.opportunities,
                                 interval_seconds=a.interval_seconds,
-                                background_every_ticks=a.background_every_ticks))
+                                background_every_ticks=a.background_every_ticks,
+                                require_phantasmagorium=a.require_phantasmagorium))
         else:
-            emit(run_tower_pulse(a.state,a.tower_source,a.world,authorize=a.authorize_world,steps=a.steps))
+            emit(run_tower_pulse(a.state,a.tower_source,a.world,authorize=a.authorize_world,steps=a.steps,
+                                 require_phantasmagorium=a.require_phantasmagorium))
         return 0
     if a.cmd == "preview-init":
         from .lab_preview import initialize_preview

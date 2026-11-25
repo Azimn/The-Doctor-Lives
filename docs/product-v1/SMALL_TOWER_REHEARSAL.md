@@ -50,3 +50,7 @@ The loopback browser now uses the same guarded local-turn Expression journal as 
 ## Corpus regulation in ordinary Tower life
 
 The original Laboratory fatigue-projection mechanism is adapted to Tower's coarse, authenticated first-person energy grammar. It projects only into the existing canonical fatigue need, using the original felt adaptation rate and bounded values. Unknown or contested input does not fabricate a bodily measurement. The scene receipt and projection are committed once per source. Tower remains sole physical authority; the original Noesis uses the canonical felt need and actual feasible physical offers.
+
+## Phantasmagorium continuity and qualification
+
+The original v0.5 archive is locally recovered and hash verified. Set `PRETORIUS_PHANTA_DONOR` to that exact ZIP; `tower-run --require-phantasmagorium` and `tower-pulse --require-phantasmagorium` refuse missing source before a physical advance. Once donor continuity is established, removal is an error, even in legacy rehearsal mode. A separate source cursor reconciles genuine previously admitted reading, quiet rest and sleep; late activation cannot silently discard earlier events. Older already-advanced donor histories are not silently reordered. Quiet rest uses the original mixed Cabinet of Fancy with admitted context; strictly marked, bounded motifs can influence later retrieval, never physical claims or motor authority. Donor-backed Tower CI and longitudinal qualification remain required. The no-donor rehearsal is not a complete nine-organ build.

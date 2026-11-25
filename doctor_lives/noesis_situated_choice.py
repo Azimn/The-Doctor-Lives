@@ -398,7 +398,9 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     # Use the existing kernel's associations as retrieval cues, not as
     # propositions about reality, physical offers, or instructions.
     interpretation_cues = conclave.cues(interpretation_context)
-    retrieval_context = " ".join((context, *interpretation_cues))
+    from .tower_phantasmagorium import retrieval_motifs
+    imaginative_cues = retrieval_motifs(brain.store, observation_source)
+    retrieval_context = " ".join((context, *interpretation_cues, *imaginative_cues))
     abstract = brain.think("small_tower_native_opportunity", decision_text=context)
     direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
     base, scores, local, candidate_ids = {}, {}, {}, [observation_memory_id]
@@ -445,6 +447,9 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                     "motor_authority": False,
                     "lived_fact_authority": False,
                 },
+                "phantasmagorium": {"retrieval_cues": list(imaginative_cues),
+                                    "world_authority": False, "motor_authority": False,
+                                    "lived_fact_authority": False},
                 "physical_cue_pressure": {k: regulatory_pressure.get(k, 0.0)
                                           for k in scores},
                 "candidate_base_scores": base,
