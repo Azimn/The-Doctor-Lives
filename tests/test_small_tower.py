@@ -36,14 +36,19 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         ]
         garden = ["I am in my garden path.", "I am getting tired."]
         garden_offers = [{"key":"walk"}, {"key":"move_kitchen"}]
-        self.assertEqual(appraisal(garden,garden_offers,remembered),{"move_kitchen":.09})
+        self.assertEqual(appraisal(garden,garden_offers,remembered),{"move_kitchen":.16})
         self.assertEqual(appraisal(garden,garden_offers,[]),{})
         self.assertEqual(appraisal(garden,[{"key":"walk"}],remembered),{})
         bedroom = ["I am in my bedchamber.", "I long for something to occupy my mind."]
         bedroom_offers = [{"key":"rest"}, {"key":"sleep"}, {"key":"move_library"}]
         self.assertEqual(appraisal(bedroom,bedroom_offers,remembered),{"move_library":.09})
         worn = ["I am in my bedchamber.", "I feel worn out and find it hard to concentrate."]
-        self.assertEqual(appraisal(worn,bedroom_offers,remembered),{"rest":.14,"sleep":.20})
+        self.assertEqual(appraisal(worn,bedroom_offers,remembered),{"rest":.08,"sleep":.20})
+        tired = ["I am in my bedchamber.", "I am getting tired."]
+        pressure = appraisal(tired,bedroom_offers,remembered)
+        self.assertEqual(pressure,{"rest":.045,"sleep":.16})
+        self.assertGreater(pressure["sleep"],pressure["rest"])
+        self.assertEqual(appraisal(tired,[{"key":"rest"}],remembered),{"rest":.045})
         self.assertEqual(appraisal(["I am in my bedchamber."],bedroom_offers,remembered),{})
 
     def test_remembered_supply_need_survives_departure_until_verified_attempt(self):

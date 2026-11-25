@@ -826,7 +826,26 @@
           "operator_supplied_actions": false
         }
       },
-      "harness_repair": "Use ordinary 100 source-tick pulse budget so a 250-tick sleep can expose actual busy activity to the existing 100-tick background cadence; write returned block receipts durably; no reduction of minimum ticks or other gates."
+      "harness_repair": "Use ordinary 100 source-tick pulse budget so a 250-tick sleep can expose actual busy activity to the existing 100-tick background cadence; write returned block receipts durably; no reduction of minimum ticks or other gates.",
+      "sleep_repair": {
+        "status": "candidate_live_test_underway",
+        "cause": "sleep and rest mapped to same avoid tendency with equal ordinary-fatigue appraisal; repeated successful rest could dominate sleep",
+        "scope": "perceived tiredness and worn-out bands only; bounded pressure, no motor authority, no hidden energy; original physical duration and outcomes unchanged",
+        "checkpoint_recovery": "previous 2255-tick diagnostic remains available, but prior exact brain/world/neural files were not retained between sessions; fresh isolated test required",
+        "baseline_r4": {
+          "head": "ac0fca625942705befaca0900c462ea89b695dad",
+          "run": 45557187901,
+          "job": 139017114330,
+          "status": "FAIL",
+          "reason": "three_distinct_uncoached_activities_not_observed; rest travel still pending at 600 seconds",
+          "validated_goals": 3,
+          "activities": [
+            "read_book",
+            "work"
+          ],
+          "gate_changed": false
+        }
+      }
     },
     "ipseity_causal_test": {
       "path": "tests/test_small_tower.py::test_own_past_commitment_changes_real_tower_action_under_matched_ipseity_impairment",

@@ -30,10 +30,14 @@ def appraisal(narrative, offers, remembered):
     severe = "I feel worn out" in text
     tired = severe or "I am getting tired." in text
     if tired:
-        add("rest", .14 if severe else .09)
-        add("sleep", .20 if severe else .09)
+        # Both actions use the same abstract avoid tendency. Equal pressure
+        # for a tired body lets the shorter, repeatedly successful rest
+        # dominate restorative sleep. Distinguish their physical purposes
+        # using the source's observed fatigue bands, not hidden energy.
+        add("rest", .08 if severe else .045)
+        add("sleep", .20 if severe else .16)
         if not keys.intersection(("rest", "sleep")):
-            add(first_step(graph, room, "bedchamber"), .20 if severe else .09)
+            add(first_step(graph, room, "bedchamber"), .20 if severe else .16)
     if "I long for something to occupy my mind." in text:
         intellectual = keys.intersection(("read", "study", "inspect", "work"))
         if intellectual:
