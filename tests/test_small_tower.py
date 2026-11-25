@@ -35,6 +35,15 @@ class OriginalTowerTests(unittest.TestCase):
         self.assertTrue(choice["observation_id"])
         self.assertFalse(choice["host_mapped_abstract_tendency"])
         self.assertEqual(choice["selector_authority"], "original_noesis")
+        from doctor_lives.tower_affectus import weather_for
+        weather = weather_for(runtime)
+        self.assertGreaterEqual(weather.tick, choice["affectus"]["tick"])
+        self.assertEqual(len(choice["affectus"]["digest"]), 64)
+        from hashlib import sha256
+        source_ref = store.get_memory(choice["observation_id"])["source"]
+        weather_receipt = json.loads(store.meta(
+            "affectus:tower-event:" + sha256(source_ref.encode()).hexdigest()))
+        self.assertEqual(weather_receipt["source_record"]["memory_id"], choice["observation_id"])
         from contextlib import closing
         with closing(store.connect()) as db:
             policy = db.execute("SELECT selected_action,state_pressure_json FROM policy_decisions "

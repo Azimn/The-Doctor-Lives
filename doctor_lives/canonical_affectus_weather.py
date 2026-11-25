@@ -168,7 +168,8 @@ class CanonicalWeather:
 
     def step(self, tick: int, drivers: tuple, *,
              authorized: bool = False,
-             consumed_world_source: str | None = None) -> WeatherReceipt:
+             consumed_world_source: str | None = None,
+             tower_memory_id: str | None = None) -> WeatherReceipt:
         if authorized is not True:
             raise PermissionError("Only trusted host can advance weather")
         if type(tick) is not int or tick != (1 if self.tick == -1 else self.tick + 1):
@@ -177,6 +178,32 @@ class CanonicalWeather:
             type(event) is not self._module.DriverEvent for event in drivers
         ):
             raise TypeError("Drivers must be source-pinned typed events")
+        tower_key = None
+        tower_record = None
+        if tower_memory_id is not None:
+            if consumed_world_source is not None:
+                raise PermissionError("One weather source authority at a time")
+            store = self._port.brain.store
+            memory = store.get_memory(tower_memory_id)
+            if (not memory or not memory["active"] or memory["external"]
+                    or memory["evidence_class"] != "lived_runtime_memory"
+                    or not memory["source"].startswith("virtual-world:small-tower:")
+                    or not memory.get("source_event_id")
+                    or any(d.source_ref != memory["source"] for d in drivers)):
+                raise PermissionError("Exact admitted Tower memory required")
+            tower_key = "affectus:tower-event:" + sha256(memory["source"].encode()).hexdigest()
+            tower_record = {
+                "memory_id": tower_memory_id, "source": memory["source"],
+                "source_event_id": memory["source_event_id"],
+                "drivers": [asdict(driver) for driver in drivers],
+            }
+            prior = store.meta(tower_key)
+            if prior is not None:
+                previous = json.loads(prior)
+                if previous.get("source_record") != tower_record:
+                    raise PermissionError("Conflicting Tower weather replay")
+                return WeatherReceipt(tick=previous["tick"], replay=True,
+                                      modulation=asdict(self._weather.modulation()))
         if consumed_world_source is not None:
             if (type(consumed_world_source) is not str
                     or not consumed_world_source.startswith(
@@ -207,6 +234,12 @@ class CanonicalWeather:
                 # physical event as a second emotional stimulus.
                 self._port.brain.store.set_meta(
                     _WORLD_CONSUMED_META, consumed_world_source, conn,
+                )
+            if tower_key is not None:
+                if conn.execute("SELECT 1 FROM meta WHERE key=?", (tower_key,)).fetchone():
+                    raise RuntimeError("Concurrent Tower weather receipt")
+                self._port.brain.store.set_meta(
+                    tower_key, _json({"source_record": tower_record, "tick": tick}), conn,
                 )
             self._port.brain.store.bump_state_version(conn)
         self._stored_digest = new

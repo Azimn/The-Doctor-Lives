@@ -1,3 +1,6 @@
 # Canonical evidence manifests pin exact Git blob bytes, not normalized JSON.
 # Windows checkout must preserve LF so source-verified identity remains valid.
 doctor_lives/data/*.json text eol=lf
+
+# Exact reviewed Affectus donor Git blobs must remain unchanged.
+doctor_lives/data/affectus_donor/** -text

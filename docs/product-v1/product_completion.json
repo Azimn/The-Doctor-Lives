@@ -574,9 +574,9 @@
       },
       {
         "organ": "Affectus",
-        "location": "organs.py; cognition.py; canonical_affectus_weather.py",
-        "status": "partial",
-        "next": "Persistent temperament, affective feedback and development in Tower"
+        "location": "organs.py; cognition.py; canonical_affectus_weather.py; tower_affectus.py; data/affectus_donor",
+        "status": "integration_pending_ci",
+        "next": "Exact reviewed Spinoza weather donor bundled and consumed in default Tower observation/action/social lifecycle; weather uses original canonical checkpoint and original Noesis/Mnemosyne modulation. Full emotional-development qualification remains pending."
       },
       {
         "organ": "Mnemosyne",
@@ -728,6 +728,14 @@
         "next": "Audit BioCircuit recurrent mechanisms and phenotype training, identify source-recovery gaps; preserve missing original 30 training records and unreproduced CHIMERA result.",
         "status": "mechanism_level_reconciliation_required"
       }
-    ]
+    ],
+    "affectus_donor": {
+      "source": "Azimn/Sensus-Communis-Artificialis",
+      "commit": "904bf11861700739ccc03d4b0d4340ff3422a7d3",
+      "core_blob": "507cd9f75af04353b5e42d67fb60c147acff5ffb",
+      "affectus_blob": "0bd2394291efe9ff41fd59320ae00d37b3d7f007",
+      "source_readme_blob": "bafbcf0ad0a9446e8e90d020d7476c3aa8e64f05",
+      "status": "verified Git blob bytes before commit"
+    }
   }
 }

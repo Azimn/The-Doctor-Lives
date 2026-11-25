@@ -186,6 +186,8 @@ def _admit_events(runtime, provider, port):
     for row in snapshot["events"]:
         receipt = provider.event_receipt(row)
         admitted = port._admit(receipt, kind=receipt.kind)
+        from .tower_affectus import advance as advance_affectus
+        advance_affectus(runtime, provider, receipt, admitted.memory_id)
         from .tower_telos import reconcile_intention
         reconcile_intention(store, provider, row, receipt, admitted.memory_id)
         if archive is not None and receipt.kind == "action" and receipt.operation in ("read", "sleep"):
@@ -197,7 +199,7 @@ def _admit_events(runtime, provider, port):
     return snapshot
 
 
-def _choose(runtime, snapshot, observation_id):
+def _choose(runtime, snapshot, observation_id, weather):
     brain = runtime._port.brain
     offers = snapshot["offers"]
     if not offers:
@@ -236,10 +238,13 @@ def _choose(runtime, snapshot, observation_id):
     from .noesis_situated_choice import select_world_affordance
     observation_source = ("virtual-world:small-tower:" + snapshot["epoch"]
                           + ":observation:" + snapshot["revision"][:48])
-    decision = select_world_affordance(
-        brain, observation_memory_id=observation_id, observation_source=observation_source,
-        narrative=snapshot["narrative"], offers=offers, affordance_map=MAP,
-        regulatory_pressure=pressure)
+    from .lab_six_organ_session import original_noesis_weather
+    modulation = weather.modulation()
+    with original_noesis_weather(runtime.noesis, modulation):
+        decision = select_world_affordance(
+            brain, observation_memory_id=observation_id, observation_source=observation_source,
+            narrative=snapshot["narrative"], offers=offers, affordance_map=MAP,
+            regulatory_pressure=pressure)
     choice, scores = decision["selected_action"], decision["action_scores"]
     with brain.store.transaction() as db:
         brain.store.set_meta("small-tower:choice:"+decision["policy_decision_id"],
@@ -247,7 +252,10 @@ def _choose(runtime, snapshot, observation_id):
                         "offers":sorted(scores),"scores":scores,"observation_id":observation_id,
                         "host_mapped_abstract_tendency":False,
                         "abstract_policy_id":decision["abstract_policy_id"],
-                        "selector_authority":"original_noesis"},sort_keys=True),db)
+                        "selector_authority":"original_noesis",
+                        "affectus":{"tick":weather.tick,"digest":weather.snapshot_digest(),
+                                    "exploration_bias":modulation.exploration_bias,
+                                    "decay_multiplier":modulation.decay_multiplier}},sort_keys=True),db)
         brain.store.bump_state_version(db)
     return choice,decision["policy_decision_id"]
 
@@ -337,8 +345,11 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
             if snapshot["busy"]:
                 choice,policy=None,None
             else:
-                perceived=port._admit(provider._observation(snapshot),kind="observation")
-                choice,policy=_choose(runtime,snapshot,perceived.memory_id)
+                observation=provider._observation(snapshot)
+                perceived=port._admit(observation,kind="observation")
+                from .tower_affectus import advance as advance_affectus
+                weather,_=advance_affectus(runtime,provider,observation,perceived.memory_id)
+                choice,policy=_choose(runtime,snapshot,perceived.memory_id,weather)
             from .store import new_id
             request={"id":new_id("tower"),"revision":snapshot["revision"],
                      "choice":choice,"policyRef":policy,"steps":steps}

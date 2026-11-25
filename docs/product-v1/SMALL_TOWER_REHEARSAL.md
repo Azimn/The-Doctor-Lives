@@ -34,3 +34,7 @@ Set `PRETORIUS_PHANTA_DONOR` to the exact verified v0.5 archive (SHA-256 `31e31c
 ## Native Tower Telos intentions
 
 The canonical motor reservation now includes a protected Telos commitment in the original BrainStore transaction. It is authored from the actual original Noesis policy and thought, not operator text. A verified Tower completion or failure with the same original policy reference closes it as kept or broken. Replay reconciles the same commitment without duplication. These bounded action intentions are not yet long-horizon self-authored projects.
+
+## Original Affectus in ordinary Tower life
+
+The original reviewed Affectus source at Azimn/Sensus-Communis-Artificialis commit 904bf11861700739ccc03d4b0d4340ff3422a7d3 is bundled byte-for-byte (core and affectus modules), with its source README. The same canonical weather store now consumes authenticated Tower observations and physical/social consequences idempotently. Existing Noesis exploration and Mnemosyne read-time retention modulation is reused during ordinary concrete choice. The driver magnitudes are bounded engineering assumptions. No new affect engine, hidden world state or separate decision authority is introduced. Full affective-development and cross-platform qualification remain pending.
