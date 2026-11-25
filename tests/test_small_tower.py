@@ -441,6 +441,35 @@ class OriginalTowerTests(unittest.TestCase):
                       observation_source=brain.store.get_memory(observation.memory_id)["source"],
                       narrative=snapshot["narrative"], offers=offers,
                       affordance_map=small_tower.MAP, regulatory_pressure={})
+        # The bound product must deny the historical unowned fixture before
+        # generating any readings, decisions or other state mutations.
+        before = brain.store.digest()
+        with self.assertRaisesRegex(PermissionError, "Bound Tower choice"):
+            select_world_affordance(brain, **kwargs)
+        self.assertEqual(brain.store.digest(), before)
+        from doctor_lives.tower_ipseity import TowerIpseity
+        subject = TowerIpseity(brain)
+        bound = dict(kwargs, tower_provider=provider, subject=subject)
+        baseline_owned = select_world_affordance(brain, **bound)
+        commitment = brain.add_commitment(term, importance=1.0)
+        changed_owned = select_world_affordance(brain, **bound)
+        for appraisal in changed_owned["appraisals"].values():
+            self.assertNotIn(commitment, appraisal["source_ids"]["commitments"])
+        self.assertEqual(changed_owned["appraisals"][target]["commitment"],
+                         baseline_owned["appraisals"][target]["commitment"])
+        self.assertEqual(provider.snapshot(),snapshot)
+
+        # Keep the original positive appraisal control on an isolated,
+        # explicitly unbound copy. Never remove the product's binding.
+        import shutil
+        brain.save()
+        control_state = Path(temp.name)/"legacy-control"
+        shutil.copytree(state, control_state)
+        control = SixOrganRuntime.open(control_state)._port.brain
+        with control.store.transaction() as db:
+            db.execute("DELETE FROM meta WHERE key='small-tower:world-binding-v1'")
+            db.execute("DELETE FROM commitments WHERE id=?", (commitment,))
+        brain = control
         baseline = select_world_affordance(brain,**kwargs)
         commitment = brain.add_commitment(term,importance=1.0)
         changed = select_world_affordance(brain,**kwargs)

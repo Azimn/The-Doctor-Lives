@@ -874,6 +874,24 @@
         "skipped": 271,
         "failed": 0
       }
+    },
+    "coverage_progress": {
+      "previous_head": "0e937a197a90ff96fa071c53e518c38d633b34a6",
+      "full_suite": {
+        "run": 45553199921,
+        "discovered": 862,
+        "passed": 591,
+        "skipped": 271,
+        "failed": 0
+      },
+      "small_tower": {
+        "run": 45553199894,
+        "status": "failed",
+        "reason": "legacy raw-selector fixture attempted now-prohibited unowned bound choice; actual matched physical causal test passed on both platforms"
+      },
+      "repair": "reject before Conclave writes; preserve positive legacy appraisal on isolated unbound copy and test negative bound product plus actual owned selector",
+      "status": "successor_ci_pending",
+      "universal_coverage": false
     }
   }
 }

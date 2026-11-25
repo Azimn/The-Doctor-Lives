@@ -384,6 +384,12 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     if any(type(v) not in (int, float) or not 0 <= v <= .20
            for v in regulatory_pressure.values()):
         raise ValueError("Invalid bounded physical cue pressure")
+    if brain.store.meta("small-tower:world-binding-v1") is not None and tower_provider is None:
+        raise PermissionError("Bound Tower choice cannot use the legacy selector fixture")
+    if tower_provider is not None:
+        from .tower_ipseity import TowerIpseity
+        if type(subject) is not TowerIpseity or subject.brain is not brain:
+            raise PermissionError("Ordinary Tower cognition requires its owning Synthetic Ipseity organ")
     context = " ".join([*narrative, *(o["text"] for o in offers)])
     # Conclave is a normal participant in this embodied opportunity, not a
     # second chooser. Only the exact authenticated perception can seed it.
@@ -403,12 +409,7 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     imaginative_cues = retrieval_motifs(brain.store, observation_source)
     owned = None
     admission = None
-    if brain.store.meta("small-tower:world-binding-v1") is not None and tower_provider is None:
-        raise PermissionError("Bound Tower choice cannot use the legacy selector fixture")
     if tower_provider is not None:
-        from .tower_ipseity import TowerIpseity
-        if type(subject) is not TowerIpseity or subject.brain is not brain:
-            raise PermissionError("Ordinary Tower cognition requires its owning Synthetic Ipseity organ")
         from .models import SubjectRendererCapability
         frame, owned, admission = subject.capture(observation, narrative, offers,
                                                    interpretation_cues, imaginative_cues, affective_lines)
