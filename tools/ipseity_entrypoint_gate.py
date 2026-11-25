@@ -29,7 +29,8 @@ REVIEWED_OPERATOR_GLOSS = {"local_subject_gloss.py": {"http"}}
 REVIEWED_LOCAL_RESEARCH = {"open_inference.py": {"urllib"},
                            "semantic_intentions.py": {"urllib"}}
 REVIEWED_LOCAL_TRANSPORT = {"local_ollama_transport.py": {"http"}}
-REVIEWED_LOOPBACK_UI = {"operator_chat_web.py": {"http"}}
+REVIEWED_LOOPBACK_UI = {"operator_chat_web.py": {"http"}, "tower_web.py": {"http"}}
+REVIEWED_WORLD_PORT = {"small_tower.py": {"subprocess"}}
 REVIEWED_PINNED_ORGANOID = {"phantasmagorium_bridge.py": {"subprocess"},
                            "lab_phantasmagorium.py": {"subprocess"}}
 
@@ -68,7 +69,8 @@ def run() -> dict:
         expected = RESEARCH_ONLY.get(file.name, REVIEWED_OPERATOR_GLOSS.get(
             file.name, REVIEWED_LOCAL_RESEARCH.get(file.name,
                 REVIEWED_LOCAL_TRANSPORT.get(file.name, REVIEWED_LOOPBACK_UI.get(
-                    file.name, REVIEWED_PINNED_ORGANOID.get(file.name, set()))))))
+                    file.name, REVIEWED_PINNED_ORGANOID.get(file.name,
+                        REVIEWED_WORLD_PORT.get(file.name, set())))))))
         if found != expected:
             raise AssertionError(
                 f"Unreviewed model/process/network import in {file.name}: "
@@ -155,6 +157,15 @@ def run() -> dict:
                     or "shell=True" in content):
                 raise AssertionError("Unreviewed isolated Phantasmagorium subprocess")
             audits[file.name] = "exact-digest offline organoid donor, isolated process; no subject renderer"
+        if file.name in REVIEWED_WORLD_PORT:
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute) and n.func.attr == "run"]
+            required = ('verify_source(self.root)', 'small_tower_source.json',
+                        '[self.node, str(self.root / "src/doctor_world_cli.js"), str(self.world)]',
+                        'env.pop(key, None)', 'timeout=60', 'VirtualWorldEnvironmentPort')
+            if len(calls)!=1 or not all(x in content for x in required) or "shell=True" in content:
+                raise AssertionError("Unreviewed original Small Tower transport")
+            audits[file.name] = "source-pinned local world subprocess, not a model renderer"
         if file.name in AUTHORIZED_LOCAL_MODULES:
             if found:
                 raise AssertionError("Production subject modules may not directly access provider")

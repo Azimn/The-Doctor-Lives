@@ -80,9 +80,9 @@
       "requirement": "Shared temporal/social world",
       "repository": "Azimn/The-Doctor-Lives",
       "locations": "lab_runtime.py; open_intentions.py; environment_port.py",
-      "status": "unknown",
+      "status": "partial",
       "evidence": "No integrated reciprocal social proof inspected",
-      "next": "Audit Village/Web-Sim; shared clock and separate minds"
+      "next": "Source-pinned Small Tower integration qualification, partner-specific belief and economy endurance; no Village required."
     },
     {
       "id": "R07",
@@ -224,8 +224,8 @@
       ],
       "repository": "Azimn/The-Doctor-Lives",
       "location": "Village integration TBD",
-      "status": "unknown",
-      "evidence": "Initial inventory only; no new qualification asserted"
+      "status": "partial",
+      "evidence": "Small Tower real scripted Rosa Brandl and Mr. McFeely, witnessed events and letter testimony, source-pinned port maps actual encounter to existing canonical relationship updates; full social belief/endurance qualification pending."
     },
     {
       "id": "C10",
@@ -248,8 +248,8 @@
       ],
       "repository": "Azimn/The-Doctor-Lives",
       "location": "Letters, visits, newspapers, clocks; implementation TBD",
-      "status": "unknown",
-      "evidence": "Initial inventory only; no new qualification asserted"
+      "status": "partial",
+      "evidence": "Exact Small Tower world port 0924fff64de70cfdcfcd7655cb274af4eeb2b2d3 offers finite food/fuel/water/tea, gardening, preservation, barter, credit, postal and account settlement. Source pin and same-brain virtual-world adapter, no Village dependency. New rehearsal only; current Lab migration and economy endurance pending."
     },
     {
       "id": "C12",
@@ -523,8 +523,31 @@
       "acceptance": "Exact-head green gates, migration rehearsal, installation, recovery; separately identify live device/soak qualification",
       "status": "pending",
       "evidence": []
+    },
+    {
+      "id": "PT-TOWER-01",
+      "prerequisites": [
+        "PT-005"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "doctor_lives/small_tower.py; virtual_world_port.py; tests/test_small_tower.py; CLI tower-run",
+      "acceptance": "Bounded unprompted original world operation, exactly-once post-world interruption recovery, no duplicate evidence, both platforms; subsequently multi-day survival and social/learning/dream integration",
+      "status": "implemented",
+      "evidence": [
+        "PR #122 at 4a608323: Linux bridge success; Windows job 138877545425 failed on brain.sqlite3 cleanup; source inspection found context manager without close in virtual_world_port. New explicit close and recovery test pending exact-head CI.",
+        "Inherited Laboratory R4 job 138883133314 records read_book and work only; preserve gate and negative evidence."
+      ]
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "Qualify original Phantasmagorium live path using recovered exact archive; retain separate source artifact until redistribution reviewed. Continue Telos nested rest and independent-life qualification."
+  "next": "Inspect exact-head PR #122 Tower bridge and inherited CI; qualify bounded life and recovery. Then assess actual survival and social/skill/dream pathways under multi-day runs; reconcile PR #123 developmental history and preserve Laboratory migration custody.",
+  "pre_village_world": {
+    "repository": "Azimn/Septimus---Web-Sim",
+    "source_pin": "2e2ffb0658dea77da4b6cece1b783ad236bf30ff",
+    "approved": "Small Tower as pre-Village environment; canonical Doctor remains sole cognitive authority",
+    "candidate_branch": "integration/pretorius-v1-small-tower",
+    "pr": 122,
+    "parallel_development_pr": 123,
+    "migration": "pending; dedicated rehearsal only"
+  }
 }

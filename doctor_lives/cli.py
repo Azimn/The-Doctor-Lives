@@ -66,6 +66,35 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
+    for name in ("background-lease","background-wake","background-revoke"):
+        bg=sp.add_parser(name,help="Bounded CASCADE operation on the one canonical Doctor")
+        bg.add_argument("--lease-id",required=True)
+        bg.add_argument("--authorize",action="store_true")
+        if name=="background-lease":
+            bg.add_argument("--total-ticks",type=int,required=True)
+            bg.add_argument("--max-ticks-per-wake",type=int,default=1)
+            bg.add_argument("--interval-ms",type=int,default=1000)
+            bg.add_argument("--expires-ms",type=int,required=True)
+        elif name=="background-wake":
+            bg.add_argument("--wake-id",required=True)
+            bg.add_argument("--now-ms",type=int,required=True,help="Original scheduler timestamp; repeat exactly for replay")
+            bg.add_argument("--ticks",type=int,default=1)
+    for name in ("tower-init","tower-pulse","tower-run","tower-serve"):
+        x=sp.add_parser(name, help="Original Small Tower, canonical Doctor rehearsal")
+        x.add_argument("--tower-source",type=Path,required=True)
+        x.add_argument("--world",type=Path,required=True)
+        if name=="tower-init":
+            x.add_argument("--epoch",required=True)
+        elif name in ("tower-pulse","tower-run"):
+            x.add_argument("--steps",type=int,default=100)
+            x.add_argument("--authorize-world",action="store_true")
+            if name=="tower-run":
+                x.add_argument("--opportunities",type=int,default=20)
+                x.add_argument("--interval-seconds",type=float,default=0.0)
+        else:
+            x.add_argument("--port",type=int,default=8767)
+            x.add_argument("--model",default="qwen3:1.5b")
+            x.add_argument("--authorize-world",action="store_true")
     x=sp.add_parser("preview-init", help="Create one new experimental original-Laboratory workspace without overwriting an inhabited state"); x.add_argument("--workspace",type=Path,required=True); x.add_argument("--world-template",type=Path,default=None,help="Use a verified pristine 17-book Laboratory world at genesis, never reseed an existing workspace")
     for name, hint in (
         ("preview-start", "Initialize if absent and run the original Laboratory in the foreground until stopped"),
@@ -113,6 +142,32 @@ def main(argv=None) -> int:
     if a.cmd in ("preview-start", "preview-status", "preview-stop", "preview-resume"):
         from .preview_operator import command
         return command(a.cmd, a.workspace, native_source=getattr(a, "native_affectus_source", None))
+    if a.cmd in ("background-lease","background-wake","background-revoke"):
+        from .canonical_background import BackgroundLease,issue,wake,revoke
+        if a.cmd=="background-lease":
+            issue(a.state,BackgroundLease(a.lease_id,a.total_ticks,a.max_ticks_per_wake,
+                  a.interval_ms,a.expires_ms),authorized=a.authorize)
+        elif a.cmd=="background-wake":
+            emit(wake(a.state,lease_id=a.lease_id,wake_id=a.wake_id,now_ms=a.now_ms,
+                      ticks=a.ticks,authorized=a.authorize))
+        else:
+            revoke(a.state,a.lease_id,authorized=a.authorize)
+        return 0
+    if a.cmd=="tower-serve":
+        from .tower_web import serve
+        return serve(a.state,a.tower_source,a.world,port=a.port,model=a.model,
+                     authorize_world=a.authorize_world)
+    if a.cmd in ("tower-init","tower-pulse","tower-run"):
+        from .small_tower import initialize_tower, run_tower_pulse, run_tower_life
+        if a.cmd=="tower-init":
+            emit(initialize_tower(a.state,a.tower_source,a.world,epoch=a.epoch))
+        elif a.cmd=="tower-run":
+            emit(run_tower_life(a.state,a.tower_source,a.world,authorize=a.authorize_world,
+                                steps=a.steps,opportunities=a.opportunities,
+                                interval_seconds=a.interval_seconds))
+        else:
+            emit(run_tower_pulse(a.state,a.tower_source,a.world,authorize=a.authorize_world,steps=a.steps))
+        return 0
     if a.cmd == "preview-init":
         from .lab_preview import initialize_preview
         emit(initialize_preview(a.workspace, world_template=a.world_template))

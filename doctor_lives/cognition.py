@@ -902,10 +902,11 @@ class PretoriusBrain:
 
     @staticmethod
     def _view_item(score: float, row: dict[str, Any]) -> ViewItem:
+        from .first_person_governance import first_person_line
         return ViewItem(
             record_id=row["id"],
             source=row["source"],
-            first_person=render_memory_for_workspace(row),
+            first_person=first_person_line(render_memory_for_workspace(row)),
             salience=score,
             provenance=Provenance(
                 evidence_class=row["evidence_class"],

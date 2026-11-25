@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import closing
 from pathlib import Path
 import tempfile
 import unittest
@@ -60,7 +61,7 @@ class EndogenousRecallOrganTests(unittest.TestCase):
         self.assertEqual(decision.selected_gap_id, "trusted-gap-1")
         self.assertGreater(decision.recall_pressure, 0.9)
         self.assertEqual(decision.initiated_by, "host_scheduled_internal_policy")
-        with runtime._port.brain.store.connect() as db:
+        with closing(runtime._port.brain.store.connect()) as db:
             rec = db.execute(
                 "SELECT * FROM policy_decisions WHERE id=?", (decision.decision_id,)
             ).fetchone()
@@ -80,6 +81,33 @@ class EndogenousRecallOrganTests(unittest.TestCase):
         self.assertNotIn("neural_checkpoint_sha256", "\n".join(lines))
         with self.assertRaises(PermissionError):
             pilot.recollect()
+
+    def test_advanced_selected_recall_reconsolidates_without_changing_source(self):
+        from doctor_lives.mnemosyne_reconstruction import PREFIX, RECALL_PREFIX
+        from doctor_lives.reconsolidation import TraceVersionLedger
+        runtime = self.runtime("advanced")
+        runtime.sensus.acquire_existing_percept(
+            {"channel":"world","source":"fixture-vessel",
+             "percept":"I heard a glass vessel shatter behind me."},
+            host_authorized=True,
+        )
+        seed_epistemic_gap(runtime)
+        pilot=runtime.mnemosyne.opt_in_endogenous_recollection()
+        decision=pilot.deliberate(recall_cost=0)
+        self.assertEqual(decision.action,"recall")
+        effect=pilot.reflect_selected_recollection(reconstruct=True)
+        self.assertTrue(effect.next_policy_decision_id)
+        store=runtime._port.brain.store
+        record=json.loads(store.meta(RECALL_PREFIX+decision.decision_id))
+        self.assertFalse(record["world_fact_created"])
+        self.assertTrue(record["subject_text"].startswith("I "))
+        self.assertTrue(record["successor"])
+        self.assertTrue(TraceVersionLedger.from_json(store.meta(PREFIX+record["source_memory"])))
+        self.assertTrue(any(x["id"]==record["source_memory"] and "glass vessel shatter" in x["text"]
+                            for x in store.memories()))
+        runtime.checkpoint()
+        self.assertEqual(SixOrganRuntime.open(self.root/"advanced")._port.brain.store.meta(
+            RECALL_PREFIX+decision.decision_id),store.meta(RECALL_PREFIX+decision.decision_id))
 
     def test_matched_no_gap_ablation_blocks_recollection_without_new_brain(self):
         control = self.runtime("control")
@@ -128,7 +156,7 @@ class EndogenousRecallOrganTests(unittest.TestCase):
             new_pilot.recollect()
         cooled = new_pilot.deliberate(recall_cost=0.0)
         self.assertNotEqual(cooled.action, "recall")
-        with reopened._port.brain.store.connect() as db:
+        with closing(reopened._port.brain.store.connect()) as db:
             matches = db.execute(
                 "SELECT count(*) FROM policy_decisions WHERE trigger=?",
                 ("preview_endogenous_recall_v01",),

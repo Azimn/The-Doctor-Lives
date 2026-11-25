@@ -21,6 +21,7 @@ _SELF_ADDRESS = re.compile(
     r"(?:^|[.!?]\s*|\n\s*)(?:Doctor Septimus Pretorius|Doctor Pretorius|Dr\. Pretorius|Pretorius|Septimus)\s*,"
     r"|\bI\s+(?:want|wish|need|seek|hope|yearn)\s+(?:Doctor Septimus Pretorius|Pretorius|Septimus)\b",
     re.I)
+_ENGINEERING = re.compile(r"\b(?:world_epoch|centibeats|policyRef|sourceEventId|candidate_final_scores|neural_tick|policy_decision_id|neural_checkpoint_sha256)\b|\b(?:mem|policy|event)_[a-f0-9]{16,}\b", re.I)
 _FALLBACK = "I cannot put that into words with confidence."
 
 
@@ -28,7 +29,7 @@ def first_person_line(text):
     if type(text) is not str or not text.strip():
         raise ValueError("Subject content must be natural language")
     text = text.strip()
-    if implementation_leaks(text) or control_instruction_markers(text):
+    if implementation_leaks(text) or control_instruction_markers(text) or _ENGINEERING.search(text):
         return "I cannot make sense of that material."
     if not _FIRST.match(text):
         # Older inherited/reference material can have third-person wording.
@@ -40,7 +41,7 @@ def first_person_line(text):
 def admissible_output(text):
     if type(text) is not str or not text.strip():
         return False
-    if implementation_leaks(text) or control_instruction_markers(text):
+    if implementation_leaks(text) or control_instruction_markers(text) or _ENGINEERING.search(text):
         return False
     score = _GOVERNOR.check(text, _BINDINGS, _CONTEXT)
     # No raw control text or self-address, even if the original rule's

@@ -136,6 +136,10 @@ class PretoriusBrainPort:
                 or receipt.world_epoch != environment._epoch
                 or event.get("channel") != "world"
                 or event.get("percept") != receipt.first_person
+                or event.get("actor") != receipt.actor
+                or event.get("valence", 0.0) != receipt.social_valence
+                or event.get("social", 0.0) != (0.5 if receipt.actor else 0.0)
+                or event.get("kind") != (receipt.social_kind or "virtual_world_observation")
                 or event.get("source") != (
                     "virtual-world:" + receipt.world_id + ":"
                     + receipt.world_epoch + ":" + receipt.kind + ":"

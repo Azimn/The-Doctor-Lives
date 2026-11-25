@@ -1,0 +1,26 @@
+{
+  "repository": "Azimn/Septimus---Web-Sim",
+  "commit": "2e2ffb0658dea77da4b6cece1b783ad236bf30ff",
+  "files": {
+    "canon/Pretorius_v12_450_Events_Complete.jsonl": "718dcc2d5ba4feccdef1690d447edfcebaa9bfb5",
+    "identity.json": "239d876a44bd0b641698b867d938d0489615d6ed",
+    "src/actions.js": "1f2826ddf7c1fab7638dc5db849183be2bfd1921",
+    "src/cognition.js": "08bf9ffba2ffed80253594444527f3f12f4faacf",
+    "src/commitments.js": "11f3784aaccd4d27cda772e8dae50bc9320ebeea",
+    "src/diary.js": "20af0d92e9bcb55c958e59edf0593baf5d0180b5",
+    "src/doctor_world_cli.js": "1f503866d277d5efcf292eff0aa91c3dcbfbef5c",
+    "src/doctor_world_port.js": "fe9a3d12f98bde0b0f333c65191573999c065b56",
+    "src/economy.js": "e48e1e8c12015b752622fe8927357cef45db7947",
+    "src/engine.js": "b9f15e0aba06b0ac440c4765a315c17527d56e91",
+    "src/history.js": "16a3b9983d614a5c54f80f99c5a6ffc53d935374",
+    "src/post.js": "5bde0c670dc7375132b9533fa846d6aed12a2165",
+    "src/post_contract.js": "5ef4065182d2cbebd5c347a07e4d3a0c4a17999d",
+    "src/proposal_gateway.js": "d1c2d8fa07a98d90ada3a8f3dd735eca141801a6",
+    "src/server.js": "721d7776dc8da0533a5ebaaf895a2988663b208e",
+    "src/skill_growth.js": "8a28776d4c80b7e35e7befe543f85f2df5ab36f4",
+    "src/social.js": "8a5f720aea796f49126d64dd25b1bf4a3991e95b",
+    "src/store.js": "4370f1b5dfec5013004d7d5a940f6114092f53a0",
+    "src/voice.js": "0edf2c78eb1b0495d13fb05fc33257f781e0a624",
+    "src/world.js": "9dc3d8ccaefa036bf3358814778682ff51c52f10"
+  }
+}
