@@ -142,6 +142,55 @@ class TowerIpseity:
                           PhenomenalMode.INTENTION,refs,
                           attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=digest)
 
+    def owned_events(self, digest=None):
+        digest=digest or self.store.digest()
+        result=[]
+        for item in self.store.open_commitments():
+            event=self.commitment_event(item,digest)
+            if event is not None:
+                result.append((item["id"],event))
+        return result
+
+    def admit_private(self, key, organ, text, refs=(), *, mode=PhenomenalMode.INTERNAL_THOUGHT,
+                      attribution=SubjectiveSourceKind.SELF_OBSERVED):
+        line=first_person_line(text)
+        if line.startswith("I cannot make sense of"):
+            raise PermissionError("Private experience is not subject-safe")
+        event=self.event(organ,line,mode,refs,attribution=attribution)
+        with self.store.transaction() as db:
+            return self.record(db,key,(event,),phase="private_experience")
+
+    def communication(self, memory_id):
+        memory=self.store.get_memory(memory_id)
+        if (not memory or not memory["active"] or not memory["external"]
+                or memory["evidence_class"]!="external_statement"
+                or not memory["source"].startswith("local-conversation:")):
+            raise PermissionError("Actual received conversation required")
+        event=self.event("Sensus",memory["text"],PhenomenalMode.PERCEPT,(memory_id,),
+                         attribution=SubjectiveSourceKind.TOLD,external=True)
+        with self.store.transaction() as db:
+            return self.record(db,"communication:"+memory_id,(event,),phase="communication")
+
+    def verify_history(self):
+        """Read-only verification of the single ordered subject history."""
+        with closing(self.store.connect()) as db:
+            rows=db.execute("SELECT value FROM meta WHERE key LIKE ?",(RECORD+"%",)).fetchall()
+            head=json.loads(_read(db,HEAD) or '{"sequence":0,"sha256":null}')
+        entries=sorted((json.loads(row["value"]) for row in rows),key=lambda x:x["sequence"])
+        previous=None
+        for sequence,entry in enumerate(entries,1):
+            payload={k:v for k,v in entry.items() if k!="sha256"}
+            if (entry["subject"]!="pretorius" or entry["sequence"]!=sequence
+                    or entry["previous_sha256"]!=previous or entry["sha256"]!=_digest(payload)):
+                raise PermissionError("Broken first-person history continuity")
+            for item in entry["content"]:
+                if not _FIRST.match(item["text"]) or first_person_line(item["text"])!=item["text"]:
+                    raise PermissionError("Non-subject content in history")
+            previous=entry["sha256"]
+        if head!={"sequence":len(entries),"sha256":previous}:
+            raise PermissionError("First-person history head mismatch")
+        return entries
+
     def capture(self, observation, narrative, offers, interpretation_cues, imaginative_cues):
         """Conscious working experience before deliberation, not after rendering."""
         if (not observation["active"] or observation["external"]
@@ -167,7 +216,10 @@ class TowerIpseity:
                 add("Corpus" if key=="fatigue" else "Affectus",line,
                     PhenomenalMode.BODILY_SENSATION if key=="fatigue" else PhenomenalMode.FEELING,
                     ("need:"+key,))
-        _, ranked=self.brain._ranked_memory_sets(8,query=" ".join(narrative),audit=False)
+        owned_events=self.owned_events(state_digest)
+        owned={rid:event[1].subject_text for rid,event in owned_events}
+        with self.cognitive_access(owned):
+            _, ranked=self.brain._ranked_memory_sets(8,query=" ".join(narrative),audit=False)
         for score,memory in ranked:
             item=self.brain._view_item(score,memory)
             line=first_person_line(item.first_person)
@@ -192,12 +244,7 @@ class TowerIpseity:
             line="I imagine "+motif.rstrip(".")+", without taking it for something I witnessed."
             if first_person_line(line)==line:
                 add("Phantasmagorium",line,PhenomenalMode.INTERNAL_THOUGHT,(observation["id"],),SubjectiveSourceKind.IMAGINED)
-        owned={}
-        for item in self.store.open_commitments():
-            event=self.commitment_event(item,state_digest)
-            if event is not None:
-                events.append(event)
-                owned[item["id"]]=event[1].subject_text
+        events.extend(event for _,event in owned_events)
         frame=self.frame(events)
         with self.store.transaction() as db:
             entry=self.record(db,new_id("opportunity"),events,phase="deliberation")

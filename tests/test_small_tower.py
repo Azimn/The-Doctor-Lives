@@ -120,6 +120,14 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertEqual(store.get_memory(outcome["source_memory_id"])["text"], intent["outcome"])
         appraisals = json.loads(policy["state_pressure_json"])
         self.assertEqual(appraisals["abstract_policy_id"], choice["abstract_policy_id"])
+        from doctor_lives.tower_ipseity import TowerIpseity, RECORD
+        history=TowerIpseity(runtime._port.brain).verify_history()
+        audit=appraisals["ipseity"]
+        self.assertTrue(audit["required"])
+        admission=next(h for h in history if h["key"]==audit["admission_key"])
+        self.assertEqual(admission["sha256"],audit["admission_sha256"])
+        self.assertEqual({h["subject"] for h in history},{"pretorius"})
+        self.assertTrue(any(h["key"]==RECORD+"decision:"+result["policy_id"] for h in history))
         self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
         procedure = appraisals["procedural_memory"]
         self.assertTrue(procedure["enabled"])
@@ -277,6 +285,122 @@ class OriginalTowerTests(unittest.TestCase):
                 self.assertEqual(wake["renderer_calls"],0)
                 self.assertTrue(wake["mnemosyne_policy_id"])
             self.assertIsNone(report["background_clock"]["pending_wake"])
+
+    def test_own_past_commitment_changes_real_tower_action_under_matched_ipseity_impairment(self):
+        # Controlled causal example, not an uncoached life trial. Use the actual
+        # original physical source and original Noesis, never fake a receipt,
+        # memory, policy, chosen action or prospective goal.
+        import shutil
+        from contextlib import closing, nullcontext
+        from doctor_lives import noesis_situated_choice as n
+        from doctor_lives.tower_ipseity import TowerIpseity
+        from doctor_lives.tower_prospective import PREFIX
+        source=Path(os.environ["PRETORIUS_TOWER_SOURCE"])
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            base=root/"base";base.mkdir()
+            state=base/"doctor";world=base/"tower.json"
+            cfg=dict(DEFAULT_CONFIG)
+            cfg.update(neurons=128,sensory_dim=64,avg_recurrent_degree=8,input_degree=4,
+                       action_population_size=8,seed=1842)
+            initialize_tower(state,source,world,epoch="owned-intention-causal",neural_config=cfg)
+            original=n.select_world_affordance
+            def pulse(directory, pressure, impaired=False):
+                # Only the bounded competition inputs are controlled. Actual
+                # Noesis selects and the real source executes the winning choice.
+                def compete(*args,**kwargs):
+                    kwargs["regulatory_pressure"]=pressure
+                    return original(*args,**kwargs)
+                lesion=(patch.object(TowerIpseity,"commitment_event",return_value=None)
+                        if impaired else nullcontext())
+                with patch.object(n,"select_world_affordance",side_effect=compete),lesion:
+                    return run_tower_pulse(directory/"doctor",source,directory/"tower.json",
+                                           authorize=True,steps=1000)
+            for action in ("rest","move_library","move_bedchamber"):
+                chosen=pulse(base,{action:.20})
+                self.assertEqual(chosen["choice"],action)
+                self.assertFalse(chosen["source_receipt"]["busy"])
+            rt=SixOrganRuntime.open(state)
+            store=rt._port.brain.store
+            with closing(store.connect()) as db:
+                rows=db.execute("SELECT * FROM commitments WHERE source LIKE ? AND status='open'",
+                                (PREFIX+"%",)).fetchall()
+            self.assertEqual(len(rows),1)
+            goal=dict(rows[0]);rid=goal["id"]
+            self.assertEqual(goal["description"],"return to bedchamber to rest")
+            prior=json.loads(store.meta("telos:tower-prospective:"+rid))
+            first_person="I still intend to "+goal["description"]+"."
+            self.assertTrue(store.get_memory(prior["prior_memory_id"])["source"].startswith("virtual-world:small-tower:"))
+            before=store.digest()
+            del rt,store
+            gc.collect()
+            def branch(name):
+                destination=root/name
+                shutil.copytree(base,destination)
+                return destination
+            def audit(directory,result):
+                rt=SixOrganRuntime.open(directory/"doctor")
+                store=rt._port.brain.store
+                with closing(store.connect()) as db:
+                    row=db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                                   (result["policy_id"],)).fetchone()
+                return json.loads(row["state_pressure_json"])
+            # Calibrate a matched near-boundary competition on disposable
+            # copies, then run both fresh branches from the unchanged history.
+            # This is an openly disclosed engineering causal intervention.
+            x,y=branch("probe-intact"),branch("probe-impaired")
+            intact=audit(x,pulse(x,{}))
+            impaired=audit(y,pulse(y,{},True))
+            self.assertEqual(intact["ipseity"]["owned_commitments"][rid],first_person)
+            self.assertNotIn(rid,impaired["ipseity"]["owned_commitments"])
+            self.assertGreater(intact["prospective_goals"]["scores"]["rest"],0)
+            self.assertEqual(impaired["prospective_goals"]["scores"]["rest"],0)
+            a,b=intact["candidate_final_scores"],impaired["candidate_final_scores"]
+            pressure=None;competitor=None
+            for other in sorted(set(a)-{"rest"}):
+                di,dl=a["rest"]-a[other],b["rest"]-b[other]
+                if di<=dl+1e-8: continue
+                delta=-(di+dl)/2
+                proposed={"rest":.10+delta/2,other:.10-delta/2}
+                if not all(0<=v<=.20 for v in proposed.values()):continue
+                if (max(sorted(a),key=lambda k:a[k]+proposed.get(k,0))=="rest"
+                        and max(sorted(b),key=lambda k:b[k]+proposed.get(k,0))==other):
+                    pressure,competitor=proposed,other
+                    break
+            self.assertIsNotNone(pressure,"No matched choice-changing pressure found")
+            normal,lesion=branch("intact"),branch("impaired")
+            for directory in (normal,lesion):
+                self.assertEqual(SixOrganRuntime.open(directory/"doctor")._port.brain.store.digest(),before)
+            i=pulse(normal,pressure)
+            l=pulse(lesion,pressure,True)
+            self.assertEqual(i["choice"],"rest")
+            self.assertEqual(l["choice"],competitor)
+            self.assertNotEqual(i["choice"],l["choice"])
+            reports={}
+            for label,directory,result in (("intact",normal,i),("impaired",lesion,l)):
+                rt=SixOrganRuntime.open(directory/"doctor")
+                store=rt._port.brain.store
+                source_snapshot=SmallTowerSource(source,directory/"tower.json").snapshot()
+                events=[e for e in source_snapshot["events"] if e["policyRef"]==result["policy_id"]
+                        and e["kind"]=="completed"]
+                self.assertEqual(len(events),1)
+                with closing(store.connect()) as db:
+                    status=db.execute("SELECT status FROM commitments WHERE id=?",(rid,)).fetchone()["status"]
+                self.assertEqual(status,"kept" if label=="intact" else "open")
+                evidence=audit(directory,result)
+                history=TowerIpseity(rt._port.brain).verify_history()
+                frame=next(e for e in history if e["key"]==evidence["ipseity"]["admission_key"])
+                reports[label]={"choice":result["choice"],"policy_id":result["policy_id"],
+                    "first_person_frame":frame,"physical_event":events[0],"goal_status":status,
+                    "owned_commitments":evidence["ipseity"]["owned_commitments"]}
+            trace={"controlled_not_uncoached":True,"same_pre_state_sha256":before,
+                   "original_goal":goal,"origin":prior,"first_person":first_person,
+                   "matched_competing_pressure":pressure,"branches":reports,
+                   "lesion":"withhold re-owned Telos first-person experience only"}
+            print("IPSEITY_CAUSAL_TRACE="+json.dumps(trace,sort_keys=True))
+            if os.getenv("PRETORIUS_IPSEITY_TRACE"):
+                Path(os.environ["PRETORIUS_IPSEITY_TRACE"]).write_text(json.dumps(trace,indent=2),encoding="utf-8")
+            gc.collect()
 
     def test_concrete_competition_reads_relevant_canonical_commitment(self):
         # Controlled integration test, not independent-goal credit.

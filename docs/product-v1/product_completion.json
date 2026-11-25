@@ -565,7 +565,7 @@
         "role": "linchpin and owning subject; mandatory central experiential authority",
         "location": "organs.py; tower_ipseity.py; phenomenology.py; models.py; projection.py; chassis.py; ipseity_integration.py; first_person_governance.py; cognition.py",
         "status": "integration_pending_ci",
-        "next": "Ordinary Tower decisions require the canonical owning SubjectFrame; verified acquisitions and chosen intentions append to ordered canonical first-person history, with first-person recollections, felt needs, associations, imaginative cues and re-owned native commitments used before Noesis selection. Native prospective pressure depends on actual first-person access; motor reservation verifies owned decision. Complete every live path, donor-backed imagination, continuous thought, Expression and causal behavioral qualification."
+        "next": "Mandatory product first-person decision path now routes Sensus, Corpus, Affectus felt state, Mnemosyne recollections, Noesis thoughts and decisions, Telos owned prior intentions, Conclave associations, Phantasmagorium marked imagination and perceived Expression into the same canonical history. Controlled matched actual-source rest-vs-competing-action test with only owned Telos access impaired added; requires execution and archived passing trace. Remaining broader donor output and continuous history coverage still must be verified."
       },
       {
         "organ": "Sensus",
@@ -776,10 +776,16 @@
     "longitudinal_qualification": {
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
-      "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression",
+      "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
       "status": "implemented_not_executed",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false
+    },
+    "ipseity_causal_test": {
+      "path": "tests/test_small_tower.py::test_own_past_commitment_changes_real_tower_action_under_matched_ipseity_impairment",
+      "expected": "real prior rest -> native journey -> prospective first-person rest commitment -> matched intact vs impaired choices -> verified physical consequence and kept/open status",
+      "status": "implemented_pending_ci",
+      "control": "same pre-state; calibrated identical bounded competition; only withholding owned commitment experience; no fabricated receipts; not uncoached"
     }
   }
 }

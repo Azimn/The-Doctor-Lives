@@ -57,7 +57,16 @@ def inspect_life(store, snapshot, runs):
                 or memory["text"]!=row["text"] or memory["evidence_class"]!="lived_runtime_memory"):
             raise PermissionError("Source outcome lacks exact lived evidence")
         outcomes.append(row)
+    from doctor_lives.tower_ipseity import TowerIpseity
+    # Use the exact existing store; verification does not construct a brain.
+    from types import SimpleNamespace
+    history=TowerIpseity(SimpleNamespace(store=store)).verify_history()
+    by_key={e["key"]:e for e in history}
     organs = {
+        "Synthetic Ipseity": bool(history) and bool(choices) and all(
+            c.get("ipseity",{}).get("required") is True
+            and c["ipseity"]["admission_key"] in by_key
+            and by_key[c["ipseity"]["admission_key"]]["sha256"]==c["ipseity"]["admission_sha256"] for c in choices),
         "Sensus": bool(decisions) and all(store.meta("small-tower:choice:"+r["id"])
                     and json.loads(store.meta("small-tower:choice:"+r["id"]))["sensus"]["source_memory_id"]
                     for r in decisions),
@@ -112,7 +121,7 @@ def main():
         raise ValueError("Use a fresh workspace and at least 3000 actual source ticks")
     from doctor_lives.lab_phantasmagorium import configured_archive
     if configured_archive() is None:
-        raise FileNotFoundError("Exact Phantasmagorium donor required for all-nine qualification")
+        raise FileNotFoundError("Exact Phantasmagorium donor required for all-ten qualification")
     from doctor_lives.local_subject_gloss import valid_local_model
     if not valid_local_model(args.model):
         raise ValueError("Existing local model identifier required")

@@ -985,6 +985,14 @@ class PretoriusBrain:
         decision_text: str | None = None,
         bridge_enabled: bool = True,
     ) -> dict[str, Any]:
+        tower_subject = None
+        if self.store.meta("small-tower:world-binding-v1") is not None:
+            from .tower_ipseity import TowerIpseity
+            tower_subject = TowerIpseity(self)
+            if getattr(self,"_ipseity_owned_commitments",None) is None:
+                owned = {rid:event[1].subject_text for rid,event in tower_subject.owned_events()}
+                with tower_subject.cognitive_access(owned):
+                    return self.think(trigger,decision_text=decision_text,bridge_enabled=bridge_enabled)
         direct_ranked_all, ranked_all = self._ranked_memory_sets(
             48, query=decision_text, audit=True
         )
@@ -1013,6 +1021,7 @@ class PretoriusBrain:
         candidate_ids = [row["id"] for _, row in candidates]
         checkpoint_sha = self._neural_checkpoint_sha256()
         policy_version = str(self.evolution_policy["neural_policy_version"])
+        subject_digest = self.store.digest() if tower_subject is not None else None
         with self.store.transaction() as conn:
             decision_id = new_id("policy")
             conn.execute(
@@ -1041,6 +1050,12 @@ class PretoriusBrain:
             )
             for rid in record_ids:
                 self.store.rehearse(conn, rid, self.store.tick)
+            if tower_subject is not None:
+                from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+                event=tower_subject.event("Noesis",text,PhenomenalMode.INTERNAL_THOUGHT,
+                                          (tid,decision_id,*record_ids),
+                                          attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=subject_digest)
+                tower_subject.record(conn,"thought:"+tid,(event,),phase="private_thought")
             self.store.bump_state_version(conn)
         return {
             "id": tid,

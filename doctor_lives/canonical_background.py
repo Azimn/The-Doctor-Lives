@@ -76,6 +76,16 @@ def _wake_locked(state,runtime,journal,*,lease_id,wake_id,now_ms,ticks=1):
         # question or invented external stimulus.
         pilot=runtime.mnemosyne.opt_in_endogenous_recollection()
         decision=pilot.deliberate()
+        if brain.store.meta("small-tower:world-binding-v1") is not None:
+            from .tower_ipseity import TowerIpseity
+            from .phenomenology import PhenomenalMode
+            subject=TowerIpseity(brain)
+            wording={"recall":"I want to recall what I can of this.",
+                     "continue":"I mean to continue with what presently occupies me.",
+                     "ask":"I would like to ask about what I do not understand.",
+                     "defer":"I will leave this uncertainty for another moment."}[decision.action]
+            subject.admit_private("recall-decision:"+decision.decision_id,"Mnemosyne",wording,
+                                  (decision.decision_id,),mode=PhenomenalMode.INTENTION)
         reflection=None
         if decision.action=="recall":
             reflection=pilot.reflect_selected_recollection(reconstruct=True)

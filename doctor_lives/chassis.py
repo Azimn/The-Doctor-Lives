@@ -204,6 +204,12 @@ class PretoriusBrainPort:
             _laboratory_verified=laboratory_verified,
             _mock_fixture=mock_fixture,
         )
+        # Validate the first-person representation before recurrent ingestion.
+        if isinstance(claimed,str) and claimed.startswith("virtual-world:small-tower:"):
+            from .models import SubjectRendererCapability
+            frame = SubjectFrame.from_events((projected.event,))
+            if SubjectRendererCapability.read(frame) != (projected.experience.text,):
+                raise PermissionError("Tower cognition cannot bypass owned first-person ingress")
         result = self.brain.ingest(projected.experience)
         result["ingress"] = {
             "channel": projected.channel.value,

@@ -160,6 +160,9 @@ def local_turn(
                         raise LocalTurnConflict(
                             "Doctor input admission unverified; stop before rendering"
                         )
+                    if session._doctor.brain.store.meta("small-tower:world-binding-v1") is not None:
+                        from .tower_ipseity import TowerIpseity
+                        TowerIpseity(session._doctor.brain).communication(matched[0]["id"])
                     journal.advance(record.key, "prepared", "admitted")
                     stage = "admitted"
 
@@ -277,7 +280,10 @@ def local_turn(
                             kind="confirmed_written_utterance",
                             tags=("host_attested_emission", "content_withheld"),
                         )
-                    brain.ingest(event)
+                    result=brain.ingest(event)
+                    if brain.store.meta("small-tower:world-binding-v1") is not None:
+                        from .tower_ipseity import TowerIpseity
+                        TowerIpseity(brain).acquisition(result["memory_id"])
                 else:
                     brain = session._doctor.brain
                     if (int(matches[0]["created_tick"]) != receipt.before_tick + 1
@@ -286,6 +292,9 @@ def local_turn(
                         raise SpeechEmissionUncertain(
                             "Prior emitted-speech memory lacks neural continuity"
                         )
+                    if brain.store.meta("small-tower:world-binding-v1") is not None:
+                        from .tower_ipseity import TowerIpseity
+                        TowerIpseity(brain).acquisition(matches[0]["id"])
             if record is not None:
                 journal.advance(record.key, "published", "delivered")
             return response

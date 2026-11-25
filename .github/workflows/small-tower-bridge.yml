@@ -35,3 +35,10 @@ jobs:
       - run: python -m unittest discover -s tests -p test_small_tower.py -v
         env:
           PRETORIUS_TOWER_SOURCE: ${{ github.workspace }}/pinned-tower
+          PRETORIUS_IPSEITY_TRACE: ${{ github.workspace }}/ipseity-causal-trace.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipseity-causal-trace-${{ matrix.os }}
+          path: ipseity-causal-trace.json
+          if-no-files-found: warn
