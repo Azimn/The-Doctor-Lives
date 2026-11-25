@@ -77,6 +77,7 @@ def parser() -> argparse.ArgumentParser:
             bg.add_argument("--expires-ms",type=int,required=True)
         elif name=="background-wake":
             bg.add_argument("--wake-id",required=True)
+            bg.add_argument("--now-ms",type=int,required=True,help="Original scheduler timestamp; repeat exactly for replay")
             bg.add_argument("--ticks",type=int,default=1)
     for name in ("tower-init","tower-pulse","tower-serve"):
         x=sp.add_parser(name, help="Original Small Tower, canonical Doctor rehearsal")
@@ -140,12 +141,11 @@ def main(argv=None) -> int:
         return command(a.cmd, a.workspace, native_source=getattr(a, "native_affectus_source", None))
     if a.cmd in ("background-lease","background-wake","background-revoke"):
         from .canonical_background import BackgroundLease,issue,wake,revoke
-        import time
         if a.cmd=="background-lease":
             issue(a.state,BackgroundLease(a.lease_id,a.total_ticks,a.max_ticks_per_wake,
                   a.interval_ms,a.expires_ms),authorized=a.authorize)
         elif a.cmd=="background-wake":
-            emit(wake(a.state,lease_id=a.lease_id,wake_id=a.wake_id,now_ms=int(time.time()*1000),
+            emit(wake(a.state,lease_id=a.lease_id,wake_id=a.wake_id,now_ms=a.now_ms,
                       ticks=a.ticks,authorized=a.authorize))
         else:
             revoke(a.state,a.lease_id,authorized=a.authorize)

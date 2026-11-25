@@ -13,7 +13,7 @@ Open http://127.0.0.1:8767/. Offer an opportunity to let canonical Noesis select
 
 ## CASCADE
 
-The canonical background entrypoints reuse the historical bounded wake lease and durable operational ledger. A trusted scheduler can issue a lease, call background-wake using stable wake IDs and revoke. Expiry is Unix milliseconds; budget is finite and replay returns a prior receipt. Background wakes do not advance Tower physical time or actuate the world. Existing interruptions must be recovered before waking. A failed wake requires reconciliation. No daemon is launched automatically.
+The canonical background entrypoints reuse the historical bounded wake lease and durable operational ledger. A trusted scheduler can issue a lease, call background-wake using stable wake IDs and the original scheduler timestamp (--now-ms), and revoke. Expiry is Unix milliseconds; budget is finite and replay returns a prior receipt. Background wakes do not advance Tower physical time or actuate the world. Existing interruptions must be recovered before waking. A failed wake requires reconciliation. No daemon is launched automatically.
 
 ## Remaining qualification
 
