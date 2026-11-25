@@ -439,6 +439,24 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertEqual(single.supporting_memory_ids, (owned,))
 
 
+    def test_daily_and_native_work_share_developmental_appraisal(self):
+        from doctor_lives.noesis_day import offer_daily_opportunity
+        first, second = self._two_owned_wear_episodes_with_both_choices()
+        native = self._development_probe()
+        state = self.state()
+        daily = offer_daily_opportunity(
+            self.bridge, author_goal=False, enable_habits=True,
+            developmental_history_enabled=True,
+        )
+        _, audit = self.policy_audit(daily.policy_id)
+        self.assertTrue(audit["habit_enabled"])
+        self.assertTrue(audit["developmental_history_enabled"])
+        self.assertAlmostEqual(audit["outcome_contributions"]["experiment"], -0.12)
+        self.assertEqual(set(audit["used_outcome_memory_ids"]), {first, second})
+        self.assertEqual(daily.observation_memory_id, native.observation_memory_id)
+        self.assertEqual(self.state(), state)
+
+
 class DevelopmentalAppraisalTests(unittest.TestCase):
     def test_distinct_histories_change_bounded_appraisal_not_world_authority(self):
         from types import SimpleNamespace
