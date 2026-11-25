@@ -613,7 +613,7 @@
         "organ": "Conclave",
         "location": "conclave.py; lab_conclave_reflection.py; noesis_situated_choice.py",
         "status": "integration_pending_ci",
-        "next": "Normal Tower decision retrieval now consumes exact-source associations; conflict reconciliation, reciprocal learning and causal influence remain open"
+        "next": "R4 Laboratory reading reflection now compiles every available eligible interpretation into one original Noesis decision, preserving per-reading provenance and explicitly documenting excluded withdrawn/ignored readings. No preferred-first mapping; historical v1 reflections preserved. Three-rival action-changing regression and actual source-backed integration test added. Pending exact successor CI."
       },
       {
         "organ": "Phantasmagorium",
@@ -817,6 +817,42 @@
         },
         "uncoached": false
       }
+    },
+    "r4_reconciliation": {
+      "baseline_sha": "d2b4a4168188ec93f844952cc75ae8314023e0d9",
+      "baseline_brain_tests": {
+        "run": 45534945083,
+        "job": 138939136182,
+        "discovered": 860,
+        "passed": 589,
+        "skipped": 271,
+        "failed": 0
+      },
+      "baseline_independent_r4": {
+        "run": 45534945094,
+        "job": 138944545710,
+        "status": "passed",
+        "activities": [
+          "read_book",
+          "rest",
+          "work"
+        ]
+      },
+      "specific_defect": "fixed-priority single Conclave reading sent to Noesis; independent baseline R4 pass did not establish multi-reading evaluation",
+      "repair": "all available eligible interpretations, individual provenance, one existing Noesis decision, no new organ or learning mechanism",
+      "status": "repair_committed_pending_successor_ci",
+      "baseline_workflows": {
+        "success": 20,
+        "failure": 1
+      },
+      "corpus_checkout_repair": {
+        "commit": "5b41c8565dcb18ea0a10d19a101626f32902830a",
+        "run": 45548520152,
+        "status": "passed",
+        "training_executed": false
+      },
+      "universal_first_person_coverage": "not qualified",
+      "donor_backed_imagination": "open; exact donor deployment and positive qualification outstanding"
     }
   }
 }

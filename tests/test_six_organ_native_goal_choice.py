@@ -657,12 +657,21 @@ class NativeTwoGoalLaboratoryTests(unittest.TestCase):
         self.assertIn(fixture["pages"][0], memory["text"])
         self.assertEqual(memory["source_event_id"], report["source_event_id"])
         readings = Conclave(store, enabled=True).readings(report["context_key"])
-        chosen = next(r for r in readings if r.id == report["reading_id"])
-        self.assertEqual(chosen.state, "considered")
+        self.assertGreaterEqual(len(readings), 3)
+        self.assertEqual(set(report["reading_ids"]), {r.id for r in readings})
+        self.assertEqual({r.state for r in readings}, {"considered"})
         self.assertTrue(all(r.truth_status == "neither" for r in readings))
-        self.assertEqual(chosen.source_event_id, memory["source_event_id"])
-        self.assertEqual(hashlib.sha256(chosen.question.encode()).hexdigest(),
-                         report["question_sha256"])
+        self.assertTrue(all(r.source_event_id == memory["source_event_id"] for r in readings))
+        packet = report["interpretations"]
+        by_id = {r.id:r for r in readings}
+        for entry in packet:
+            original = by_id[entry["reading_id"]]
+            self.assertEqual(entry["source_event_id"], original.source_event_id)
+            self.assertEqual(entry["source_work"], original.source_work)
+            self.assertEqual(entry["question_sha256"], hashlib.sha256(original.question.encode()).hexdigest())
+        query = " ".join(entry["first_person"] for entry in packet if entry["considered"])
+        self.assertEqual(hashlib.sha256(query.encode()).hexdigest(), report["question_sha256"])
+        self.assertFalse(report["host_selected_tradition_mapping"])
         with store.connect() as db:
             policy = db.execute("SELECT * FROM policy_decisions WHERE id=?",
                                 (report["policy_id"],)).fetchone()
