@@ -899,7 +899,12 @@
       },
       "availability_repair": {
         "status": "candidate",
-        "scope": "same existing prospective appraisal remembers last actual room offers; defer currently unavailable or recently observed unavailable task without deleting ownership; ordinary 100-source-tick recheck; no new organ or learning mechanism"
+        "scope": "same existing prospective appraisal remembers last actual room offers; defer currently unavailable or recently observed unavailable task without deleting ownership; ordinary 100-source-tick recheck; no new organ or learning mechanism",
+        "followup": {
+          "previous_head": "12dcd7cdf2ab9009ddef6da82d8b875f8f9b98f8",
+          "defect": "Live retest demonstrated deferred-owned read commitment still leaked through independent local state-policy commitment family. Source policy 85a540eab94b4bcabacc2aac6575b02c, read goal telos_prospective_policy_f93cb9dc9db24d45a176826405315dde, specific persistence pressure 0.02499673973684476.",
+          "repair": "Keep all owned commitments in conscious capture and abstract decision history; exclude deferred IDs from per-offer action appraisal access only. No new organ or learning."
+        }
       }
     },
     "ipseity_causal_test": {

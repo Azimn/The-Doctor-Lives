@@ -442,6 +442,11 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
         from .tower_prospective import assess
         prospective = assess(brain, tower_provider, observation, offers, abstract, affordance_map,
                              owned_commitments=owned)
+    # Deferred intentions remain consciously owned, but must not leak back
+    # into the separate action-specific commitment family and defeat deferral.
+    deferred = prospective.get("deferred_owned_goals", {}) if prospective else {}
+    actionable_owned = None if owned is None else {
+        rid: wording for rid, wording in owned.items() if rid not in deferred}
     for key in sorted(by_key):
         offer = by_key[key]
         tendency = affordance_map[key]
@@ -451,7 +456,7 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
         if subject is not None:
             # The actual first-person offered action, not an engineer key,
             # is the conscious semantic cue competing with my own intentions.
-            with subject.cognitive_access(owned):
+            with subject.cognitive_access(actionable_owned):
                 _, _, appraisal = brain._state_policy_scores(
                     ranked, decision_text=offer["text"], direct_history_ranked=direct)
         else:
