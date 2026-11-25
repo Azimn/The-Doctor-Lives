@@ -769,6 +769,14 @@
       "assistant_turns": 545,
       "original_adapter_recovered": false,
       "training_executed": false
+    },
+    "longitudinal_qualification": {
+      "entrypoint": "tools/qualify_tower_life.py",
+      "minimum_source_ticks": 3000,
+      "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression",
+      "status": "implemented_not_executed",
+      "requires": "original Phantasmagorium archive and available local renderer",
+      "full_release_certified": false
     }
   }
 }
