@@ -4,7 +4,9 @@ This suite uses the original brain, one pinned actual Laboratory and original
 source-verified admissions. No invented post-action reward or second selector.
 """
 from __future__ import annotations
+import gc
 import importlib.util
+from contextlib import closing
 import json
 from pathlib import Path
 import tempfile
@@ -38,7 +40,7 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         from pretorius_lab.book_library import BookLibrary
 
         self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
+        self.addCleanup(self._cleanup_fixture, self.tmp)
         root = Path(self.tmp.name)
         self.world = SpatialHabitat.create(root / "world.sqlite3")
         HomeLife(self.world).initialize()
@@ -51,21 +53,28 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.bridge.act("walk", event_id="arrival-center", station="station:center")
         self.bridge.act("walk", event_id="arrival-bench", station="station:bench")
 
+    @staticmethod
+    def _cleanup_fixture(tmp):
+        # Source SQLite context managers commit but do not close; collect
+        # unreachable handles before strict Windows fixture deletion.
+        gc.collect()
+        tmp.cleanup()
+
     def state(self):
         self.subject.verify()
-        with self.world._open() as db:
+        with closing(self.world._open()) as db:
             row = db.execute("SELECT value FROM rhythm_meta WHERE key='state'").fetchone()
             return json.loads(row[0])
 
     def actions(self, op):
-        with self.world._open() as db:
+        with closing(self.world._open()) as db:
             return db.execute(
                 "SELECT count(*) FROM rhythm_events WHERE json_extract(envelope,'$.op')=?",
                 (op,),
             ).fetchone()[0]
 
     def policy_audit(self, pid):
-        with self.port.brain.store.connect() as db:
+        with closing(self.port.brain.store.connect()) as db:
             row = db.execute(
                 "SELECT policy_version,selected_action,state_pressure_json "
                 "FROM policy_decisions WHERE id=?", (pid,),
