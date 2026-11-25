@@ -249,8 +249,11 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100):
     state=Path(state)
     if not (state/"brain.sqlite3").is_file() or not Path(world).is_file():
         raise FileNotFoundError("Initialize a dedicated canonical Tower rehearsal first")
-    with _exclusive_host(state,Path(world)):
+    from .local_turn_journal import LocalTurnJournal
+    from .canonical_background import assert_no_pending_conversation
+    with _exclusive_host(state,Path(world)),LocalTurnJournal(state) as journal:
         runtime=SixOrganRuntime.open(state)
+        assert_no_pending_conversation(state,runtime,journal)
         provider=SmallTowerSource(source,world)
         snapshot=provider.snapshot()
         _bind(runtime,provider,snapshot)

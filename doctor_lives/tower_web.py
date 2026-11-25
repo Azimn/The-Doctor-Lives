@@ -18,7 +18,7 @@ def scene(snapshot):
         raise PermissionError("Unqualified scene projection")
     return {"narrative":lines,"occupied":bool(snapshot["busy"]),"deceased":bool(snapshot["deceased"])}
 
-_HTML="""<!doctype html><html lang="en"><head><meta charset="utf-8">
+_HTML=r"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pretorius | Small Tower</title>
 <style>
@@ -43,7 +43,7 @@ button:disabled{opacity:.5}button:focus-visible,textarea:focus-visible,select:fo
 <p id="narrative" aria-live="polite"></p><div class="controls"><button id="refresh">Observe scene</button><button id="pulse">Offer one opportunity</button></div></section>
 <section><h2>Conversation</h2><div id="log" role="log" aria-live="polite"></div><form id="form">
 <label for="message">Speak to the Doctor</label><textarea id="message" maxlength="800" required></textarea>
-<button type="submit">Send</button><button type="button" id="mic">Dictate</button></form>
+<button type="submit">Send</button><button type="button" id="mic">Dictate</button><button type="button" id="resume">Recover pending reply</button></form>
 <div class="controls"><label for="voices">Local playback voice</label><select id="voices"></select>
 <button id="speak">Read last reply aloud</button><button id="stop">Stop audio</button></div>
 <p class="muted">Voice playback uses locally installed browser voices. Dictation is optional and may use your browser's remote speech service; the transcript can be reviewed before sending. Audio is not recorded into the Doctor's memory as an emitted utterance.</p>
@@ -64,6 +64,7 @@ async function task(fn){if(busy)return;busy=true;$('pulse').disabled=true;try{aw
 async function refresh(){draw(await call('/scene'));status('Scene read from the original Tower.')}
 $('refresh').onclick=()=>task(refresh);$('pulse').onclick=()=>task(async()=>{draw(await call('/pulse',{}));status('One bounded opportunity completed.');});
 $('form').onsubmit=e=>{e.preventDefault();task(async()=>{const text=$('message').value.trim();if(!text)return;const d=await call('/message',{text});$('message').value='';add('Operator',text);lastReply=d.text;add('Pretorius',lastReply);status('Response prepared.');})};
+$('resume').onclick=()=>task(async()=>{const d=await call('/resume',{});lastReply=d.text;add('Pretorius',lastReply);status('Pending response recovered.');});
 function voices(){const vs=window.speechSynthesis?.getVoices().filter(v=>v.localService)||[];$('voices').replaceChildren();
 for(const v of vs){const opt=document.createElement('option');opt.value=v.voiceURI;opt.textContent=v.name+' ('+v.lang+')';$('voices').append(opt)}$('speak').disabled=!vs.length}
 if(window.speechSynthesis){speechSynthesis.onvoiceschanged=voices;voices()}else{$('speak').disabled=true}
@@ -123,11 +124,13 @@ def serve(state,source,world,*,port=8767,model="qwen3:1.5b",authorize_world=Fals
                     result=run_tower_pulse(state,source,world,authorize=True,steps=100)
                     self._write(200,scene({"narrative":result["subject_narrative"],
                         "busy":result["source_receipt"]["busy"],"deceased":result["source_receipt"]["deceased"]}))
-                elif self.path=="/message":
-                    if type(value) is not dict or set(value)!={"text"}:raise ValueError("Invalid message")
+                elif self.path in ("/message","/resume"):
+                    resume=self.path=="/resume"
+                    if type(value) is not dict or set(value)!=(set() if resume else {"text"}):
+                        raise ValueError("Invalid message")
                     from .ipseity_local import local_turn
                     with _exclusive_host(state,world):
-                        result=local_turn(state,user_text=value["text"],model=model,governed=True)
+                        result=local_turn(state,user_text=value.get("text"),resume=resume,model=model,governed=True)
                     self._write(200,{"text":result})
                 else:self.send_error(404)
             except Exception:self._write(409,{"error":"Operation unavailable; recover pending local work if necessary."})

@@ -9,15 +9,9 @@ from .lab_runtime import _exclusive_host
 from .local_turn_journal import LocalTurnJournal
 from .organs import SixOrganRuntime
 
-def _ready(state, runtime, journal):
-    store=runtime._port.brain.store
+def assert_no_pending_conversation(state,runtime,journal):
     if journal.open_turn() is not None:
         raise RuntimeError("Recover unfinished conversation first")
-    if any(store.meta(k) is not None for k in (
-        "small-tower:pending-world-request-v1",
-        "six_organ_lab_pending_world_action_v1",
-        "six_organ_lab_pending_verified_rest_v1")):
-        raise RuntimeError("Recover unfinished world action first")
     if (state/"synthetic_ipseity.sqlite3").exists():
         from .ipseity_integration import DoctorSyntheticIpseitySession
         def denied(_):
@@ -25,6 +19,15 @@ def _ready(state, runtime, journal):
         with DoctorSyntheticIpseitySession(state,renderer=denied,brain_port=runtime._port) as session:
             if session.pending_count():
                 raise RuntimeError("Recover undelivered subject experience first")
+
+def _ready(state,runtime,journal):
+    assert_no_pending_conversation(state,runtime,journal)
+    store=runtime._port.brain.store
+    if any(store.meta(k) is not None for k in (
+        "small-tower:pending-world-request-v1",
+        "six_organ_lab_pending_world_action_v1",
+        "six_organ_lab_pending_verified_rest_v1")):
+        raise RuntimeError("Recover unfinished world action first")
 
 def issue(state, lease, *, authorized=False):
     if authorized is not True:
