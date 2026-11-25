@@ -163,6 +163,20 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertEqual(appraise(history+[event("tea",6,False),event("cook",7)],room,("tea",))[0]["tea"],0)
         self.assertEqual(appraise(history,"another room",("tea",))[0]["tea"],0)
 
+    def test_unchanged_immediate_repeat_has_no_positive_reliability_bonus(self):
+        from doctor_lives.tower_development import _appraise
+        outcomes = [("walk",True,"m1","s1"),("walk",False,"m2","s2"),
+                    ("walk",True,"m3","s3"),("read",True,"m4","s4")]
+        scores, ids = _appraise(outcomes,("walk","read"),repeated_unchanged="walk")
+        self.assertAlmostEqual(scores["walk"],-.025)
+        self.assertEqual(ids["walk"],["m2"])
+        self.assertEqual(scores["read"],.015)
+        self.assertEqual(ids["read"],["m4"])
+        successes = [("walk",True,"m"+str(i),"s"+str(i)) for i in range(4)]
+        self.assertAlmostEqual(_appraise(successes,("walk",))[0]["walk"],.028125)
+        self.assertEqual(_appraise(successes,("walk",),repeated_unchanged="walk"),
+                         ({"walk":0.0},{"walk":[]}))
+
     def test_independent_outcomes_saturate_and_reverse(self):
         from doctor_lives.tower_development import _appraise
         good = [("work", True, "memory-" + str(i), "source-" + str(i))

@@ -792,7 +792,7 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "prior_duration_ten_organs_passed_procedural_and_preservation_retest_open",
+      "status": "three_thousand_duration_demonstrated_procedural_and_live_preservation_gate_open",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false,
       "offline_kit": {
@@ -952,6 +952,36 @@
         "validated_goals": 5,
         "origin_observations": 34,
         "observation_seconds": 600
+      },
+      "rehearsal_61de7b8": {
+        "head": "61de7b899ce6e55aadf6dae064634e90080cbbb3",
+        "source_epoch": "p3-preserve-61de7b8-fresh",
+        "source_ticks": 3363,
+        "receipt_ticks": 3363,
+        "history_entries": 1189,
+        "history_sha256": "567757abfd943bd6e89ed6c5039c6fa9c681e8422f295a6543f15a5c8c474c62",
+        "completed_activities": 134,
+        "organs": "10/10",
+        "supporting": "8/9",
+        "sleep": 5,
+        "busy_wakes": 10,
+        "checkpoint_sha256": "75c7a466634f8e41999e7e151dfb299e3e7082431f30f05f234344b5653477e4",
+        "uninterrupted": false,
+        "prior_checkpoint_recovered": false,
+        "procedural_positive_use": false,
+        "finite_deferral_live_evidence": 0,
+        "trade_live_evidence": 0,
+        "qualification": false
+      },
+      "developmental_repeat_repair": {
+        "status": "candidate",
+        "observed_policy": "policy_c4ccb75c82df419fb27f57df853e8dc7",
+        "actual_walk_score": 0.050493452346145176,
+        "reliability_contribution": 0.028125,
+        "base": 0.02236845234614518,
+        "other_specific_pressure": 0,
+        "source": "same unchanged admitted garden scene and repeated completed walk; no fatigue/hunger cue; 58 walks and 16 conversations across 3363 ticks",
+        "repair": "Remove positive contextual reliability bonus only for immediately repeated, successfully completed action with byte-identical current admitted perception and latest authentic outcome. Retain negative failures, original recency weights, motor authority, other choices, all procedure criteria. Existing appraisal correction, no new mechanism."
       }
     },
     "ipseity_causal_test": {

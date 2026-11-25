@@ -22,16 +22,25 @@ def _room(text):
     return match.group(0) if match else None
 
 
-def _appraise(episodes, feasible):
-    """At most four recent independent outcomes per feasible concrete action."""
+def _appraise(episodes, feasible, *, repeated_unchanged=None):
+    """At most four recent independent outcomes per feasible concrete action.
+
+    A reliable action is not an independent reason to repeat it immediately
+    in the exact same perceived context. Suppress its positive reliability
+    contribution only; retain its failures and their original recency weights.
+    """
     scores = dict.fromkeys(feasible, 0.0)
     used = {action: [] for action in feasible}
+    counts = dict.fromkeys(feasible, 0)
     seen = set()
     for action, success, memory_id, source_id in episodes:
-        if action not in scores or source_id in seen or len(used[action]) >= 4:
+        if action not in scores or source_id in seen or counts[action] >= 4:
             continue
         seen.add(source_id)
-        weight = .5 ** len(used[action])
+        weight = .5 ** counts[action]
+        counts[action] += 1
+        if action == repeated_unchanged and success:
+            continue
         scores[action] += weight * (SUCCESS if success else FAILURE)
         used[action].append(memory_id)
     scores = {action: max(-CAP, min(CAP, value)) for action, value in scores.items()}
@@ -96,7 +105,7 @@ def verified_consequence_pressure(brain, provider, observation, feasible):
         match = EVENT.fullmatch(event_id)
         if not match:
             raise PermissionError("Invalid physical outcome source identity")
-        pending.append((int(match.group(1)), action, success, memory, row["policy_id"]))
+        pending.append((int(match.group(1)), action, success, memory, row["policy_id"], context["text"]))
     if not pending:
         return _appraise((), feasible)
     history = provider.snapshot(min(item[0] for item in pending) - 1)
@@ -104,7 +113,10 @@ def verified_consequence_pressure(brain, provider, observation, feasible):
         raise PermissionError("Tower changed during consequence appraisal")
     by_sequence = {r["sequence"]: r for r in history["events"]}
     verified = []
-    for sequence, action, success, memory, pid in sorted(pending, key=lambda x: -x[0]):
+    latest = max((r["sequence"] for r in history["events"]
+                  if r["kind"] in ("completed","action_failed") and r.get("policyRef")), default=-1)
+    repeated_unchanged = None
+    for sequence, action, success, memory, pid, prior_text in sorted(pending, key=lambda x: -x[0]):
         row = by_sequence.get(sequence)
         if (not row or row["policyRef"] != pid or row["operation"] != action
                 or row["kind"] != ("completed" if success else "action_failed")):
@@ -114,4 +126,6 @@ def verified_consequence_pressure(brain, provider, observation, feasible):
         if memory["source"] != expected or memory["text"] != receipt.first_person:
             raise PermissionError("Original consequence differs from lived memory")
         verified.append((action, success, memory["id"], expected))
-    return _appraise(verified, feasible)
+        if sequence == latest and success and prior_text == observation["text"]:
+            repeated_unchanged = action
+    return _appraise(verified, feasible, repeated_unchanged=repeated_unchanged)
