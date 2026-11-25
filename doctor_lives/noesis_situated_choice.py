@@ -224,7 +224,7 @@ def select_with_original_noesis(
         "version": active_version,
         "outcome_learning_enabled": outcome_learning_enabled,
         "developmental_history_enabled": developmental_history_enabled,
-        "developmental_history_version": ("work-history-appraisal-v1"
+        "developmental_history_version": ("work-history-appraisal-v2"
                                           if developmental_history_enabled else None),
         "eligible_verified_outcome_ids": eligible_outcomes,
         "used_outcome_memory_ids": used_outcomes,
