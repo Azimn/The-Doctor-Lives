@@ -28,6 +28,9 @@ def neural_config():
 @unittest.skipUnless(HAS_LAB, "Requires actual pinned Laboratory, not mock world")
 class NoesisActualConsequenceTests(unittest.TestCase):
     def setUp(self):
+        self._open_independent_fixture()
+
+    def _open_independent_fixture(self):
         from pretorius_lab.habitat_v2 import SpatialHabitat
         from pretorius_lab.home_life import HomeLife
         from pretorius_lab.daily_rhythm import DailyRhythm
@@ -274,7 +277,7 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertEqual(proposed.supporting_memory_ids, ())
 
 
-    def _two_owned_wear_episodes_with_both_choices(self):
+    def _two_owned_wear_episodes_with_both_choices(self, *, first_owned=True):
         """Actual physical history, with one reagent reserved for the probe."""
         from doctor_lives.lab_endogenous_book_task import EndogenousBookPursuit
         from doctor_lives.noesis_lab_work import _feasible_work
@@ -293,16 +296,23 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertEqual(self.state()["apparatus"], 3)
         ids = []
         for i in range(2):
-            proposal = propose_noesis_work(
-                self.bridge, learning_enabled=False, neural_prior_enabled=False,
-                outcome_learning_enabled=False,
-            )
-            self.assertEqual(proposal.action, "experiment")
-            outcome = execute_noesis_work(
-                self.bridge, decision_id=proposal.decision_id,
-                event_id=f"development-experiment-{i}", authorized_world_action=True,
-            )
-            ids.append(outcome["world"]["memory_id"])
+            if i == 0 and not first_owned:
+                # Identical physical trajectory, different authenticated
+                # authorship. This is an agency-history control, not evidence
+                # of generalization to a new apparatus or new physical outcome.
+                outcome = self.bridge.act("experiment", event_id=f"development-experiment-{i}")
+                ids.append(outcome["memory_id"])
+            else:
+                proposal = propose_noesis_work(
+                    self.bridge, learning_enabled=False, neural_prior_enabled=False,
+                    outcome_learning_enabled=False,
+                )
+                self.assertEqual(proposal.action, "experiment")
+                outcome = execute_noesis_work(
+                    self.bridge, decision_id=proposal.decision_id,
+                    event_id=f"development-experiment-{i}", authorized_world_action=True,
+                )
+                ids.append(outcome["world"]["memory_id"])
             travel("station:bedroom", f"development-outbound-{i}")
             self.bridge.act("rest", event_id=f"development-rest-{i}")
             travel("station:bench", f"development-return-{i}")
@@ -388,6 +398,36 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertEqual(self.state(), state)
         self.assertEqual(self.actions("experiment"), 2)
         self.assertEqual(self.actions("repair"), 1)
+
+
+    def test_independent_founders_differ_by_owned_history_at_matched_physical_state(self):
+        from unittest.mock import patch
+        from doctor_lives.neural import ACTIONS
+        prior = dict.fromkeys(ACTIONS, 0.0)
+        prior.update(explore=0.75, persist=0.25)
+        def probe():
+            with patch.object(self.port.brain.neural, "action_scores", return_value=prior):
+                result = self._development_probe(neural=True)
+            observation = self.port.brain.store.get_memory(result.observation_memory_id)
+            return result, observation["text"]
+        initial_state = self.state()
+        initial_scores = self.port.brain.neural.action_scores()
+        first, second = self._two_owned_wear_episodes_with_both_choices()
+        full, full_percept = probe()
+        matched_state = self.state()
+        self._open_independent_fixture()
+        self.assertEqual(self.state(), initial_state)
+        self.assertEqual(self.port.brain.neural.action_scores(), initial_scores)
+        _, owned = self._two_owned_wear_episodes_with_both_choices(first_owned=False)
+        single, single_percept = probe()
+        self.assertEqual(self.state(), matched_state)
+        self.assertEqual(single_percept, full_percept)
+        self.assertEqual(set(single.candidate_scores), {"experiment", "repair"})
+        self.assertEqual(set(full.candidate_scores), {"experiment", "repair"})
+        self.assertEqual(full.action, "repair")
+        self.assertEqual(single.action, "experiment")
+        self.assertEqual(set(full.supporting_memory_ids), {first, second})
+        self.assertEqual(single.supporting_memory_ids, (owned,))
 
 
 class DevelopmentalAppraisalTests(unittest.TestCase):
