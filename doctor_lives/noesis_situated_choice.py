@@ -358,7 +358,8 @@ def select_with_original_noesis(
 
 
 def select_world_affordance(brain, *, observation_memory_id, observation_source,
-                            narrative, offers, affordance_map, regulatory_pressure):
+                            narrative, offers, affordance_map, regulatory_pressure,
+                            tower_provider=None):
     """Original Noesis concrete choice on a trusted world's admitted perception.
 
     The adapter supplies feasible offers and bounded physical cue pressure,
@@ -405,6 +406,12 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
     base, scores, local, candidate_ids = {}, {}, {}, [observation_memory_id]
     by_key = {o["key"]: o for o in offers}
+    outcome_scores = dict.fromkeys(by_key, 0.0)
+    outcome_ids = {key: [] for key in by_key}
+    if tower_provider is not None:
+        from .tower_development import verified_consequence_pressure
+        outcome_scores, outcome_ids = verified_consequence_pressure(
+            brain, tower_provider, observation, tuple(by_key))
     for key in sorted(by_key):
         offer = by_key[key]
         tendency = affordance_map[key]
@@ -423,15 +430,18 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                     + families["concerns"][tendency])
         specific = max(-.05, min(.05, specific))
         base[key] = NEURAL_WEIGHT * abstract["action_scores"][tendency]
-        scores[key] = base[key] + regulatory_pressure.get(key, 0.0) + specific
+        scores[key] = base[key] + regulatory_pressure.get(key, 0.0) + specific + outcome_scores[key]
         local[key] = {"tendency": tendency, "cue": cue,
                       "commitment": commitment, "specific_pressure": specific,
+                      "developmental_pressure": outcome_scores[key],
+                      "developmental_memory_ids": outcome_ids[key],
                       "source_ids": appraisal["source_ids"],
                       "families": families}
         candidate_ids.extend(appraisal["source_ids"]["history"])
+        candidate_ids.extend(outcome_ids[key])
     selected = max(sorted(scores), key=scores.get)
     selected_ids = list(dict.fromkeys([observation_memory_id]
-                        + local[selected]["source_ids"]["history"]))
+                        + local[selected]["source_ids"]["history"] + outcome_ids[selected]))
     evidence = {"version": "noesis-world-affordance-v1",
                 "abstract_policy_id": abstract["policy_decision_id"],
                 "observation_memory_id": observation_memory_id,
@@ -450,6 +460,10 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                 "phantasmagorium": {"retrieval_cues": list(imaginative_cues),
                                     "world_authority": False, "motor_authority": False,
                                     "lived_fact_authority": False},
+                "developmental_history": {"enabled": tower_provider is not None,
+                                          "version": "tower-contextual-consequence-v1",
+                                          "contributions": outcome_scores,
+                                          "source_memory_ids": outcome_ids},
                 "physical_cue_pressure": {k: regulatory_pressure.get(k, 0.0)
                                           for k in scores},
                 "candidate_base_scores": base,

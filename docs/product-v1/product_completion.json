@@ -586,9 +586,9 @@
       },
       {
         "organ": "Noesis",
-        "location": "noesis_situated_choice.py; cognition.py; neural.py",
+        "location": "noesis_situated_choice.py; cognition.py; neural.py; tower_development.py",
         "status": "partial",
-        "next": "Concrete choices and recurrent state; full competence and long-horizon qualification"
+        "next": "Source-verified native Telos outcomes now contribute to bounded same-room concrete action reliability appraisal, using independent memory IDs and diminishing, revisable episode pressure. Distinguish this from material skill gain, neural training and long-horizon task selection. Original source integration and longitudinal tests remain."
       },
       {
         "organ": "Expression",
@@ -749,6 +749,16 @@
       "unfinished": "rest travel",
       "observation_seconds": 600,
       "gate_changed": false
+    },
+    "tower_development": {
+      "source": "noesis_consequences.py",
+      "version": "tower-contextual-consequence-v1",
+      "status": "integration_pending_ci",
+      "scope": "bounded contextual task reliability, not material utility or skill mastery",
+      "weight_success": 0.015,
+      "weight_failure": -0.05,
+      "max_independent_episodes": 4,
+      "absolute_cap": 0.08
     }
   }
 }

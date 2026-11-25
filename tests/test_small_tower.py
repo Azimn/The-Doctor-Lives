@@ -11,6 +11,23 @@ from doctor_lives import small_tower
 from doctor_lives.organs import SixOrganRuntime
 from doctor_lives.neural import DEFAULT_CONFIG
 
+class TowerDevelopmentAppraisalTests(unittest.TestCase):
+    def test_independent_outcomes_saturate_and_reverse(self):
+        from doctor_lives.tower_development import _appraise
+        good = [("work", True, "memory-" + str(i), "source-" + str(i))
+                for i in range(6)]
+        scores, used = _appraise(good + good, ("work", "read"))
+        self.assertEqual(len(used["work"]), 4)
+        self.assertAlmostEqual(scores["work"], .015 * 1.875)
+        self.assertEqual(scores["read"], 0.0)
+        reversed_scores, _ = _appraise([("work", False, "failure", "new")] + good,
+                                      ("work", "read"))
+        self.assertLess(reversed_scores["work"], 0.0)
+        duplicated, ids = _appraise([good[0]] * 6, ("work",))
+        self.assertEqual(ids["work"], ["memory-0"])
+        self.assertEqual(duplicated["work"], .015)
+
+
 @unittest.skipUnless(os.getenv("PRETORIUS_TOWER_SOURCE"),"Exact original Tower source required")
 class OriginalTowerTests(unittest.TestCase):
     def test_real_canonical_pulse_and_replay(self):
@@ -81,6 +98,11 @@ class OriginalTowerTests(unittest.TestCase):
         appraisals = json.loads(policy["state_pressure_json"])
         self.assertEqual(appraisals["abstract_policy_id"], choice["abstract_policy_id"])
         self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
+        developmental = appraisals["developmental_history"]
+        self.assertTrue(developmental["enabled"])
+        self.assertEqual(set(developmental["contributions"]), set(choice["offers"]))
+        self.assertTrue(all(abs(v) <= .08 for v in developmental["contributions"].values()))
+        self.assertTrue(all(not ids for ids in developmental["source_memory_ids"].values()))
         reflection = appraisals["conclave"]
         from doctor_lives.conclave import Conclave
         observation = store.get_memory(choice["observation_id"])

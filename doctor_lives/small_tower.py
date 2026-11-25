@@ -198,7 +198,7 @@ def _admit_events(runtime, provider, port):
     return snapshot
 
 
-def _choose(runtime, snapshot, observation_id, weather, scene, body):
+def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
     brain = runtime._port.brain
     offers = snapshot["offers"]
     if not offers:
@@ -243,7 +243,7 @@ def _choose(runtime, snapshot, observation_id, weather, scene, body):
         decision = select_world_affordance(
             brain, observation_memory_id=observation_id, observation_source=observation_source,
             narrative=scene["admitted_lines"], offers=offers, affordance_map=MAP,
-            regulatory_pressure=pressure)
+            regulatory_pressure=pressure, tower_provider=provider)
     choice, scores = decision["selected_action"], decision["action_scores"]
     with brain.store.transaction() as db:
         brain.store.set_meta("small-tower:choice:"+decision["policy_decision_id"],
@@ -360,7 +360,7 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                 scene=bind_scene(runtime,provider,snapshot,observation,perceived.memory_id,weather)
                 from .tower_corpus import reconcile_fatigue
                 body=reconcile_fatigue(runtime,provider,snapshot,observation,perceived.memory_id,scene)
-                choice,policy=_choose(runtime,snapshot,perceived.memory_id,weather,scene,body)
+                choice,policy=_choose(runtime,provider,snapshot,perceived.memory_id,weather,scene,body)
             from .store import new_id
             request={"id":new_id("tower"),"revision":snapshot["revision"],
                      "choice":choice,"policyRef":policy,"steps":steps}
