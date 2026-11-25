@@ -792,9 +792,20 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "implemented_not_executed",
+      "status": "actual_offline_rehearsal_started_not_qualified",
       "requires": "original Phantasmagorium archive and available local renderer",
-      "full_release_certified": false
+      "full_release_certified": false,
+      "offline_kit": {
+        "head": "8de5273df907c3818c7cbe0667e06cfbff3934e0",
+        "run": 45556131900,
+        "source_artifact": 14995452754,
+        "renderer_artifact": 14995553230,
+        "model": "smollm2:135m",
+        "model_digest": "9077fe9d2ae1a4a41a868836b56b8163731a8fe16621397028c2c76f838c6907",
+        "donor_sha256": "31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8"
+      },
+      "rehearsal_observed": "Original-source uncoached rehearsal reached 1275 persisted source ticks, with 17 original donor fancy events; a command timeout at tick 219 was followed by cold continuation. Repeated walking despite perceived fatigue and repeated rest despite unmet intellectual stimulation identified actual regulatory gaps. Not a complete fresh gate.",
+      "repair": "Use remembered source-admitted exits to appraise feasible routes to rest and intellectual activity; exclude repeated identical actions from procedural sequence bonus. No motor authority or hidden map."
     },
     "ipseity_causal_test": {
       "path": "tests/test_small_tower.py::test_own_past_commitment_changes_real_tower_action_under_matched_ipseity_impairment",

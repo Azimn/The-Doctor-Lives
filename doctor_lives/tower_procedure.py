@@ -25,6 +25,7 @@ def appraise(episodes, room, feasible):
     histories = {a: [] for a in feasible}
     for first, second in zip(episodes, episodes[1:]):
         if (not first["success"] or first["action"] != cue
+                or first["action"] == second["action"]
                 or first["room"] != room or second["room"] != room
                 or second["action"] not in feasible
                 or second["source"] in seen):

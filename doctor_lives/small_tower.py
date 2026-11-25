@@ -218,12 +218,10 @@ def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
             pressure[key]=amount
         if ("I am in my bedchamber." in text or "I am in my laboratory." in text):
             pressure["move_library"]=amount
-    if "I feel worn out" in text or "I am getting tired." in text:
-        amount=.20 if "worn out" in text else .09
-        for key in ("rest","sleep","move_bedchamber"):
-            pressure[key]=amount
-        if "I am in my kitchen" in text or "I am in my laboratory." in text:
-            pressure["move_library"]=max(amount,pressure.get("move_library",0))
+    from .tower_regulation import verified_appraisal
+    for key, amount in verified_appraisal(brain.store, brain.store.get_memory(observation_id),
+                                          offers, scene["admitted_lines"]).items():
+        pressure[key] = max(amount, pressure.get(key, 0.0))
     if "provisions are running low" in text:
         pressure["move_garden"]=.18
         pressure["trade"]=.12

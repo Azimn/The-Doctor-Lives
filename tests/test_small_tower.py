@@ -27,6 +27,34 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertIsNone(first_step(graph, "library", "laboratory"))
         self.assertIsNone(first_step(graph, "library", "library"))
 
+    def test_bodily_and_intellectual_pressure_routes_from_perceived_exits(self):
+        from doctor_lives.tower_regulation import appraisal
+        remembered = [
+            "I am in my bedchamber. I can make my way to my library.",
+            "I am in my library. I can make my way to my bedchamber. I can make my way to my kitchen and hearth.",
+            "I am in my kitchen and hearth. I can make my way to my library. I can make my way to my garden path.",
+        ]
+        garden = ["I am in my garden path.", "I am getting tired."]
+        garden_offers = [{"key":"walk"}, {"key":"move_kitchen"}]
+        self.assertEqual(appraisal(garden,garden_offers,remembered),{"move_kitchen":.09})
+        self.assertEqual(appraisal(garden,garden_offers,[]),{})
+        self.assertEqual(appraisal(garden,[{"key":"walk"}],remembered),{})
+        bedroom = ["I am in my bedchamber.", "I long for something to occupy my mind."]
+        bedroom_offers = [{"key":"rest"}, {"key":"sleep"}, {"key":"move_library"}]
+        self.assertEqual(appraisal(bedroom,bedroom_offers,remembered),{"move_library":.09})
+        worn = ["I am in my bedchamber.", "I feel worn out and find it hard to concentrate."]
+        self.assertEqual(appraisal(worn,bedroom_offers,remembered),{"rest":.14,"sleep":.20})
+        self.assertEqual(appraisal(["I am in my bedchamber."],bedroom_offers,remembered),{})
+
+    def test_repeated_single_activity_is_not_a_procedural_sequence(self):
+        from doctor_lives.tower_procedure import appraise
+        episodes = [{"action":"rest","room":"bedchamber","success":True,
+                     "source":"source-"+str(i),"memory_id":"memory-"+str(i)}
+                    for i in range(6)]
+        scores,ids = appraise(episodes,"bedchamber",("rest","sleep"))
+        self.assertEqual(scores,{"rest":0.0,"sleep":0.0})
+        self.assertEqual(ids,{"rest":[],"sleep":[]})
+
     def test_procedural_sequence_requires_independent_success_and_current_cue(self):
         from doctor_lives.tower_procedure import appraise, CAP
         def event(action,i,success=True,room="I am in my kitchen and hearth."):
