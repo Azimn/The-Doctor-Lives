@@ -212,25 +212,17 @@ def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
     text = " ".join(scene["admitted_lines"])
     # Reviewed bounded physical cues, not hidden store quantities.
     pressure = {}
-    if "I am painfully hungry." in text or "I could do with something to eat." in text:
-        amount = .20 if "painfully hungry" in text else .09
-        for key in ("eat","cook","move_kitchen"):
-            pressure[key]=amount
-        if ("I am in my bedchamber." in text or "I am in my laboratory." in text):
-            pressure["move_library"]=amount
     from .tower_regulation import verified_appraisal, remembered_supply
     current_memory = brain.store.get_memory(observation_id)
     for key, amount in verified_appraisal(brain.store, current_memory,
                                           offers, scene["admitted_lines"]).items():
-        pressure[key] = max(amount, pressure.get(key, 0.0))
+        pressure[key] = amount
     supply = remembered_supply(brain.store, current_memory, offers)
     for key, amount in supply["scores"].items():
         pressure[key] = max(amount, pressure.get(key, 0.0))
-    if "provisions are running low" in text:
-        pressure["move_garden"]=.18
-        pressure["trade"]=.12
-    if "fuel is running low" in text or "water is running low" in text:
-        pressure["move_garden"]=.16
+    # Only a fuel shortage can be addressed by the source's available trade.
+    # A trade does not create water or edible provisions.
+    if "fuel is running low" in text and "provisions are running low" not in text:
         pressure["trade"]=.14
     if "I see Rosa Brandl here" in text:
         pressure["converse"]=.10

@@ -60,6 +60,20 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertEqual(supply_appraisal("I can see that my fuel is running low.",set(),{"gather_fuel"}),{})
         self.assertEqual(supply_appraisal(shortage,set(),{"walk"}),{})
 
+    def test_supply_route_respects_recent_unavailable_offers_and_need_satisfaction(self):
+        from doctor_lives.tower_regulation import appraisal, supply_route
+        food = "I can see Stores shelf. I can see that my edible provisions are running low."
+        self.assertEqual(supply_route(food,set(),{"move_garden"},{"walk"},3),{})
+        self.assertEqual(supply_route(food,set(),{"move_garden"},{"walk"},100),{"move_garden":.18})
+        self.assertEqual(supply_route(food,set(),{"move_garden"},{"tend"},3),{"move_garden":.18})
+        self.assertEqual(supply_route(food,{"I tended the patch beside the tower."},{"move_garden"}),{})
+        mixed = food + " I can see that my water is running low."
+        self.assertEqual(supply_route(mixed,set(),{"move_garden"},{"draw_water"},3),{"move_garden":.16})
+        offers = [{"key":"eat"},{"key":"cook"},{"key":"move_library"}]
+        self.assertEqual(appraisal(["I am in my kitchen and hearth."],offers,[]),{"eat":-.16,"cook":-.16})
+        self.assertEqual(appraisal(["I am in my kitchen and hearth.","I could do with something to eat."],offers,[]),{"eat":.16,"cook":.075})
+        self.assertEqual(appraisal(["I am in my kitchen and hearth.","I am painfully hungry."],offers,[]),{"eat":.20,"cook":.10})
+
     def test_repeated_single_activity_is_not_a_procedural_sequence(self):
         from doctor_lives.tower_procedure import appraise
         episodes = [{"action":"rest","room":"bedchamber","success":True,

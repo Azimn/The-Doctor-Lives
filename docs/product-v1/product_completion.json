@@ -828,7 +828,7 @@
       },
       "harness_repair": "Use ordinary 100 source-tick pulse budget so a 250-tick sleep can expose actual busy activity to the existing 100-tick background cadence; write returned block receipts durably; no reduction of minimum ticks or other gates.",
       "sleep_repair": {
-        "status": "candidate_live_test_underway",
+        "status": "targeted_live_sleep_and_busy_cognition_pass",
         "cause": "sleep and rest mapped to same avoid tendency with equal ordinary-fatigue appraisal; repeated successful rest could dominate sleep",
         "scope": "perceived tiredness and worn-out bands only; bounded pressure, no motor authority, no hidden energy; original physical duration and outcomes unchanged",
         "checkpoint_recovery": "previous 2255-tick diagnostic remains available, but prior exact brain/world/neural files were not retained between sessions; fresh isolated test required",
@@ -844,7 +844,32 @@
             "work"
           ],
           "gate_changed": false
+        },
+        "live_test": {
+          "head": "0bac0d773253b695bb4bc642996596e63539d688",
+          "epoch": "fresh local isolated epoch; prior 2255 checkpoint unavailable",
+          "source_ticks": 517,
+          "sleep_policy": "policy_28224e94c79143febf4dc0a00a4dfcbf",
+          "event": "L81",
+          "event_sha256": "811470dfa4f7529f0fdc765036a13b3c513462a3ec9e9206e2fc69557fda829c",
+          "sleep_memory": "mem_509bc710a1db4a8ea3913d16b5cfe6e0",
+          "dream_memory": "mem_d201c95255244b4c8dddaa6f8e2bb0df",
+          "owned_goal": "telos_prospective_policy_f4900849887c4ac190d46cfb66769e12",
+          "goal_status_after_sleep": "kept",
+          "history_entries": 202,
+          "history_sha256": "18435b62fcbc86449d18c3d0deb7ffdaf315f55444f1a6d61976f896ad892e7d",
+          "private_wakes_during_sleep": 2,
+          "physical_revision_unchanged": true,
+          "checkpoint_archive_sha256": "927ae0ffd91fa851da3a8f8f6a37225f818cb782fbd13464e1c5570cfd30c602",
+          "operator_selected_action": false,
+          "qualification": false
         }
+      },
+      "supply_followup": {
+        "status": "candidate_live_test_underway",
+        "source_ticks": 667,
+        "cause": "cooking when no hunger consumed scarce resources; recently observed absence of feasible tend did not suppress immediate kitchen-garden travel pressure",
+        "fix": "bounded suppressive consumption appraisal when hunger absent, higher direct eat pressure when hungry; remember authentic garden offers and recheck after ordinary 100-tick cadence; only fuel shortage can justify trade; same source world and existing Noesis, no new organ or learning mechanism"
       }
     },
     "ipseity_causal_test": {
