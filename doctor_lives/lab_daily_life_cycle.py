@@ -21,9 +21,11 @@ def run_daily_life_cycle(
     authorize_world: bool = False,
     phantasmagorium_source=None,
     enable_habits: bool = False,
+    developmental_history_enabled: bool = False,
 ) -> dict:
-    if type(authorize_world) is not bool or type(enable_habits) is not bool:
-        raise TypeError("World authorization and habit enablement must be explicit")
+    if (type(authorize_world) is not bool or type(enable_habits) is not bool
+            or type(developmental_history_enabled) is not bool):
+        raise TypeError("World authorization and learning enablement must be explicit")
     state, world = Path(state), Path(world)
     from pretorius_lab.habitat_v2 import SpatialHabitat
     from pretorius_lab.subject_port import SubjectPort
@@ -86,7 +88,10 @@ def run_daily_life_cycle(
                 if (offered and not recovered and not deferred
                         and not recovered_six
                         and cycle.movement_status == "not_executed"):
-                    selected = offer_daily_opportunity(session.bridge, enable_habits=enable_habits)
+                    selected = offer_daily_opportunity(
+                        session.bridge, enable_habits=enable_habits,
+                        developmental_history_enabled=developmental_history_enabled,
+                    )
                     if authorize_world:
                         action = act_on_noesis_choice(
                             session.bridge, selected,
