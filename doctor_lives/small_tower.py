@@ -315,7 +315,7 @@ def _reconcile_background_clock(state, store):
 
 def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                     _background_lease=None, _background_every_ticks=0,
-                    require_phantasmagorium=False):
+                    _background_during_activity=True, require_phantasmagorium=False):
     """One original cognitive opportunity or continuation of an active action."""
     from .lab_runtime import _exclusive_host
     from .organs import SixOrganRuntime
@@ -382,7 +382,8 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
         clock["since_wake"] += elapsed
         due = (_background_lease is not None
                and _background_every_ticks > 0
-               and not result["replayed"] and not result["busy"]
+               and not result["replayed"]
+               and (_background_during_activity or not result["busy"])
                and not result["deceased"]
                and clock["since_wake"] >= _background_every_ticks)
         if due:
@@ -403,6 +404,15 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                 state, runtime, journal, lease_id=_background_lease,
                 wake_id="tower:"+request["id"], now_ms=time.time_ns()//1_000_000,
                 ticks=1)
+            # Private thought must leave the already committed physical
+            # activity and world revision exactly as they were.
+            after_background = provider.snapshot(snapshot["cursor"])
+            if (after_background["revision"] != snapshot["revision"]
+                    or after_background["cursor"] != snapshot["cursor"]
+                    or after_background["busy"] != snapshot["busy"]):
+                raise RuntimeError("Private cognition altered original physical activity")
+            background = dict(background, physical_revision_unchanged=True,
+                              during_activity=bool(result["busy"]))
             clock = _reconcile_background_clock(state, store)
         return {"schema":"doctor-small-tower-pulse.v1","world_epoch":provider.world_epoch,
                 "policy_id":request["policyRef"],"choice":request["choice"],
@@ -435,14 +445,15 @@ def initialize_tower(state, source, world, *, epoch, neural_config=None):
 def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
                    steps=100, interval_seconds=0.0,
                    background_every_ticks=DEFAULT_BACKGROUND_EVERY_TICKS,
-                   require_phantasmagorium=False):
+                   background_during_activity=True, require_phantasmagorium=False):
     """Run bounded, unprompted physical opportunities using the same host.
 
     No chosen goal, room, or action is supplied by this runner. Each pulse
     persists before the next; a reserved request is recovered by the existing
     bridge. A stopped process grants no authority to simulate downtime.
     The counts are actual source ticks, not hours or elapsed wall time.
-    Background cognition participates by default; zero is an explicit research control.
+    Background cognition participates at committed pulse boundaries, including
+    unfinished physical activities. Zero or idle-only are explicit research controls.
     """
     import math
     import time
@@ -459,8 +470,11 @@ def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
         raise ValueError("Background source-tick interval must be 0 to 100000")
     # This is a bounded foreground scheduler. Lease timestamps are real
     # host time; eligibility is accumulated actual source ticks, not a claim
-    # that cognitive ticks equal physical time. No wake on an unfinished
-    # activity or replayed receipt. A stopped run does not invent downtime.
+    # that cognitive ticks equal physical time. A private wake can follow a
+    # committed busy pulse but never an unreconciled or replayed receipt.
+    # A stopped run does not invent downtime.
+    if type(background_during_activity) is not bool:
+        raise TypeError("Explicit boolean activity cognition mode required")
     from .canonical_background import BackgroundLease, issue, revoke
     from .store import new_id
     lease_id = None
@@ -478,6 +492,7 @@ def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
                 state, source, world, authorize=True, steps=steps,
                 _background_lease=lease_id,
                 _background_every_ticks=background_every_ticks,
+                _background_during_activity=background_during_activity,
                 require_phantasmagorium=require_phantasmagorium)
             receipt = result["source_receipt"]
             pulses.append({"request_id": receipt["requestId"],
@@ -504,6 +519,7 @@ def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
             "wall_seconds": time.monotonic() - started,
             "pulses": pulses, "background_receipts": background_receipts,
             "background_every_source_ticks": background_every_ticks,
+            "background_during_activity": background_during_activity,
             "background_clock": result["background_clock"],
             "engineer_only": True,
             "operator_supplied_goals": False}

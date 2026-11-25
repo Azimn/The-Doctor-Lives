@@ -115,6 +115,17 @@ def assess(brain, provider, observation, offers, abstract, affordance_map):
             scores[key] = min(PRESSURE, scores[key] + PRESSURE * goal["importance"])
             links[key].append(goal["id"])
     if len(active) < MAX_ACTIVE:
+        # Independently check the source history once before using any old
+        # task as a prospective ingredient. A protected database row alone
+        # does not authenticate a historical physical accomplishment.
+        history = provider.snapshot()
+        if provider._observation(history) != current:
+            raise PermissionError("Tower changed during prospective appraisal")
+        verified_events = {}
+        for event in history["events"]:
+            if event["kind"] == "completed" and event.get("policyRef"):
+                receipt = provider.event_receipt(event)
+                verified_events[event["policyRef"]] = (event, prefix + "action:" + receipt.event_id, receipt.first_person)
         seen = {(g["room"], g["target"]) for g in active}
         # A fresh goal is possible only on an actual current journey to a
         # location where a prior self-selected task physically succeeded.
@@ -144,6 +155,10 @@ def assess(brain, provider, observation, offers, abstract, affordance_map):
                     or outcome["status"] != "kept"
                     or outcome["origin_policy_id"] != row["id"]):
                 continue
+            proof = verified_events.get(row["id"])
+            if (not proof or proof[0]["operation"] != action
+                    or proof[1] != memory["source"] or proof[2] != memory["text"]):
+                raise PermissionError("Prospective source lacks original physical completion")
             # Use the original abstract tendency as a prospective appraisal.
             # No new target is fabricated and a journey is never forced.
             strength = float(abstract["action_scores"][affordance_map[action]])

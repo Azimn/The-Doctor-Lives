@@ -206,7 +206,7 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertIsNone(split["background_clock"]["pending_wake"])
             # Cold-open every opportunity through the actual canonical host.
             life=run_tower_life(state,source,world,authorize=True,opportunities=8,steps=100,
-                                background_every_ticks=1)
+                                background_every_ticks=1,background_during_activity=False)
             self.assertEqual(life["opportunities_completed"],8)
             self.assertFalse(life["operator_supplied_goals"])
             self.assertGreater(life["new_source_ticks"],0)
@@ -221,6 +221,8 @@ class OriginalTowerTests(unittest.TestCase):
             for wake in life["background_receipts"]:
                 pulse=by_request[wake["wake_id"].removeprefix("tower:")]
                 self.assertFalse(pulse["busy"])
+                self.assertFalse(wake["during_activity"])
+                self.assertTrue(wake["physical_revision_unchanged"])
                 self.assertFalse(pulse["replayed"])
                 self.assertEqual(wake["after_tick"],wake["before_tick"]+1)
                 self.assertEqual(wake["external_actions"],0)
@@ -234,6 +236,28 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertEqual(len(sources),len(set(sources)))
             self.assertIsNone(store.meta(PENDING))
 
+
+    def test_private_cognition_while_body_is_occupied(self):
+        source=Path(os.environ["PRETORIUS_TOWER_SOURCE"])
+        with tempfile.TemporaryDirectory() as temp:
+            state=Path(temp)/"doctor"
+            world=Path(temp)/"tower.json"
+            cfg=dict(DEFAULT_CONFIG)
+            cfg.update(neurons=128,sensory_dim=64,avg_recurrent_degree=8,input_degree=4,
+                       action_population_size=8,seed=1842)
+            initialize_tower(state,source,world,epoch="busy-private-thought",neural_config=cfg)
+            report=run_tower_life(state,source,world,authorize=True,opportunities=3,
+                                  steps=1,background_every_ticks=1)
+            self.assertTrue(report["background_during_activity"])
+            self.assertTrue(report["background_receipts"])
+            occupied=[w for w in report["background_receipts"] if w["during_activity"]]
+            self.assertTrue(occupied)
+            for wake in occupied:
+                self.assertTrue(wake["physical_revision_unchanged"])
+                self.assertEqual(wake["external_actions"],0)
+                self.assertEqual(wake["renderer_calls"],0)
+                self.assertTrue(wake["mnemosyne_policy_id"])
+            self.assertIsNone(report["background_clock"]["pending_wake"])
 
     def test_concrete_competition_reads_relevant_canonical_commitment(self):
         # Controlled integration test, not independent-goal credit.
