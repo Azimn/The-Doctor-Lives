@@ -66,6 +66,15 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state",type=Path,default=Path("state"))
     sp=p.add_subparsers(dest="cmd",required=True)
     sp.add_parser("init")
+    for name in ("tower-init","tower-pulse"):
+        x=sp.add_parser(name, help="Original Small Tower, canonical Doctor rehearsal")
+        x.add_argument("--tower-source",type=Path,required=True)
+        x.add_argument("--world",type=Path,required=True)
+        if name=="tower-init":
+            x.add_argument("--epoch",required=True)
+        else:
+            x.add_argument("--steps",type=int,default=100)
+            x.add_argument("--authorize-world",action="store_true")
     x=sp.add_parser("preview-init", help="Create one new experimental original-Laboratory workspace without overwriting an inhabited state"); x.add_argument("--workspace",type=Path,required=True); x.add_argument("--world-template",type=Path,default=None,help="Use a verified pristine 17-book Laboratory world at genesis, never reseed an existing workspace")
     for name, hint in (
         ("preview-start", "Initialize if absent and run the original Laboratory in the foreground until stopped"),
@@ -113,6 +122,13 @@ def main(argv=None) -> int:
     if a.cmd in ("preview-start", "preview-status", "preview-stop", "preview-resume"):
         from .preview_operator import command
         return command(a.cmd, a.workspace, native_source=getattr(a, "native_affectus_source", None))
+    if a.cmd in ("tower-init","tower-pulse"):
+        from .small_tower import initialize_tower, run_tower_pulse
+        if a.cmd=="tower-init":
+            emit(initialize_tower(a.state,a.tower_source,a.world,epoch=a.epoch))
+        else:
+            emit(run_tower_pulse(a.state,a.tower_source,a.world,authorize=a.authorize_world,steps=a.steps))
+        return 0
     if a.cmd == "preview-init":
         from .lab_preview import initialize_preview
         emit(initialize_preview(a.workspace, world_template=a.world_template))

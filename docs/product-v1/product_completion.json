@@ -80,9 +80,9 @@
       "requirement": "Shared temporal/social world",
       "repository": "Azimn/The-Doctor-Lives",
       "locations": "lab_runtime.py; open_intentions.py; environment_port.py",
-      "status": "unknown",
+      "status": "partial",
       "evidence": "No integrated reciprocal social proof inspected",
-      "next": "Audit Village/Web-Sim; shared clock and separate minds"
+      "next": "Source-pinned Small Tower integration qualification, partner-specific belief and economy endurance; no Village required."
     },
     {
       "id": "R07",
@@ -224,8 +224,8 @@
       ],
       "repository": "Azimn/The-Doctor-Lives",
       "location": "Village integration TBD",
-      "status": "unknown",
-      "evidence": "Initial inventory only; no new qualification asserted"
+      "status": "partial",
+      "evidence": "Small Tower real scripted Rosa Brandl and Mr. McFeely, witnessed events and letter testimony, source-pinned port maps actual encounter to existing canonical relationship updates; full social belief/endurance qualification pending."
     },
     {
       "id": "C10",
@@ -248,8 +248,8 @@
       ],
       "repository": "Azimn/The-Doctor-Lives",
       "location": "Letters, visits, newspapers, clocks; implementation TBD",
-      "status": "unknown",
-      "evidence": "Initial inventory only; no new qualification asserted"
+      "status": "partial",
+      "evidence": "Exact Small Tower world port 0924fff64de70cfdcfcd7655cb274af4eeb2b2d3 offers finite food/fuel/water/tea, gardening, preservation, barter, credit, postal and account settlement. Source pin and same-brain virtual-world adapter, no Village dependency. New rehearsal only; current Lab migration and economy endurance pending."
     },
     {
       "id": "C12",

@@ -30,6 +30,9 @@ class VirtualWorldReceipt:
     first_person: str
     operation: str = ""
     successful: bool = True
+    actor: str | None = None
+    social_valence: float = 0.0
+    social_kind: str | None = None
 
     def __post_init__(self):
         for item in (self.world_id, self.world_epoch, self.event_id):
@@ -39,6 +42,14 @@ class VirtualWorldReceipt:
             raise ValueError("Unknown world receipt kind")
         if type(self.successful) is not bool:
             raise ValueError("World receipt success must be explicit")
+        if (self.actor is not None and (type(self.actor) is not str
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 .,'’_-]{0,79}", self.actor))):
+            raise ValueError("Bounded witnessed actor name required")
+        if (type(self.social_valence) not in (int, float)
+                or not -1 <= self.social_valence <= 1
+                or self.social_kind not in (None, "social", "communication")
+                or (self.actor is None and (self.social_valence or self.social_kind))):
+            raise ValueError("Invalid source-bound social observation")
         if self.kind == "action" and not _SAFE_ID.fullmatch(self.operation):
             raise ValueError("Action receipt requires bounded operation")
         if self.kind == "observation" and self.operation:
@@ -130,8 +141,10 @@ class VirtualWorldEnvironmentPort:
                 first_person=saved[0]["text"], source_kind=self._world_id,
             )
         ingested = port._ingest_verified_virtual_world({
-            "channel": "world", "kind": "virtual_world_observation",
+            "channel": "world", "kind": receipt.social_kind or "virtual_world_observation",
             "source": source, "percept": receipt.first_person,
+            **({"actor": receipt.actor, "social": 0.5, "valence": receipt.social_valence}
+               if receipt.actor is not None else {}),
         }, environment=self, receipt=receipt)
         return EnvironmentFeedback(
             status="admitted", memory_id=ingested["memory_id"],
