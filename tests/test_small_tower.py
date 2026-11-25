@@ -177,6 +177,22 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertEqual(_appraise(successes,("walk",),repeated_unchanged="walk"),
                          ({"walk":0.0},{"walk":[]}))
 
+    def test_procedure_survives_more_than_64_unrelated_authentic_outcomes(self):
+        from doctor_lives.tower_procedure import appraise, CAP
+        room = "I am in my garden path."
+        def event(action,i,loc=room,success=True):
+            return {"action":action,"room":loc,"success":success,
+                    "source":"source-"+str(i),"memory_id":"memory-"+str(i)}
+        practices = [event("tend",1),event("walk",2),event("tend",3),event("walk",4)]
+        later = [event("work",i,"I am in my laboratory.") for i in range(5,75)]
+        history = practices+later+[event("tend",75)]
+        self.assertEqual(appraise(history[-64:],room,("walk",))[0]["walk"],0)
+        self.assertEqual(appraise(history,room,("walk",)),({"walk":CAP},
+                         {"walk":["memory-1","memory-2","memory-3","memory-4"]}))
+        self.assertEqual(appraise(history,room,("draw_water",))[0]["draw_water"],0)
+        self.assertEqual(appraise(history+[event("walk",76,success=False),event("tend",77)],
+                                  room,("walk",))[0]["walk"],0)
+
     def test_independent_outcomes_saturate_and_reverse(self):
         from doctor_lives.tower_development import _appraise
         good = [("work", True, "memory-" + str(i), "source-" + str(i))

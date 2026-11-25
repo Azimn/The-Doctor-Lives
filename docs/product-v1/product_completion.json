@@ -792,7 +792,7 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "three_thousand_duration_demonstrated_procedural_and_live_preservation_gate_open",
+      "status": "uninterrupted_duration_and_all_ten_organs_passed_procedural_window_failure_reproduced",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false,
       "offline_kit": {
@@ -982,6 +982,47 @@
         "other_specific_pressure": 0,
         "source": "same unchanged admitted garden scene and repeated completed walk; no fatigue/hunger cue; 58 walks and 16 conversations across 3363 ticks",
         "repair": "Remove positive contextual reliability bonus only for immediately repeated, successfully completed action with byte-identical current admitted perception and latest authentic outcome. Retain negative failures, original recency weights, motor authority, other choices, all procedure criteria. Existing appraisal correction, no new mechanism."
+      },
+      "attempt_deace65": {
+        "head": "deace6582fdb96818638abdab8b45788ad625115",
+        "source_epoch": "p3-preserve-61de7b8-fresh",
+        "start_ticks": 3363,
+        "end_ticks": 6615,
+        "additional_ticks": 3252,
+        "returned_receipt_ticks": 3252,
+        "uninterrupted": true,
+        "history_entries": 2202,
+        "initial_history_entries": 1189,
+        "history_sha256": "3af5589f2701c09ac43183c17ce6c630597299000ccec9b8ae2362c161e6a45b",
+        "initial_history_prefix_intact": true,
+        "completed_activities": 120,
+        "private_wakes": 26,
+        "busy_wakes": 10,
+        "independent_sleeps": 5,
+        "organs": "10/10",
+        "supporting": "8/9",
+        "prospective_goals_kept": 15,
+        "checkpoint_sha256": "e57fd4ebf9273ff33a4dfffc78a56bd9d679afbf50bbd143dd9843d6ec1b056f",
+        "live_finite_deferrals": 0,
+        "qualification": false
+      },
+      "procedural_retention_repair": {
+        "status": "candidate_live_retest_required",
+        "evidence": "full authenticated replay of 255 original physical outcomes; one genuine eligible opportunity omitted by 64-global-outcome cutoff",
+        "policy": "policy_16cc12f022af492cb0a0919ddb0a7675",
+        "selected_action": "move_kitchen",
+        "cue": "tend",
+        "candidate": "walk",
+        "old_pressure": 0,
+        "new_replayed_pressure": 0.025,
+        "source_memory_ids": [
+          "mem_8fe370c5ae094af3839bc7695d15c62f",
+          "mem_87a543a6ac5a4795a85d426c5ead02bf",
+          "mem_4bd1753a7c8a49f1bb7d9b684732151c",
+          "mem_74d668b82efd4b14b67ec97752988619"
+        ],
+        "physical_cue_pressure_to_kitchen": 0.16,
+        "repair": "Use complete source-authenticated chronological outcomes from same source epoch in one SQLite read snapshot; preserve distinct-step, two practices, last four relevant pairs, failures, feasible offer, and no motor authority. Existing retention fix only."
       }
     },
     "ipseity_causal_test": {
