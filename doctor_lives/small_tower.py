@@ -196,12 +196,8 @@ def _choose(runtime, snapshot, observation_id):
         return None, None
     if any(o["key"] not in MAP or first_person_line(o["text"]) != o["text"] for o in offers):
         raise PermissionError("Unexpected or unsafe physical offer")
-    # Only natural-language perception and actual possible actions enter
-    # the original recurrent cognitive policy. Host map is explicit and
-    # bounded; no independent Tower chooser or model-owned motor.
-    narrative = " ".join(snapshot["narrative"] + [o["text"] for o in offers])
-    decision = brain.think("small_tower_native_opportunity", decision_text=narrative)
-    scores = {o["key"]:.20*decision["action_scores"][MAP[o["key"]]] for o in offers}
+    # The adapter translates physical cues only. Original Noesis owns
+    # concrete competition and the canonical policy/thought record.
     text = " ".join(snapshot["narrative"])
     # Reviewed bounded physical cues, not hidden store quantities.
     pressure = {}
@@ -229,14 +225,21 @@ def _choose(runtime, snapshot, observation_id):
     if "I see Mr. McFeely" in text:
         pressure["meet_carrier"]=.12
         pressure["check_mail"]=.08
-    for key in scores:
-        scores[key]+=pressure.get(key,0)
-    choice=max(sorted(scores),key=scores.get)
+    from .noesis_situated_choice import select_world_affordance
+    observation_source = ("virtual-world:small-tower:" + snapshot["epoch"]
+                          + ":observation:" + snapshot["revision"][:48])
+    decision = select_world_affordance(
+        brain, observation_memory_id=observation_id, observation_source=observation_source,
+        narrative=snapshot["narrative"], offers=offers, affordance_map=MAP,
+        regulatory_pressure=pressure)
+    choice, scores = decision["selected_action"], decision["action_scores"]
     with brain.store.transaction() as db:
         brain.store.set_meta("small-tower:choice:"+decision["policy_decision_id"],
             json.dumps({"revision":snapshot["revision"],"choice":choice,
                         "offers":sorted(scores),"scores":scores,"observation_id":observation_id,
-                        "host_mapped_abstract_tendency":True},sort_keys=True),db)
+                        "host_mapped_abstract_tendency":False,
+                        "abstract_policy_id":decision["abstract_policy_id"],
+                        "selector_authority":"original_noesis"},sort_keys=True),db)
         brain.store.bump_state_version(db)
     return choice,decision["policy_decision_id"]
 

@@ -354,3 +354,97 @@ def select_with_original_noesis(
         "observation_memory_id": observation_memory_id,
         "policy_version": active_version,
     }
+
+
+
+def select_world_affordance(brain, *, observation_memory_id, observation_source,
+                            narrative, offers, affordance_map, regulatory_pressure):
+    """Original Noesis concrete choice on a trusted world's admitted perception.
+
+    The adapter supplies feasible offers and bounded physical cue pressure,
+    not the selected action. Canonical abstract deliberation supplies the
+    common prior. Reapply its existing state families to each offer's own
+    semantic cues so distinct actions sharing a neural tendency can compete
+    on relevant history, commitments, concerns and relationships. This is a
+    bounded engineering projection, not a new learned competence mechanism.
+    """
+    observation = brain.store.get_memory(observation_memory_id)
+    if (observation is None or not observation["active"]
+            or observation["evidence_class"] != "lived_runtime_memory"
+            or observation["source"] != observation_source
+            or not observation_source.startswith("virtual-world:small-tower:")
+            or not observation["text"].startswith("I ")):
+        raise PermissionError("Current authenticated Tower observation required")
+    if (not offers or len(offers) > 32 or len({o["key"] for o in offers}) != len(offers)
+            or any(o["key"] not in affordance_map
+                   or affordance_map[o["key"]] not in ACTIONS
+                   or not o["text"].startswith("I could ") for o in offers)):
+        raise ValueError("Bounded unique feasible offers required")
+    if any(type(v) not in (int, float) or not 0 <= v <= .20
+           for v in regulatory_pressure.values()):
+        raise ValueError("Invalid bounded physical cue pressure")
+    context = " ".join([*narrative, *(o["text"] for o in offers)])
+    abstract = brain.think("small_tower_native_opportunity", decision_text=context)
+    direct, ranked = brain._ranked_memory_sets(48, query=context, audit=True)
+    base, scores, local, candidate_ids = {}, {}, {}, [observation_memory_id]
+    by_key = {o["key"]: o for o in offers}
+    for key in sorted(by_key):
+        offer = by_key[key]
+        tendency = affordance_map[key]
+        # Common words such as "could" must not activate the same commitment
+        # for every alternative. Offer labels remain actual perceived options.
+        cue = key.replace("_", " ") + " " + offer["text"][8:]
+        _, _, appraisal = brain._state_policy_scores(
+            ranked, decision_text=cue, direct_history_ranked=direct)
+        families = appraisal["families"]
+        # A relevant commitment is an action-specific persistence pressure,
+        # even if its concrete continuation happens to map to explore/create.
+        commitment = max(families["commitments"][tendency],
+                         families["commitments"]["persist"])
+        specific = (commitment + families["history"][tendency]
+                    + families["relationships"][tendency]
+                    + families["concerns"][tendency])
+        specific = max(-.05, min(.05, specific))
+        base[key] = NEURAL_WEIGHT * abstract["action_scores"][tendency]
+        scores[key] = base[key] + regulatory_pressure.get(key, 0.0) + specific
+        local[key] = {"tendency": tendency, "cue": cue,
+                      "commitment": commitment, "specific_pressure": specific,
+                      "source_ids": appraisal["source_ids"],
+                      "families": families}
+        candidate_ids.extend(appraisal["source_ids"]["history"])
+    selected = max(sorted(scores), key=scores.get)
+    selected_ids = list(dict.fromkeys([observation_memory_id]
+                        + local[selected]["source_ids"]["history"]))
+    evidence = {"version": "noesis-world-affordance-v1",
+                "abstract_policy_id": abstract["policy_decision_id"],
+                "observation_memory_id": observation_memory_id,
+                "selector_authority": "original_noesis",
+                "physical_authority": "none",
+                "offer_appraisals": local,
+                "physical_cue_pressure": {k: regulatory_pressure.get(k, 0.0)
+                                          for k in scores},
+                "candidate_base_scores": base,
+                "candidate_final_scores": scores}
+    pid, tid = new_id("policy"), new_id("thought")
+    with brain.store.transaction() as db:
+        db.execute(
+            """INSERT INTO policy_decisions
+            (id,tick,created_at,trigger,selected_action,base_action_scores_json,
+             state_pressure_json,action_scores_json,candidate_record_ids_json,
+             selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (pid, brain.store.tick, utc_now(), "noesis_world_affordance",
+             selected, json.dumps(base, sort_keys=True), json.dumps(evidence, sort_keys=True),
+             json.dumps(scores, sort_keys=True), json.dumps(list(dict.fromkeys(candidate_ids))),
+             json.dumps(selected_ids), int(brain.neural.tick),
+             brain._neural_checkpoint_sha256(), "noesis-world-affordance-v1"))
+        db.execute(
+            """INSERT INTO thoughts
+            (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
+            VALUES(?,?,?,?,?,?,?)""",
+            (tid, brain.store.tick, "I intend to " + by_key[selected]["text"][8:],
+             "noesis_world_affordance", "noesis_world_affordance:" + pid,
+             json.dumps(selected_ids), json.dumps(scores, sort_keys=True)))
+        brain.store.bump_state_version(db)
+    return {"policy_decision_id": pid, "abstract_policy_id": abstract["policy_decision_id"],
+            "selected_action": selected, "action_scores": scores, "appraisals": local}

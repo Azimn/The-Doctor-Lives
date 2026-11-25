@@ -33,6 +33,16 @@ class OriginalTowerTests(unittest.TestCase):
         choice=json.loads(store.meta("small-tower:choice:"+result["policy_id"]))
         self.assertIn(choice["choice"],choice["offers"])
         self.assertTrue(choice["observation_id"])
+        self.assertFalse(choice["host_mapped_abstract_tendency"])
+        self.assertEqual(choice["selector_authority"], "original_noesis")
+        from contextlib import closing
+        with closing(store.connect()) as db:
+            policy = db.execute("SELECT selected_action,state_pressure_json FROM policy_decisions "
+                                "WHERE id=?", (result["policy_id"],)).fetchone()
+        self.assertEqual(policy["selected_action"], result["choice"])
+        appraisals = json.loads(policy["state_pressure_json"])
+        self.assertEqual(appraisals["abstract_policy_id"], choice["abstract_policy_id"])
+        self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
         self.assertIsNone(store.meta(PENDING))
         self.assertTrue(any(m["source"].startswith("virtual-world:small-tower:") for m in store.memories()))
         self.assertTrue(SmallTowerSource(source,world).snapshot()["revision"])
@@ -127,3 +137,50 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertGreater(len(sources),0)
             self.assertEqual(len(sources),len(set(sources)))
             self.assertIsNone(store.meta(PENDING))
+
+
+    def test_concrete_competition_reads_relevant_canonical_commitment(self):
+        # Controlled integration test, not independent-goal credit.
+        from doctor_lives.virtual_world_port import VirtualWorldEnvironmentPort
+        from doctor_lives.noesis_situated_choice import select_world_affordance
+        from contextlib import closing
+        source = Path(os.environ["PRETORIUS_TOWER_SOURCE"])
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._cleanup, temp)
+        state, world = Path(temp.name)/"doctor", Path(temp.name)/"tower.json"
+        cfg = dict(DEFAULT_CONFIG)
+        cfg.update(neurons=128,sensory_dim=64,avg_recurrent_degree=8,input_degree=4,
+                   action_population_size=8,seed=1842)
+        initialize_tower(state,source,world,epoch="concrete-commitment",neural_config=cfg)
+        provider = SmallTowerSource(source,world)
+        snapshot = provider.snapshot()
+        runtime = SixOrganRuntime.open(state)
+        brain = runtime._port.brain
+        port = VirtualWorldEnvironmentPort(runtime,provider,authorized=True)
+        observation = port._admit(provider._observation(snapshot),kind="observation")
+        offers = snapshot["offers"]
+        terms = {o["key"]:brain._tokens(o["key"].replace("_"," ") + " " + o["text"][8:])
+                 for o in offers}
+        unique = [(key,term) for key in sorted(terms) for term in sorted(terms[key])
+                  if all(term not in other for k,other in terms.items() if k != key)]
+        self.assertGreater(len(offers),1)
+        self.assertTrue(unique)
+        target, term = unique[0]
+        kwargs = dict(observation_memory_id=observation.memory_id,
+                      observation_source=brain.store.get_memory(observation.memory_id)["source"],
+                      narrative=snapshot["narrative"], offers=offers,
+                      affordance_map=small_tower.MAP, regulatory_pressure={})
+        baseline = select_world_affordance(brain,**kwargs)
+        commitment = brain.add_commitment(term,importance=1.0)
+        changed = select_world_affordance(brain,**kwargs)
+        self.assertIn(commitment,changed["appraisals"][target]["source_ids"]["commitments"])
+        self.assertGreater(changed["appraisals"][target]["commitment"],
+                           baseline["appraisals"][target]["commitment"])
+        for key in terms:
+            if key != target:
+                self.assertNotIn(commitment,changed["appraisals"][key]["source_ids"]["commitments"])
+        self.assertEqual(provider.snapshot(),snapshot)
+        with closing(brain.store.connect()) as db:
+            row = db.execute("SELECT selected_action FROM policy_decisions WHERE id=?",
+                             (changed["policy_decision_id"],)).fetchone()
+        self.assertEqual(row["selected_action"],changed["selected_action"])
