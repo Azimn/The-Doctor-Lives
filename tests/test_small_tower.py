@@ -113,6 +113,32 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         prior["observed_text"] = "I am in my kitchen and hearth. I can see Kettle."
         self.assertIsNone(unavailable_activity("tea","kitchen","garden",{"move_kitchen"},known))
 
+    def test_preservation_waits_for_relevant_change_not_a_timer(self):
+        from doctor_lives.tower_prospective import unavailable_activity, KITCHEN_RECHECK
+        scene = "I am in my kitchen and hearth. I can see Stove. I can see Stores shelf."
+        prior = {"offers":["eat","cook"],"elapsed":800,"observed_text":scene,
+                 "recheck_memory_ids":{"preserve":[],"tea":["water-only"]}}
+        known = {"kitchen":prior}
+        self.assertEqual(unavailable_activity("preserve","kitchen","library",{"move_kitchen"},known),
+                         "awaiting_observed_replenishment")
+        self.assertEqual(unavailable_activity("preserve","kitchen","kitchen",{"eat"},known),
+                         "currently_unavailable")
+        self.assertIsNone(unavailable_activity("preserve","kitchen","kitchen",{"preserve"},known))
+        self.assertNotIn("I drew a measured supply of water.", KITCHEN_RECHECK["preserve"])
+        prior["recheck_memory_ids"]["preserve"] = ["verified-tending-outcome"]
+        self.assertIsNone(unavailable_activity("preserve","kitchen","garden",{"move_kitchen"},known))
+        prior["recheck_memory_ids"]["preserve"] = []
+        prior["observed_text"] = "I am in my kitchen and hearth. I can see Stores shelf."
+        self.assertIsNone(unavailable_activity("preserve","kitchen","garden",{"move_kitchen"},known))
+
+    def test_surplus_trade_can_address_observed_tea_shortage(self):
+        from doctor_lives.tower_regulation import trade_appraisal
+        tea = "I can see Stores shelf. I can see that my tea is running low."
+        self.assertEqual(trade_appraisal(tea,{"trade"}),{"trade":.14})
+        self.assertEqual(trade_appraisal(tea,{"converse"}),{})
+        self.assertEqual(trade_appraisal(tea+" I can see that my edible provisions are running low.",{"trade"}),{})
+        self.assertEqual(trade_appraisal("I can see Stores shelf. I can see that my water is running low.",{"trade"}),{})
+
     def test_repeated_single_activity_is_not_a_procedural_sequence(self):
         from doctor_lives.tower_procedure import appraise
         episodes = [{"action":"rest","room":"bedchamber","success":True,

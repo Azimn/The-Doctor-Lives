@@ -792,7 +792,7 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "duration_and_ten_organs_passed_at_prior_head_procedural_and_finite_supply_deferral_open",
+      "status": "prior_duration_ten_organs_passed_procedural_and_preservation_retest_open",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false,
       "offline_kit": {
@@ -929,6 +929,29 @@
         "status": "candidate",
         "cause": "Actual continuation showed the open tea intention reactivated every 100 source ticks even though the last admitted kitchen observation showed low tea and no legal tea offer. Timer-driven pointless return to kitchen.",
         "repair": "Existing prospective deferral uses the last admitted stores/kettle/low-tea perception and actual relevant replenishment outcomes; fresh feasible offer immediately supersedes deferral. Retain ownership, do not grant action or assert inventory from absence; no new learning mechanism."
+      },
+      "preservation_followup": {
+        "status": "candidate_pending_live_test",
+        "prior_head": "640683e7054aad3d5a07ac5eb0052276cb6a4290",
+        "prior_rehearsal_last_reported_additional_ticks": 2091,
+        "checkpoint_recovery": "prior 3030 evidence archive available, but no transferable brain/world/neural checkpoint from last run located; not a continuation of that individual",
+        "cause": "generic timed availability recheck reactivated blocked preservation intention despite no observed relevant material change",
+        "source_contract": "original actions.js requires six fresh portions, fuel, capacity; original economy.js offers surplus trades for fuel OR tea. No numeric hidden-state read in cognitive appraisal.",
+        "repair": "reuse existing finite-resource deferral for visible stove/stores unavailable preservation, with action-specific witnessed changes; recognize legally offered surplus trade against remembered tea or fuel shortage when food not observed low. Retain ownership, no new organ or learning."
+      },
+      "latest_r4": {
+        "head": "640683e7054aad3d5a07ac5eb0052276cb6a4290",
+        "run": 45582946150,
+        "job": 139103237074,
+        "status": "PASS",
+        "activities": [
+          "read_book",
+          "rest",
+          "work"
+        ],
+        "validated_goals": 5,
+        "origin_observations": 34,
+        "observation_seconds": 600
       }
     },
     "ipseity_causal_test": {

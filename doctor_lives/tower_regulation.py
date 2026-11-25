@@ -120,6 +120,19 @@ def supply_route(remembered_store, completed_texts, feasible, last_garden_offers
     return {"move_garden":pressure} if pressure else {}
 
 
+def trade_appraisal(remembered_store, feasible):
+    """Appraise an actual offered surplus trade for a perceived shortage."""
+    if ("trade" not in feasible or not remembered_store
+            or "I can see Stores shelf." not in remembered_store
+            or "edible provisions are running low" in remembered_store):
+        return {}
+    # Original tradeOffer can exchange surplus food for fuel OR tea.
+    if ("fuel is running low" in remembered_store
+            or "tea is running low" in remembered_store):
+        return {"trade": .14}
+    return {}
+
+
 def remembered_supply(store, observation, offers):
     """Use the latest same-epoch stores perception and later lived outcomes."""
     if (not observation or observation["external"] or not observation["active"]
@@ -160,6 +173,7 @@ def remembered_supply(store, observation, offers):
     completed = {row["text"] for row in outcomes}
     feasible = {offer["key"] for offer in offers}
     scores = supply_appraisal(remembered["text"], completed, feasible)
+    scores.update(trade_appraisal(remembered["text"], feasible))
     scores.update(supply_route(remembered["text"], completed, feasible,
                                None if garden is None else set(garden["offers"]),
                                0 if garden is None else garden["elapsed"]))

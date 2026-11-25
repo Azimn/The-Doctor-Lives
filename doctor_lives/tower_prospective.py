@@ -89,20 +89,41 @@ def deferred_need(action, narrative, latest_store, last_garden, room, feasible):
     return None
 
 
+# These are witnessed changes that can justify rechecking an unavailable
+# kitchen task. A completion is not proof that stock is sufficient.
+KITCHEN_RECHECK = {
+    "tea": frozenset(("I traded provisions with the caller on terms I chose.",
+                      "I opened a package delivered through the post.",
+                      "I gathered fallen wood for the hearth.",
+                      "I drew a measured supply of water.")),
+    "preserve": frozenset(("I tended the patch beside the tower.",
+                           "I opened a package delivered through the post.",
+                           "I gathered fallen wood for the hearth.",
+                           "I ate from the preserved provisions.",
+                           "I cooked a modest meal from finite stores.",
+                           "I traded provisions with the caller on terms I chose.")),
+}
+
+
 def unavailable_activity(action, destination, room, feasible, known):
     """A remembered intention need not cause repeated travel to a blocked task."""
     if destination == room:
         return None if action in feasible else "currently_unavailable"
     prior = known.get(destination)
-    if prior and action == "tea" and action not in prior["offers"]:
+    if prior and action in KITCHEN_RECHECK and action not in prior["offers"]:
         perception = prior.get("observed_text", "")
-        if ("I can see Stores shelf." in perception
-                and "I can see Kettle." in perception
-                and "I can see that my tea is running low." in perception
-                and not prior.get("replenishment_memory_ids")):
-            # A finite missing ingredient is not restored by elapsed time.
-            # A relevant witnessed replenishment can justify a fresh check,
-            # but does not itself establish that tea is now available.
+        visible = "I can see Stores shelf." in perception
+        blocked = ((action == "tea" and "I can see Kettle." in perception
+                    and "I can see that my tea is running low." in perception)
+                   or (action == "preserve" and "I can see Stove." in perception))
+        # Absence of a feasible offer while the objects are perceived is
+        # evidence of blockage, not evidence of any particular stock count.
+        # Preservation requires fresh produce, fuel and capacity in the
+        # original source; a timer alone establishes none of those.
+        changes = prior.get("recheck_memory_ids", {}).get(action)
+        if changes is None:
+            changes = prior.get("replenishment_memory_ids", []) if action == "tea" else []
+        if visible and blocked and not changes:
             return "awaiting_observed_replenishment"
     if prior and action not in prior["offers"] and prior["elapsed"] < 100:
         return "recently_observed_unavailable"
@@ -132,15 +153,15 @@ def last_room_offers(store, prefix):
                     # Relevant actions are actual admitted physical outcomes,
                     # not hidden inventory or a timer. These may warrant
                     # rechecking a previously unavailable tea offer.
-                    relevant = ("I traded provisions with the caller on terms I chose.",
-                                "I opened a package delivered through the post.",
-                                "I gathered fallen wood for the hearth.",
-                                "I drew a measured supply of water.")
-                    known[room]["replenishment_memory_ids"] = [r["id"] for r in db.execute(
+                    outcomes = db.execute(
                         "SELECT id,text FROM memories WHERE active=1 AND external=0 "
                         "AND evidence_class='lived_runtime_memory' AND source LIKE ? "
                         "AND created_tick>? ORDER BY created_tick,id",
-                        (prefix+"action:%",memory["created_tick"])) if r["text"] in relevant]
+                        (prefix+"action:%",memory["created_tick"])).fetchall()
+                    known[room]["recheck_memory_ids"] = {
+                        action: [r["id"] for r in outcomes if r["text"] in relevant]
+                        for action, relevant in KITCHEN_RECHECK.items()}
+                    known[room]["replenishment_memory_ids"] = known[room]["recheck_memory_ids"]["tea"]
             if len(known) == len(ROOMS):
                 break
     return known

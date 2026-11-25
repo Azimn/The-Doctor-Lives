@@ -220,10 +220,6 @@ def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
     supply = remembered_supply(brain.store, current_memory, offers)
     for key, amount in supply["scores"].items():
         pressure[key] = max(amount, pressure.get(key, 0.0))
-    # Only a fuel shortage can be addressed by the source's available trade.
-    # A trade does not create water or edible provisions.
-    if "fuel is running low" in text and "provisions are running low" not in text:
-        pressure["trade"]=.14
     if "I see Rosa Brandl here" in text:
         pressure["converse"]=.10
         pressure["settle_account"]=.12
