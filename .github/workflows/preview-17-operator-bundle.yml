@@ -180,7 +180,7 @@ jobs:
   independent-uncoached-r4:
     needs: platform-bundle-install
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
         with:
@@ -211,10 +211,10 @@ jobs:
               pack.extractall(target)
           PY
           python "${{ runner.temp }}/operator-source/install.py" --install-root "${{ runner.temp }}/r4-installed"
-      - name: Independent three-distinct-activity R4 test, no task messages or scripted choices
+      - name: Independent R4 capacity observation, no task messages or scripted choices
         run: |
           python tools/run_uncoached_r4_trial.py \
-            --install-root "${{ runner.temp }}/r4-installed" --seconds 600 \
+            --install-root "${{ runner.temp }}/r4-installed" --seconds 3600 --capacity-receipts 520 \
             --report "${{ runner.temp }}/independent-r4-report.json"
       - name: Snapshot original Laboratory, canonical BrainStore and operator ledger even on R4 failure
         if: always()

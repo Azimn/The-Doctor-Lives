@@ -1,9 +1,9 @@
 {
   "schema": "pretorius.product-completion.v1",
   "objective": "Complete the existing Doctor Septimus Pretorius as one persistent embodied artificial individual; product and engineering qualification primary",
-  "as_of": "2026-11-24",
-  "branch": "release/pretorius-complete-v1",
-  "pr": 109,
+  "as_of": "2026-11-25",
+  "branch": "integration/pretorius-v1-unified-completion",
+  "pr": 124,
   "canonical_main": "784cff39d58a7fe46bb5e4ffc16e0284e6663c78",
   "baseline_candidate_b": "8cf836a927cfbbbe5469d805831f3dac200568f2",
   "m6": "62f372c47959d1f577be1e980d4ae191981ac83d",
@@ -792,7 +792,7 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "uninterrupted_duration_and_all_ten_organs_passed_procedural_window_failure_reproduced",
+      "status": "recovered_checkpoint_offline_mechanical_pass_reported_fresh_ci_qualification_open",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false,
       "offline_kit": {
@@ -1007,7 +1007,7 @@
         "qualification": false
       },
       "procedural_retention_repair": {
-        "status": "candidate_live_retest_required",
+        "status": "offline_mechanical_retest_reported_pass_ci_longitudinal_open",
         "evidence": "full authenticated replay of 255 original physical outcomes; one genuine eligible opportunity omitted by 64-global-outcome cutoff",
         "policy": "policy_16cc12f022af492cb0a0919ddb0a7675",
         "selected_action": "move_kitchen",
@@ -1023,6 +1023,29 @@
         ],
         "physical_cue_pressure_to_kitchen": 0.16,
         "repair": "Use complete source-authenticated chronological outcomes from same source epoch in one SQLite read snapshot; preserve distinct-step, two practices, last four relevant pairs, failures, feasible offer, and no motor authority. Existing retention fix only."
+      },
+      "latest_offline_mechanical_evidence": {
+        "head": "84bceee23a4043cb645709ffad474a8ea579343b",
+        "provenance": "PR #124 exact-head evidence report; underlying offline archive not independently reopened in this session",
+        "start_ticks": 6615,
+        "end_ticks": 9649,
+        "additional_ticks": 3034,
+        "organs": "10/10",
+        "supporting": "9/9",
+        "completed_activities": 99,
+        "private_wakes": 25,
+        "busy_wakes": 10,
+        "independent_sleeps": 5,
+        "donor_nights": 5,
+        "waking_fancy_operations": 3,
+        "dream_recollections": 5,
+        "prospective_goals_kept": 20,
+        "positive_procedural_decisions": 6,
+        "history_entries": 3080,
+        "checkpoint_sha256": "c94d7884e98f5603453b868acadd457345ba60f8b0d3cb1b575eb27fe8ae4614",
+        "fresh_individual": false,
+        "ci_longitudinal": false,
+        "full_qualification": false
       }
     },
     "ipseity_causal_test": {
@@ -1121,6 +1144,71 @@
       "repair": "reject before Conclave writes; preserve positive legacy appraisal on isolated unbound copy and test negative bound product plus actual owned selector",
       "status": "successor_ci_pending",
       "universal_coverage": false
+    },
+    "r4_capacity": {
+      "owner_approved": "2026-11-25",
+      "prior_head": "84bceee23a4043cb645709ffad474a8ea579343b",
+      "prior_run": 45613311882,
+      "prior_job": 139208820435,
+      "prior_source_audit": "FAIL: three_distinct_uncoached_activities_not_observed",
+      "operator_error": null,
+      "source_replay": true,
+      "comparison_run": 45582946150,
+      "comparison_job": 139103237074,
+      "comparison_source_audit": "PASS",
+      "comparison_world_receipt_delta": 260,
+      "prior_world_receipt_delta": 179,
+      "comparison_goals": 5,
+      "prior_goals": 3,
+      "comparison_origins": 34,
+      "prior_origins": 21,
+      "forensic_driver_report": {
+        "matching_overlapping_decisions": 30,
+        "compared_decisions": 30,
+        "passing_tick79_seconds": 404.4,
+        "failing_tick79_seconds": 585.7,
+        "passing_rest_intention_tick": 84,
+        "independently_replayed_in_this_session": false
+      },
+      "gate": {
+        "receipt_progress_target": 520,
+        "watchdog_seconds": 3600,
+        "required_source_authenticated_independent_activities": [
+          "read_book",
+          "rest",
+          "work"
+        ],
+        "original_source_replay": true,
+        "zero_operator_errors": true,
+        "missing_activity": "INCONCLUSIVE; nonzero CI exit; no incapacity inference",
+        "motivation_changes": false
+      },
+      "status": "implementation_candidate_ci_pending",
+      "throughput_profile": "open; historic aggregate receipt progress verified, per-function timings not available"
+    },
+    "character_fidelity_observation": {
+      "status": "unqualified",
+      "after_core_gates": true,
+      "principle": "Psychological coherence including irrationality; physiological needs inform rather than dictate choices; physical consequences remain real; relationship-specific influence.",
+      "examples": "Observe naturally arising anger and shame after dismissal, elation after successful homunculus, obsession and interpersonal differentiation. No scripted events, actions or emotions.",
+      "classification": [
+        "observed",
+        "not observed",
+        "unsupported by current implementation"
+      ],
+      "evidence": [
+        "source event",
+        "organ contributions",
+        "Noesis decision",
+        "first-person history",
+        "physical and interpersonal consequences"
+      ],
+      "absence_is_not_failure": true
     }
+  },
+  "historical_register_origin": {
+    "branch": "release/pretorius-complete-v1",
+    "pr": 109,
+    "as_of": "2026-11-24"
   }
 }

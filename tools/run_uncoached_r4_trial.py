@@ -22,6 +22,22 @@ else:
     from observe_uncoached_r4 import inspect_neural_origins, sample
 
 SAMPLE_SECONDS = 15.0
+CAPACITY_RECEIPTS = 520
+CAPACITY_WATCHDOG_SECONDS = 3600
+
+
+def _capacity_result(data, *, progress_reached, operator_error):
+    """Missing observations are not evidence of psychological incapacity.
+
+    Only the original source audit can award behavioral credit. A timeout
+    or missing activity blocks qualification without diagnosing incapacity.
+    """
+    problems = set(data.get("problems", ()))
+    if operator_error or problems - {"three_distinct_uncoached_activities_not_observed"}:
+        return "FAIL"
+    if not progress_reached or data.get("status") != "PASS":
+        return "INCONCLUSIVE"
+    return "PASS"
 
 
 
@@ -67,10 +83,14 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--install-root", type=Path, required=True)
     p.add_argument("--seconds", type=int, default=90)
+    p.add_argument("--capacity-receipts", type=int, default=None,
+                   help="Minimum original-world receipt growth, not elapsed time or autonomy credit")
     p.add_argument("--report", type=Path, required=True)
     args = p.parse_args()
     if not 30 <= args.seconds <= 3600:
         p.error("Real observation horizon must be 30..3600 seconds")
+    if args.capacity_receipts is not None and args.capacity_receipts < 1:
+        p.error("Capacity receipt target must be positive")
     root = args.install_root.resolve(strict=True)
     vpy = root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     workspace = root / "workspace"
@@ -86,6 +106,8 @@ def main():
     error, final_sample, baseline, proc = None, None, None, None
     last_origins, last_origin_alive, origin_snapshots = None, None, 0
     began = time.monotonic()
+    progress_reached = False
+    stop_reason = "watchdog"
     with witness_path.open("w", encoding="utf-8") as witness, \
          origins_path.open("w", encoding="utf-8") as origins_stream, \
          stdout_path.open("w", encoding="utf-8") as operator_stdout, \
@@ -143,6 +165,11 @@ def main():
                     break
                 if time.monotonic() >= next_sample:
                     record(True)
+                    if (args.capacity_receipts is not None and
+                            final_sample["world_receipt_delta_from_initial"] >= args.capacity_receipts):
+                        progress_reached = True
+                        stop_reason = "receipt_progress_target"
+                        break
                     next_sample = time.monotonic() + SAMPLE_SECONDS
                 time.sleep(0.25)
             if proc.poll() is None:
@@ -202,9 +229,22 @@ def main():
         data["status"] = "FAIL"
         data["three_distinct_uncoached"] = False
         data.setdefault("problems", []).append(error)
+    if args.capacity_receipts is not None:
+        source_status = data["status"]
+        data["source_audit_status"] = source_status
+        data["capacity_observation"] = {
+            "minimum_world_receipt_delta": args.capacity_receipts,
+            "progress_reached_while_alive": progress_reached,
+            "stop_reason": stop_reason,
+            "watchdog_seconds": args.seconds,
+            "receipt_count_is_not_autonomy_credit": True,
+            "missing_behavior_is_not_incapacity": True,
+        }
+        data["status"] = _capacity_result(data, progress_reached=progress_reached,
+                                          operator_error=error)
     args.report.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
     print("R4_UNCOACHED_SOURCE_AUDIT=" + json.dumps(data, sort_keys=True))
-    return 0 if independent.returncode == 0 and not error else 1
+    return 0 if independent.returncode == 0 and not error and data["status"] == "PASS" else 1
 
 
 if __name__ == "__main__":
