@@ -42,3 +42,7 @@ The original reviewed Affectus source at Azimn/Sensus-Communis-Artificialis comm
 ## Original Sensus in ordinary Tower life
 
 The exact source-verified Sensus core (same Git blob as the reviewed Sensus acquisition donor) binds typed claims from the authenticated and already admitted Tower perception. Vision here means semantic visible-object descriptions supplied by the simulation, not pixel inference. Interoception and spatial channels are separate. Its short-lived working object files, conflicts and absence of input channels persist in canonical BrainStore. Only uncontested admitted lines feed the existing Noesis choice and regulatory cue interpretation. It cannot authorize physical action or turn an absent channel into invented evidence.
+
+## Tower Expression delivery
+
+The loopback browser now uses the same guarded local-turn Expression journal as the terminal. A successful HTTP write and flush acknowledges the exact response and permits the original written-expression recollection. An uncertain attempted write is not automatically repeated. Browser playback remains an optional operator presentation, not authenticated audible speech, character-specific voice training, or proof of human receipt.

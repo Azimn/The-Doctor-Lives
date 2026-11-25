@@ -1,16 +1,36 @@
 """Operator-only loopback scene and conversational audio surface.
 
 No raw world envelope or engine state is delivered to the subject renderer.
-Browser speech is operator presentation, not proof of a lived utterance.
+A successful local HTTP text write may be acknowledged by the original
+Expression journal; browser audio is not proof of audible speech.
 """
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import logging
 import secrets
 from .small_tower import SmallTowerSource,run_tower_pulse,_bind
 from .lab_runtime import _exclusive_host
 from .first_person_governance import first_person_line
 from .organs import SixOrganRuntime
+from .speech_emission import SpeechSinkAck, SpeechEmissionUncertain, digest
+
+
+class BrowserExpressionSink:
+    """Attest only an actual successful local HTTP write, never human receipt."""
+
+    def __init__(self, write):
+        self._write = write
+        self.attempted = False
+
+    def __call__(self, text, delivery_key):
+        if self.attempted:
+            raise SpeechEmissionUncertain("Browser expression already attempted")
+        self.attempted = True
+        self._write(200, {"text": text, "host_write_acknowledged": True,
+                          "audible": False})
+        return SpeechSinkAck(delivery_key, "tower-loopback-http", digest(text))
+
 
 def scene(snapshot):
     lines=snapshot["narrative"]
@@ -46,7 +66,7 @@ button:disabled{opacity:.5}button:focus-visible,textarea:focus-visible,select:fo
 <button type="submit">Send</button><button type="button" id="mic">Dictate</button><button type="button" id="resume">Recover pending reply</button></form>
 <div class="controls"><label for="voices">Local playback voice</label><select id="voices"></select>
 <button id="speak">Read last reply aloud</button><button id="stop">Stop audio</button></div>
-<p class="muted">Voice playback uses locally installed browser voices. Dictation is optional and may use your browser's remote speech service; the transcript can be reviewed before sending. Audio is not recorded into the Doctor's memory as an emitted utterance.</p>
+<p class="muted">Voice playback uses locally installed browser voices. Dictation is optional and may use your browser's remote speech service; the transcript can be reviewed before sending. Successful local text writes can be recorded as written expression. Browser audio is not recorded as an audible utterance.</p>
 </section></div><p id="status" role="status"></p></main>
 <script>
 const token="__TOKEN__",worldAuthorized=__AUTHORIZED__;
@@ -63,8 +83,8 @@ const r=await fetch(path,options),d=await r.json();if(!r.ok)throw Error(d.error|
 async function task(fn){if(busy)return;busy=true;$('pulse').disabled=true;try{await fn()}catch(e){status(e.message,true)}finally{busy=false;$('pulse').disabled=!worldAuthorized}}
 async function refresh(){draw(await call('/scene'));status('Scene read from the original Tower.')}
 $('refresh').onclick=()=>task(refresh);$('pulse').onclick=()=>task(async()=>{draw(await call('/pulse',{}));status('One bounded opportunity completed.');});
-$('form').onsubmit=e=>{e.preventDefault();task(async()=>{const text=$('message').value.trim();if(!text)return;const d=await call('/message',{text});$('message').value='';add('Operator',text);lastReply=d.text;add('Pretorius',lastReply);status('Response prepared.');})};
-$('resume').onclick=()=>task(async()=>{const d=await call('/resume',{});lastReply=d.text;add('Pretorius',lastReply);status('Pending response recovered.');});
+$('form').onsubmit=e=>{e.preventDefault();task(async()=>{const text=$('message').value.trim();if(!text)return;const d=await call('/message',{text});$('message').value='';add('Operator',text);lastReply=d.text;add('Pretorius',lastReply);status('Reply written to the local browser connection.');})};
+$('resume').onclick=()=>task(async()=>{const d=await call('/resume',{});if(d.reconciled){status('Prior output reconciled without repeating it.');return}lastReply=d.text;add('Pretorius',lastReply);status('Pending response recovered.');});
 function voices(){const vs=window.speechSynthesis?.getVoices().filter(v=>v.localService)||[];$('voices').replaceChildren();
 for(const v of vs){const opt=document.createElement('option');opt.value=v.voiceURI;opt.textContent=v.name+' ('+v.lang+')';$('voices').append(opt)}$('speak').disabled=!vs.length}
 if(window.speechSynthesis){speechSynthesis.onvoiceschanged=voices;voices()}else{$('speak').disabled=true}
@@ -99,7 +119,7 @@ def serve(state,source,world,*,port=8767,model="qwen3:1.5b",authorize_world=Fals
             self.send_header("Content-Length",str(len(data)))
             self.send_header("Cache-Control","no-store")
             self.send_header("X-Content-Type-Options","nosniff")
-            self.end_headers();self.wfile.write(data)
+            self.end_headers();self.wfile.write(data);self.wfile.flush()
         def _local(self):
             return self.headers.get("Host")==f"127.0.0.1:{port}"
         def _auth(self):
@@ -115,6 +135,7 @@ def serve(state,source,world,*,port=8767,model="qwen3:1.5b",authorize_world=Fals
             if not self._auth():self.send_error(403);return
             if self.headers.get("Content-Type","").split(";")[0]!="application/json":
                 self.send_error(415);return
+            output=None
             try:
                 n=int(self.headers.get("Content-Length","0"))
                 if not 0<n<=4096:raise ValueError("Invalid request size")
@@ -129,11 +150,25 @@ def serve(state,source,world,*,port=8767,model="qwen3:1.5b",authorize_world=Fals
                     if type(value) is not dict or set(value)!=(set() if resume else {"text"}):
                         raise ValueError("Invalid message")
                     from .ipseity_local import local_turn
+                    output=BrowserExpressionSink(self._write)
                     with _exclusive_host(state,world):
-                        result=local_turn(state,user_text=value.get("text"),resume=resume,model=model,governed=True)
-                    self._write(200,{"text":result})
+                        local_turn(state,user_text=value.get("text"),resume=resume,
+                                   model=model,governed=True,emit=output)
+                    # A previously acknowledged write may have required only
+                    # journal reconciliation. Never automatically emit it again.
+                    if not output.attempted:
+                        if not resume:
+                            raise SpeechEmissionUncertain("Missing new browser output")
+                        self._write(200,{"text":None,"reconciled":True})
                 else:self.send_error(404)
-            except Exception:self._write(409,{"error":"Operation unavailable; recover pending local work if necessary."})
+            except Exception:
+                if output is not None and output.attempted:
+                    # Headers or bytes may already be visible. A second HTTP
+                    # response would duplicate/garble the original emission.
+                    self.close_connection=True
+                    logging.getLogger(__name__).exception("Tower expression requires journal reconciliation")
+                else:
+                    self._write(409,{"error":"Operation unavailable; recover pending local work if necessary."})
         def log_message(self,*args):return
     server=ThreadingHTTPServer(("127.0.0.1",port),Handler)
     print(f"Small Tower operator interface: http://127.0.0.1:{port}/",flush=True)

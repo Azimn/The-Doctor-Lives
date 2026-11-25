@@ -592,9 +592,9 @@
       },
       {
         "organ": "Expression",
-        "location": "speech_emission.py; operator_conversation.py",
-        "status": "partial",
-        "next": "Grounded verbal/nonverbal Tower interaction, voice and trained rendering"
+        "location": "speech_emission.py; operator_conversation.py; tower_web.py; ipseity_local.py",
+        "status": "integration_pending_ci",
+        "next": "Ordinary Tower browser conversation now uses original durable local-turn SpeechEmissionJournal and a trusted successful HTTP write sink. Uncertain output cannot auto-repeat; written self-observation, not audible speech or proof human saw it. Character training, voice, grounded nonverbal expression and social communication remain."
       },
       {
         "organ": "Telos",
