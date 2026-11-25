@@ -133,10 +133,21 @@ def main():
     remaining=args.max_opportunities
     while remaining:
         block=min(10,remaining)
+        # A 1000-tick pulse completes even a 250-tick sleep, hiding every
+        # in-progress activity from the required CASCADE busy-boundary gate.
+        # Keep the ordinary 100-tick host cadence, independent of task choice.
         result=run_tower_life(state,args.tower_source,world,authorize=True,
-                              opportunities=block,steps=1000,background_every_ticks=100,
+                              opportunities=block,steps=100,background_every_ticks=100,
                               require_phantasmagorium=True)
         runs.append(result)
+        # Persist actual returned receipts before another block. Interrupted
+        # rehearsals retain evidence without being labeled fresh passes.
+        with (args.workspace/"qualification-progress.jsonl").open("a",encoding="utf-8") as stream:
+            stream.write(json.dumps(result,sort_keys=True)+"\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        print(json.dumps({"progress_source_ticks":sum(r["new_source_ticks"]+r["recovered_source_ticks"] for r in runs),
+                          "opportunities":sum(r["opportunities_completed"] for r in runs)}),flush=True)
         remaining-=result["opportunities_completed"]
         if result["status"]=="deceased" or sum(r["new_source_ticks"]+r["recovered_source_ticks"] for r in runs)>=args.min_source_ticks:
             break

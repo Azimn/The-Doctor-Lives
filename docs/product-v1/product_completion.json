@@ -792,7 +792,7 @@
       "entrypoint": "tools/qualify_tower_life.py",
       "minimum_source_ticks": 3000,
       "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
-      "status": "actual_offline_rehearsal_started_not_qualified",
+      "status": "actual_cross_head_longitudinal_rehearsal_underway_not_qualified",
       "requires": "original Phantasmagorium archive and available local renderer",
       "full_release_certified": false,
       "offline_kit": {
@@ -805,7 +805,28 @@
         "donor_sha256": "31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8"
       },
       "rehearsal_observed": "Original-source uncoached rehearsal reached 1275 persisted source ticks, with 17 original donor fancy events; a command timeout at tick 219 was followed by cold continuation. Repeated walking despite perceived fatigue and repeated rest despite unmet intellectual stimulation identified actual regulatory gaps. Not a complete fresh gate.",
-      "repair": "Use remembered source-admitted exits to appraise feasible routes to rest and intellectual activity; exclude repeated identical actions from procedural sequence bonus. No motor authority or hidden map."
+      "repair": "Use remembered source-admitted exits to appraise feasible routes to rest and intellectual activity; exclude repeated identical actions from procedural sequence bonus. No motor authority or hidden map.",
+      "supply_repair": {
+        "commit": "c857ab97b4f4f2abe97b24f0dbd8bf49f39bf750",
+        "observation": "Low fuel was observed at stores; after departure the regulator discarded the shortage and repeatedly selected kitchen-garden movement.",
+        "authentic_replay": {
+          "policy": "policy_5aef9b046a03457e8e5bfc21299bcbd2",
+          "source_memory": "mem_d88968dd884a4dce8a75042a6b2bb101",
+          "old_gather_pressure": 0,
+          "new_gather_pressure": 0.16
+        },
+        "observed_successor": {
+          "source_ticks_before": 1860,
+          "source_ticks_after": 1884,
+          "choices": [
+            "gather_fuel",
+            "move_kitchen",
+            "move_library"
+          ],
+          "operator_supplied_actions": false
+        }
+      },
+      "harness_repair": "Use ordinary 100 source-tick pulse budget so a 250-tick sleep can expose actual busy activity to the existing 100-tick background cadence; write returned block receipts durably; no reduction of minimum ticks or other gates."
     },
     "ipseity_causal_test": {
       "path": "tests/test_small_tower.py::test_own_past_commitment_changes_real_tower_action_under_matched_ipseity_impairment",
