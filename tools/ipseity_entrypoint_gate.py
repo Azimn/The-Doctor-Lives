@@ -29,7 +29,7 @@ REVIEWED_OPERATOR_GLOSS = {"local_subject_gloss.py": {"http"}}
 REVIEWED_LOCAL_RESEARCH = {"open_inference.py": {"urllib"},
                            "semantic_intentions.py": {"urllib"}}
 REVIEWED_LOCAL_TRANSPORT = {"local_ollama_transport.py": {"http"}}
-REVIEWED_LOOPBACK_UI = {"operator_chat_web.py": {"http"}}
+REVIEWED_LOOPBACK_UI = {"operator_chat_web.py": {"http"}, "tower_web.py": {"http"}}
 REVIEWED_WORLD_PORT = {"small_tower.py": {"subprocess"}}
 REVIEWED_PINNED_ORGANOID = {"phantasmagorium_bridge.py": {"subprocess"},
                            "lab_phantasmagorium.py": {"subprocess"}}

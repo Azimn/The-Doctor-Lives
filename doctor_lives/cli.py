@@ -78,14 +78,18 @@ def parser() -> argparse.ArgumentParser:
         elif name=="background-wake":
             bg.add_argument("--wake-id",required=True)
             bg.add_argument("--ticks",type=int,default=1)
-    for name in ("tower-init","tower-pulse"):
+    for name in ("tower-init","tower-pulse","tower-serve"):
         x=sp.add_parser(name, help="Original Small Tower, canonical Doctor rehearsal")
         x.add_argument("--tower-source",type=Path,required=True)
         x.add_argument("--world",type=Path,required=True)
         if name=="tower-init":
             x.add_argument("--epoch",required=True)
-        else:
+        elif name=="tower-pulse":
             x.add_argument("--steps",type=int,default=100)
+            x.add_argument("--authorize-world",action="store_true")
+        else:
+            x.add_argument("--port",type=int,default=8767)
+            x.add_argument("--model",default="qwen3:1.5b")
             x.add_argument("--authorize-world",action="store_true")
     x=sp.add_parser("preview-init", help="Create one new experimental original-Laboratory workspace without overwriting an inhabited state"); x.add_argument("--workspace",type=Path,required=True); x.add_argument("--world-template",type=Path,default=None,help="Use a verified pristine 17-book Laboratory world at genesis, never reseed an existing workspace")
     for name, hint in (
@@ -146,6 +150,10 @@ def main(argv=None) -> int:
         else:
             revoke(a.state,a.lease_id,authorized=a.authorize)
         return 0
+    if a.cmd=="tower-serve":
+        from .tower_web import serve
+        return serve(a.state,a.tower_source,a.world,port=a.port,model=a.model,
+                     authorize_world=a.authorize_world)
     if a.cmd in ("tower-init","tower-pulse"):
         from .small_tower import initialize_tower, run_tower_pulse
         if a.cmd=="tower-init":
