@@ -186,6 +186,8 @@ def _admit_events(runtime, provider, port):
     for row in snapshot["events"]:
         receipt = provider.event_receipt(row)
         admitted = port._admit(receipt, kind=receipt.kind)
+        from .tower_telos import reconcile_intention
+        reconcile_intention(store, provider, row, receipt, admitted.memory_id)
         if archive is not None and receipt.kind == "action" and receipt.operation in ("read", "sleep"):
             from .tower_phantasmagorium import sync_tower_phantasmagorium
             sync_tower_phantasmagorium(store, provider, receipt, admitted.memory_id, archive)
@@ -340,7 +342,9 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
             from .store import new_id
             request={"id":new_id("tower"),"revision":snapshot["revision"],
                      "choice":choice,"policyRef":policy,"steps":steps}
+            from .tower_telos import reserve_intention
             with store.transaction() as db:
+                reserve_intention(store, db, request)
                 store.set_meta(PENDING,json.dumps(request,sort_keys=True),db)
                 store.bump_state_version(db)
         result=provider.pulse(request)

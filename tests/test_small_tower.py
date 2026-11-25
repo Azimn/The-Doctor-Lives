@@ -40,6 +40,20 @@ class OriginalTowerTests(unittest.TestCase):
             policy = db.execute("SELECT selected_action,state_pressure_json FROM policy_decisions "
                                 "WHERE id=?", (result["policy_id"],)).fetchone()
         self.assertEqual(policy["selected_action"], result["choice"])
+        from doctor_lives.tower_telos import intention_id
+        rid = intention_id(result["policy_id"])
+        with closing(store.connect()) as db:
+            intent = db.execute("SELECT * FROM commitments WHERE id=?", (rid,)).fetchone()
+        self.assertIsNotNone(intent)
+        self.assertEqual(intent["source"], "telos:native:tower:" + result["policy_id"])
+        self.assertIn(intent["status"], ("open", "kept", "broken"))
+        with self.assertRaises(PermissionError):
+            runtime._port.brain.resolve_commitment(rid, "invented completion")
+        if intent["status"] != "open":
+            outcome = json.loads(store.meta("telos:tower-outcome:" + result["policy_id"]))
+            self.assertEqual(outcome["commitment_id"], rid)
+            self.assertEqual(outcome["status"], intent["status"])
+            self.assertEqual(store.get_memory(outcome["source_memory_id"])["text"], intent["outcome"])
         appraisals = json.loads(policy["state_pressure_json"])
         self.assertEqual(appraisals["abstract_policy_id"], choice["abstract_policy_id"])
         self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
@@ -114,7 +128,14 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertEqual(recovered_clock["since_wake"],
                              recovered["recovered_source_ticks"])
             self.assertEqual(provider.snapshot(),committed)
-            self.assertIsNone(SixOrganRuntime.open(state)._port.brain.store.meta(PENDING))
+            recovered_store = SixOrganRuntime.open(state)._port.brain.store
+            self.assertIsNone(recovered_store.meta(PENDING))
+            from contextlib import closing
+            from doctor_lives.tower_telos import intention_id
+            with closing(recovered_store.connect()) as db:
+                count = db.execute("SELECT COUNT(*) FROM commitments WHERE id=?",
+                                   (intention_id(pending["policyRef"]),)).fetchone()[0]
+            self.assertEqual(count, 1)
             # A separate invocation and newly authorized lease must retain
             # the exact committed source ticks, even with no eligible wake.
             split = run_tower_life(state,source,world,authorize=True,opportunities=1,

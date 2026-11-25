@@ -598,9 +598,9 @@
       },
       {
         "organ": "Telos",
-        "location": "lab_telos.py; noesis_situated_choice.py",
-        "status": "partial",
-        "next": "Tower-native goal creation, competing durable commitments, purpose and completion"
+        "location": "lab_telos.py; noesis_situated_choice.py; tower_telos.py; small_tower.py",
+        "status": "integration_pending_ci",
+        "next": "Normal Tower Noesis motor reservations now create original canonical protected intentions and reconcile kept/broken from authenticated matching physical events. Long-term autonomous goal synthesis, prospective commitments, interruption between goals and competing motivations still require qualification."
       },
       {
         "organ": "Conclave",

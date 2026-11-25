@@ -30,3 +30,7 @@ Combined CASCADE and Mnemosyne private cognition is enabled by default in `tower
 ## Original Phantasmagorium in Tower life
 
 Set `PRETORIUS_PHANTA_DONOR` to the exact verified v0.5 archive (SHA-256 `31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8`). The ordinary source-admission path invokes the original persistent donor on completed physical reading and sleep; its checkpoint and any explicitly nonfactual dream recollection commit to the same BrainStore before the Tower event cursor advances. Replayed events are idempotent. Tower folio consultation does not expose complete page text. The donor is not bundled; no donor-backed release qualification is claimed when this environment variable is absent. Additional quiet-period imagination and prospective influence remain open.
+
+## Native Tower Telos intentions
+
+The canonical motor reservation now includes a protected Telos commitment in the original BrainStore transaction. It is authored from the actual original Noesis policy and thought, not operator text. A verified Tower completion or failure with the same original policy reference closes it as kept or broken. Replay reconciles the same commitment without duplication. These bounded action intentions are not yet long-horizon self-authored projects.
