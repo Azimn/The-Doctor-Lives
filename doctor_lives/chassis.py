@@ -210,7 +210,12 @@ class PretoriusBrainPort:
             frame = SubjectFrame.from_events((projected.event,))
             if SubjectRendererCapability.read(frame) != (projected.experience.text,):
                 raise PermissionError("Tower cognition cannot bypass owned first-person ingress")
-        result = self.brain.ingest(projected.experience, projected_event=projected.event)
+        if self.brain.store.meta("small-tower:world-binding-v1") is not None:
+            result = self.brain.ingest(projected.experience, projected_event=projected.event)
+        else:
+            # Preserve the original non-Tower port contract, including
+            # speech-recovery fault injection and existing legacy hosts.
+            result = self.brain.ingest(projected.experience)
         result["ingress"] = {
             "channel": projected.channel.value,
             "raw_sha256": projected.raw_sha256,
