@@ -1,0 +1,100 @@
+name: Exact-head offline Tower qualification kit
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tower-life-offline-kit.yml'
+      - 'tools/qualify_tower_life.py'
+      - 'doctor_lives/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-kit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Septimus---Web-Sim
+          ref: 2e2ffb0658dea77da4b6cece1b783ad236bf30ff
+          path: pinned-tower
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/synthetic-ipseity
+          ref: e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          path: pinned-ipseity
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify exact source and export reviewed runtime
+        run: |
+          set -euo pipefail
+          python -m pip install -e .
+          python -c 'from doctor_lives.small_tower import verify_source; verify_source("pinned-tower")'
+          mkdir -p "$RUNNER_TEMP/qualification"
+          git rev-parse HEAD > "$RUNNER_TEMP/qualification/doctor-commit.txt"
+          git -C pinned-tower rev-parse HEAD > "$RUNNER_TEMP/qualification/tower-commit.txt"
+          git -C pinned-ipseity rev-parse HEAD > "$RUNNER_TEMP/qualification/ipseity-commit.txt"
+          git archive HEAD doctor_lives tools/qualify_tower_life.py pyproject.toml | tar -x -C "$RUNNER_TEMP/qualification"
+          mkdir "$RUNNER_TEMP/qualification/pinned-tower" "$RUNNER_TEMP/qualification/pinned-ipseity"
+          git -C pinned-tower archive HEAD src canon identity.json package.json | tar -x -C "$RUNNER_TEMP/qualification/pinned-tower"
+          git -C pinned-ipseity archive HEAD | tar -x -C "$RUNNER_TEMP/qualification/pinned-ipseity"
+          cd "$RUNNER_TEMP/qualification"
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > ../source-sha256.txt
+          mv ../source-sha256.txt .
+          tar -czf "$RUNNER_TEMP/tower-qualification-source.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exact-head-tower-source-kit
+          path: ${{ runner.temp }}/tower-qualification-source.tar.gz
+          if-no-files-found: error
+  cpu-renderer-kit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      OLLAMA_HOST: 127.0.0.1:11434
+      OLLAMA_MODELS: /tmp/pretorius-qualification-models
+      OLLAMA_NO_CLOUD: "1"
+    steps:
+      - name: Recover pinned official Ollama CPU runtime and smoke checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 --max-time 480 https://github.com/ollama/ollama/releases/download/v0.40.3/ollama-linux-amd64.tar.zst -o "$RUNNER_TEMP/ollama.tar.zst"
+          echo "ce6f8b671a699bf1ebafb28d60dbbabf4f37b30b499145fa308a8ba72de021d6  $RUNNER_TEMP/ollama.tar.zst" | sha256sum --check -
+          mkdir -p "$RUNNER_TEMP/ollama"
+          tar --zstd -xf "$RUNNER_TEMP/ollama.tar.zst" -C "$RUNNER_TEMP/ollama"
+          mkdir -p "$OLLAMA_MODELS"
+          nohup "$RUNNER_TEMP/ollama/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --noproxy '*' -fsS http://127.0.0.1:11434/api/version; then break; fi
+            sleep 2
+          done
+          timeout 400 "$RUNNER_TEMP/ollama/bin/ollama" pull smollm2:135m
+          "$RUNNER_TEMP/ollama/bin/ollama" list
+          mkdir "$RUNNER_TEMP/renderer"
+          cp -a "$RUNNER_TEMP/ollama/bin" "$RUNNER_TEMP/renderer/"
+          mkdir -p "$RUNNER_TEMP/renderer/lib/ollama"
+          # Preserve common CPU libraries and CPU-specific directories; exclude
+          # accelerator libraries not used by the offline CPU qualification.
+          find "$RUNNER_TEMP/ollama/lib/ollama" -maxdepth 1 -type f -exec cp -a {} "$RUNNER_TEMP/renderer/lib/ollama/" \;
+          find "$RUNNER_TEMP/ollama/lib/ollama" -maxdepth 1 -type l -exec cp -a {} "$RUNNER_TEMP/renderer/lib/ollama/" \;
+          for d in "$RUNNER_TEMP"/ollama/lib/ollama/cpu*; do
+            if test -d "$d"; then cp -a "$d" "$RUNNER_TEMP/renderer/lib/ollama/"; fi
+          done
+          cp -a "$OLLAMA_MODELS" "$RUNNER_TEMP/renderer/models"
+          cd "$RUNNER_TEMP/renderer"
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > ../renderer-sha256.txt
+          mv ../renderer-sha256.txt .
+          tar -czf "$RUNNER_TEMP/tower-qualification-renderer.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exact-ollama-cpu-renderer-kit
+          path: ${{ runner.temp }}/tower-qualification-renderer.tar.gz
+          if-no-files-found: error
