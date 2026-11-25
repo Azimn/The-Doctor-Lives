@@ -91,6 +91,8 @@ def parser() -> argparse.ArgumentParser:
             if name=="tower-run":
                 x.add_argument("--opportunities",type=int,default=20)
                 x.add_argument("--interval-seconds",type=float,default=0.0)
+                x.add_argument("--background-every-ticks",type=int,default=0,
+                               help="Offer one bounded CASCADE wake after this many actual world ticks at an idle boundary; 0 disables")
         else:
             x.add_argument("--port",type=int,default=8767)
             x.add_argument("--model",default="qwen3:1.5b")
@@ -164,7 +166,8 @@ def main(argv=None) -> int:
         elif a.cmd=="tower-run":
             emit(run_tower_life(a.state,a.tower_source,a.world,authorize=a.authorize_world,
                                 steps=a.steps,opportunities=a.opportunities,
-                                interval_seconds=a.interval_seconds))
+                                interval_seconds=a.interval_seconds,
+                                background_every_ticks=a.background_every_ticks))
         else:
             emit(run_tower_pulse(a.state,a.tower_source,a.world,authorize=a.authorize_world,steps=a.steps))
         return 0

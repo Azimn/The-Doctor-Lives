@@ -84,3 +84,5 @@ Source branch Azimn/Septimus---Web-Sim integration/doctor-canonical-world-port, 
 ## Unified PR #124 continuation
 
 The unified 9b34d86 candidate diverged from PR #122 at a2f1a5f by one independent life-runner commit. Its bounded runner, exact recovery regression and explicit SQLite close have now been ported into this unified branch without replacing developmental history or test cleanup. The approved pre-Village environment is Small Tower. Qualify the newest exact head; retain prior R4 passes and failures. Next implement verified clock/lifecycle coupling and multiday tests. No live migration or production promotion yet.
+
+The unified candidate now also connects optional source-tick-paced original CASCADE and Mnemosyne private cognition at an idle Tower boundary under the same host lock. This is not a separate mind or real-time clock; no catch-up or fabricated time. Exact-head integration test pending. Donor Phantasmagorium still needs source-backed Tower sleep and archive qualification.

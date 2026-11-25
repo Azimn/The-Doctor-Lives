@@ -240,7 +240,8 @@ def _choose(runtime, snapshot, observation_id):
     return choice,decision["policy_decision_id"]
 
 
-def run_tower_pulse(state, source, world, *, authorize=False, steps=100):
+def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
+                    _background_lease=None, _background_due_after=None):
     """One original cognitive opportunity or continuation of an active action."""
     from .lab_runtime import _exclusive_host
     from .organs import SixOrganRuntime
@@ -254,6 +255,11 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100):
     with _exclusive_host(state,Path(world)),LocalTurnJournal(state) as journal:
         runtime=SixOrganRuntime.open(state)
         assert_no_pending_conversation(state,runtime,journal)
+        # A failed or interrupted background wake must be reconciled rather
+        # than hidden by continuing ordinary life on a changed brain.
+        if (state/"cascade-operations.sqlite3").exists():
+            from .cascade_background import BackgroundLedger
+            BackgroundLedger(state).assert_reconciled()
         provider=SmallTowerSource(source,world)
         snapshot=provider.snapshot()
         _bind(runtime,provider,snapshot)
@@ -284,9 +290,23 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100):
             db.execute("DELETE FROM meta WHERE key=?",(PENDING,))
             store.bump_state_version(db)
         runtime.checkpoint()
+        background = None
+        if (_background_lease is not None
+                and type(_background_due_after) is int
+                and not result["replayed"] and not result["busy"]
+                and not result["deceased"] and result["elapsed"] >= _background_due_after):
+            # Same brain, same host lease. Physical time does not advance
+            # during this private wake. Source receipt is already durable.
+            import time
+            from .canonical_background import _wake_locked
+            background = _wake_locked(
+                state, runtime, journal, lease_id=_background_lease,
+                wake_id="tower:"+request["id"], now_ms=time.time_ns()//1_000_000,
+                ticks=1)
         return {"schema":"doctor-small-tower-pulse.v1","world_epoch":provider.world_epoch,
                 "policy_id":request["policyRef"],"choice":request["choice"],
                 "source_receipt":result,"subject_narrative":snapshot["narrative"],
+                "background_receipt":background,
                 "same_canonical_brain":True,"parallel_tower_chooser":False}
 
 
@@ -310,7 +330,7 @@ def initialize_tower(state, source, world, *, epoch, neural_config=None):
 
 
 def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
-                   steps=100, interval_seconds=0.0):
+                   steps=100, interval_seconds=0.0, background_every_ticks=0):
     """Run bounded, unprompted physical opportunities using the same host.
 
     No chosen goal, room, or action is supplied by this runner. Each pulse
@@ -329,26 +349,56 @@ def run_tower_life(state, source, world, *, authorize=False, opportunities=20,
     if (type(interval_seconds) not in (int, float)
             or not math.isfinite(interval_seconds) or not 0 <= interval_seconds <= 60):
         raise ValueError("Interval must be finite and between 0 and 60 seconds")
+    if type(background_every_ticks) is not int or not 0 <= background_every_ticks <= 100000:
+        raise ValueError("Background source-tick interval must be 0 to 100000")
+    # This is a bounded foreground scheduler. Lease timestamps are real
+    # host time; eligibility is accumulated actual source ticks, not a claim
+    # that cognitive ticks equal physical time. No wake on an unfinished
+    # activity or replayed receipt. A stopped run does not invent downtime.
+    from .canonical_background import BackgroundLease, issue, revoke
+    from .store import new_id
+    lease_id = None
+    if background_every_ticks:
+        lease_id = new_id("tower-life")
+        issue(state, BackgroundLease(lease_id, opportunities, 1, 1,
+              time.time_ns()//1_000_000 + 86_400_000), authorized=True)
     started = time.monotonic()
     pulses = []
+    background_receipts = []
     status = "budget_complete"
-    for index in range(opportunities):
-        result = run_tower_pulse(state, source, world, authorize=True, steps=steps)
-        receipt = result["source_receipt"]
-        pulses.append({"request_id": receipt["requestId"],
-                       "policy_id": result["policy_id"], "choice": result["choice"],
-                       "source_ticks": receipt["elapsed"],
-                       "source_cursor": receipt["cursor"], "replayed": receipt["replayed"],
-                       "busy": receipt["busy"], "deceased": receipt["deceased"]})
-        if receipt["deceased"]:
-            status = "deceased"
-            break
-        if interval_seconds and index + 1 < opportunities:
-            time.sleep(interval_seconds)
+    since_wake = 0
+    try:
+        for index in range(opportunities):
+            result = run_tower_pulse(
+                state, source, world, authorize=True, steps=steps,
+                _background_lease=lease_id,
+                _background_due_after=max(0, background_every_ticks-since_wake))
+            receipt = result["source_receipt"]
+            pulses.append({"request_id": receipt["requestId"],
+                           "policy_id": result["policy_id"], "choice": result["choice"],
+                           "source_ticks": receipt["elapsed"],
+                           "source_cursor": receipt["cursor"], "replayed": receipt["replayed"],
+                           "busy": receipt["busy"], "deceased": receipt["deceased"]})
+            if not receipt["replayed"]:
+                since_wake += receipt["elapsed"]
+            background = result["background_receipt"]
+            if background is not None:
+                background_receipts.append(background)
+                since_wake = 0
+            if receipt["deceased"]:
+                status = "deceased"
+                break
+            if interval_seconds and index + 1 < opportunities:
+                time.sleep(interval_seconds)
+    finally:
+        if lease_id is not None:
+            revoke(state, lease_id, authorized=True)
     return {"schema": "doctor-small-tower-life.v1", "status": status,
             "opportunities_completed": len(pulses),
             "new_source_ticks": sum(p["source_ticks"] for p in pulses if not p["replayed"]),
             "recovered_source_ticks": sum(p["source_ticks"] for p in pulses if p["replayed"]),
             "wall_seconds": time.monotonic() - started,
-            "pulses": pulses, "engineer_only": True,
+            "pulses": pulses, "background_receipts": background_receipts,
+            "background_every_source_ticks": background_every_ticks,
+            "engineer_only": True,
             "operator_supplied_goals": False}

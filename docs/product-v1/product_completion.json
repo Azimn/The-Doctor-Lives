@@ -534,12 +534,13 @@
       "acceptance": "Canonical unprompted Tower run, exactly-once source effect and memory after interruption, platform qualification; separate multiday survival and full lifecycle gates",
       "status": "implemented",
       "evidence": [
-        "9b34d86 omitted prior independent Tower runner a2f1a5f; restored its implementation and regression without overwriting unified developmental history. Close actual leaked read connection, not just test cleanup. Exact-head CI pending."
+        "9b34d86 omitted prior independent Tower runner a2f1a5f; restored its implementation and regression without overwriting unified developmental history. Close actual leaked read connection, not just test cleanup. Exact-head CI pending.",
+        "Integrated optional source-tick-paced original CASCADE + endogenous Mnemosyne private cognition into real bounded Tower lifecycle under same host lock, after durable nonbusy fresh physical receipt. Finite original lease, source-bound wake ID, no renderer or motor, no downtime catch-up; failed wake blocks physical continuation. Actual pinned Tower test requires a background receipt. Exact-head CI pending."
       ]
     }
   ],
   "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
-  "next": "PR #124 is the primary candidate. Inspect exact-head CI, especially Tower recovery and native development. Complete bounded Tower lifecycle including source-clock-aligned CASCADE, source-backed sleep/dreams, skill and social learning, and safe migration; preserve unchanged Laboratory autonomy gate.",
+  "next": "Inspect exact-head PR #124 CI and debug. Tower life now optionally schedules original CASCADE/Mnemosyne under same lock; still need multi-day survival, source-backed dreaming and skill/social learning, safe migration, original R4 repeatability and security/device gates.",
   "pre_village_world": {
     "repository": "Azimn/Septimus---Web-Sim",
     "source_pin": "2e2ffb0658dea77da4b6cece1b783ad236bf30ff",

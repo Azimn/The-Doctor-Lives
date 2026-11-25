@@ -84,13 +84,25 @@ class OriginalTowerTests(unittest.TestCase):
             self.assertEqual(provider.snapshot(),committed)
             self.assertIsNone(SixOrganRuntime.open(state)._port.brain.store.meta(PENDING))
             # Cold-open every opportunity through the actual canonical host.
-            life=run_tower_life(state,source,world,authorize=True,opportunities=8,steps=100)
+            life=run_tower_life(state,source,world,authorize=True,opportunities=8,steps=100,
+                                background_every_ticks=1)
             self.assertEqual(life["opportunities_completed"],8)
             self.assertFalse(life["operator_supplied_goals"])
             self.assertGreater(life["new_source_ticks"],0)
             self.assertEqual(len({p["request_id"] for p in life["pulses"]}),8)
             self.assertTrue(any(p["policy_id"] for p in life["pulses"]))
             self.assertGreater(provider.snapshot()["cursor"],committed["cursor"])
+            self.assertTrue(life["background_receipts"])
+            by_request={p["request_id"]:p for p in life["pulses"]}
+            for wake in life["background_receipts"]:
+                pulse=by_request[wake["wake_id"].removeprefix("tower:")]
+                self.assertFalse(pulse["busy"])
+                self.assertFalse(pulse["replayed"])
+                self.assertEqual(wake["after_tick"],wake["before_tick"]+1)
+                self.assertEqual(wake["external_actions"],0)
+                self.assertEqual(wake["renderer_calls"],0)
+                self.assertTrue(wake["mnemosyne_policy_id"])
+            self.assertFalse(recovered["background_receipts"])
             store=SixOrganRuntime.open(state)._port.brain.store
             sources=[m["source"] for m in store.memories()
                      if m["source"].startswith("virtual-world:small-tower:")]

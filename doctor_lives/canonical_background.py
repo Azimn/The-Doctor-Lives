@@ -56,34 +56,40 @@ def wake(state, *, lease_id,wake_id,now_ms,ticks=1,authorized=False):
         raise FileNotFoundError("Existing canonical state required")
     with _exclusive_host(state),LocalTurnJournal(state) as journal:
         runtime=SixOrganRuntime.open(state)
-        _ready(state,runtime,journal)
-        ledger=BackgroundLedger(state)
-        ledger.assert_reconciled()
-        prior=ledger.reserve(lease_id,wake_id,now_ms,ticks)
-        if prior is not None:
-            return {**prior,"replayed_receipt":True}
-        brain=runtime._port.brain
-        before=brain.store.tick
-        try:
-            result=brain.heartbeat(ticks=ticks)
-            # Use actual existing internal uncertainty, never a supplied
-            # question or invented external stimulus.
-            pilot=runtime.mnemosyne.opt_in_endogenous_recollection()
-            decision=pilot.deliberate()
-            reflection=None
-            if decision.action=="recall":
-                reflection=pilot.reflect_selected_recollection(reconstruct=True)
-            runtime.checkpoint()
-            receipt={"schema":"canonical-cascade-wake-v1","wake_id":wake_id,
-                     "before_tick":before,"after_tick":brain.store.tick,
-                     "heartbeat_policy_ids":[t["policy_decision_id"] for t in result["thoughts"]],
-                     "mnemosyne_policy_id":decision.decision_id,
-                     "reflection_policy_id":reflection.next_policy_decision_id if reflection else None,
-                     "renderer_calls":0,"external_actions":0,"engineer_only":True,
-                     "replayed_receipt":False}
-            ledger.complete(wake_id,receipt)
-            return receipt
-        except BaseException as exc:
-            ledger.complete(wake_id,{"error_type":type(exc).__name__,
-                            "operator_reconciliation_required":True},status="failed")
-            raise
+        return _wake_locked(state,runtime,journal,lease_id=lease_id,wake_id=wake_id,
+                            now_ms=now_ms,ticks=ticks)
+
+
+def _wake_locked(state,runtime,journal,*,lease_id,wake_id,now_ms,ticks=1):
+    """Trusted host already holds the canonical exclusive lock."""
+    _ready(state,runtime,journal)
+    ledger=BackgroundLedger(state)
+    ledger.assert_reconciled()
+    prior=ledger.reserve(lease_id,wake_id,now_ms,ticks)
+    if prior is not None:
+        return {**prior,"replayed_receipt":True}
+    brain=runtime._port.brain
+    before=brain.store.tick
+    try:
+        result=brain.heartbeat(ticks=ticks)
+        # Use actual existing internal uncertainty, never a supplied
+        # question or invented external stimulus.
+        pilot=runtime.mnemosyne.opt_in_endogenous_recollection()
+        decision=pilot.deliberate()
+        reflection=None
+        if decision.action=="recall":
+            reflection=pilot.reflect_selected_recollection(reconstruct=True)
+        runtime.checkpoint()
+        receipt={"schema":"canonical-cascade-wake-v1","wake_id":wake_id,
+                 "before_tick":before,"after_tick":brain.store.tick,
+                 "heartbeat_policy_ids":[t["policy_decision_id"] for t in result["thoughts"]],
+                 "mnemosyne_policy_id":decision.decision_id,
+                 "reflection_policy_id":reflection.next_policy_decision_id if reflection else None,
+                 "renderer_calls":0,"external_actions":0,"engineer_only":True,
+                 "replayed_receipt":False}
+        ledger.complete(wake_id,receipt)
+        return receipt
+    except BaseException as exc:
+        ledger.complete(wake_id,{"error_type":type(exc).__name__,
+                        "operator_reconciliation_required":True},status="failed")
+        raise
