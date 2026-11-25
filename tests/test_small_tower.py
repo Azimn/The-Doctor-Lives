@@ -12,6 +12,14 @@ from doctor_lives.organs import SixOrganRuntime
 from doctor_lives.neural import DEFAULT_CONFIG
 
 class TowerDevelopmentAppraisalTests(unittest.TestCase):
+    def test_prospective_routing_uses_only_known_edges(self):
+        from doctor_lives.tower_prospective import first_step
+        graph = {"library": {"kitchen"}, "kitchen": {"garden"}, "garden": set()}
+        self.assertEqual(first_step(graph, "library", "garden"), "move_kitchen")
+        self.assertIsNone(first_step(graph, "garden", "library"))
+        self.assertIsNone(first_step(graph, "library", "laboratory"))
+        self.assertIsNone(first_step(graph, "library", "library"))
+
     def test_independent_outcomes_saturate_and_reverse(self):
         from doctor_lives.tower_development import _appraise
         good = [("work", True, "memory-" + str(i), "source-" + str(i))
@@ -98,6 +106,10 @@ class OriginalTowerTests(unittest.TestCase):
         appraisals = json.loads(policy["state_pressure_json"])
         self.assertEqual(appraisals["abstract_policy_id"], choice["abstract_policy_id"])
         self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
+        prospective = appraisals["prospective_goals"]
+        self.assertEqual(set(prospective["scores"]), set(choice["offers"]))
+        self.assertTrue(all(0 <= v <= .065 for v in prospective["scores"].values()))
+        self.assertEqual(prospective["active_ids"], [])
         developmental = appraisals["developmental_history"]
         self.assertTrue(developmental["enabled"])
         self.assertEqual(set(developmental["contributions"]), set(choice["offers"]))

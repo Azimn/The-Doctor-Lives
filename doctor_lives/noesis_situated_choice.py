@@ -412,6 +412,10 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
         from .tower_development import verified_consequence_pressure
         outcome_scores, outcome_ids = verified_consequence_pressure(
             brain, tower_provider, observation, tuple(by_key))
+    prospective = None
+    if tower_provider is not None:
+        from .tower_prospective import assess
+        prospective = assess(brain, tower_provider, observation, offers, abstract, affordance_map)
     for key in sorted(by_key):
         offer = by_key[key]
         tendency = affordance_map[key]
@@ -430,9 +434,11 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                     + families["concerns"][tendency])
         specific = max(-.05, min(.05, specific))
         base[key] = NEURAL_WEIGHT * abstract["action_scores"][tendency]
-        scores[key] = base[key] + regulatory_pressure.get(key, 0.0) + specific + outcome_scores[key]
+        goal_pressure = prospective["scores"][key] if prospective else 0.0
+        scores[key] = base[key] + regulatory_pressure.get(key, 0.0) + specific + outcome_scores[key] + goal_pressure
         local[key] = {"tendency": tendency, "cue": cue,
                       "commitment": commitment, "specific_pressure": specific,
+                      "prospective_pressure": goal_pressure,
                       "developmental_pressure": outcome_scores[key],
                       "developmental_memory_ids": outcome_ids[key],
                       "source_ids": appraisal["source_ids"],
@@ -460,6 +466,7 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
                 "phantasmagorium": {"retrieval_cues": list(imaginative_cues),
                                     "world_authority": False, "motor_authority": False,
                                     "lived_fact_authority": False},
+                "prospective_goals": prospective,
                 "developmental_history": {"enabled": tower_provider is not None,
                                           "version": "tower-contextual-consequence-v1",
                                           "contributions": outcome_scores,

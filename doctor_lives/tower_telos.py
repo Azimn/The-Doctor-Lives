@@ -44,6 +44,8 @@ def reserve_intention(store, db, request):
             or row["status"] != "open" or row["outcome"] is not None
             or row["created_tick"] != policy["tick"]):
         raise PermissionError("Conflicting Tower intention reservation")
+    from .tower_prospective import reserve
+    reserve(store, db, request)
     return rid
 
 
@@ -101,5 +103,7 @@ def reconcile_intention(store, provider, row, receipt, memory_id):
         db.execute("UPDATE commitments SET status=?,outcome=?,updated_tick=? WHERE id=?",
                    (status, memory["text"], store.tick, rid))
         store.set_meta(key, serialized, db)
+        from .tower_prospective import complete
+        complete(store, db, pid, result)
         store.bump_state_version(db)
     return result
