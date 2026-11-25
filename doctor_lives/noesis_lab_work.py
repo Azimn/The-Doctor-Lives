@@ -49,7 +49,8 @@ def _feasible_work(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     return tuple(legal)
 
 
-def _verified_work_outcomes(bridge: DoctorHomeBridge) -> tuple[str, ...]:
+def _verified_work_outcomes(bridge: DoctorHomeBridge, *,
+                            require_original_choice: bool = False) -> tuple[str, ...]:
     """Identify original lived outcomes with independently replayable world hashes.
 
     The host supplies only eligible *memory IDs*. It cannot tell the original
@@ -59,8 +60,12 @@ def _verified_work_outcomes(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     # Verify full rhythm and world history before trusting ANY row in its chain.
     bridge.subject.rhythm.verify()
     verified = []
+    seen_sources = set()
+    memories = bridge.doctor.brain.store.memories()
+    if require_original_choice:
+        memories = sorted(memories, key=lambda m: (int(m["created_tick"]), m["id"]), reverse=True)
     with bridge.world._open() as db:
-        for m in bridge.doctor.brain.store.memories():
+        for m in memories:
             if (m["evidence_class"] != "lived_runtime_memory"
                     or m["external"]
                     or not m["source"].startswith("laboratory-home:action:")):
@@ -81,6 +86,14 @@ def _verified_work_outcomes(bridge: DoctorHomeBridge) -> tuple[str, ...]:
                     or not isinstance(receipt.get("subject"), dict)
                     or receipt["subject"].get("inner") != m["text"]):
                 continue
+            if require_original_choice:
+                if digest in seen_sources:
+                    continue
+                try:
+                    verify_noesis_work_replay(bridge, event_id=matches[0][0], action=receipt["op"])
+                except PermissionError:
+                    continue
+                seen_sources.add(digest)
             verified.append(m["id"])
             if len(verified) >= 64:
                 break
@@ -90,6 +103,7 @@ def _verified_work_outcomes(bridge: DoctorHomeBridge) -> tuple[str, ...]:
 def propose_noesis_work(
     bridge: DoctorHomeBridge, *, learning_enabled: bool = True,
     neural_prior_enabled: bool = True, outcome_learning_enabled: bool = False,
+    developmental_history_enabled: bool = False,
 ) -> NoesisWorkProposal:
     """Give one real situated opportunity and eligible lived IDs to Noesis.
 
@@ -100,8 +114,11 @@ def propose_noesis_work(
     if not isinstance(bridge, DoctorHomeBridge):
         raise TypeError("Use a source-authorized original brain Laboratory bridge")
     if (type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool
-            or type(outcome_learning_enabled) is not bool):
+            or type(outcome_learning_enabled) is not bool
+            or type(developmental_history_enabled) is not bool):
         raise TypeError("Experimental lesion flags must be booleans")
+    if developmental_history_enabled and not outcome_learning_enabled:
+        raise ValueError("Developmental history requires outcome learning")
     options = _feasible_work(bridge)
     if not options:
         raise RuntimeError("Real Laboratory offers no feasible work action")
@@ -124,7 +141,8 @@ def propose_noesis_work(
         if len(eligible) >= 32:
             break
     verified_outcomes = (
-        _verified_work_outcomes(bridge) if outcome_learning_enabled else ()
+        _verified_work_outcomes(bridge, require_original_choice=developmental_history_enabled)
+        if outcome_learning_enabled else ()
     )
     decision = NoesisOrgan(bridge.doctor).deliberate_feasible_actions(
         observation_memory_id=received["memory_id"],
@@ -134,6 +152,7 @@ def propose_noesis_work(
         neural_prior_enabled=neural_prior_enabled,
         outcome_learning_enabled=outcome_learning_enabled,
         eligible_outcome_memory_ids=verified_outcomes,
+        developmental_history_enabled=developmental_history_enabled,
     )
     return NoesisWorkProposal(
         action=decision["selected_action"],
