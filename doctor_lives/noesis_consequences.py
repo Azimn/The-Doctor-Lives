@@ -66,7 +66,12 @@ def consequence_pressure(brain, *, observation: str,
 
 # Developmental history is a bounded evidence-derived appraisal, not a new
 # personality, external reward, learned neural weights, or motor authority.
-HISTORY_VERSION = "work-history-appraisal-v1"
+HISTORY_VERSION = "work-history-appraisal-v2"
+# Developmental contributions must compete with the existing 0.20 neural
+# prior, not automatically override it on the first experience. This is a
+# declared engineering scale, not a fitted or biologically measured value.
+DEVELOPMENTAL_WEAR_COST = -0.08
+DEVELOPMENTAL_REPAIR_BENEFIT = 0.04
 
 
 def developmental_consequence_pressure(brain, *, observation: str,
@@ -74,8 +79,9 @@ def developmental_consequence_pressure(brain, *, observation: str,
                                       feasible_actions: tuple[str, ...]):
     """Accumulate independent autobiographical episodes, not replay counts.
 
-    The same contextual appraisal as the legacy mechanism is retained on the
-    first episode. Repeated independently verified experiences strengthen it
+    The legacy appraisal remains a separate control. This smaller first-event
+    contribution can compete with rather than overwhelm the neural prior.
+    Repeated independently verified experiences strengthen it
     with diminishing, capped influence. State is reconstructed from the
     canonical BrainStore on every opportunity, so archival and cold restart
     naturally remove or restore evidence. The host must authenticate custody.
@@ -110,7 +116,8 @@ def developmental_consequence_pressure(brain, *, observation: str,
     ordered = sorted(episodes.values(), reverse=True)
     eligible = [row[1] for row in ordered]
     used = []
-    for action, appraisal in (("experiment", WEAR_COST), ("repair", REPAIR_BENEFIT)):
+    for action, appraisal in (("experiment", DEVELOPMENTAL_WEAR_COST),
+                              ("repair", DEVELOPMENTAL_REPAIR_BENEFIT)):
         if action not in scores:
             continue
         matching = [row[1] for row in ordered if row[2] == action]
