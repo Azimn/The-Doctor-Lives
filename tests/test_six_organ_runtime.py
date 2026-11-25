@@ -52,16 +52,17 @@ class SixOrganRuntimeTests(unittest.TestCase):
     def test_single_brain_owns_all_six_ports_and_truthful_registry(self):
         names = tuple(x.name for x in ORGAN_REGISTRY)
         self.assertEqual(names, (
-            "Noesis", "Mnemosyne", "Affectus", "Sensus",
-            "Synthetic Ipseity", "Corpus",
+            "Synthetic Ipseity", "Sensus", "Corpus", "Affectus", "Mnemosyne",
+            "Noesis", "Expression", "Telos", "Conclave", "Phantasmagorium",
         ))
         for name in ("noesis", "mnemosyne", "affectus", "sensus",
                      "synthetic_ipseity", "corpus"):
             self.assertIs(getattr(self.runtime, name)._port, self.runtime._port)
         status = self.runtime.status()
-        self.assertIn("NOT six-organ production", status["qualification"])
-        self.assertEqual(len(status["organs"]), 6)
-        self.assertTrue(all(x["state"] in ("mapped", "adapter-backed")
+        self.assertIn("not fully qualified production", status["qualification"])
+        self.assertEqual(status["linchpin"], "Synthetic Ipseity")
+        self.assertEqual(len(status["organs"]), 10)
+        self.assertTrue(all(x["state"] in ("mapped", "adapter-backed", "linchpin")
                             for x in status["organs"]))
         self.assertEqual(
             sorted(x.name for x in self.runtime.organ_registry),

@@ -1,4 +1,4 @@
-"""Explicit six-organ FUNCTIONAL PORTS around the one canonical Pretorius brain.
+"""Ten-organ product registry around the one canonical Pretorius brain.
 
 This is a D2 interface milestone, not six independent agents, new minds, or
 proof that all proposed mechanisms have been adopted. Every port delegates to
@@ -8,8 +8,8 @@ world authority or selectors are created.
 Most importantly:
 * Sensus is an existing single-stream percept adapter here. It is NOT the
   standalone multichannel Sensus donor.
-* Synthetic Ipseity provides typed Doctor projection here. Durable admission
-  belongs to the separately reviewed optional Synthetic Ipseity session.
+* Synthetic Ipseity is the owning subject and mandatory product linchpin.
+  The reviewed durable delivery session remains one expression transport.
 * Corpus observes body-supplied signals; it cannot command a body or assert
   physical effects.
 * Affectus reads existing affective/needs influences. It is not a second
@@ -39,8 +39,8 @@ class OrganDescriptor:
     limitation: str
 
 
-# A truthful state inventory, not six auto-promoted "implemented" labels.
-ORGAN_REGISTRY: tuple[OrganDescriptor, ...] = (
+# Historical six-port interface inventory retained for compatibility.
+LEGACY_SIX_ORGAN_REGISTRY: tuple[OrganDescriptor, ...] = (
     OrganDescriptor(
         "Noesis", "adapter-backed", "PretoriusBrainPort.cognition + recurrent selector",
         "Host invocation is not autonomous planning or world action.",
@@ -67,6 +67,33 @@ ORGAN_REGISTRY: tuple[OrganDescriptor, ...] = (
         "Corpus", "mapped", "Existing bodily ingress and interoception",
         "Environment owns physical state; there is no motor authority here.",
     ),
+)
+
+
+# Product architecture is ten organs. Synthetic Ipseity is the owning
+# subject, not an optional renderer or a tenth interchangeable service.
+ORGAN_REGISTRY: tuple[OrganDescriptor, ...] = (
+    OrganDescriptor("Synthetic Ipseity", "linchpin",
+                    "One Pretorius subject; typed first-person admission, continuity, ownership and subject access",
+                    "Mandatory product invariant; full no-bypass and longitudinal qualification still required."),
+    OrganDescriptor("Sensus", "adapter-backed", "Verified perception and bound Tower scenes",
+                    "Raw audiovisual and conflict qualification outstanding."),
+    OrganDescriptor("Corpus", "adapter-backed", "Original physical receipts, bodily feeling and capability",
+                    "World/body authority stays outside the subject."),
+    OrganDescriptor("Affectus", "adapter-backed", "Canonical appraisal and reviewed Spinoza weather",
+                    "Felt experience must enter Synthetic Ipseity; longitudinal calibration pending."),
+    OrganDescriptor("Mnemosyne", "adapter-backed", "Canonical autobiographical memory, recollection and consolidation",
+                    "Recollection must return as subject-owned experience, not raw records."),
+    OrganDescriptor("Noesis", "adapter-backed", "Original recurrent deliberation and situated action choice",
+                    "Conscious inputs and thoughts must belong to the same subject."),
+    OrganDescriptor("Expression", "adapter-backed", "Guarded subject-only expression and acknowledged self-observation",
+                    "Renderer training and spoken/nonverbal delivery outstanding."),
+    OrganDescriptor("Telos", "adapter-backed", "Protected canonical intentions and prospective commitments",
+                    "Intention continuity requires first-person ownership and causal qualification."),
+    OrganDescriptor("Conclave", "adapter-backed", "Source-grounded associations and interpretations",
+                    "Hypotheses, not facts or second decision authority."),
+    OrganDescriptor("Phantasmagorium", "adapter-backed", "Original pinned dream and fancy mechanism",
+                    "Donor deployment and positive longitudinal qualification outstanding."),
 )
 
 
@@ -316,6 +343,11 @@ class SyntheticIpseityOrgan:
         """Typed, subject-only frame, prior to an authorized admission/outbox."""
         return self._port.subject_frame(user_input)
 
+    def tower_experience(self):
+        """The single owning subject on the canonical Tower brain."""
+        from .tower_ipseity import TowerIpseity
+        return TowerIpseity(self._port.brain)
+
     def open_durable_delivery(self, *, renderer: Callable[[str], str],
                               epoch_id: str = "pretorius-lifetime-v1"):
         """Opt-in authoritative output route using this SAME brain port.
@@ -437,8 +469,10 @@ class SixOrganRuntime:
     def status(self) -> dict[str, Any]:
         """Engineer-only inventory, deliberately separate from subject access."""
         return {
-            "architecture": "pretorius-six-organ-target.v1",
-            "qualification": "D2 opt-in adapter prototype; NOT six-organ production",
+            "architecture": "pretorius-ten-organ-target.v1",
+            "qualification": "Ten-organ product target; not fully qualified production",
+            "linchpin": "Synthetic Ipseity",
+            "historical_interface": "SixOrganRuntime (compatibility name)",
             "brain_schema": self._port.SCHEMA,
             "organs": [
                 {

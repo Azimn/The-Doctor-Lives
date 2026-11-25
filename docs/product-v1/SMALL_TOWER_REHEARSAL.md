@@ -78,3 +78,7 @@ The original Article 8 minimum-practice rule now participates in Tower Noesis as
 ## Longitudinal mechanical release check
 
 Run `python -m tools.qualify_tower_life --workspace <fresh directory> --tower-source <pinned Tower checkout> --model <existing local Ollama model>` with the original Phantasmagorium archive configured. It runs at least 3000 actual source ticks through ordinary uncoached Tower life, with repeated cold host openings, bounded CASCADE during activity, then one genuine guarded Expression delivery. It checks source-linked physical outcomes, all nine organ participation, fulfilled prospective goals, positive procedural and developmental influence, source monitoring and no duplicate physical admissions. A missing faculty or incomplete run fails the mechanical gate. This is not proof of character fidelity or complete production readiness; those are separately unqualified. No state from an inhabited character is overwritten.
+
+## Governing ten-organ correction
+
+Synthetic Ipseity is the tenth full organ and the linchpin of the entire individual. All nine existing organs remain mandatory. Conscious content must be owned and used as first-person experience, not merely rendered as such at output. The historical six-port compatibility class name does not define the product organ count. Full no-bypass qualification and a matched first-person-continuity causal action test are mandatory.

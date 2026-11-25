@@ -553,13 +553,20 @@
     "pr": 124,
     "migration": "pending; rehearsal only"
   },
-  "nine_organ_expansion": {
-    "directive": "2026-11-24 mandatory full nine-organ architecture",
+  "ten_organ_expansion": {
+    "directive": "2026-11-24 owner directive: ten organs; Synthetic Ipseity is the indispensable singular subject and highest-priority product requirement",
     "pr": 124,
     "branch": "integration/pretorius-v1-unified-completion",
     "starting_head": "1b406f75980eadedfc5ad8d7bcf3a68350c9c853",
-    "policy": "All nine required; Synthetic Ipseity remains shared experiential authority. Presence is not qualification. No competing brains, no scope reduction, no live history reset.",
+    "policy": "All ten are mandatory. Synthetic Ipseity owns conscious first-person experience of the other nine. Continuous natural-language first-person continuity is cognitive input, not a cosmetic output or optional renderer. All conscious observations, sensations, impressions, feelings, memories, thoughts, intentions, imaginations and perceived expression must be admitted and causally usable through the one subject. Latent implementation signals and external evidence authority stay distinct. No second mind, no organ removal, no scope reduction, no lived history reset. Presence is not qualification.",
     "organs": [
+      {
+        "organ": "Synthetic Ipseity",
+        "role": "linchpin and owning subject; mandatory central experiential authority",
+        "location": "organs.py; tower_ipseity.py; phenomenology.py; models.py; projection.py; chassis.py; ipseity_integration.py; first_person_governance.py; cognition.py",
+        "status": "priority_integration_required",
+        "next": "Make ordinary Small Tower consciousness and motor intentions consume canonical first-person frames; preserve one ordered history with source attribution; demonstrate native prior commitment continuity and matched impairment of Ipseity changes actual selection and physical behavior. No claim of universal no-bypass before tests."
+      },
       {
         "organ": "Sensus",
         "location": "organs.py; virtual_world_port.py; tower_sensus.py; data/affectus_donor/sensus_artificialis/core.py",
@@ -616,10 +623,6 @@
       }
     ],
     "supporting_systems": [
-      {
-        "mechanism": "Synthetic Ipseity",
-        "status": "partial"
-      },
       {
         "mechanism": "CASCADE",
         "status": "partial"
@@ -681,7 +684,7 @@
         "status": "reconciliation_required"
       }
     ],
-    "qualification": "No new passing CI or causal behavioral result claimed. Preserve original qualification gates and prior register.",
+    "qualification": "Ten-organ owner mandate supersedes former nine-organ classification. All previous failures and acceptance gates remain. Full no-bypass and causal behavior must be demonstrated, not inferred from naming.",
     "default_background": {
       "status": "integration_pending_ci",
       "cadence_source_ticks": 100,
