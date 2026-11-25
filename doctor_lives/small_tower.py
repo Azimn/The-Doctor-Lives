@@ -192,7 +192,8 @@ def _admit_events(runtime, provider, port):
         from .tower_telos import reconcile_intention
         reconcile_intention(store, provider, row, receipt, admitted.memory_id)
     if archive is not None:
-        sync_history(store, provider, snapshot, archive)
+        sync_history(store, provider, snapshot, archive,
+                     subject=runtime.synthetic_ipseity.tower_experience())
     with store.transaction() as db:
         store.set_meta(CURSOR, snapshot["cursor"], db)
         store.bump_state_version(db)
@@ -245,7 +246,8 @@ def _choose(runtime, provider, snapshot, observation_id, weather, scene, body):
             brain, observation_memory_id=observation_id, observation_source=observation_source,
             narrative=scene["admitted_lines"], offers=offers, affordance_map=MAP,
             regulatory_pressure=pressure, tower_provider=provider,
-            subject=runtime.synthetic_ipseity.tower_experience())
+            subject=runtime.synthetic_ipseity.tower_experience(),
+            affective_lines=weather.felt_first_person())
     choice, scores = decision["selected_action"], decision["action_scores"]
     with brain.store.transaction() as db:
         brain.store.set_meta("small-tower:choice:"+decision["policy_decision_id"],
@@ -369,7 +371,8 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                      "choice":choice,"policyRef":policy,"steps":steps}
             from .tower_telos import reserve_intention
             with store.transaction() as db:
-                reserve_intention(store, db, request)
+                reserve_intention(store, db, request,
+                                  subject=runtime.synthetic_ipseity.tower_experience())
                 store.set_meta(PENDING,json.dumps(request,sort_keys=True),db)
                 store.bump_state_version(db)
         result=provider.pulse(request)

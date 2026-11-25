@@ -359,7 +359,7 @@ def select_with_original_noesis(
 
 def select_world_affordance(brain, *, observation_memory_id, observation_source,
                             narrative, offers, affordance_map, regulatory_pressure,
-                            tower_provider=None, subject=None):
+                            tower_provider=None, subject=None, affective_lines=()):
     """Original Noesis concrete choice on a trusted world's admitted perception.
 
     The adapter supplies feasible offers and bounded physical cue pressure,
@@ -409,7 +409,7 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
             raise PermissionError("Ordinary Tower cognition requires its owning Synthetic Ipseity organ")
         from .models import SubjectRendererCapability
         frame, owned, admission = subject.capture(observation, narrative, offers,
-                                                   interpretation_cues, imaginative_cues)
+                                                   interpretation_cues, imaginative_cues, affective_lines)
         context = " ".join(SubjectRendererCapability.read(frame))
         retrieval_context = context
         with subject.cognitive_access(owned):

@@ -17,7 +17,7 @@ LATEST_FANCY = "phantasmagorium:tower-latest-fancy:v1"
 ELIGIBLE = ("read", "rest", "sleep")
 
 
-def sync_tower_phantasmagorium(store, provider, receipt, memory_id, archive):
+def sync_tower_phantasmagorium(store, provider, receipt, memory_id, archive, *, subject=None):
     """Consume an actual completed read or sleep once, including source replay."""
     from .small_tower import SmallTowerSource
     from .virtual_world_port import VirtualWorldReceipt
@@ -36,6 +36,11 @@ def sync_tower_phantasmagorium(store, provider, receipt, memory_id, archive):
             or memory["source"] != source or memory["text"] != receipt.first_person
             or not memory.get("source_event_id")):
         raise PermissionError("Exact admitted Tower source memory required")
+    if store.meta("small-tower:world-binding-v1") is not None:
+        from .tower_ipseity import TowerIpseity
+        if type(subject) is not TowerIpseity or subject.store is not store:
+            raise PermissionError("Imagination requires its owning Synthetic Ipseity organ")
+    subject_digest=store.digest() if subject is not None else None
     archive = verify_archive(archive)
     digest = sha256(source.encode()).hexdigest()
     key = "phantasmagorium:tower-event:" + digest
@@ -126,6 +131,20 @@ def sync_tower_phantasmagorium(store, provider, receipt, memory_id, archive):
                 db, store.tick, text, SOURCE + digest, "dream_recollection",
                 "dreamed_not_lived", True, 1.0, False, .35,
                 tags=("dream", "fictional", "nonfactual"))
+        if subject is not None:
+            from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+            events=[]
+            if text:
+                events.append(subject.event("Phantasmagorium",text,PhenomenalMode.RECOLLECTION,
+                    (memory_id,report["recollection_memory_id"]),attribution=SubjectiveSourceKind.DREAMED,
+                    external=True,digest=subject_digest))
+            for motif in motifs:
+                line="I imagine "+motif.rstrip(".")+", without taking it for something I witnessed."
+                events.append(subject.event("Phantasmagorium",line,PhenomenalMode.INTERNAL_THOUGHT,
+                    (memory_id,),attribution=SubjectiveSourceKind.IMAGINED,external=True,digest=subject_digest))
+            if events:
+                admission=subject.record(db,"imagination:"+digest,events,phase="imagination")
+                report["ipseity_admission_sha256"]=admission["sha256"]
         store.set_meta(STATE, _stable(envelope), db)
         store.set_meta(key, _stable(report), db)
         if motifs:
@@ -189,7 +208,7 @@ def retrieval_motifs(store, observation_source):
     return tuple(motifs)
 
 
-def sync_history(store, provider, snapshot, archive):
+def sync_history(store, provider, snapshot, archive, *, subject=None):
     """Replay missed eligible events in source order, independently of world ingress."""
     from .small_tower import SmallTowerSource
     if type(provider) is not SmallTowerSource or provider.world_epoch != snapshot["epoch"]:
@@ -237,7 +256,7 @@ def sync_history(store, provider, snapshot, archive):
         if len(matches) != 1:
             raise PermissionError("Imagination history lacks unique admitted source memory")
         reports.append(sync_tower_phantasmagorium(store, provider, receipt,
-                                                  matches[0]["id"], archive))
+                                                  matches[0]["id"], archive,subject=subject))
     with store.transaction() as db:
         prior = db.execute("SELECT value FROM meta WHERE key=?", (CURSOR,)).fetchone()
         if (prior["value"] if prior else None) != raw:

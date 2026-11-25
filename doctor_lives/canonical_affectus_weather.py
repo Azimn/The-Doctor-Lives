@@ -163,6 +163,12 @@ class CanonicalWeather:
     def modulation(self):
         return self._weather.modulation()
 
+    def felt_first_person(self):
+        """Natural-language realization of original donor quantized felt report."""
+        from .tower_affectus import felt_words
+        report=self._weather.emit_interoception(self.tick,"weather-perception")
+        return felt_words(report.value)
+
     def last_consumed_world_source(self) -> str | None:
         return self._port.brain.store.meta(_WORLD_CONSUMED_META)
 
@@ -219,6 +225,11 @@ class CanonicalWeather:
             if consumed_world_source == self.last_consumed_world_source():
                 raise RuntimeError("One physical consequence cannot drive weather twice")
         old = self._stored_digest
+        subject=None
+        if tower_key is not None:
+            from .tower_ipseity import TowerIpseity
+            subject=TowerIpseity(self._port.brain)
+            subject_digest=subject.store.digest()
         self._weather.step(tick, drivers)
         envelope = self._envelope()
         new = _digest(envelope)
@@ -241,6 +252,11 @@ class CanonicalWeather:
                 self._port.brain.store.set_meta(
                     tower_key, _json({"source_record": tower_record, "tick": tick}), conn,
                 )
+                from .phenomenology import PhenomenalMode
+                events=tuple(subject.event("Affectus",line,PhenomenalMode.FEELING,
+                                           (tower_memory_id,),digest=subject_digest)
+                             for line in self.felt_first_person())
+                subject.record(conn,"affect:"+tower_memory_id,events,phase="affect")
             self._port.brain.store.bump_state_version(conn)
         self._stored_digest = new
         return WeatherReceipt(

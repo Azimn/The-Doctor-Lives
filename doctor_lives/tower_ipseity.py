@@ -227,7 +227,7 @@ class TowerIpseity:
             raise PermissionError("First-person history head mismatch")
         return entries
 
-    def capture(self, observation, narrative, offers, interpretation_cues, imaginative_cues):
+    def capture(self, observation, narrative, offers, interpretation_cues, imaginative_cues, affective_lines=()):
         """Conscious working experience before deliberation, not after rendering."""
         if (not observation["active"] or observation["external"]
                 or observation["evidence_class"]!="lived_runtime_memory"
@@ -252,6 +252,8 @@ class TowerIpseity:
                 add("Corpus" if key=="fatigue" else "Affectus",line,
                     PhenomenalMode.BODILY_SENSATION if key=="fatigue" else PhenomenalMode.FEELING,
                     ("need:"+key,))
+        for line in affective_lines:
+            add("Affectus",line,PhenomenalMode.FEELING,(observation["id"],))
         owned_events=self.owned_events(state_digest)
         owned={rid:event[1].subject_text for rid,event in owned_events}
         with self.cognitive_access(owned):

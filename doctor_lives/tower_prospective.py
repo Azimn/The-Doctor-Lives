@@ -177,7 +177,7 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
             "room": room, "active_ids": [g["id"] for g in active]}
 
 
-def reserve(store, db, request):
+def reserve(store, db, request, *, subject=None):
     pid = request["policyRef"]
     if not pid:
         return
@@ -207,11 +207,18 @@ def reserve(store, db, request):
                    (rid, row["tick"], store.tick, goal["description"], goal["importance"], PREFIX + pid))
         store.set_meta(key, raw, db)
         from .store import new_id
+        thought_id=new_id("thought")
         db.execute("INSERT INTO thoughts (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json) "
                    "VALUES(?,?,?,?,?,?,?)",
-                   (new_id("thought"),store.tick,"I intend to "+goal["description"]+".",
+                   (thought_id,store.tick,"I intend to "+goal["description"]+".",
                     "ipseity_prospective_intention","ipseity_prospective:"+pid,
                     json.dumps([goal["prior_memory_id"]]),"{}"))
+        if subject is not None:
+            from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+            owned=subject.event("Telos","I intend to "+goal["description"]+".",PhenomenalMode.INTENTION,
+                                (rid,pid,thought_id,goal["prior_memory_id"]),
+                                attribution=SubjectiveSourceKind.SELF_OBSERVED)
+            subject.record(db,"prospective:"+rid,(owned,),phase="intention")
     # No timeout or unrelated action can claim fulfillment. The protected
     # prospective commitment remains open through interruptions and restart.
 

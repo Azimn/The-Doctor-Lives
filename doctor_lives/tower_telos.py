@@ -14,7 +14,7 @@ def intention_id(policy_id):
     return "telos_tower_" + policy_id
 
 
-def reserve_intention(store, db, request):
+def reserve_intention(store, db, request, *, subject=None):
     """Called inside the same transaction as the canonical motor reservation."""
     policy_id, action = request["policyRef"], request["choice"]
     if action is None:
@@ -52,7 +52,7 @@ def reserve_intention(store, db, request):
             or row["created_tick"] != policy["tick"]):
         raise PermissionError("Conflicting Tower intention reservation")
     from .tower_prospective import reserve
-    reserve(store, db, request)
+    reserve(store, db, request,subject=subject)
     return rid
 
 

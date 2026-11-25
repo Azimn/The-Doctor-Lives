@@ -12,6 +12,35 @@ DONOR = Path(__file__).with_name("data") / "affectus_donor"
 SEED = 1842
 
 
+def felt_words(value):
+    """Realize the original donor's coarse felt report, not hidden body data."""
+    import re
+    pattern=r"(valence|arousal|security|fatigue):(-?\d\.\d\d)([\^v~])"
+    parts=value.split()
+    matches=[re.fullmatch(pattern,p) for p in parts]
+    if len(parts)!=4 or any(m is None for m in matches) or {m[1] for m in matches}!={"valence","arousal","security","fatigue"}:
+        raise PermissionError("Unexpected original Affectus felt report")
+    words={"valence":("I feel rather discontented.","I feel rather pleased.","I feel my mood lifting.","I feel my mood sinking."),
+           "arousal":("I feel subdued.","I feel stirred up.","I feel increasingly alert.","I feel myself settling."),
+           "security":("I feel uneasy.","I feel secure.","I feel more at ease.","I feel less secure."),
+           "fatigue":("I feel rested.","I feel weary.","I feel weariness growing.","I feel weariness easing.")}
+    result=[]
+    for m in matches:
+        low,high,rising,falling=words[m[1]]
+        level=float(m[2])
+        if not -1<=level<=1:
+            raise PermissionError("Felt report outside reviewed range")
+        if level<0:
+            result.append(low)
+        elif level>0:
+            result.append(high)
+        if m[3]=="^":
+            result.append(rising)
+        elif m[3]=="v":
+            result.append(falling)
+    return tuple(result or ["I cannot discern a marked change in my mood."])
+
+
 def weather_for(runtime):
     saved = runtime._port.brain.store.meta(_META)
     seed = SEED if saved is None else CanonicalWeather._decode(saved)["config"]["seed"]

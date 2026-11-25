@@ -12,6 +12,13 @@ from doctor_lives.organs import SixOrganRuntime
 from doctor_lives.neural import DEFAULT_CONFIG
 
 class TowerDevelopmentAppraisalTests(unittest.TestCase):
+    def test_donor_felt_report_uses_subject_words_not_numeric_state(self):
+        from doctor_lives.tower_affectus import felt_words
+        self.assertEqual(felt_words("valence:0.25v arousal:0.00~ security:0.00~ fatigue:-0.25~"),
+                         ("I feel rather pleased.","I feel my mood sinking.","I feel rested."))
+        with self.assertRaises(PermissionError):
+            felt_words("valence:3.00^ arousal:0.00~ security:0.00~ fatigue:0.00~")
+
     def test_prospective_routing_uses_only_known_edges(self):
         from doctor_lives.tower_prospective import first_step
         graph = {"library": {"kitchen"}, "kitchen": {"garden"}, "garden": set()}
@@ -128,6 +135,7 @@ class OriginalTowerTests(unittest.TestCase):
         self.assertEqual(admission["sha256"],audit["admission_sha256"])
         self.assertEqual({h["subject"] for h in history},{"pretorius"})
         self.assertTrue(any(h["key"]==RECORD+"decision:"+result["policy_id"] for h in history))
+        self.assertTrue(any(h["phase"]=="affect" and any(i["organ"]=="Affectus" for i in h["content"]) for h in history))
         self.assertEqual(set(appraisals["offer_appraisals"]), set(choice["offers"]))
         procedure = appraisals["procedural_memory"]
         self.assertTrue(procedure["enabled"])
