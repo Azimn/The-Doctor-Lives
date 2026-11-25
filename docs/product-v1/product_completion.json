@@ -592,9 +592,9 @@
       },
       {
         "organ": "Expression",
-        "location": "speech_emission.py; operator_conversation.py; tower_web.py; ipseity_local.py",
+        "location": "speech_emission.py; operator_conversation.py; tower_web.py; ipseity_local.py; tools/prepare_expression_corpus.py; tools/train_expression_lora.py",
         "status": "integration_pending_ci",
-        "next": "Ordinary Tower browser conversation now uses original durable local-turn SpeechEmissionJournal and a trusted successful HTTP write sink. Uncertain output cannot auto-repeat; written self-observation, not audible speech or proof human saw it. Character training, voice, grounded nonverbal expression and social communication remain."
+        "next": "Original character expression corpus V19 located in Agent-Pretorius with 279 dialogues / 545 assistant turns. Exact source hash pinned, overlap-grouped train/validation/test split and local assistant-only LoRA training entrypoint added. No trained adapter weights or original base-model config recovered; local training, held-out behavioral qualification, voice and guarded deployment remain."
       },
       {
         "organ": "Telos",
@@ -759,6 +759,16 @@
       "weight_failure": -0.05,
       "max_independent_episodes": 4,
       "absolute_cap": 0.08
+    },
+    "expression_corpus": {
+      "source_repository": "Azimn/Agent-Pretorius",
+      "source_commit": "40837ba0093cff044644c07098450587b968d",
+      "source_path": "resources/lora/pretorius_lora_dataset_v19_279_diversified_prompts.jsonl",
+      "source_blob": "8290de25b9daeb230fb4b519b9383b110e197704",
+      "records": 279,
+      "assistant_turns": 545,
+      "original_adapter_recovered": false,
+      "training_executed": false
     }
   }
 }

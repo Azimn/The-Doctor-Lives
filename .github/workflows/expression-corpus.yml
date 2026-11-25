@@ -1,0 +1,28 @@
+name: Original Pretorius character-expression corpus qualification
+on:
+  pull_request:
+    paths: ['tools/prepare_expression_corpus.py','tools/train_expression_lora.py','tests/test_expression_corpus.py','.github/workflows/expression-corpus.yml']
+  workflow_dispatch:
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Agent-Pretorius
+          ref: 40837ba0093cff044644c07098450587b968d
+          path: pinned-expression
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s tests -p test_expression_corpus.py -v
+      - run: python tools/prepare_expression_corpus.py --source pinned-expression/resources/lora/pretorius_lora_dataset_v19_279_diversified_prompts.jsonl --output expression-corpus
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pretorius-expression-corpus-manifest
+          path: expression-corpus/manifest.json
