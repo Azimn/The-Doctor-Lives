@@ -510,6 +510,13 @@ class PretoriusBrain:
     def ingest(self, exp: Experience) -> dict[str, Any]:
         if not exp.text.strip():
             raise ValueError("experience text is required")
+        subject=None
+        subject_digest=None
+        if (self.store.meta("small-tower:world-binding-v1") is not None
+                and exp.source.startswith(("virtual-world:small-tower:","local-conversation:","local-emission:"))):
+            from .tower_ipseity import TowerIpseity
+            subject=TowerIpseity(self)
+            subject_digest=self.store.digest()
         with self.store.transaction() as conn:
             tick = self.store.advance_tick(conn)
             evidence_class = "external_statement" if exp.external else "lived_runtime_memory"
@@ -530,6 +537,9 @@ class PretoriusBrain:
                 exp.external, exp.confidence, False, base, exp.tags, event_id,
                 classification=classification,
             )
+            if subject is not None:
+                subject.record_ingress(conn,source=exp.source,kind=exp.kind,text=exp.text,
+                    memory_id=memory_id,event_id=event_id,external=exp.external,tick=tick,digest=subject_digest)
             self._update_needs(conn, tick, exp)
             self._update_relationship(conn, tick, exp, event_id)
             self._maybe_add_concern(conn, tick, exp)
@@ -1464,6 +1474,12 @@ class PretoriusBrain:
             )
 
         for commitment in view.commitments:
+            if self.store.meta("small-tower:world-binding-v1") is not None:
+                from .tower_ipseity import TowerIpseity
+                owned=TowerIpseity(self).commitment_event(commitment,digest)
+                if owned is not None:
+                    events.append(owned[1])
+                continue
             events.append(
                 project_commitment(
                     context=context,

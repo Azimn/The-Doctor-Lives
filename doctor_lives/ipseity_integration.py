@@ -107,6 +107,9 @@ class DoctorSyntheticIpseitySession:
     def publish_current(self, user_input: str | None = None):
         """Commit real Doctor subject experience into the durable Ipseity gate."""
         source = self._doctor.subject_frame(user_input)
+        if self._doctor.brain.store.meta("small-tower:world-binding-v1") is not None:
+            from .tower_ipseity import TowerIpseity
+            source=TowerIpseity(self._doctor.brain).expression_frame(source)
         return self._publish_typed_subject_frame(source)
 
     def bind_recollection_controller(

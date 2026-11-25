@@ -564,8 +564,8 @@
         "organ": "Synthetic Ipseity",
         "role": "linchpin and owning subject; mandatory central experiential authority",
         "location": "organs.py; tower_ipseity.py; phenomenology.py; models.py; projection.py; chassis.py; ipseity_integration.py; first_person_governance.py; cognition.py",
-        "status": "integration_pending_ci",
-        "next": "Mandatory product first-person decision path now routes Sensus, Corpus, Affectus felt state, Mnemosyne recollections, Noesis thoughts and decisions, Telos owned prior intentions, Conclave associations, Phantasmagorium marked imagination and perceived Expression into the same canonical history. Controlled matched actual-source rest-vs-competing-action test with only owned Telos access impaired added; requires execution and archived passing trace. Remaining broader donor output and continuous history coverage still must be verified."
+        "status": "controlled_causal_behavior_passed_linux; full_no_bypass_pending",
+        "next": "Executed original Tower matched Ipseity commitment-access impairment test passed on Linux at commit 5278b90eb528b5b076e9e03dad698a542cfd6eb4. Intact: rest, goal kept. Impaired: move_library, goal open. Source ingress now commits owned acquisition before cognition in same transaction; local Expression uses recalled own thoughts and present frame. Latest head needs CI; original donor affect, imagination, broader longitudinal and uncoached no-bypass qualification remain."
       },
       {
         "organ": "Sensus",
@@ -784,8 +784,36 @@
     "ipseity_causal_test": {
       "path": "tests/test_small_tower.py::test_own_past_commitment_changes_real_tower_action_under_matched_ipseity_impairment",
       "expected": "real prior rest -> native journey -> prospective first-person rest commitment -> matched intact vs impaired choices -> verified physical consequence and kept/open status",
-      "status": "implemented_pending_ci",
-      "control": "same pre-state; calibrated identical bounded competition; only withholding owned commitment experience; no fabricated receipts; not uncoached"
+      "status": "controlled_causal_pass_linux_at_tested_head",
+      "control": "same pre-state; calibrated identical bounded competition; only withholding owned commitment experience; no fabricated receipts; not uncoached",
+      "observed": {
+        "commit": "5278b90eb528b5b076e9e03dad698a542cfd6eb4",
+        "workflow_run": 45534583152,
+        "job": 138937929940,
+        "artifact": 14985937751,
+        "same_pre_state_sha256": "b1be9e1d483b44efa7640b7750f2d777931c3b6f685f4b59739859a50b68afd4",
+        "origin_policy": "policy_cc5fdfe6833b4946a22d10f858f35f24",
+        "first_person": "I still intend to return to bedchamber to rest.",
+        "intact": {
+          "policy_id": "policy_25a775e09f56401187311d7a72cd9f6d",
+          "action": "rest",
+          "source_event": "L13",
+          "text": "I sat awhile to recover my strength.",
+          "goal_status": "kept"
+        },
+        "impaired": {
+          "policy_id": "policy_22f6eba9860949fab5e8a2c58f74e44a",
+          "action": "move_library",
+          "source_event": "L14",
+          "text": "I reached the adjoining room.",
+          "goal_status": "open"
+        },
+        "calibrated_competing_pressure": {
+          "move_library": 0.12071223089868033,
+          "rest": 0.07928776910131968
+        },
+        "uncoached": false
+      }
     }
   }
 }

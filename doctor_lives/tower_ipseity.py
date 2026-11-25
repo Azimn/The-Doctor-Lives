@@ -42,14 +42,14 @@ class TowerIpseity:
         self.store=brain.store
 
     def event(self, organ, text, mode, refs=(), *, attribution=SubjectiveSourceKind.UNKNOWN,
-              external=False, digest=None):
+              external=False, digest=None, tick=None):
         if not isinstance(text,str) or not _FIRST.match(text.strip()):
             raise PermissionError("Conscious Tower experience must be natural first-person text")
         assert_subject_text_safe(text)
         if first_person_line(text)!=text:
             raise PermissionError("Unsafe or altered first-person experience")
         return (organ, PhenomenalEvent(
-            tick=self.store.tick,subject_id="pretorius",mode=mode,
+            tick=self.store.tick if tick is None else tick,subject_id="pretorius",mode=mode,
             awareness=AwarenessLevel.CONSCIOUS,canonical_first_person=text,
             privacy=PrivacyState.PRIVATE,projection_rule_version=VERSION,
             source_state_digest=digest or self.store.digest(),
@@ -65,7 +65,7 @@ class TowerIpseity:
             raise PermissionError("Only the one Pretorius subject may enter awareness")
         return SubjectFrame.from_events(e for _,e in events)
 
-    def record(self, db, key, events, *, phase):
+    def record(self, db, key, events, *, phase, tick=None):
         """Atomic ordered admission. Replayed source keys never add experience twice."""
         events=tuple(events)
         frame=self.frame(events)
@@ -84,12 +84,27 @@ class TowerIpseity:
         previous=json.loads(_read(db,HEAD) or '{"sequence":0,"sha256":null}')
         payload={"subject":"pretorius","sequence":previous["sequence"]+1,
                  "previous_sha256":previous["sha256"],"key":key,
-                 "phase":phase,"tick":self.store.tick,"content":content}
+                 "phase":phase,"tick":self.store.tick if tick is None else tick,"content":content}
         entry=dict(payload,sha256=_digest(payload))
         self.store.set_meta(key,_stable(entry),db)
         self.store.set_meta(HEAD,_stable({"sequence":entry["sequence"],"sha256":entry["sha256"]}),db)
         self.store.bump_state_version(db)
         return entry
+
+    def record_ingress(self,db,*,source,kind,text,memory_id,event_id,external,tick,digest):
+        """Commit first-person acquisition before recurrent thought, with the memory."""
+        communication=source.startswith("local-conversation:")
+        organ=("Expression" if kind=="confirmed_written_utterance" else
+               "Corpus" if ":action:" in source else "Sensus")
+        attribution=(SubjectiveSourceKind.TOLD if communication else
+                     SubjectiveSourceKind.SELF_OBSERVED if organ=="Expression" else SubjectiveSourceKind.LIVED)
+        event=self.event(organ,text,PhenomenalMode.SELF_PERCEPTION if organ=="Expression"
+                         else PhenomenalMode.PERCEPT,
+                         (memory_id,) if communication else (memory_id,event_id),
+                         attribution=attribution,external=communication or external,
+                         digest=digest,tick=tick)
+        return self.record(db,("communication:" if communication else "acquisition:")+memory_id,
+                           (event,),phase="communication" if communication else "acquisition",tick=tick)
 
     def acquisition(self, memory_id):
         memory=self.store.get_memory(memory_id)
@@ -162,14 +177,35 @@ class TowerIpseity:
 
     def communication(self, memory_id):
         memory=self.store.get_memory(memory_id)
-        if (not memory or not memory["active"] or not memory["external"]
-                or memory["evidence_class"]!="external_statement"
+        if (not memory or not memory["active"]
+                or memory["evidence_class"] not in ("external_statement","lived_runtime_memory")
                 or not memory["source"].startswith("local-conversation:")):
             raise PermissionError("Actual received conversation required")
         event=self.event("Sensus",memory["text"],PhenomenalMode.PERCEPT,(memory_id,),
                          attribution=SubjectiveSourceKind.TOLD,external=True)
         with self.store.transaction() as db:
             return self.record(db,"communication:"+memory_id,(event,),phase="communication")
+
+    def expression_frame(self, frame):
+        """Use the same owned first-person history in actual local expression."""
+        lines=SubjectRendererCapability.read(frame)
+        digest=self.store.digest()
+        events=[]
+        history=self.verify_history()
+        recent=[(entry,item) for entry in history[-24:] for item in entry["content"]
+                if entry["phase"] in ("decision","private_thought") and item["organ"]=="Noesis"][-4:]
+        for entry,item in recent:
+            line="I recall having thought: "+item["text"]
+            if first_person_line(line)==line:
+                events.append(self.event("Mnemosyne",line,PhenomenalMode.RECOLLECTION,
+                                         (entry["key"],),attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=digest))
+        for line in lines[:64-len(events)]:
+            owned_line=first_person_line(line)
+            events.append(self.event("Expression",owned_line,PhenomenalMode.INTERNAL_THOUGHT,digest=digest))
+        subject_frame=self.frame(events)
+        with self.store.transaction() as db:
+            self.record(db,new_id("expression-context"),events,phase="expression_context")
+        return subject_frame
 
     def verify_history(self):
         """Read-only verification of the single ordered subject history."""
