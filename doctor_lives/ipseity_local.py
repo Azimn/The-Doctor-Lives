@@ -37,6 +37,7 @@ def local_turn(
     emit: Callable[[str, str], SpeechSinkAck] | None = None,
     neural_config: dict[str, Any] | None = None,
     now_ms: int | None = None,
+    governed: bool | None = None,
 ) -> str:
     """Take exactly one renderer delivery from a persistent real Doctor.
 
@@ -62,6 +63,11 @@ def local_turn(
     actual_renderer = (
         renderer if renderer is not None else LocalOllamaRenderer(model)
     )
+    if governed is not None and type(governed) is not bool:
+        raise TypeError("Explicit governor selection must be boolean")
+    if governed if governed is not None else renderer is None:
+        from .first_person_governance import govern_renderer
+        actual_renderer = govern_renderer(actual_renderer)
     if emit is not None and not callable(emit):
         raise TypeError("emit must be a trusted output sink")
 
