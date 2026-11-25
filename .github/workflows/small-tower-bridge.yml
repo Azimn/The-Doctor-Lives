@@ -1,0 +1,35 @@
+name: Canonical Small Tower bridge
+on:
+  pull_request:
+    paths: ['doctor_lives/**','tests/test_small_tower.py','tests/test_six_organ_mnemosyne_pilot.py','.github/workflows/small-tower-bridge.yml']
+  workflow_dispatch:
+jobs:
+  bridge:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Septimus---Web-Sim
+          ref: 2e2ffb0658dea77da4b6cece1b783ad236bf30ff
+          path: pinned-tower
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - run: python tools/ipseity_entrypoint_gate.py
+      - run: python -m unittest discover -s tests -p test_six_organ_mnemosyne_pilot.py -v
+      - run: python -m unittest discover -s tests -p test_small_tower.py -v
+        env:
+          PRETORIUS_TOWER_SOURCE: ${{ github.workspace }}/pinned-tower

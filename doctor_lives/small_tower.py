@@ -19,7 +19,7 @@ from .virtual_world_port import VirtualWorldReceipt, VirtualWorldEnvironmentPort
 from .first_person_governance import first_person_line
 from .phenomenology import implementation_leaks, control_instruction_markers
 
-PIN = "0924fff64de70cfdcfcd7655cb274af4eeb2b2d3"
+PIN = "2e2ffb0658dea77da4b6cece1b783ad236bf30ff"
 MANIFEST = Path(__file__).with_name("data") / "small_tower_source.json"
 BINDING = "small-tower:world-binding-v1"
 CURSOR = "small-tower:source-cursor-v1"
@@ -79,7 +79,7 @@ class SmallTowerSource:
         for key in ("NODE_OPTIONS", "NODE_PATH"):
             env.pop(key, None)
         proc = subprocess.run([self.node, str(self.root / "src/doctor_world_cli.js"), str(self.world)],
-            input=json.dumps(request), capture_output=True, text=True,
+            input=json.dumps(request,sort_keys=True), capture_output=True, text=True,
             encoding="utf-8", timeout=60, cwd=self.root, env=env)
         if proc.returncode:
             raise RuntimeError("Original Small Tower port failed: " + proc.stderr[-400:])
@@ -188,7 +188,7 @@ def _admit_events(runtime, provider, port):
     return snapshot
 
 
-def _choose(runtime, snapshot):
+def _choose(runtime, snapshot, observation_id):
     brain = runtime._port.brain
     offers = snapshot["offers"]
     if not offers:
@@ -234,7 +234,7 @@ def _choose(runtime, snapshot):
     with brain.store.transaction() as db:
         brain.store.set_meta("small-tower:choice:"+decision["policy_decision_id"],
             json.dumps({"revision":snapshot["revision"],"choice":choice,
-                        "offers":sorted(scores),"scores":scores,
+                        "offers":sorted(scores),"scores":scores,"observation_id":observation_id,
                         "host_mapped_abstract_tendency":True},sort_keys=True),db)
         brain.store.bump_state_version(db)
     return choice,decision["policy_decision_id"]
@@ -263,9 +263,11 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100):
             snapshot=_admit_events(runtime,provider,port)
             if snapshot["deceased"]:
                 raise RuntimeError("The original Tower inhabitant is deceased")
-            choice,policy=(None,None) if snapshot["busy"] else _choose(runtime,snapshot)
-            if not snapshot["busy"]:
-                port.observe()
+            if snapshot["busy"]:
+                choice,policy=None,None
+            else:
+                perceived=port._admit(provider._observation(snapshot),kind="observation")
+                choice,policy=_choose(runtime,snapshot,perceived.memory_id)
             from .store import new_id
             request={"id":new_id("tower"),"revision":snapshot["revision"],
                      "choice":choice,"policyRef":policy,"steps":steps}
@@ -285,7 +287,7 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100):
                 "same_canonical_brain":True,"parallel_tower_chooser":False}
 
 
-def initialize_tower(state, source, world, *, epoch):
+def initialize_tower(state, source, world, *, epoch, neural_config=None):
     from .lab_runtime import _exclusive_host
     from .organs import SixOrganRuntime
     state=Path(state)
@@ -295,7 +297,7 @@ def initialize_tower(state, source, world, *, epoch):
         raise ValueError("Bounded new Tower epoch required")
     state.mkdir(parents=True)
     with _exclusive_host(state):
-        runtime=SixOrganRuntime.open(state)
+        runtime=SixOrganRuntime.open(state, neural_config=neural_config)
         provider=SmallTowerSource(source,world)
         snapshot=provider.initialize(epoch)
         _bind(runtime,provider,snapshot)

@@ -1,6 +1,6 @@
 {
   "repository": "Azimn/Septimus---Web-Sim",
-  "commit": "0924fff64de70cfdcfcd7655cb274af4eeb2b2d3",
+  "commit": "2e2ffb0658dea77da4b6cece1b783ad236bf30ff",
   "files": {
     "canon/Pretorius_v12_450_Events_Complete.jsonl": "718dcc2d5ba4feccdef1690d447edfcebaa9bfb5",
     "identity.json": "239d876a44bd0b641698b867d938d0489615d6ed",
@@ -9,7 +9,7 @@
     "src/commitments.js": "11f3784aaccd4d27cda772e8dae50bc9320ebeea",
     "src/diary.js": "20af0d92e9bcb55c958e59edf0593baf5d0180b5",
     "src/doctor_world_cli.js": "1f503866d277d5efcf292eff0aa91c3dcbfbef5c",
-    "src/doctor_world_port.js": "a583f7563c863f96b916204ab1abcffb2ca5981e",
+    "src/doctor_world_port.js": "fe9a3d12f98bde0b0f333c65191573999c065b56",
     "src/economy.js": "e48e1e8c12015b752622fe8927357cef45db7947",
     "src/engine.js": "b9f15e0aba06b0ac440c4765a315c17527d56e91",
     "src/history.js": "16a3b9983d614a5c54f80f99c5a6ffc53d935374",
