@@ -309,5 +309,13 @@ def command(kind: str, workspace: Path, native_source: Path | None = None) -> in
             return run(workspace, resume=(kind == "preview-resume"), native_source=native_source)
         raise ValueError("Unknown preview command")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
+        from .r4_diagnostics import describe_exception
         print(f"{kind}: {exc}", file=sys.stderr)
+        print("R4_OPERATOR_EXCEPTION=" + json.dumps(describe_exception(exc, phase="operator"),
+                                                    sort_keys=True), file=sys.stderr, flush=True)
         return 2
+    except (Exception, KeyboardInterrupt) as exc:
+        from .r4_diagnostics import describe_exception
+        print("R4_OPERATOR_EXCEPTION=" + json.dumps(describe_exception(exc, phase="operator"),
+                                                    sort_keys=True), file=sys.stderr, flush=True)
+        raise
