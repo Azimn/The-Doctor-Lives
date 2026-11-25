@@ -62,3 +62,62 @@ def consequence_pressure(brain, *, observation: str,
         scores[action] = delta
         used.append(mid)
     return scores, eligible, used
+
+
+# Developmental history is a bounded evidence-derived appraisal, not a new
+# personality, external reward, learned neural weights, or motor authority.
+HISTORY_VERSION = "work-history-appraisal-v1"
+
+
+def developmental_consequence_pressure(brain, *, observation: str,
+                                      verified_outcome_memory_ids: tuple[str, ...],
+                                      feasible_actions: tuple[str, ...]):
+    """Accumulate independent autobiographical episodes, not replay counts.
+
+    The same contextual appraisal as the legacy mechanism is retained on the
+    first episode. Repeated independently verified experiences strengthen it
+    with diminishing, capped influence. State is reconstructed from the
+    canonical BrainStore on every opportunity, so archival and cold restart
+    naturally remove or restore evidence. The host must authenticate custody.
+    """
+    if (type(verified_outcome_memory_ids) is not tuple
+            or len(verified_outcome_memory_ids) > 64
+            or any(type(mid) is not str for mid in verified_outcome_memory_ids)
+            or len(set(verified_outcome_memory_ids)) != len(verified_outcome_memory_ids)):
+        raise ValueError("Bounded unique verified outcome memory IDs required")
+    scores = dict.fromkeys(feasible_actions, 0.0)
+    if WORN not in observation:
+        return scores, [], []
+    episodes = {}
+    for mid in verified_outcome_memory_ids:
+        memory = brain.store.get_memory(mid)
+        if (memory is None or not memory["active"] or memory["external"]
+                or memory["evidence_class"] != "lived_runtime_memory"):
+            continue
+        match = re.fullmatch(r"laboratory-home:action:([0-9a-f]{64})", memory["source"])
+        if match is None:
+            continue
+        content = " ".join(str(memory["text"]).split())
+        action = ("experiment" if content == EXPERIMENT_WEAR else
+                  "repair" if content == REPAIR_IMPROVEMENT else None)
+        if action is None:
+            continue
+        # An aliased source event cannot strengthen a disposition twice.
+        record = (int(memory["created_tick"]), mid, action)
+        digest = match.group(1)
+        if digest not in episodes or record < episodes[digest]:
+            episodes[digest] = record
+    ordered = sorted(episodes.values(), reverse=True)
+    eligible = [row[1] for row in ordered]
+    used = []
+    for action, appraisal in (("experiment", WEAR_COST), ("repair", REPAIR_BENEFIT)):
+        if action not in scores:
+            continue
+        matching = [row[1] for row in ordered if row[2] == action]
+        if matching:
+            # Saturates at four independent episodes; no unbounded habit.
+            effective = matching[:4]
+            multiplier = 1.0 + sum(0.5 ** index for index in range(1, len(effective)))
+            scores[action] = appraisal * multiplier
+            used.extend(effective)
+    return scores, eligible, used
