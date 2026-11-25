@@ -148,10 +148,12 @@ def daily_affordances(bridge: DoctorHomeBridge, observation: dict) -> tuple[str,
 
 def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = True,
                             use_consequences: bool = True,
-                            enable_habits: bool = False) -> DailyChoice:
+                            enable_habits: bool = False,
+                            developmental_history_enabled: bool = False) -> DailyChoice:
     """One independent Noesis choice, without any operator action argument."""
     if (type(author_goal) is not bool or type(use_consequences) is not bool
-            or type(enable_habits) is not bool):
+            or type(enable_habits) is not bool
+            or type(developmental_history_enabled) is not bool):
         raise TypeError("Typed researcher-lesion flags required")
     if pending_daily_action_ids(bridge):
         raise RuntimeError("A pending daily motor must reconcile before another choice")
@@ -169,7 +171,10 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
     # affordances. The recurrent dynamics, not a second controller, are used.
     from .organs import NoesisOrgan
     NoesisOrgan(bridge.doctor).deliberate(host_trigger="m2_daily_opportunity")
-    outcomes = _verified_work_outcomes(bridge) if use_consequences else ()
+    if developmental_history_enabled and not use_consequences:
+        raise ValueError("Developmental history requires consequence appraisal")
+    outcomes = (_verified_work_outcomes(bridge, require_original_choice=developmental_history_enabled)
+                if use_consequences else ())
     choice = select_with_original_noesis(
         bridge.doctor.brain,
         observation_memory_id=observed["memory_id"],
@@ -181,6 +186,7 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
         author_day_goal=author_goal,
         interoception_enabled=True,
         habit_bridge=bridge if enable_habits else None,
+        developmental_history_enabled=developmental_history_enabled,
     )
     return DailyChoice(choice["policy_decision_id"], choice["selected_action"],
                        observed["memory_id"], options)
