@@ -240,5 +240,80 @@ class NoesisActualConsequenceTests(unittest.TestCase):
         self.assertEqual(self.actions("experiment"), 1)
 
 
+
+
+    def test_developmental_history_uses_own_receipt_and_survives_restart(self):
+        outcome_id = self.create_one_real_consequence()
+        def propose(enabled):
+            return propose_noesis_work(
+                self.bridge, learning_enabled=False, neural_prior_enabled=False,
+                outcome_learning_enabled=enabled,
+                developmental_history_enabled=enabled,
+            )
+        learned = propose(True)
+        self.assertEqual(learned.action, "repair")
+        self.assertEqual(learned.supporting_memory_ids, (outcome_id,))
+        self.assertTrue(self.policy_audit(learned.decision_id)[1]["developmental_history_enabled"])
+        self.assertEqual(propose(False).action, "experiment")
+        self.port.save()
+        self.port = PretoriusBrainPort(self.port.brain.state_dir)
+        self.bridge = DoctorHomeBridge(self.port, self.subject, authorized=True)
+        self.assertEqual(propose(True).supporting_memory_ids, (outcome_id,))
+        self.assertEqual(propose(True).action, "repair")
+        self.assertEqual(self.actions("experiment"), 1)
+        self.assertEqual(self.actions("repair"), 0)
+
+    def test_operator_work_is_not_developmental_self_experience(self):
+        outcome = self.bridge.act("experiment", event_id="operator-experiment")
+        self.assertEqual(outcome["status"], "admitted")
+        proposed = propose_noesis_work(
+            self.bridge, learning_enabled=False, neural_prior_enabled=False,
+            outcome_learning_enabled=True, developmental_history_enabled=True,
+        )
+        self.assertEqual(proposed.action, "experiment")
+        self.assertEqual(proposed.supporting_memory_ids, ())
+
+
+class DevelopmentalAppraisalTests(unittest.TestCase):
+    def test_distinct_histories_change_bounded_appraisal_not_world_authority(self):
+        from types import SimpleNamespace
+        from doctor_lives.noesis_consequences import (
+            developmental_consequence_pressure, WORN, EXPERIMENT_WEAR,
+            REPAIR_IMPROVEMENT,
+        )
+        records = {}
+        def add(mid, event, text, tick, **extra):
+            records[mid] = dict(active=True, external=False,
+                evidence_class="lived_runtime_memory", created_tick=tick,
+                source="laboratory-home:action:" + format(event, "064x"),
+                text=text, **extra)
+        for i in range(1, 7):
+            add(str(i), i, EXPERIMENT_WEAR, i)
+        add("alias", 1, EXPERIMENT_WEAR, 1)
+        add("repair", 7, REPAIR_IMPROVEMENT, 8)
+        add("foreign", 8, EXPERIMENT_WEAR, 9)
+        records["foreign"]["external"] = True
+        brain = SimpleNamespace(store=SimpleNamespace(get_memory=records.get))
+        def evaluate(ids, observation=WORN):
+            return developmental_consequence_pressure(
+                brain, observation=observation,
+                verified_outcome_memory_ids=tuple(ids),
+                feasible_actions=("experiment", "repair"),
+            )
+        one, _, used = evaluate(["1"])
+        self.assertEqual(used, ["1"])
+        self.assertAlmostEqual(one["experiment"], -0.6)
+        repeated, eligible, used = evaluate(list(records))
+        self.assertAlmostEqual(repeated["experiment"], -1.125)
+        self.assertAlmostEqual(repeated["repair"], 0.3)
+        self.assertEqual(len(used), 5)
+        self.assertNotIn("foreign", eligible)
+        self.assertEqual(evaluate(["1", "alias"])[0], one)
+        self.assertEqual(evaluate(list(reversed(records)))[0], repeated)
+        self.assertEqual(evaluate(list(records), "I see sound apparatus.")[0],
+                         {"experiment": 0.0, "repair": 0.0})
+        records["1"]["active"] = False
+        self.assertEqual(evaluate(["1"])[0]["experiment"], 0.0)
+
 if __name__ == "__main__":
     unittest.main()
