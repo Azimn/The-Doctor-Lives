@@ -51,6 +51,14 @@ class OriginalTowerTests(unittest.TestCase):
         self.assertEqual(" ".join(scene["admitted_lines"]), store.get_memory(choice["observation_id"])["text"])
         self.assertFalse(scene["world_authority"])
         self.assertIn("hearing", scene["absent_channels"])
+        body = json.loads(store.meta("corpus:tower-body:" + sha256(source_ref.encode()).hexdigest()))
+        self.assertEqual(body["source_memory_id"], choice["observation_id"])
+        self.assertEqual(body["band"], choice["corpus"]["band"])
+        self.assertFalse(body["world_authority"])
+        self.assertFalse(body["motor_authority"])
+        if body["projection_applied"]:
+            self.assertGreaterEqual(body["felt_projection"], .05)
+            self.assertLessEqual(body["felt_projection"], .95)
         from contextlib import closing
         with closing(store.connect()) as db:
             policy = db.execute("SELECT selected_action,state_pressure_json FROM policy_decisions "

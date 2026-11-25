@@ -46,3 +46,7 @@ The exact source-verified Sensus core (same Git blob as the reviewed Sensus acqu
 ## Tower Expression delivery
 
 The loopback browser now uses the same guarded local-turn Expression journal as the terminal. A successful HTTP write and flush acknowledges the exact response and permits the original written-expression recollection. An uncertain attempted write is not automatically repeated. Browser playback remains an optional operator presentation, not authenticated audible speech, character-specific voice training, or proof of human receipt.
+
+## Corpus regulation in ordinary Tower life
+
+The original Laboratory fatigue-projection mechanism is adapted to Tower's coarse, authenticated first-person energy grammar. It projects only into the existing canonical fatigue need, using the original felt adaptation rate and bounded values. Unknown or contested input does not fabricate a bodily measurement. The scene receipt and projection are committed once per source. Tower remains sole physical authority; the original Noesis uses the canonical felt need and actual feasible physical offers.

@@ -199,7 +199,7 @@ def _admit_events(runtime, provider, port):
     return snapshot
 
 
-def _choose(runtime, snapshot, observation_id, weather, scene):
+def _choose(runtime, snapshot, observation_id, weather, scene, body):
     brain = runtime._port.brain
     offers = snapshot["offers"]
     if not offers:
@@ -253,6 +253,8 @@ def _choose(runtime, snapshot, observation_id, weather, scene):
                         "host_mapped_abstract_tendency":False,
                         "abstract_policy_id":decision["abstract_policy_id"],
                         "selector_authority":"original_noesis",
+                        "corpus":{"source_memory_id":body["source_memory_id"],"band":body["band"],
+                                  "projection_applied":body["projection_applied"]},
                         "sensus":{"tick":scene["tick"],"source_memory_id":scene["source_memory_id"],
                                   "working_state_sha256":scene["working_state_sha256"],
                                   "channels":scene["channels"],"absent_channels":scene["absent_channels"]},
@@ -354,7 +356,9 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                 weather,_=advance_affectus(runtime,provider,observation,perceived.memory_id)
                 from .tower_sensus import bind_scene
                 scene=bind_scene(runtime,provider,snapshot,observation,perceived.memory_id,weather)
-                choice,policy=_choose(runtime,snapshot,perceived.memory_id,weather,scene)
+                from .tower_corpus import reconcile_fatigue
+                body=reconcile_fatigue(runtime,provider,snapshot,observation,perceived.memory_id,scene)
+                choice,policy=_choose(runtime,snapshot,perceived.memory_id,weather,scene,body)
             from .store import new_id
             request={"id":new_id("tower"),"revision":snapshot["revision"],
                      "choice":choice,"policyRef":policy,"steps":steps}

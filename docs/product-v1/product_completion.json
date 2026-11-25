@@ -568,9 +568,9 @@
       },
       {
         "organ": "Corpus",
-        "location": "small_tower.py; virtual_world_port.py; organs.py",
-        "status": "partial",
-        "next": "Body and interoception fidelity, persistence and causal lifecycle"
+        "location": "small_tower.py; virtual_world_port.py; organs.py; tower_corpus.py",
+        "status": "integration_pending_ci",
+        "next": "Canonical fatigue projection now consumes the same authenticated, bound Tower interoceptive scene before original Noesis. Exact world physics and action reservations preserved. Broader bodily regulation, skill transfer and full lifecycle endurance remain."
       },
       {
         "organ": "Affectus",
