@@ -610,9 +610,9 @@
       },
       {
         "organ": "Phantasmagorium",
-        "location": "phantasmagorium_bridge.py; lab_phantasmagorium.py",
-        "status": "partial",
-        "next": "Recover donor archive and connect ordinary Tower imagination, rehearsal and sleep"
+        "location": "phantasmagorium_bridge.py; lab_phantasmagorium.py; tower_phantasmagorium.py; small_tower.py",
+        "status": "integration_pending_ci_and_asset_deployment",
+        "next": "Original v0.5 archive found and locally SHA-256 verified (375642 bytes). Tower actual read/sleep admission now invokes the original donor when PRETORIUS_PHANTA_DONOR is configured. Qualify authentic donor-backed Tower runs, waking creative/prospective influence, sleep continuity and source recovery; release must not silently omit donor."
       }
     ],
     "supporting_systems": [

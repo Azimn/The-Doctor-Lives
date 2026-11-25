@@ -181,9 +181,14 @@ def _admit_events(runtime, provider, port):
     store = runtime._port.brain.store
     cursor = int(store.meta(CURSOR) or 0)
     snapshot = provider.snapshot(cursor)
+    from .lab_phantasmagorium import configured_archive
+    archive = configured_archive()
     for row in snapshot["events"]:
         receipt = provider.event_receipt(row)
-        port._admit(receipt, kind=receipt.kind)
+        admitted = port._admit(receipt, kind=receipt.kind)
+        if archive is not None and receipt.kind == "action" and receipt.operation in ("read", "sleep"):
+            from .tower_phantasmagorium import sync_tower_phantasmagorium
+            sync_tower_phantasmagorium(store, provider, receipt, admitted.memory_id, archive)
     with store.transaction() as db:
         store.set_meta(CURSOR, snapshot["cursor"], db)
         store.bump_state_version(db)

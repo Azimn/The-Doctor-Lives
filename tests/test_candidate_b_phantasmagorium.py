@@ -24,6 +24,11 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 PhantasmagoriumBridge(store, root / "missing.zip", enabled=True)
 
+    def test_tower_refuses_unverified_provider(self):
+        from doctor_lives.tower_phantasmagorium import sync_tower_phantasmagorium
+        with self.assertRaises(PermissionError):
+            sync_tower_phantasmagorium(None, object(), None, "invented", None)
+
     def test_canonical_snapshot_and_fiction_boundary(self):
         from doctor_lives.lab_phantasmagorium import _snapshot, _digest, _nonfactual
         import json
