@@ -18,3 +18,12 @@ The canonical background entrypoints reuse the historical bounded wake lease and
 ## Remaining qualification
 
 The current assembly is a fresh-rehearsal candidate. Cross-repository source qualification, multi-day uncoached physical survival, sustained witnessed relationship and memory evolution, and explicit migration of an inhabited Laboratory remain separate release gates. P4-P6 selected-recall rehearsal does not enable invented temporal distortion or fabricated emotional events. Tower-specific full six-organ coupling, verified dream/sleep transitions, authored correspondence, and device-level audio/visual perception remain to be qualified. The current visual interface is a semantic scene, not image perception.
+
+
+## Bounded independent physical rehearsal
+
+    doctor-lives --state rehearsal/doctor tower-run --tower-source /path/to/pinned-tower --world rehearsal/tower.json --authorize-world --opportunities 20 --steps 100
+
+This foreground host offers opportunities with no specified goal, room or action. Each pulse is durable; re-running after interruption first recovers a pending physical request using its original ID. Use --interval-seconds for optional pacing (not a real-time simulation clock). Stop with Ctrl+C; do not infer activity during downtime. JSON output is an engineering receipt with actual source ticks, replayed ticks and measured wall time, not subjective narrative. This initial bounded runner is not a multi-day survival gate and does not automatically schedule CASCADE or dreams.
+
+The approved pre-Village world is the original Small Tower (pinned above), not a replacement brain or a second permanent Laboratory. Preserve its Rosa Brandl and Mr. McFeely relationships, finite goods, trade, invoices and correspondence as physical/social affordances. No migration until history, world custody and backup/restore are explicitly qualified. PR #123 is an independent developmental branch requiring reconciliation, not assumed present here.
