@@ -44,6 +44,13 @@ class OriginalTowerTests(unittest.TestCase):
         weather_receipt = json.loads(store.meta(
             "affectus:tower-event:" + sha256(source_ref.encode()).hexdigest()))
         self.assertEqual(weather_receipt["source_record"]["memory_id"], choice["observation_id"])
+        scene = json.loads(store.meta("sensus:tower-scene:" + sha256(source_ref.encode()).hexdigest()))
+        self.assertEqual(scene["source_memory_id"], choice["observation_id"])
+        self.assertEqual(scene["working_state_sha256"], choice["sensus"]["working_state_sha256"])
+        self.assertTrue(scene["admitted_lines"])
+        self.assertEqual(" ".join(scene["admitted_lines"]), store.get_memory(choice["observation_id"])["text"])
+        self.assertFalse(scene["world_authority"])
+        self.assertIn("hearing", scene["absent_channels"])
         from contextlib import closing
         with closing(store.connect()) as db:
             policy = db.execute("SELECT selected_action,state_pressure_json FROM policy_decisions "

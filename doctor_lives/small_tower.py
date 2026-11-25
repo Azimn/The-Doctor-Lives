@@ -199,7 +199,7 @@ def _admit_events(runtime, provider, port):
     return snapshot
 
 
-def _choose(runtime, snapshot, observation_id, weather):
+def _choose(runtime, snapshot, observation_id, weather, scene):
     brain = runtime._port.brain
     offers = snapshot["offers"]
     if not offers:
@@ -208,7 +208,7 @@ def _choose(runtime, snapshot, observation_id, weather):
         raise PermissionError("Unexpected or unsafe physical offer")
     # The adapter translates physical cues only. Original Noesis owns
     # concrete competition and the canonical policy/thought record.
-    text = " ".join(snapshot["narrative"])
+    text = " ".join(scene["admitted_lines"])
     # Reviewed bounded physical cues, not hidden store quantities.
     pressure = {}
     if "I am painfully hungry." in text or "I could do with something to eat." in text:
@@ -243,7 +243,7 @@ def _choose(runtime, snapshot, observation_id, weather):
     with original_noesis_weather(runtime.noesis, modulation):
         decision = select_world_affordance(
             brain, observation_memory_id=observation_id, observation_source=observation_source,
-            narrative=snapshot["narrative"], offers=offers, affordance_map=MAP,
+            narrative=scene["admitted_lines"], offers=offers, affordance_map=MAP,
             regulatory_pressure=pressure)
     choice, scores = decision["selected_action"], decision["action_scores"]
     with brain.store.transaction() as db:
@@ -253,6 +253,9 @@ def _choose(runtime, snapshot, observation_id, weather):
                         "host_mapped_abstract_tendency":False,
                         "abstract_policy_id":decision["abstract_policy_id"],
                         "selector_authority":"original_noesis",
+                        "sensus":{"tick":scene["tick"],"source_memory_id":scene["source_memory_id"],
+                                  "working_state_sha256":scene["working_state_sha256"],
+                                  "channels":scene["channels"],"absent_channels":scene["absent_channels"]},
                         "affectus":{"tick":weather.tick,"digest":weather.snapshot_digest(),
                                     "exploration_bias":modulation.exploration_bias,
                                     "decay_multiplier":modulation.decay_multiplier}},sort_keys=True),db)
@@ -349,7 +352,9 @@ def run_tower_pulse(state, source, world, *, authorize=False, steps=100,
                 perceived=port._admit(observation,kind="observation")
                 from .tower_affectus import advance as advance_affectus
                 weather,_=advance_affectus(runtime,provider,observation,perceived.memory_id)
-                choice,policy=_choose(runtime,snapshot,perceived.memory_id,weather)
+                from .tower_sensus import bind_scene
+                scene=bind_scene(runtime,provider,snapshot,observation,perceived.memory_id,weather)
+                choice,policy=_choose(runtime,snapshot,perceived.memory_id,weather,scene)
             from .store import new_id
             request={"id":new_id("tower"),"revision":snapshot["revision"],
                      "choice":choice,"policyRef":policy,"steps":steps}

@@ -38,3 +38,7 @@ The canonical motor reservation now includes a protected Telos commitment in the
 ## Original Affectus in ordinary Tower life
 
 The original reviewed Affectus source at Azimn/Sensus-Communis-Artificialis commit 904bf11861700739ccc03d4b0d4340ff3422a7d3 is bundled byte-for-byte (core and affectus modules), with its source README. The same canonical weather store now consumes authenticated Tower observations and physical/social consequences idempotently. Existing Noesis exploration and Mnemosyne read-time retention modulation is reused during ordinary concrete choice. The driver magnitudes are bounded engineering assumptions. No new affect engine, hidden world state or separate decision authority is introduced. Full affective-development and cross-platform qualification remain pending.
+
+## Original Sensus in ordinary Tower life
+
+The exact source-verified Sensus core (same Git blob as the reviewed Sensus acquisition donor) binds typed claims from the authenticated and already admitted Tower perception. Vision here means semantic visible-object descriptions supplied by the simulation, not pixel inference. Interoception and spatial channels are separate. Its short-lived working object files, conflicts and absence of input channels persist in canonical BrainStore. Only uncontested admitted lines feed the existing Noesis choice and regulatory cue interpretation. It cannot authorize physical action or turn an absent channel into invented evidence.

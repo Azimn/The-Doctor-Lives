@@ -562,9 +562,9 @@
     "organs": [
       {
         "organ": "Sensus",
-        "location": "organs.py; virtual_world_port.py",
-        "status": "partial",
-        "next": "Full multimodal integration, uncertainty and attention"
+        "location": "organs.py; virtual_world_port.py; tower_sensus.py; data/affectus_donor/sensus_artificialis/core.py",
+        "status": "integration_pending_ci",
+        "next": "Original reviewed Sensus core now binds admitted semantic Tower lines, interoception and spatial perception with persistent working object files, uncertainty and absent channels. Bound uncontested scene feeds actual Noesis and physical cue appraisal. Raw audio/visual sensor inputs and broader uncertainty tests remain."
       },
       {
         "organ": "Corpus",
