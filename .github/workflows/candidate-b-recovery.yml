@@ -12,6 +12,10 @@ on:
       - tests/test_candidate_b_recovery.py
       - tests/test_candidate_b_daily_life.py
       - doctor_lives/lab_native_work_goal.py
+      - doctor_lives/noesis_consequences.py
+      - doctor_lives/noesis_situated_choice.py
+      - doctor_lives/noesis_lab_work.py
+      - tests/test_six_organ_noesis_consequences.py
       - doctor_lives/lab_native_goal_choice.py
       - doctor_lives/preview_native.py
       - tests/test_candidate_b_native_work.py
@@ -131,3 +135,7 @@ jobs:
           PYTHONPATH: ${{ runner.os == 'Windows' && 'donor-laboratory;donor-sensus' || 'donor-laboratory:donor-sensus' }}
           PRETORIUS_PINNED_AFFECTUS_ROOT: donor-affectus
         run: python -m unittest discover -s tests -p test_six_organ_native_goal_choice.py -v
+      - name: Verify source-owned developmental history and cold restart
+        run: |
+          python -c "import pretorius_lab"
+          python -m unittest discover -s tests -p test_six_organ_noesis_consequences.py -v
