@@ -869,7 +869,16 @@
         "status": "candidate_live_test_underway",
         "source_ticks": 667,
         "cause": "cooking when no hunger consumed scarce resources; recently observed absence of feasible tend did not suppress immediate kitchen-garden travel pressure",
-        "fix": "bounded suppressive consumption appraisal when hunger absent, higher direct eat pressure when hungry; remember authentic garden offers and recheck after ordinary 100-tick cadence; only fuel shortage can justify trade; same source world and existing Noesis, no new organ or learning mechanism"
+        "fix": "bounded suppressive consumption appraisal when hunger absent, higher direct eat pressure when hungry; remember authentic garden offers and recheck after ordinary 100-tick cadence; only fuel shortage can justify trade; same source world and existing Noesis, no new organ or learning mechanism",
+        "conflict": {
+          "source_ticks": 697,
+          "observed": "After direct travel pressure repair, retained prospective cook and gather-fuel intentions competed with satisfied needs and caused library-kitchen alternation.",
+          "policy": "policy_e825ce57848548048d21515659e5f6e1",
+          "cook_goal": "telos_prospective_policy_70b0b9b3e9944e858dc325532aaa0f21",
+          "fuel_goal": "telos_prospective_policy_66e56dcefe854bb9bf4fc477f9e96a81",
+          "repair": "Existing prospective appraisal defers appetite-satisfied, last-observed-not-low or recently observed unavailable resource goals; no commitment deletion, completion fabrication or new learning; explicit reasons in policy receipt.",
+          "status": "live_retest_underway"
+        }
       }
     },
     "ipseity_causal_test": {

@@ -74,6 +74,18 @@ class TowerDevelopmentAppraisalTests(unittest.TestCase):
         self.assertEqual(appraisal(["I am in my kitchen and hearth.","I could do with something to eat."],offers,[]),{"eat":.16,"cook":.075})
         self.assertEqual(appraisal(["I am in my kitchen and hearth.","I am painfully hungry."],offers,[]),{"eat":.20,"cook":.10})
 
+    def test_prospective_needs_defer_without_removing_owned_intention(self):
+        from doctor_lives.tower_prospective import deferred_need
+        stores = "I can see Stores shelf."
+        hungry = "I could do with something to eat."
+        self.assertEqual(deferred_need("cook","I am in my library.",stores,None,"library",{"move_kitchen"}),"appetite_satisfied")
+        self.assertIsNone(deferred_need("cook",hungry,stores,None,"library",{"move_kitchen"}))
+        self.assertEqual(deferred_need("gather_fuel","I am in my library.",stores,None,"library",{"move_kitchen"}),"last_observed_supply_not_low")
+        low = stores + " I can see that my fuel is running low."
+        self.assertIsNone(deferred_need("gather_fuel","I am in my garden path.",low,None,"garden",{"gather_fuel"}))
+        self.assertEqual(deferred_need("tend","I am in my kitchen and hearth.",stores+" I can see that my edible provisions are running low.",{"offers":["walk"],"elapsed":3},"kitchen",{"move_garden"}),"recently_observed_unavailable")
+        self.assertIsNone(deferred_need("rest","I am in my bedchamber.",stores,None,"bedchamber",{"rest"}))
+
     def test_repeated_single_activity_is_not_a_procedural_sequence(self):
         from doctor_lives.tower_procedure import appraise
         episodes = [{"action":"rest","room":"bedchamber","success":True,

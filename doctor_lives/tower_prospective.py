@@ -73,6 +73,22 @@ def _active(store):
     return result
 
 
+def deferred_need(action, narrative, latest_store, last_garden, room, feasible):
+    """Keep ownership but suspend pressure for a currently irrelevant need."""
+    if action in ("eat", "cook") and not any(cue in narrative for cue in
+            ("I am painfully hungry.", "I could do with something to eat.")):
+        return "appetite_satisfied"
+    cues = {"gather_fuel":"fuel is running low", "draw_water":"water is running low",
+            "tend":"edible provisions are running low"}
+    if action in cues:
+        if latest_store and cues[action] not in latest_store:
+            return "last_observed_supply_not_low"
+        if (room != "garden" and last_garden and action not in last_garden["offers"]
+                and last_garden["elapsed"] < 100):
+            return "recently_observed_unavailable"
+    return None
+
+
 def assess(brain, provider, observation, offers, abstract, affordance_map, *, owned_commitments=None):
     from .small_tower import SmallTowerSource
     if type(provider) is not SmallTowerSource:
@@ -107,10 +123,22 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
     scores = dict.fromkeys(keys, 0.)
     links = {k: [] for k in keys}
     candidates = {}
+    deferred = {}
+    from .tower_regulation import remembered_supply
+    supplies = remembered_supply(store, observation, offers)
+    latest_store = next((t for t in [observation["text"]] + [m["text"] for m in memories]
+                         if "I can see Stores shelf." in t), None)
+    def defer(action):
+        return deferred_need(action, observation["text"], latest_store,
+                             supplies.get("last_garden"), room, keys)
     for goal in active:
         if goal["epoch"] != current.world_epoch:
             raise PermissionError("Foreign prospective commitment")
         if owned_commitments is not None and owned_commitments.get(goal["id"]) != "I still intend to "+goal["description"]+".":
+            continue
+        reason = defer(goal["target"])
+        if reason:
+            deferred[goal["id"]] = reason
             continue
         key = goal["target"] if goal["room"] == room else first_step(graph, room, goal["room"])
         if key in keys:
@@ -133,7 +161,7 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
         # location where a prior self-selected task physically succeeded.
         for row in past:
             action = row["selected_action"]
-            if action not in ACTIONS:
+            if action not in ACTIONS or defer(action):
                 continue
             evidence = json.loads(row["state_pressure_json"])
             prior = store.get_memory(evidence["observation_memory_id"])
@@ -174,7 +202,8 @@ def assess(brain, provider, observation, offers, abstract, affordance_map, *, ow
             if move not in candidates or candidate["appraisal"] > candidates[move]["appraisal"]:
                 candidates[move] = candidate
     return {"scores": scores, "links": links, "candidates": candidates,
-            "room": room, "active_ids": [g["id"] for g in active]}
+            "room": room, "active_ids": [g["id"] for g in active],
+            "deferred_owned_goals": deferred}
 
 
 def reserve(store, db, request, *, subject=None):
