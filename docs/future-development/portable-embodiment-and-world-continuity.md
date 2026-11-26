@@ -1,8 +1,145 @@
 # Future development design note: Portable embodiment and world continuity
 
 **Recorded:** 2026-11-25  
+**Design revision:** 0.3, cross-repository reconciliation  
 **Status:** Deferred exploration, not an approved implementation plan  
 **Activation gate:** V1.0 completed and qualified, followed by explicit owner approval of a separate development effort.
+
+
+## Revision 0.3: reconcile the original Village relocation and dual-presence plans
+
+**Revision date:** 2026-11-25. This revision governs interpretation of the earlier exploratory sections below. The owner clarified that relocation to Frankenstein Village was the original intended continuation of Pretorius's life, and that it is planned on both sides. This document extends those plans; it does not replace them, resolve keeper decisions, approve implementation or change V1.0.
+
+### Source register and precedence
+
+| Source | What this revision preserves |
+| --- | --- |
+| [Doctor Lives PR #45](https://github.com/Azimn/The-Doctor-Lives/pull/45), head 66d5564 | October 10 portable laboratory proposal: one authority/two views preferred in principle, event envelopes, offline reconciliation and L0-L5 gates. Open research documentation, not deployed. |
+| [Doctor Lives issue #46](https://github.com/Azimn/The-Doctor-Lives/issues/46) | Deferred research tracking; both snapshot migration and dual-view authority remain available. |
+| [Village PR #47](https://github.com/Azimn/frankenstein-village/pull/47), head b25565c | Companion design, still open; one-time migration versus dual presence, shared timeline, masks, consent and Village authority. |
+| [Village issue #48](https://github.com/Azimn/frankenstein-village/issues/48) | Deferred integration, no launch/alpha scope change. |
+| [Village World Bible v0.2, section 6](https://github.com/Azimn/frankenstein-village/blob/main/files/frankenstein-village-world-bible-v0.2.md) | Leased, fitted-out but closed curiosity shop; OPENING SOON sign; ticking university crate; Pretorius absent at launch, later prominent resident rather than the plot. |
+| [Victorian Library and Future Shop Threshold](https://github.com/Azimn/Pretorius-Laboratory/blob/main/docs/VICTORIAN_LIBRARY_AND_SHOP_THRESHOLD.md) | Public shop is a small face of the permanent private laboratory and sanctuary; intended two-way traversal, subject to approval. |
+| [Permanent Home and Reflex Pilot](https://github.com/Azimn/Pretorius-Laboratory/blob/main/docs/PERMANENT_HOME_AND_REFLEX_PILOT_2026-10-15.md) | Existing opt-in domestic prototype and read-only shop manifest; future sale handshake, no actual Village connection. |
+| [Spatial Habitat v2 continuity contract](https://github.com/Azimn/Pretorius-Laboratory/blob/main/docs/SPATIAL_HABITAT_V2_AND_CONTINUITY_CONTRACT.md) | Separate world authorities, durable physical identities, no automatic canon or remote mutation. |
+| [Village Embodied First-Person and Tarn Rule](https://github.com/Azimn/frankenstein-village/blob/main/docs/EMBODIED_FIRST_PERSON_AND_TARN_RULE_2026-10-25.md) | Same physics and ordinary verbs for human and AI players, first-person state-grounded sensations; no invented bodily drives, no hidden values exposed. Review draft, not proof of implemented parity. |
+| [Standalone RC1 gate](../PRETORIUS_STANDALONE_RC1_GATE.md) | Standalone runtime gate precedes optional Laboratory/Village integration. |
+
+The Village Bible governs shared fiction; the Laboratory contracts govern its private material state; the Doctor Lives governing specifications and qualified runtime govern his mind. The October proposals remain source designs, not implementation evidence. This revision is a cross-reference and forward-looking supplement, not a new canonical wire protocol. Any eventual protocol revision must be agreed across both world repositories with one versioned specification, rather than independently implemented in each.
+
+### 1. Lifecycle: a move, not a new character
+
+The intended progression is (a) qualify independent embodied life in the present laboratory, (b) relocate or establish his permanent home in the Village through an approved integration, then (c) investigate additional worlds only after the Village boundary is proven. Relocation is a significant change in his material and social circumstances. The existing mind and lived history continue; no biography is regenerated, no state reset is performed, and the environment cannot dictate his emotional response.
+
+The shop lease, closed storefront and absence at launch remain canonical. The Laboratory's October 10 concept locates the private sanctuary behind the shop, while the earlier joint proposal preserves an annex or separate site as possible alternatives. The tower reference art is an optional visual direction for that residence or a separate approved site, not a new mandatory building or road. Do not add a second tower, shop, new village room or duplicated furniture unless an explicit map/authority decision establishes what it represents.
+
+The proposed arrival could involve a verified departure, transfer of possessions and an accepted arrival in the Village, with actual travel time where supported. If the chosen design treats the existing laboratory as the interior behind the leased shop, relocation need not mean copying every book or apparatus into Evennia: the same physical home can acquire a new public threshold. If the owner instead selects a genuine move to a different building, use a reviewed inventory and provenance-preserving migration. Do not fabricate a journey to cover an administrative change.
+
+The in-character circumstances are important: the Village's Victor and Pretorius's film-rooted Henry references differ, and the Village Bible uses Septimius while the current Doctor Lives design note uses Septimus. Keep these naming/chronology differences explicit; do not silently edit his identity or canon. The ticking crate, homunculi, proposed collaboration and possible patronage are existing story premises or rumor hooks, not permission to force his intentions, possessions, speech, actual knowledge or outcome. Do not script him into opening the shop, seeking particular players or performing a prescribed scene.
+
+### 2. Architecture decision record (proposed, not approved)
+
+**Option A: one-time migration.** After an owner-approved move, freeze the authoritative laboratory state and export its stable IDs, physical relations, object conditions, inventories and event lineage. Import into a validated Evennia-owned representation if the recipient can preserve necessary physics and subjective affordances. Seal the former authority against new canonical mutations; keep immutable research snapshots and explicitly separate forks. BrainStore and neural state remain outside Evennia. Simpler operations, but risks loss of Laboratory precision and complicates continuation of detailed experiments.
+
+**Option B: one logical laboratory, two views.** Keep the Laboratory authoritative for its private space and detailed experiments. Evennia owns public space and accepted public transactions; a small storefront projection and approved threshold connect the two. One logical home can therefore exist in the Village without flattening its physical state into MUD room descriptions. A local offline experimental fork or pending queue is never a second live reality. This is the original October proposal's preferred direction and the recommendation of this revision, conditional on snapshot/replay, exclusive ownership and independent verification. Final selection remains the owner's decision after V1.0.
+
+A single body lease and a single mind do not require a single database for every physical object. Both world authorities may coexist, and public Village life may continue while Pretorius is elsewhere. The lease only restricts his active embodied action authority; it must not freeze other residents or legitimate world events. Private Laboratory experiments and public Village events are linked through verified origin references rather than treated as duplicate experiences.
+
+```text
+                    ONE canonical Pretorius runtime
+                    identity, intentions, memory
+                               |
+                      trusted subject boundary
+                     /                         \
+   Laboratory authority                          Evennia authority
+   private rooms, books, apparatus               rooms, masks, residents,
+   experimental physics, local receipts          public time, economy, consent
+                     \                         /
+                      authenticated threshold
+                      shop / approved arrival
+                   durable handoff and sale records
+```
+
+### 3. Integration contract delta
+
+Retain the existing October L0-L5 protocol as the backbone. The additional requirements in this note concern physiological continuity, native decision provenance, negative outcomes and safe embodied handoff. They are proposed deltas, not replacements for the original event envelope.
+
+At attach, negotiate the original separate version axes: stable lab ID/world epoch, schema, ruleset, manifest digest, physical revision, event hash/cursor and applied projection cursor. Validate mask/actor, lease, actor grants, publication visibility and partner consent for each applicable operation. Distinguish the provider's sequence and physical clock from Village calendar time, engine wall time and embodied elapsed time. A schema match is not state parity. A mismatched or stale snapshot starts in read-only quarantine.
+
+The existing Village first-person rule describes hunger, warmth, drunkenness, queasiness and posture from actual mask state, with no independent rest/thirst/pain/dampness/exhaustion variables at the time of the document. Pretorius's own qualified physiology may represent additional states. Do not manufacture Village physiology or expose hidden mask values as thoughts. Audit each existing variable and choose one authority for it, with a typed bridge for verified effects. Keep ordinary player verbs and world consequences equal; a private physiological mechanism must not grant special knowledge, unlimited action capacity or privileged public physics. A Village meal consumes real stock and money once, then produces one verified bodily effect. Do not run two hunger updates for the same interval.
+
+### 4. Small storefront: future transaction sketch
+
+The Laboratory's read-only shop_manifest is a proposal, not actual online stock and not a license to sell. The October domestic prototype describes a small counter, case and private curtain. Its proposed unique-item sale receipt includes sale ID, object identity, finalized buyer transaction, both epochs and accepted revisions. Build upon that contract rather than invent a separate economy.
+
+A public listing is a projection of eligible stock, not a duplicate item. One transaction coordinator must durably track the sale, and each authority independently verifies its own preconditions. Until both sides reconcile, an item is reserved/unavailable and any payment is held, not presented as a finished sale. Preserve normal Village currency and pricing rules; no free money or arbitrary item spawn.
+
+```python
+# Illustrative, untested post-V1.0 interfaces, not shipping APIs.
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class SaleIntentDraft:
+    sale_id: str
+    item_id: str
+    buyer_mask_id: str
+    price_kr: int
+    lab_epoch: str
+    village_epoch: str
+    lab_revision: int
+    village_revision: int
+    terms_digest: str
+
+def advance_sale(tx, lab, village, journal):
+    # Every operation is durably idempotent by sale_id.
+    # Both providers check their own epoch, permissions and revision.
+    if tx.phase == "PROPOSED":
+        lab.reserve_unique_item(tx.intent)
+        journal.advance_once(tx, "ITEM_RESERVED")
+    elif tx.phase == "ITEM_RESERVED":
+        village.reserve_buyer_payment_and_capacity(tx.intent)
+        journal.advance_once(tx, "PAYMENT_RESERVED")
+    elif tx.phase == "PAYMENT_RESERVED":
+        # Persist irreversible commit decision before asking either
+        # authority to apply it. No compensating abort after this point.
+        journal.record_commit_decision_once(tx)
+    elif tx.phase == "COMMIT_DECIDED":
+        lab_effect = lab.finalize_export_once(tx.intent)
+        village_effect = village.finalize_purchase_once(
+            tx.intent, lab_effect
+        )
+        journal.verify_both_and_complete_once(
+            tx, lab_effect, village_effect
+        )
+```
+
+This sketch assumes durable reservation semantics, authenticated proof of export, crash-safe finalize operations and a recoverable committed transaction; it is not an atomic distributed implementation. On restart query both authorities and recover the original transaction, never blindly repeat an economic effect. Before the commit decision, release reservations only after verifying that neither effect finalized. After the commit decision, complete or quarantine for operator reconciliation without creating a second item or payment. Do not admit a completed sale as lived experience until the appropriate verified effects exist. The adapter may publish observed prices and transactions, but only Pretorius's existing architecture decides whether to offer a sale, negotiate or conduct business when he has the relevant authority.
+
+### 5. Cross-repository implementation sequence, mapped to original L0-L5
+
+| Original gate | Proposed post-V1.0 work | Responsible boundary / exit evidence |
+| --- | --- | --- |
+| L0 | Freeze qualified Doctor and Laboratory baselines; inventory state and authority; backup/restore and replay a named home. | Doctor and Lab: same brain, same physical identities, no new release requirements. |
+| L1 | Agree one shared versioned event/receipt contract, native decision IDs, negative outcomes, physiology and clock mapping. | Doctor, Lab, Village: matched source/receipt tests, no omniscience, no duplicate effects. |
+| L2 | Rehearse offline queues, rejected actions, single-body handoff, interrupted relocation and transaction recovery in isolated fixtures. | Lab and Doctor: no false experiences; no live Village mutation. |
+| L3 | Build a shadow read-only Evennia representation and reconcile the existing shop manifest; test event origin mapping before writes. | Village and Lab: private data filtered, same object identity, no public room/shop change. |
+| L4 | Explicit keeper/owner approval of site, threshold, arrival, public identity/consent, economic permissions and narrative chronology. Then test a narrowly scoped live boundary. | Village: independent arrival, one body, ordinary player verbs, no forced plot; public activation never automatic. |
+| L5 | Independent multi-actor soak, partitions, credential revocation, conflicting inventories, restart and backup/restore; behavioral and causal continuity tests. | All three repositories: reproducible evidence and safe operational limits. |
+
+The illustrative road/garden prototype in the earlier supplement is now an optional isolated test fixture, not the required first production expansion. The default proposed vertical slice is the existing private shop threshold in a non-public development environment, then the keeper-approved arrival. A future 1F3D9 or NWN adapter must reuse proven contracts and be evaluated independently; neither is a dependency of Village integration.
+
+### 6. Relocation and social-life qualification additions
+
+In addition to PE-01 through PE-10 below, propose future tests for preservation of the original lab identity and inventories after an authorized arrival; refusal of entry before the keeper gate; a public shop projection that cannot expose the private sanctuary; identical ordinary world affordances for AI and humans; one witnessed meal affecting the qualified body once; a verified purchase under insufficient funds or stock without fabricated relief; concurrent attempts to sell the same unique item; crash at each reservation/finalization boundary; absence of dual body authority across reconnect; and naturally occurring cross-context memory influence after a social encounter. No required itinerary, friendship, emotional outcome or shop-opening behavior is prescribed. A village populated by independent actors is not a controlled fixture; disclose which events were staged, witnessed or spontaneously initiated.
+
+Acceptance requires exact-head evidence from all affected repositories, agreement on the shared protocol version, replayable provider records, negative and matched-control tests, and an operator recovery procedure. Do not infer consciousness or psychological development from prose, a successful connection, or an animation alone.
+
+### Revision history and work restriction
+
+0.1: initial future-development concept. 0.2: illustrative technical supplement and tower references. 0.3: reconcile the October cross-repository plans, make Village relocation the intended first continuation, retain both authority options, introduce draft threshold/shop transactions and map work to L0-L5.
+
+**Nothing in this revision authorizes implementation, changes launch canon, closes the original design issues or replaces their proposals. V1.0 must first be completed and independently qualified, then a separate development effort explicitly approved.** The other repositories and earlier design PRs remain untouched by this document revision.
+
 
 ## Purpose and governing decision
 
@@ -144,7 +281,7 @@ Existing interior stations (as qualified)
                     Shops, homes, public spaces
 ```
 
-Each connection requires actual traversable edges, travel costs, collision or reachability rules, visible affordances and witnessed transitions. The garden, well or basin, wood store and scaffolding are optional art concepts until reconciled with the canonical world. The preferred first expansion is a small surrounding landscape and a road to Frankenstein Village, not a wholesale recreation of the Laboratory or a disconnected game avatar.
+Each connection requires actual traversable edges, travel costs, collision or reachability rules, visible affordances and witnessed transitions. The garden, well or basin, wood store and scaffolding are optional art concepts until reconciled with the canonical world. A small surrounding landscape and road are optional isolated test concepts. The reconciled first production continuation is the previously planned Village relocation through the approved shop or sanctuary boundary, not a wholesale recreation of the Laboratory or a disconnected game avatar.
 
 If a future graphical client is developed, its geometry and animation should render authoritative material state. A lantern glowing in an image does not establish that a lantern is lit in the simulation. Client-side visual effects must never independently create lived events.
 
@@ -326,9 +463,9 @@ def advance_handoff(tx, host, source, destination):
 
 The source must reject stale fencing tokens even if an old process resumes after a network partition. Existing local cooperative locks are useful but not sufficient for distributed exclusivity. Before source revocation, a prepared destination can be discarded if absence of effects is established. After revocation, do not reactivate the source without a new, exclusive recovery authorization. Never restore an older brain checkpoint over newer admitted experiences. Pause new motors during uncertain authority; do not fabricate elapsed world activity. Define explicit semantics for time passing, including physiological effects, during verified travel and outage.
 
-### G. First prototype: the tower, grounds and nearby village
+### G. Optional isolated prototype: the tower, grounds and nearby village
 
-Propose a narrow end-to-end experiment before broad game support. Keep the qualified original home untouched. A local test environment supplies a connected exterior, one path, one reachable shop and one consenting test interlocutor. Expose affordances only when perceptible and reachable. Start with a minimal operation set such as looking, walking to an adjacent reachable location, examining an object, speaking, buying an available item and returning home. Map these onto actual qualified actions where possible; new actions require normal architecture review, provenance and tests.
+As an optional controlled fixture, propose a narrow end-to-end experiment before broad game support. Keep the qualified original home untouched. A local test environment may supply a connected exterior, one path, one reachable shop and one consenting test interlocutor. This is not a substitute for the existing L0-L5 shop-threshold plan. Expose affordances only when perceptible and reachable. Start with a minimal operation set such as looking, walking to an adjacent reachable location, examining an object, speaking, buying an available item and returning home. Map these onto actual qualified actions where possible; new actions require normal architecture review, provenance and tests.
 
 A sample opportunity, not a prescribed routine: Pretorius may leave home because he has an unfinished experiment requiring a resource. The shop may be closed or have no stock. He may return, wait, change plans or pursue something else. The test qualifies the real action consequences, not his willingness to follow the sample story. His existing intellectual concerns, fatigue and personality may influence whether he travels at all.
 
