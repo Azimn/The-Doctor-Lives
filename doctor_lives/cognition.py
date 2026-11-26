@@ -1221,23 +1221,26 @@ class PretoriusBrain:
         self.close_concern(concern_id, reason, status="released")
 
     def record_action_outcome(self, action: str, success: bool, reward: float = 1.0) -> None:
+        """Apply scalar reinforcement, not a consciously experienced event.
+
+        This legacy API has no authenticated experiential input. Actual
+        experienced outcomes enter through existing source-verified ingress,
+        which commits their memory and TowerIpseity acquisition together
+        before recurrence. Do not manufacture a second account here or
+        promote numeric feedback into lived evidence.
+        """
         if action not in ACTIONS:
             raise ValueError(f"unknown action {action!r}")
         reward = float(max(-1.0, min(1.0, reward)))
         with self.store.transaction() as conn:
             tick = self.store.advance_tick(conn)
-            event_id = self.store.event(
-                conn, tick, "action_outcome", "self",
-                {"action": action, "success": bool(success), "reward": reward},
-                "lived_runtime_memory", False, 1.0,
-            )
-            text = f"I {'succeeded' if success else 'failed'} after choosing {action}."
-            self.store.add_memory(
-                conn, tick, text, "self", "action_outcome", "lived_runtime_memory",
-                False, 1.0, False, .72, ("action", action), event_id,
-                classification=self._runtime_classification(
-                    "action_outcome", "self", wording="paraphrased"
-                ),
+            # Keep the original scalar audit and learning cadence, but neither
+            # the caller's success claim nor its reward proves a lived event.
+            self.store.event(
+                conn, tick, "action_outcome", "reinforcement:scalar",
+                {"action": action, "success": bool(success), "reward": reward,
+                 "subject_admitted": False},
+                "unconscious_reinforcement", True, 1.0,
             )
             row = conn.execute("SELECT value,uses,successes FROM action_values WHERE action=?", (action,)).fetchone()
             value = .5 if row is None else float(row["value"])
