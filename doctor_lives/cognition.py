@@ -1010,7 +1010,8 @@ class PretoriusBrain:
                 owned = {rid:event[1].subject_text for rid,event in tower_subject.owned_events()}
                 with tower_subject.cognitive_access(owned):
                     return self.think(trigger,decision_text=decision_text,bridge_enabled=bridge_enabled)
-        if recollection:
+        if recollection and decision_text is not None:
+            # A context-free control evaluates policy without recalled content.
             # A fresh admitted recollection is required, not merely a caller's
             # first-person string. Read committed history before policy evaluation.
             from .tower_ipseity import RECORD
