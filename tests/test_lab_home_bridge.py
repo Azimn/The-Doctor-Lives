@@ -4,6 +4,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.lab_home_bridge import DoctorHomeBridge
@@ -60,6 +61,61 @@ class RealDoctorHomeBridgeTests(unittest.TestCase):
         self.assertEqual(mem["text"], first["subject"]["inner"])
         self.assertEqual(mem["evidence_class"], "lived_runtime_memory")
         self.assertFalse(mem["external"])
+
+    def test_legacy_laboratory_admission_precedes_actual_recurrent_step(self):
+        from doctor_lives.tower_ipseity import TowerIpseity
+
+        brain = self.doctor.brain
+        self.assertIsNone(brain.store.meta("small-tower:world-binding-v1"))
+        subject = TowerIpseity(brain)
+        step = brain.neural.step
+        observed = []
+
+        def checked_step(text, *args, **kwargs):
+            # Read from a separate SQLite connection, inside the actual
+            # recurrent call: an uncommitted or post-hoc history cannot pass.
+            memory = next(m for m in self.source_memories() if m["text"] == text)
+            entries = subject.verify_history()
+            owned = [entry for entry in entries
+                     if entry["key"].endswith("acquisition:" + memory["id"])]
+            self.assertEqual(len(owned), 1)
+            item = owned[0]["content"][0]
+            self.assertEqual(item["text"], text)
+            self.assertEqual(item["attribution"], "lived")
+            self.assertFalse(item["external"])
+            self.assertIn(memory["source_event_id"], item["source_refs"])
+            self.assertEqual(owned[0]["phase"], "acquisition")
+            observed.append((memory["id"], owned[0]["sha256"]))
+            return step(text, *args, **kwargs)
+
+        with patch.object(brain.neural, "step", side_effect=checked_step):
+            first = self.bridge.observe()
+            retry = self.bridge.observe()
+            self.assertEqual(retry["memory_id"], first["memory_id"])
+            move = self.bridge.act("walk", event_id="qi02-hall", station="station:hall")
+        self.assertEqual([m for m, _ in observed], [first["memory_id"], move["memory_id"]])
+        entries = subject.verify_history()
+        self.assertEqual([e["sha256"] for e in entries], [h for _, h in observed])
+        reopened = PretoriusBrainPort(brain.state_dir)
+        self.assertEqual(TowerIpseity(reopened.brain).verify_history(), entries)
+
+    def test_failed_laboratory_subject_admission_does_not_reach_recurrence(self):
+        from doctor_lives.tower_ipseity import TowerIpseity
+
+        brain = self.doctor.brain
+        tick = brain.store.tick
+        neural_tick = brain.neural.tick
+        before = TowerIpseity(brain).verify_history()
+        with patch.object(TowerIpseity, "record", side_effect=PermissionError("admission fault")), \
+                patch.object(brain.neural, "step", wraps=brain.neural.step) as recurrent:
+            with self.assertRaisesRegex(PermissionError, "admission fault"):
+                self.bridge.observe()
+            recurrent.assert_not_called()
+        self.assertEqual(brain.store.tick, tick)
+        self.assertEqual(brain.neural.tick, neural_tick)
+        self.assertEqual(TowerIpseity(brain).verify_history(), before)
+        self.assertFalse(self.source_memories())
+        self.assertEqual(self.bridge.observe()["status"], "admitted")
 
     def test_involuntary_utterance_becomes_real_doctor_memory_without_raw_body_data(self):
         self.bridge.act("walk", event_id="go-hall", station="station:hall")
