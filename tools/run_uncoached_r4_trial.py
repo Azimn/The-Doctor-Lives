@@ -7,7 +7,9 @@ The read-only witness is diagnostic. Source audit alone determines R4 credit.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import signal
 import os
 import sqlite3
 from pathlib import Path
@@ -20,6 +22,8 @@ if __package__:
     from .observe_uncoached_r4 import inspect_neural_origins, sample
 else:
     from observe_uncoached_r4 import inspect_neural_origins, sample
+
+from doctor_lives.r4_diagnostics import classify, describe_exception
 
 SAMPLE_SECONDS = 15.0
 CAPACITY_RECEIPTS = 520
@@ -86,11 +90,25 @@ def _stop_with_live_origin_sampling(proc, command, record_origins, *,
 
 
 def main():
+    cancellation = []
+    def cancelled(signum, _frame):
+        if not cancellation:
+            cancellation.append(signum)
+    previous = {sig: signal.signal(sig, cancelled) for sig in (signal.SIGINT, signal.SIGTERM)}
+    try:
+        return _main(cancellation)
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+def _main(cancellation):
     p = argparse.ArgumentParser()
     p.add_argument("--install-root", type=Path, required=True)
     p.add_argument("--seconds", type=int, default=90)
     p.add_argument("--capacity-receipts", type=int, default=None,
                    help="Minimum original-world receipt growth, not elapsed time or autonomy credit")
+    p.add_argument("--profile", action="store_true", help="Diagnostic-only instrumented operator; not the default qualification run")
     p.add_argument("--report", type=Path, required=True)
     args = p.parse_args()
     if not 30 <= args.seconds <= 3600:
@@ -109,22 +127,42 @@ def main():
     origins_path = args.report.with_suffix(".origins.jsonl")
     stdout_path = args.report.with_suffix(".operator.stdout.txt")
     stderr_path = args.report.with_suffix(".operator.stderr.txt")
+    profile_path = args.report.with_suffix(".operator-profile.jsonl")
+    parent_profile = {"witness": [], "origins": []}
+    if args.profile:
+        start = [str(vpy), str(Path(__file__).with_name("profile_r4_boundaries.py")),
+                 "--output", str(profile_path), "--"] + start[len(doctor_args):]
     error, final_sample, baseline, proc = None, None, None, None
     last_origins, last_origin_alive, origin_snapshots = None, None, 0
     began = time.monotonic()
     progress_reached = False
-    stop_reason = "watchdog"
+    stop_reason = None
+    stop_requested_elapsed = None
+    errors, diagnostics = [], []
+
+    def note_error(value):
+        nonlocal error
+        errors.append(value)
+        if error is None:
+            error = value
     with witness_path.open("w", encoding="utf-8") as witness, \
          origins_path.open("w", encoding="utf-8") as origins_stream, \
          stdout_path.open("w", encoding="utf-8") as operator_stdout, \
          stderr_path.open("w", encoding="utf-8") as operator_stderr:
         def record(alive):
             nonlocal baseline, final_sample
+            t0, c0 = time.perf_counter_ns(), time.process_time_ns()
             result = sample(
                 workspace, process_alive=alive,
                 elapsed_seconds=time.monotonic() - began,
                 baseline_world_receipts=baseline,
             )
+            # A sample that crossed the actual process exit earns no live credit.
+            if args.profile:
+                parent_profile["witness"].append([time.perf_counter_ns()-t0, time.process_time_ns()-c0])
+            result["process_alive_at_start"] = alive
+            result["process_alive_at_end"] = bool(alive and proc is not None and proc.poll() is None)
+            result["process_alive"] = result["process_alive_at_start"] and result["process_alive_at_end"]
             if baseline is None:
                 baseline = result["world_receipt_total"]
             witness.write(json.dumps(result, sort_keys=True) + "\n")
@@ -137,7 +175,11 @@ def main():
             # Independently sample actual canonical rows while the installed
             # Doctor process runs. This is not a fabricated goal or an
             # attestation that a self-consistent DB row came from a neural act.
+            t0, c0 = time.perf_counter_ns(), time.process_time_ns()
             current = inspect_neural_origins(workspace)
+            if args.profile:
+                parent_profile["origins"].append([time.perf_counter_ns()-t0, time.process_time_ns()-c0])
+            alive = bool(alive and proc is not None and proc.poll() is None)
             if current == last_origins and alive == last_origin_alive:
                 return
             entry = {
@@ -164,39 +206,53 @@ def main():
                 start, stdout=operator_stdout, stderr=operator_stderr, text=True)
             deadline = began + args.seconds
             next_sample = began + SAMPLE_SECONDS
-            while time.monotonic() < deadline:
+            while True:
+                if proc.poll() is not None:
+                    note_error("operator_exited_before_uncoached_window")
+                    break
+                if cancellation:
+                    stop_reason = "external_cancellation"
+                    note_error("external_cancellation")
+                    break
+                if time.monotonic() >= deadline:
+                    stop_reason = "watchdog"
+                    break
                 record_origins(proc.poll() is None)
                 if proc.poll() is not None:
-                    error = "operator_exited_before_uncoached_window"
+                    note_error("operator_exited_before_uncoached_window")
                     break
                 if time.monotonic() >= next_sample:
                     record(True)
-                    if (args.capacity_receipts is not None and
-                            final_sample["world_receipt_delta_from_initial"] >= args.capacity_receipts):
+                    if (args.capacity_receipts is not None
+                            and final_sample["process_alive"]
+                            and final_sample["world_receipt_delta_from_initial"] >= args.capacity_receipts):
                         progress_reached = True
                         stop_reason = "receipt_progress_target"
                         break
                     next_sample = time.monotonic() + SAMPLE_SECONDS
                 time.sleep(0.25)
             if proc.poll() is None:
+                stop_requested_elapsed = time.monotonic() - began
                 stop_code, stop_stderr = _stop_with_live_origin_sampling(
                     proc, doctor_args + ["preview-stop", "--workspace", str(workspace)],
                     record_origins, timeout_seconds=90,
                 )
                 if stop_code != 0:
-                    error = "operator_did_not_cleanly_stop:" + stop_stderr[-400:]
+                    note_error("operator_did_not_cleanly_stop:" + stop_stderr[-400:])
             elif error is None:
-                error = "operator_exited_before_graceful_stop"
+                note_error("operator_exited_before_graceful_stop")
+                stop_reason = None
             try:
                 proc.wait(timeout=60)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait(timeout=30)
-                error = "operator_did_not_terminate"
+                note_error("operator_did_not_terminate")
             if proc.returncode != 0:
-                error = "operator_return_code_" + str(proc.returncode)
+                note_error("operator_return_code_" + str(proc.returncode))
         except (OSError, ValueError, RuntimeError, sqlite3.DatabaseError) as exc:
-            error = "independent_witness_or_operator_error:" + type(exc).__name__ + ":" + str(exc)[:300]
+            note_error("independent_witness_or_operator_error:" + type(exc).__name__ + ":" + str(exc))
+            diagnostics.append(describe_exception(exc, phase="witness"))
         finally:
             if proc is not None and proc.poll() is None:
                 proc.kill()
@@ -205,13 +261,53 @@ def main():
                 record_origins(False)
                 record(False)
             except (OSError, ValueError, RuntimeError, sqlite3.DatabaseError) as exc:
-                error = "independent_final_witness_error:" + type(exc).__name__ + ":" + str(exc)[:300]
-    independent = subprocess.run(
-        [sys.executable, str(Path(__file__).with_name("audit_three_uncoached.py")),
-         "--workspace", str(workspace), "--report", str(args.report),
-         "--origin-witness", str(origins_path)],
-        capture_output=True, text=True, timeout=180)
-    data = json.loads(args.report.read_text(encoding="utf-8"))
+                note_error("independent_final_witness_error:" + type(exc).__name__ + ":" + str(exc))
+                diagnostics.append(describe_exception(exc, phase="final_witness"))
+    # Retain the source audit verbatim, separate from the combined verdict.
+    source_report = args.report.with_suffix(".source-audit.json")
+    audit_stdout = args.report.with_suffix(".audit.stdout.txt")
+    audit_stderr = args.report.with_suffix(".audit.stderr.txt")
+    audit_started = time.monotonic()
+    audit_returncode = None
+    try:
+        independent = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name("audit_three_uncoached.py")),
+             "--workspace", str(workspace), "--report", str(source_report),
+             "--origin-witness", str(origins_path)], capture_output=True, timeout=180)
+        audit_returncode = independent.returncode
+        audit_stdout.write_bytes(independent.stdout)
+        audit_stderr.write_bytes(independent.stderr)
+        data = json.loads(source_report.read_text(encoding="utf-8"))
+        if audit_returncode != 0 and data.get("status") == "PASS":
+            note_error("independent_auditor_nonzero_return_code")
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+        if isinstance(exc, subprocess.TimeoutExpired):
+            audit_stdout.write_bytes(exc.stdout or b"")
+            audit_stderr.write_bytes(exc.stderr or b"")
+        note_error("independent_auditor_execution_error:" + type(exc).__name__ + ":" + str(exc))
+        diagnostics.append(describe_exception(exc, phase="auditor"))
+        data = {"gate": "R4", "status": "FAIL", "three_distinct_uncoached": False,
+                "original_source_world_verified": False, "problems": ["independent_auditor_execution_error"]}
+    for line in stderr_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("R4_OPERATOR_EXCEPTION="):
+            try:
+                diagnostics.append(json.loads(line.split("=", 1)[1]))
+            except ValueError:
+                note_error("malformed_operator_exception_diagnostic")
+    if cancellation and "external_cancellation" not in errors:
+        note_error("external_cancellation")
+    data["audit_elapsed_seconds"] = time.monotonic() - audit_started
+    data["audit_return_code"] = audit_returncode
+    if args.profile:
+        data["diagnostic_profile"] = {"operator_jsonl": profile_path.name,
+            "parent_readonly_samples_wall_cpu_ns": parent_profile,
+            "audit_elapsed_seconds": data["audit_elapsed_seconds"],
+            "diagnostic_only": True, "autonomy_credit": False}
+    data["original_diagnostic_files"] = {
+        path.name: {"bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        for path in (stdout_path, stderr_path, audit_stdout, audit_stderr, source_report)
+        if path.is_file()
+    }
     data["observation_elapsed_target_seconds"] = args.seconds
     data["operator_run_error"] = error
     data["operator_controlled_goal_prompt"] = False
@@ -234,7 +330,44 @@ def main():
         "source_authentication_performed": False, "autonomy_credit": False,
     }
     source_status = data["status"]
+    source_problems = list(data.get("problems", ()))
     source_three_distinct = data.get("three_distinct_uncoached", False)
+    termination = classify(initiator=stop_reason, requested_elapsed=stop_requested_elapsed,
+        watchdog_seconds=args.seconds, progress=progress_reached,
+        operator_returncode=proc.returncode if proc else None, errors=errors, diagnostics=diagnostics,
+        cancelled_signal=cancellation[0] if cancellation else None,
+        audit_status=source_status, audit_problems=source_problems)
+    termination["final_observation_elapsed_seconds"] = final_sample["elapsed_seconds"] if final_sample else None
+    termination["final_witness_receipt_delta"] = final_sample["world_receipt_delta_from_initial"] if final_sample else None
+    # The final source replay authenticates original physics; separately
+    # compare the exact pre/post audit receipt identities. Neither raw
+    # witness counts nor a successful audit alone prove this equality.
+    same_receipts = False
+    if final_sample is not None and data.get("original_source_world_verified"):
+        try:
+            post = sample(workspace, process_alive=False, elapsed_seconds=time.monotonic()-began,
+                          baseline_world_receipts=baseline)
+            same_receipts = post["world_receipts"] == final_sample["world_receipts"]
+            if not same_receipts:
+                note_error("independent_final_receipt_identity_changed_during_audit")
+        except (OSError, ValueError, RuntimeError, sqlite3.DatabaseError) as exc:
+            note_error("independent_final_receipt_recheck_error:" + str(exc))
+    termination["final_receipt_count_is_source_audit_verified"] = same_receipts
+    termination["authenticated_final_receipt_delta"] = (
+        final_sample["world_receipt_delta_from_initial"] if same_receipts else None)
+    if error:
+        termination = classify(initiator=stop_reason, requested_elapsed=stop_requested_elapsed,
+            watchdog_seconds=args.seconds, progress=progress_reached,
+            operator_returncode=proc.returncode if proc else None, errors=errors, diagnostics=diagnostics,
+            cancelled_signal=cancellation[0] if cancellation else None,
+            audit_status=source_status, audit_problems=source_problems) | {
+                "final_observation_elapsed_seconds": final_sample["elapsed_seconds"] if final_sample else None,
+                "final_witness_receipt_delta": final_sample["world_receipt_delta_from_initial"] if final_sample else None,
+                "final_receipt_count_is_source_audit_verified": same_receipts,
+                "authenticated_final_receipt_delta": final_sample["world_receipt_delta_from_initial"] if same_receipts else None,
+            }
+    data["operator_run_error"] = error
+    data["termination"] = termination
     if error:
         data["status"] = "FAIL"
         data["three_distinct_uncoached"] = False
@@ -245,7 +378,9 @@ def main():
         data["capacity_observation"] = {
             "minimum_world_receipt_delta": args.capacity_receipts,
             "progress_reached_while_alive": progress_reached,
-            "stop_reason": _capacity_stop_reason(stop_reason, error),
+            "stop_reason": termination["classification"],
+            "stop_initiator": termination["stop_initiator"],
+            "watchdog_initiated": termination["watchdog_initiated"],
             "watchdog_seconds": args.seconds,
             "receipt_count_is_not_autonomy_credit": True,
             "missing_behavior_is_not_incapacity": True,
@@ -254,7 +389,7 @@ def main():
                                           operator_error=error)
     args.report.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
     print("R4_UNCOACHED_SOURCE_AUDIT=" + json.dumps(data, sort_keys=True))
-    return 0 if independent.returncode == 0 and not error and data["status"] == "PASS" else 1
+    return 0 if audit_returncode == 0 and not error and data["status"] == "PASS" else 1
 
 
 if __name__ == "__main__":

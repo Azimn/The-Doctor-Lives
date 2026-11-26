@@ -1184,8 +1184,27 @@
         "motivation_changes": false,
         "owner_confirmed_parameters": true
       },
-      "status": "operator_transport_repair_candidate_ci_pending",
-      "throughput_profile": "open; historic aggregate receipt progress verified, per-function timings not available",
+      "status": "extended_diagnostics_and_profiler_candidate_pending_integration_and_ci",
+      "throughput_profile": {
+        "status": "local controlled single-opportunity profile only; no exact-head full CI profile",
+        "boundary_map": "docs/product-v1/R4_RELIABILITY_PROFILING.md",
+        "tested_bundle_head": "e8f7240d4eea98e2de2af27090ec494ff9defc6e",
+        "unprofiled_seconds": 16.587307909,
+        "profiled_seconds": 15.448492309,
+        "matched_policy_rows": 2,
+        "additional_receipts_each": 4,
+        "world_verification": {
+          "calls": 291,
+          "exclusive_seconds": 12.698287713
+        },
+        "book_verify_local_s": {
+          "old_fail": 7.100498819,
+          "old_pass": 7.62395393,
+          "capacity": 9.507267993
+        },
+        "limitations": "single pair, non-counterbalanced, local Python 3.13 vs sealed CI 3.12; overhead not established, no verification optimization",
+        "model_inference": "original source-only renderer; no model inference invoked in controlled native step"
+      },
       "capacity_run_evidence": {
         "head": "e8f7240d4eea98e2de2af27090ec494ff9defc6e",
         "run": 45659716892,
@@ -1223,6 +1242,19 @@
         "workflows": {
           "passed": 21,
           "failed": 1
+        },
+        "termination_chronology": {
+          "last_completed_read_ledger_sequence": 66,
+          "last_completed_read_utc": "2026-11-25T17:44:56.316217Z",
+          "last_ledger_sequence": 67,
+          "last_ledger_utc": "2026-11-25T17:45:36.166195Z",
+          "last_policy_id": "policy_ff12b9e5e62544649d23cb0c22e8a917",
+          "last_policy_utc": "2026-11-25T17:46:00.969661Z",
+          "last_live_witness_utc": "2026-11-25T17:45:58.582862Z",
+          "last_live_receipts": 491,
+          "first_dead_witness_utc": "2026-11-25T17:46:01.370564Z",
+          "final_receipts": 492,
+          "exact_failed_frame_retained": false
         }
       },
       "operator_repair": {
@@ -1236,6 +1268,39 @@
         "scope": "output transport only; lossless bounded fragments through same donor; restart-persistent offsets/digests only; exact reconstructed text before original renderer; no cognitive input or history changes; early-exit diagnostic correction",
         "status": "candidate; exact-head CI pending",
         "universal_first_person_coverage": "not qualified; no change to recurrent ingress"
+      },
+      "successor_verified_regressions": {
+        "head": "843f43a09e91cd24a4758d7b758ebe85dbd3b940",
+        "full_suite": {
+          "run": 45671725540,
+          "job": 139408496641,
+          "discovered": 879,
+          "passed": 606,
+          "skipped": 273,
+          "failed": 0,
+          "errored": 0
+        },
+        "donor_suite": {
+          "run": 45671725686,
+          "job": 139408495635,
+          "discovered": 879,
+          "passed": 647,
+          "skipped": 232,
+          "failed": 0,
+          "errored": 0,
+          "transport_tests_passed": 2
+        },
+        "auditor": {
+          "run": 45671725662,
+          "job": 139408497822,
+          "passed": 32,
+          "failed": 0
+        },
+        "r4": {
+          "run": 45671725662,
+          "job": 139415758651,
+          "status": "in_progress_at_candidate_preparation"
+        }
       }
     },
     "character_fidelity_observation": {

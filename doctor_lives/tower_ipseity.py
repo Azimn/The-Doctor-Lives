@@ -108,7 +108,8 @@ class TowerIpseity:
     def record_ingress(self,db,*,source,kind,text,memory_id,event_id,external,tick,digest,projected=None):
         """Commit all supported ingress channels before recurrent thought."""
         communication=source.startswith("local-conversation:")
-        if source.startswith("virtual-world:small-tower:") or communication or source.startswith("local-emission:"):
+        if (source.startswith(("virtual-world:small-tower:", "laboratory-home:"))
+                or communication or source.startswith("local-emission:")):
             # Preserve existing source-bound replay format byte for byte.
             organ=("Expression" if kind=="confirmed_written_utterance" else
                    "Corpus" if ":action:" in source else "Sensus")

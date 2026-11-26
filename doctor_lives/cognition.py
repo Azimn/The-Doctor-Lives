@@ -512,7 +512,10 @@ class PretoriusBrain:
             raise ValueError("experience text is required")
         subject=None
         subject_digest=None
-        if self.store.meta("small-tower:world-binding-v1") is not None:
+        if (self.store.meta("small-tower:world-binding-v1") is not None
+                or exp.source.startswith("laboratory-home:")):
+            # The source-verified Laboratory bridge shares the same owning
+            # subject and pre-recurrent admission transaction as Small Tower.
             from .tower_ipseity import TowerIpseity
             subject=TowerIpseity(self)
             subject_digest=self.store.digest()
