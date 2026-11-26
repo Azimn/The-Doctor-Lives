@@ -1257,6 +1257,7 @@ class PretoriusBrain:
         self.neural.save(self.neural_path)
 
     def sleep(self, ticks: int = 12) -> dict[str, Any]:
+        """Unconscious associative replay; never evidence of an experienced dream."""
         if ticks < 1:
             return {"ticks": 0, "fragments": 0, "store_tick": self.store.tick}
         start_tick = self.store.tick
@@ -1269,19 +1270,31 @@ class PretoriusBrain:
             offset = index % len(ranked)
             chosen = [ranked[(offset + j) % len(ranked)][1] for j in range(width)]
             text = " | ".join(str(row["text"]) for row in chosen)
-            self.neural.step(text, self._neural_state_scalars(), reward=0.0, learn=True)
+            replay_id = new_id("replay")
+            # Persist the engineering input record before recurrence. A pending
+            # record is not evidence of a successful step, dream or experience.
             with self.store.transaction() as conn:
-                for row in chosen:
-                    self.store.rehearse(conn, row["id"], start_tick)
                 conn.execute(
                     """INSERT INTO sleep_fragments
                     (id,tick,created_at,trigger,record_ids_json,summary)
                     VALUES(?,?,?,?,?,?)""",
                     (
-                        new_id("dream"), start_tick, utc_now(), "associative_replay",
+                        replay_id, start_tick, utc_now(), "associative_replay_pending",
                         json.dumps([row["id"] for row in chosen]), text[:1000],
                     ),
                 )
+                self.store.bump_state_version(conn)
+            # Preserve full original neural input, learning and rehearsal order.
+            self.neural.step(text, self._neural_state_scalars(), reward=0.0, learn=True)
+            with self.store.transaction() as conn:
+                for row in chosen:
+                    self.store.rehearse(conn, row["id"], start_tick)
+                changed = conn.execute(
+                    "UPDATE sleep_fragments SET trigger='associative_replay' "
+                    "WHERE id=? AND trigger='associative_replay_pending'", (replay_id,),
+                ).rowcount
+                if changed != 1:
+                    raise RuntimeError("Missing or conflicting replay input record")
                 self.store.bump_state_version(conn)
             fragments += 1
         self.neural.save(self.neural_path)
@@ -1654,7 +1667,11 @@ class PretoriusBrain:
             migration_snapshots = int(conn.execute(
                 "SELECT COUNT(*) FROM archive WHERE reason='deep-history-v2 pre-reclassification snapshot'"
             ).fetchone()[0])
-            dreams = int(conn.execute("SELECT COUNT(*) FROM sleep_fragments").fetchone()[0])
+            # Historical status key dream_fragments counts completed replay
+            # steps, not consciously experienced dreams or pending attempts.
+            dreams = int(conn.execute(
+                "SELECT COUNT(*) FROM sleep_fragments WHERE trigger='associative_replay'"
+            ).fetchone()[0])
             policy_decisions = int(conn.execute("SELECT COUNT(*) FROM policy_decisions").fetchone()[0])
         return {
             "subject": "Doctor Septimus Pretorius",

@@ -263,6 +263,11 @@ def sync_phantasmagorium(bridge, archive):
               "recollection_memory_id": None, "world_authority": False,
               "factual_memory_eligible": False, "motor_authority": False,
               "fragment_count": len(result.get("fragments", []))}
+    if text:
+        from .tower_ipseity import TowerIpseity
+        from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+        subject = TowerIpseity(brain)
+        subject_digest = store.digest()
     with store.transaction() as db:
         existing = db.execute("SELECT value FROM meta WHERE key=?", (STATE,)).fetchone()
         if (existing["value"] if existing else None) != raw:
@@ -278,6 +283,16 @@ def sync_phantasmagorium(bridge, archive):
                 tags=("dream", "fictional", "nonfactual"),
             )
             report["recollection_memory_id"] = mid
+            # Match the existing Tower donor ownership boundary: the memory,
+            # original source lineage and admission commit atomically, before
+            # any later policy/recurrent consumer can access the dream text.
+            event = subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
+                                  (memory["id"], mid),
+                                  attribution=SubjectiveSourceKind.DREAMED,
+                                  external=True, digest=subject_digest)
+            admission = subject.record(db, "imagination:" + digest, (event,),
+                                       phase="imagination")
+            report["ipseity_admission_sha256"] = admission["sha256"]
         store.set_meta(STATE, _stable(envelope), db)
         store.set_meta(key, _stable(report), db)
         store.bump_state_version(db)
