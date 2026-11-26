@@ -263,13 +263,16 @@ class MnemosyneEndogenousPilot:
             cue = reconstruct_selected(brain, question, recall_id, cue)
             if cue is None:
                 return PrivateRecollectionEffect(recall_id, None, None, 0, None)
-        if brain.store.meta("small-tower:world-binding-v1") is not None:
-            from .tower_ipseity import TowerIpseity
-            from .phenomenology import PhenomenalMode
-            subject=TowerIpseity(brain)
-            admission=subject.admit_private("recollection:"+recall_id,"Mnemosyne",cue,
-                                            (recall_id,),mode=PhenomenalMode.RECOLLECTION)
-            cue=admission["content"][0]["text"]
+        # Private recollection belongs to the same subject in every environment.
+        # The read-only retrieval grant above does not itself admit experience.
+        from .tower_ipseity import TowerIpseity
+        from .phenomenology import PhenomenalMode
+        subject = TowerIpseity(brain)
+        admission = subject.admit_private(
+            "recollection:" + recall_id, "Mnemosyne", cue,
+            (recall_id,), mode=PhenomenalMode.RECOLLECTION,
+        )
+        cue = admission["content"][0]["text"]
         thought = self._port.brain.think(
             "mnemosyne_private_reflection", decision_text=cue
         )

@@ -6,6 +6,7 @@ from contextlib import closing
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.mnemosyne_pilot import MnemosyneEndogenousPilot
@@ -108,6 +109,86 @@ class EndogenousRecallOrganTests(unittest.TestCase):
         runtime.checkpoint()
         self.assertEqual(SixOrganRuntime.open(self.root/"advanced")._port.brain.store.meta(
             RECALL_PREFIX+decision.decision_id),store.meta(RECALL_PREFIX+decision.decision_id))
+
+    def test_unbound_recollection_admitted_before_policy_and_persists(self):
+        from doctor_lives.tower_ipseity import TowerIpseity, RECORD
+        for reconstruct in (False, True):
+            with self.subTest(reconstruct=reconstruct):
+                name = "owned-recall-" + str(reconstruct)
+                runtime = self.runtime(name)
+                brain = runtime._port.brain
+                self.assertIsNone(brain.store.meta("small-tower:world-binding-v1"))
+                runtime.sensus.acquire_existing_percept(
+                    {"channel": "world", "source": "fixture-vessel",
+                     "percept": "I heard a glass vessel shatter behind me."},
+                    host_authorized=True,
+                )
+                seed_epistemic_gap(runtime)
+                pilot = runtime.mnemosyne.opt_in_endogenous_recollection()
+                decision = pilot.deliberate(recall_cost=0)
+                self.assertEqual(decision.action, "recall")
+                key = RECORD + "recollection:" + decision.decision_id
+                original = brain.think
+                observed = []
+                def observe(*args, **kwargs):
+                    # verify_history uses a separate database connection.
+                    latest = TowerIpseity(brain).verify_history()[-1]
+                    self.assertEqual(latest["key"], key)
+                    self.assertEqual(latest["content"][0]["text"], kwargs["decision_text"])
+                    self.assertEqual(latest["content"][0]["source_refs"], [decision.decision_id])
+                    self.assertEqual(latest["content"][0]["mode"], "recollection")
+                    observed.append(latest)
+                    return original(*args, **kwargs)
+                with patch.object(brain, "think", side_effect=observe):
+                    effect = pilot.reflect_selected_recollection(reconstruct=reconstruct)
+                self.assertEqual(len(observed), 1)
+                self.assertTrue(effect.next_policy_decision_id)
+                history = TowerIpseity(brain).verify_history()
+                self.assertEqual(sum(x["key"] == key for x in history), 1)
+                self.assertEqual(history[-1]["phase"], "private_thought")
+                self.assertEqual(history[-1]["content"][0]["organ"], "Noesis")
+                self.assertIn(effect.next_policy_decision_id, history[-1]["content"][0]["source_refs"])
+                before = brain.store.digest()
+                with self.assertRaises(PermissionError):
+                    brain.think("mnemosyne_private_reflection",
+                                decision_text=observed[0]["content"][0]["text"])
+                self.assertEqual(brain.store.digest(), before)
+                runtime.checkpoint()
+                reopened = SixOrganRuntime.open(self.root / name)
+                self.assertEqual(TowerIpseity(reopened._port.brain).verify_history(), history)
+
+    def test_unadmitted_recollection_rejected_before_policy(self):
+        runtime = self.runtime("unadmitted")
+        brain = runtime._port.brain
+        before = (brain.store.digest(), brain.neural.tick)
+        with patch.object(brain, "_ranked_memory_sets") as ranking:
+            with self.assertRaises(PermissionError):
+                brain.think("mnemosyne_private_reflection",
+                            decision_text="I remember a glass vessel.")
+            ranking.assert_not_called()
+        self.assertEqual((brain.store.digest(), brain.neural.tick), before)
+
+    def test_recollection_admission_failure_does_not_call_noesis(self):
+        from doctor_lives.tower_ipseity import TowerIpseity
+        runtime = self.runtime("denied-admission")
+        brain = runtime._port.brain
+        runtime.sensus.acquire_existing_percept(
+            {"channel": "world", "source": "fixture-vessel",
+             "percept": "I heard a glass vessel shatter behind me."},
+            host_authorized=True,
+        )
+        seed_epistemic_gap(runtime)
+        pilot = runtime.mnemosyne.opt_in_endogenous_recollection()
+        self.assertEqual(pilot.deliberate(recall_cost=0).action, "recall")
+        before = (brain.store.digest(), brain.neural.tick)
+        with patch.object(TowerIpseity, "admit_private", side_effect=PermissionError("denied")):
+            with patch.object(brain, "think") as think:
+                with self.assertRaises(PermissionError):
+                    pilot.reflect_selected_recollection()
+                think.assert_not_called()
+        self.assertEqual((brain.store.digest(), brain.neural.tick), before)
+        with self.assertRaises(PermissionError):
+            pilot.reflect_selected_recollection()
 
     def test_matched_no_gap_ablation_blocks_recollection_without_new_brain(self):
         control = self.runtime("control")

@@ -1000,13 +1000,31 @@ class PretoriusBrain:
         bridge_enabled: bool = True,
     ) -> dict[str, Any]:
         tower_subject = None
-        if self.store.meta("small-tower:world-binding-v1") is not None:
+        tower_bound = self.store.meta("small-tower:world-binding-v1") is not None
+        recollection = trigger == "mnemosyne_private_reflection"
+        if tower_bound or recollection:
             from .tower_ipseity import TowerIpseity
             tower_subject = TowerIpseity(self)
-            if getattr(self,"_ipseity_owned_commitments",None) is None:
+            # Preserve the existing Tower-specific commitment policy.
+            if tower_bound and getattr(self,"_ipseity_owned_commitments",None) is None:
                 owned = {rid:event[1].subject_text for rid,event in tower_subject.owned_events()}
                 with tower_subject.cognitive_access(owned):
                     return self.think(trigger,decision_text=decision_text,bridge_enabled=bridge_enabled)
+        if recollection:
+            # A fresh admitted recollection is required, not merely a caller's
+            # first-person string. Read committed history before policy evaluation.
+            from .tower_ipseity import RECORD
+            history = tower_subject.verify_history()
+            latest = history[-1] if history else None
+            if (latest is None or latest["phase"] != "private_experience"
+                    or not latest["key"].startswith(RECORD + "recollection:")
+                    or len(latest["content"]) != 1):
+                raise PermissionError("Fresh owned recollection required")
+            item = latest["content"][0]
+            if (item["organ"] != "Mnemosyne" or item["mode"] != "recollection"
+                    or item["text"] != decision_text
+                    or item["source_refs"] != [latest["key"].removeprefix(RECORD + "recollection:")]):
+                raise PermissionError("Recollection differs from owned admission")
         if tower_subject is not None and decision_text is not None:
             from .first_person_governance import first_person_line
             line=first_person_line(decision_text)
