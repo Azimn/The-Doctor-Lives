@@ -9,6 +9,7 @@ import json
 
 from .lab_phantasmagorium import (
     STATE, SOURCE, _snapshot, _stable, _digest, _run, _nonfactual,
+    fancy_line, owned_imagination_report,
 )
 from .phantasmagorium_bridge import DONOR_SHA256, verify_archive
 
@@ -36,11 +37,10 @@ def sync_tower_phantasmagorium(store, provider, receipt, memory_id, archive, *, 
             or memory["source"] != source or memory["text"] != receipt.first_person
             or not memory.get("source_event_id")):
         raise PermissionError("Exact admitted Tower source memory required")
-    if store.meta("small-tower:world-binding-v1") is not None:
-        from .tower_ipseity import TowerIpseity
-        if type(subject) is not TowerIpseity or subject.store is not store:
-            raise PermissionError("Imagination requires its owning Synthetic Ipseity organ")
-    subject_digest=store.digest() if subject is not None else None
+    from .tower_ipseity import TowerIpseity
+    if type(subject) is not TowerIpseity or subject.store is not store:
+        raise PermissionError("Imagination requires its owning Synthetic Ipseity organ")
+    subject_digest=store.digest()
     archive = verify_archive(archive)
     digest = sha256(source.encode()).hexdigest()
     key = "phantasmagorium:tower-event:" + digest
@@ -139,7 +139,7 @@ def sync_tower_phantasmagorium(store, provider, receipt, memory_id, archive, *, 
                     (memory_id,report["recollection_memory_id"]),attribution=SubjectiveSourceKind.DREAMED,
                     external=True,digest=subject_digest))
             for motif in motifs:
-                line="I imagine "+motif.rstrip(".")+", without taking it for something I witnessed."
+                line=fancy_line(motif)
                 events.append(subject.event("Phantasmagorium",line,PhenomenalMode.INTERNAL_THOUGHT,
                     (memory_id,),attribution=SubjectiveSourceKind.IMAGINED,external=True,digest=subject_digest))
             if events:
@@ -205,6 +205,12 @@ def retrieval_motifs(store, observation_source):
     from .phenomenology import implementation_leaks, control_instruction_markers
     if any(implementation_leaks(m) or control_instruction_markers(m) for m in motifs):
         raise PermissionError("Unsafe imaginative cues")
+    expected = [{"organ": "Phantasmagorium", "text": fancy_line(motif),
+                 "mode": "internal_thought", "attribution": "imagined",
+                 "source_refs": [memory["id"]], "external": True} for motif in motifs]
+    if not owned_imagination_report(store, pointer["key"].rsplit(":", 1)[-1],
+                                    report, expected):
+        return ()
     return tuple(motifs)
 
 

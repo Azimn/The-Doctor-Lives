@@ -39,6 +39,51 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             verified_fancy_motifs(dict(result, fragments=[dict(fragment, world_fact_authority=True)]))
 
+    def test_owned_dream_retrieval_requires_exact_committed_admission(self):
+        from types import SimpleNamespace
+        from doctor_lives.lab_phantasmagorium import SOURCE, _stable, owned_dream_memory
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        from doctor_lives.tower_ipseity import TowerIpseity, RECORD
+        from doctor_lives.phenomenology import PhenomenalMode, SubjectiveSourceKind
+        with tempfile.TemporaryDirectory() as tmp:
+            store = BrainStore(Path(tmp) / "brain.sqlite3")
+            subject = TowerIpseity(SimpleNamespace(store=store))
+            digest = "a" * 64
+            text = "I recall a dream: a clock made of clouds."
+            with store.transaction() as db:
+                source = store.add_memory(db, store.tick, "I slept.",
+                    "laboratory-home:action:" + digest, "action",
+                    "lived_runtime_memory", False, 1.0, False, .4)
+                mid = store.add_memory(db, store.tick, text, SOURCE + digest,
+                    "dream_recollection", "dreamed_not_lived", True, 1.0, False, .35)
+            row = store.get_memory(mid)
+            self.assertFalse(owned_dream_memory(store, row))
+            report = {"source_sha256": digest, "operation": "night",
+                      "donor_sha256": DONOR_SHA256, "source_memory_id": source,
+                      "recollection_memory_id": mid, "world_authority": False,
+                      "factual_memory_eligible": False, "motor_authority": False}
+            key = "phantasmagorium:event:" + digest
+            with store.transaction() as db:
+                store.set_meta(key, _stable(report), db)
+            self.assertFalse(owned_dream_memory(store, row))
+            event = subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
+                (source, mid), attribution=SubjectiveSourceKind.DREAMED, external=True)
+            with store.transaction() as db:
+                entry = subject.record(db, "imagination:" + digest, (event,), phase="imagination")
+                report["ipseity_admission_sha256"] = entry["sha256"]
+                store.set_meta(key, _stable(report), db)
+            before = store.digest()
+            self.assertTrue(owned_dream_memory(store, row))
+            self.assertFalse(owned_dream_memory(store, dict(row, text="I recall a dream: altered.")))
+            self.assertEqual(store.digest(), before)
+            reopened = BrainStore(Path(tmp) / "brain.sqlite3")
+            self.assertTrue(owned_dream_memory(reopened, reopened.get_memory(mid)))
+            with store.transaction() as db:
+                store.set_meta(RECORD + "imagination:" + digest,
+                               _stable(dict(entry, subject="other")), db)
+            self.assertFalse(owned_dream_memory(store, row))
+            self.assertIsNotNone(store.get_memory(mid))
+
     def test_missing_archive_not_silently_ignored_after_activation(self):
         from unittest.mock import patch
         from doctor_lives.tower_phantasmagorium import require_archive, CURSOR

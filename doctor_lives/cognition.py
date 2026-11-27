@@ -612,9 +612,10 @@ class PretoriusBrain:
         now = self.store.tick
         open_terms = self._open_terms()
         suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
+        from .lab_phantasmagorium import owned_dream_memory
         rows = [
             row for row in self.store.memories_with_classification()
-            if row["id"] not in suppressed_by_canon
+            if row["id"] not in suppressed_by_canon and owned_dream_memory(self.store, row)
         ]
         query_tokens = self._tokens(query or "")
         direct_ranked: list[tuple[float, dict[str, Any]]] = []

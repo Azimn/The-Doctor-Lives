@@ -237,6 +237,7 @@ def sync_phantasmagorium(bridge, archive):
     if not _nonfactual(result, "dreamed_not_lived" if op == "sleep" else "hypothetical_only"):
         raise PermissionError("Original donor omitted fictional provenance")
     text = None
+    motifs = ()
     if op == "sleep":
         if not _nonfactual(recall, "dreamed_not_lived") or type(recall.get("has_recollection")) is not bool:
             raise PermissionError("Unmarked dream recollection")
@@ -249,8 +250,8 @@ def sync_phantasmagorium(bridge, archive):
             if implementation_leaks(text) or control_instruction_markers(text):
                 raise PermissionError("Dream text cannot cross subject boundary")
     else:
-        if any(not _nonfactual(f, "dreamed_not_lived") for f in result["fragments"]):
-            raise PermissionError("Unmarked fancy fragment")
+        from .tower_phantasmagorium import verified_fancy_motifs
+        motifs = verified_fancy_motifs(result)
     updated = dict(state, files=output["files"])
     updated[cursor] = revision
     if op == "sleep":
@@ -262,8 +263,9 @@ def sync_phantasmagorium(bridge, archive):
               "sleep_index": updated["nights"], "fictional_result_sha256": _digest(result),
               "recollection_memory_id": None, "world_authority": False,
               "factual_memory_eligible": False, "motor_authority": False,
-              "fragment_count": len(result.get("fragments", []))}
-    if text:
+              "fragment_count": len(result.get("fragments", [])),
+              "fictional_motifs": list(motifs)}
+    if text or motifs:
         from .tower_ipseity import TowerIpseity
         from .phenomenology import PhenomenalMode, SubjectiveSourceKind
         subject = TowerIpseity(brain)
@@ -286,14 +288,90 @@ def sync_phantasmagorium(bridge, archive):
             # Match the existing Tower donor ownership boundary: the memory,
             # original source lineage and admission commit atomically, before
             # any later policy/recurrent consumer can access the dream text.
-            event = subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
-                                  (memory["id"], mid),
-                                  attribution=SubjectiveSourceKind.DREAMED,
-                                  external=True, digest=subject_digest)
-            admission = subject.record(db, "imagination:" + digest, (event,),
+        if text or motifs:
+            events = []
+            if text:
+                events.append(subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
+                                            (memory["id"], mid),
+                                            attribution=SubjectiveSourceKind.DREAMED,
+                                            external=True, digest=subject_digest))
+            for motif in motifs:
+                events.append(subject.event("Phantasmagorium", fancy_line(motif),
+                                            PhenomenalMode.INTERNAL_THOUGHT, (memory["id"],),
+                                            attribution=SubjectiveSourceKind.IMAGINED,
+                                            external=True, digest=subject_digest))
+            admission = subject.record(db, "imagination:" + digest, events,
                                        phase="imagination")
             report["ipseity_admission_sha256"] = admission["sha256"]
         store.set_meta(STATE, _stable(envelope), db)
         store.set_meta(key, _stable(report), db)
         store.bump_state_version(db)
     return report
+
+
+def fancy_line(motif):
+    return "I imagine " + motif.rstrip(".") + ", without taking it for something I witnessed."
+
+
+def owned_imagination_report(store, digest, report, expected_content):
+    """Match the committed original admission, never mint history on retrieval.
+
+    Historical unowned reports stay available for engineering inspection.
+    The existing full history verifier remains the continuity audit; this
+    bounded lookup avoids replaying the entire history on every retrieval.
+    """
+    from .tower_ipseity import RECORD, _digest as history_digest
+    key = RECORD + "imagination:" + digest
+    raw = store.meta(key)
+    if not raw or not report.get("ipseity_admission_sha256"):
+        return False
+    try:
+        entry = json.loads(raw)
+        payload = {k: v for k, v in entry.items() if k != "sha256"}
+        return (entry["key"] == key and entry["subject"] == "pretorius"
+                and entry["phase"] == "imagination"
+                and entry["sha256"] == report["ipseity_admission_sha256"]
+                and entry["sha256"] == history_digest(payload)
+                and entry["content"] == expected_content)
+    except (ValueError, TypeError, KeyError, AttributeError):
+        return False
+
+
+def owned_dream_memory(store, row):
+    """A donor dream may be recalled only with its original owned source."""
+    if (row.get("kind") != "dream_recollection"
+            and row.get("evidence_class") != "dreamed_not_lived"
+            and not row.get("source", "").startswith(SOURCE)):
+        return True
+    if (row.get("kind") != "dream_recollection"
+            or row.get("evidence_class") != "dreamed_not_lived"
+            or not row.get("active") or not row.get("external")
+            or not row.get("source", "").startswith(SOURCE)):
+        return False
+    digest = row["source"][len(SOURCE):]
+    if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+        return False
+    for prefix in ("phantasmagorium:event:", "phantasmagorium:tower-event:"):
+        raw = store.meta(prefix + digest)
+        if not raw:
+            continue
+        try:
+            report = json.loads(raw)
+            if (report["source_sha256"] != digest or report["operation"] != "night"
+                    or report["donor_sha256"] != DONOR_SHA256
+                    or report["recollection_memory_id"] != row["id"]
+                    or any(report[k] is not False for k in
+                           ("world_authority", "factual_memory_eligible", "motor_authority"))):
+                continue
+            source = store.get_memory(report["source_memory_id"])
+            if (not source or not source["active"] or source["external"]
+                    or source["evidence_class"] != "lived_runtime_memory"):
+                continue
+            expected = [{"organ": "Phantasmagorium", "text": row["text"],
+                         "mode": "recollection", "attribution": "dreamed",
+                         "source_refs": [source["id"], row["id"]], "external": True}]
+            if owned_imagination_report(store, digest, report, expected):
+                return True
+        except (ValueError, TypeError, KeyError, AttributeError):
+            continue
+    return False
