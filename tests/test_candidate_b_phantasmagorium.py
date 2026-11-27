@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from doctor_lives.store import BrainStore
+from doctor_lives.cognition import PretoriusBrain
 from doctor_lives.phantasmagorium_bridge import PhantasmagoriumBridge, verify_archive
 
 
@@ -53,7 +54,9 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
             with store.transaction() as db:
                 source = store.add_memory(db, store.tick, "I slept.",
                     "laboratory-home:action:" + digest, "action",
-                    "lived_runtime_memory", False, 1.0, False, .4)
+                    "lived_runtime_memory", False, 1.0, False, .4,
+                    classification=PretoriusBrain._runtime_classification(
+                        "action", "laboratory-home:action:" + digest))
                 mid = store.add_memory(db, store.tick, text, SOURCE + digest,
                     "dream_recollection", "dreamed_not_lived", True, 1.0, False, .35)
             row = store.get_memory(mid)
@@ -102,7 +105,8 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
             motif = "a clock made of clouds"
             with store.transaction() as db:
                 mid = store.add_memory(db, store.tick, "I read a folio.", source, "action",
-                    "lived_runtime_memory", False, 1.0, False, .4, source_event_id="event")
+                    "lived_runtime_memory", False, 1.0, False, .4, source_event_id="event",
+                    classification=PretoriusBrain._runtime_classification("action", source))
             report = {"operation": "fancy", "donor_sha256": DONOR_SHA256,
                       "source_memory_id": mid, "source_event_id": "event",
                       "world_authority": False, "factual_memory_eligible": False,
