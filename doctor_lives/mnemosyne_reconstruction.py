@@ -74,18 +74,33 @@ def reconstruct_selected(brain, question, recall_id, selected_line):
             or json.loads(decision["state_pressure_json"]).get("question_sha256")
             != sha256(question.encode()).hexdigest()):
         raise PermissionError("Original internally selected recollection required")
+    from .lab_phantasmagorium import owned_dream_memory
+    ranked = brain.cognitive_view(query=question, audit=False).experiences
+    matches = [item for item in ranked if item.first_person == selected_line]
+    if not matches:
+        raise PermissionError("Selected line is absent from canonical recall")
+    item = matches[0]
+    rows = {row["id"]: row for row in store.memories_with_classification()}
+    row = rows.get(item.record_id)
+    if row is None or not row["active"] or not owned_dream_memory(store, row):
+        raise PermissionError("Inactive or unowned reconstruction source")
+    # The optional P4-P6 reconstruction experiment must not reinterpret a
+    # donor dream as a waking event. Preserve its exact marked recollection;
+    # do not apply experimental distortion or reconsolidation to this path.
+    dream = row["evidence_class"] == "dreamed_not_lived"
+    if any(x.provenance.evidence_class == "dreamed_not_lived" for x in matches):
+        if len(matches) != 1 or not dream:
+            raise PermissionError("Ambiguous dream reconstruction source")
     prior = store.meta(RECALL_PREFIX + recall_id)
     if prior is not None:
         saved = json.loads(prior)
+        if saved["source_memory"] != row["id"] or saved["world_fact_created"] is not False:
+            raise PermissionError("Cached reconstruction differs from eligible source")
+        if dream and saved["subject_text"] != selected_line:
+            raise PermissionError("Cached dream reconstruction lacks exact marked wording")
         return saved["subject_text"]
-    ranked = brain.cognitive_view(query=question, audit=False).experiences
-    item = next((x for x in ranked if x.first_person == selected_line), None)
-    if item is None:
-        raise PermissionError("Selected line is absent from canonical recall")
-    rows = {row["id"]: row for row in store.memories_with_classification()}
-    row = rows.get(item.record_id)
-    if row is None or not row["active"]:
-        raise PermissionError("Inactive reconstruction source")
+    if dream:
+        return selected_line
     root = _root(row)
     key = PREFIX + row["id"]
     raw = store.meta(key)

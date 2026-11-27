@@ -96,6 +96,7 @@ class EndogenousRecallOrganTests(unittest.TestCase):
         pilot=runtime.mnemosyne.opt_in_endogenous_recollection()
         decision=pilot.deliberate(recall_cost=0)
         self.assertEqual(decision.action,"recall")
+        question = pilot._pending_question
         effect=pilot.reflect_selected_recollection(reconstruct=True)
         self.assertTrue(effect.next_policy_decision_id)
         store=runtime._port.brain.store
@@ -109,6 +110,22 @@ class EndogenousRecallOrganTests(unittest.TestCase):
         runtime.checkpoint()
         self.assertEqual(SixOrganRuntime.open(self.root/"advanced")._port.brain.store.meta(
             RECALL_PREFIX+decision.decision_id),store.meta(RECALL_PREFIX+decision.decision_id))
+        # A cache hit is not a new retrieval grant. Even a valid historical
+        # policy must not release content from an inactive source.
+        from doctor_lives.mnemosyne_reconstruction import reconstruct_selected
+        brain = runtime._port.brain
+        line = next(x.first_person for x in brain.cognitive_view(query=question, audit=False).experiences
+                    if x.record_id == record["source_memory"])
+        self.assertEqual(reconstruct_selected(brain, question, decision.decision_id, line),
+                         record["subject_text"])
+        with store.transaction() as db:
+            db.execute("UPDATE memories SET active=0 WHERE id=?", (record["source_memory"],))
+            store.bump_state_version(db)
+        before = store.digest()
+        with self.assertRaises(PermissionError):
+            reconstruct_selected(brain, question, decision.decision_id, line)
+        self.assertEqual(store.digest(), before)
+        self.assertEqual(json.loads(store.meta(RECALL_PREFIX+decision.decision_id)), record)
 
     def test_unbound_recollection_admitted_before_policy_and_persists(self):
         from doctor_lives.tower_ipseity import TowerIpseity, RECORD
