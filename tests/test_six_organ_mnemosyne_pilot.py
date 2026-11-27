@@ -127,6 +127,57 @@ class EndogenousRecallOrganTests(unittest.TestCase):
         self.assertEqual(store.digest(), before)
         self.assertEqual(json.loads(store.meta(RECALL_PREFIX+decision.decision_id)), record)
 
+    def test_explicit_dream_recollection_preserves_attribution_and_source(self):
+        from doctor_lives.lab_phantasmagorium import SOURCE, _stable
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        from doctor_lives.tower_ipseity import TowerIpseity, RECORD
+        from doctor_lives.phenomenology import PhenomenalMode, SubjectiveSourceKind
+
+        runtime = self.runtime("dream-ownership")
+        brain = runtime._port.brain
+        store = brain.store
+        subject = TowerIpseity(brain)
+        digest = "b" * 64
+        source_name = "laboratory-home:action:" + digest
+        text = "I recall a dream: a violet pendulum floated above an obsidian clock."
+        # Controlled source/admission fixture, not a donor or physical-world test.
+        with store.transaction() as db:
+            source = store.add_memory(db, store.tick, "I slept.", source_name, "action",
+                "lived_runtime_memory", False, 1.0, False, .4,
+                classification=brain._runtime_classification("action", source_name))
+            mid = store.add_memory(db, store.tick, text, SOURCE + digest,
+                "dream_recollection", "dreamed_not_lived", True, 1.0, False, 1.0)
+        event = subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
+            (source, mid), attribution=SubjectiveSourceKind.DREAMED, external=True)
+        with store.transaction() as db:
+            entry = subject.record(db, "imagination:" + digest, (event,), phase="imagination")
+            report = {"source_sha256": digest, "operation": "night",
+                "donor_sha256": DONOR_SHA256, "source_memory_id": source,
+                "recollection_memory_id": mid, "world_authority": False,
+                "factual_memory_eligible": False, "motor_authority": False,
+                "ipseity_admission_sha256": entry["sha256"]}
+            store.set_meta("phantasmagorium:event:" + digest, _stable(report), db)
+        seed_epistemic_gap(runtime, description="the violet pendulum")
+        pilot = runtime.mnemosyne.opt_in_endogenous_recollection()
+        decision = pilot.deliberate(recall_cost=0)
+        self.assertEqual(decision.action, "recall")
+        original = brain.think
+        observed = []
+        def check(*args, **kwargs):
+            entry = subject.verify_history()[-1]
+            self.assertEqual(entry["key"], RECORD + "recollection:" + decision.decision_id)
+            self.assertEqual(entry["content"][0]["attribution"], "dreamed")
+            self.assertTrue(entry["content"][0]["external"])
+            self.assertEqual(entry["content"][0]["source_refs"], [decision.decision_id, mid])
+            self.assertEqual(entry["content"][0]["text"], text)
+            observed.append(entry)
+            return original(*args, **kwargs)
+        with patch.object(brain, "think", side_effect=check):
+            effect = pilot.reflect_selected_recollection(reconstruct=True)
+        self.assertTrue(effect.next_policy_decision_id)
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(store.get_memory(mid)["evidence_class"], "dreamed_not_lived")
+
     def test_unbound_recollection_admitted_before_policy_and_persists(self):
         from doctor_lives.tower_ipseity import TowerIpseity, RECORD
         for reconstruct in (False, True):

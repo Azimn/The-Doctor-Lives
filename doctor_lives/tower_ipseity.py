@@ -193,11 +193,11 @@ class TowerIpseity:
         return result
 
     def admit_private(self, key, organ, text, refs=(), *, mode=PhenomenalMode.INTERNAL_THOUGHT,
-                      attribution=SubjectiveSourceKind.SELF_OBSERVED):
+                      attribution=SubjectiveSourceKind.SELF_OBSERVED, external=False):
         line=first_person_line(text)
         if line.startswith("I cannot make sense of"):
             raise PermissionError("Private experience is not subject-safe")
-        event=self.event(organ,line,mode,refs,attribution=attribution)
+        event=self.event(organ,line,mode,refs,attribution=attribution,external=external)
         with self.store.transaction() as db:
             return self.record(db,key,(event,),phase="private_experience")
 

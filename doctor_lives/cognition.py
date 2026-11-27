@@ -1026,9 +1026,20 @@ class PretoriusBrain:
                     or len(latest["content"]) != 1):
                 raise PermissionError("Fresh owned recollection required")
             item = latest["content"][0]
+            recall_id = latest["key"].removeprefix(RECORD + "recollection:")
+            refs = item["source_refs"]
             if (item["organ"] != "Mnemosyne" or item["mode"] != "recollection"
-                    or item["text"] != decision_text
-                    or item["source_refs"] != [latest["key"].removeprefix(RECORD + "recollection:")]):
+                    or item["text"] != decision_text):
+                raise PermissionError("Recollection differs from owned admission")
+            if item["attribution"] == "dreamed":
+                from .lab_phantasmagorium import owned_dream_memory
+                source = self.store.get_memory(refs[1]) if len(refs) == 2 else None
+                if (len(refs) != 2 or refs[0] != recall_id or not item["external"]
+                        or not source or source["evidence_class"] != "dreamed_not_lived"
+                        or not owned_dream_memory(self.store, source)
+                        or self._view_item(0.0, source).first_person != decision_text):
+                    raise PermissionError("Dream recollection differs from owned source")
+            elif refs != [recall_id]:
                 raise PermissionError("Recollection differs from owned admission")
         if tower_subject is not None and decision_text is not None:
             from .first_person_governance import first_person_line
