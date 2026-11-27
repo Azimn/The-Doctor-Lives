@@ -183,6 +183,47 @@ class RealDoctorHomeBridgeTests(unittest.TestCase):
         reopened = PretoriusBrainPort(brain.state_dir)
         self.assertIn(entry, TowerIpseity(reopened.brain).verify_history())
 
+    def test_waking_fancy_commits_owned_motifs_or_rolls_back(self):
+        from doctor_lives.lab_phantasmagorium import STATE, sync_phantasmagorium
+        from doctor_lives.tower_ipseity import TowerIpseity
+        from doctor_lives.tower_phantasmagorium import fancy_line
+        brain = self.doctor.brain
+        subject = TowerIpseity(brain)
+        # Controlled adapter-boundary test with a genuine source observation.
+        # The read candidate and donor packet are fixtures, not a live read or donor qualification.
+        seen = self.bridge.observe()
+        memory = brain.store.get_memory(seen["memory_id"])
+        digest = "f" * 64
+        motif = "a clock made of clouds"
+        marked = {"epistemic_status": "dreamed_not_lived", "marked": True,
+                  "factual_memory_eligible": False, "world_fact_authority": False,
+                  "tool_authority": False}
+        packet = {"files": {}, "result": dict(marked, epistemic_status="hypothetical_only",
+                  fragments=[dict(marked, motif=motif)]), "recall": None, "echo": None}
+        prefix = subject.verify_history()
+        before = brain.store.digest()
+        neural_before = brain.neural.tick
+        with patch("doctor_lives.lab_phantasmagorium.verify_archive", return_value=Path("fixture.zip")), \
+                patch("doctor_lives.lab_phantasmagorium._next_event", side_effect=lambda bridge, table, cursor, op:
+                      (1, digest, memory) if op == "read" and cursor == 0 else None), \
+                patch("doctor_lives.lab_phantasmagorium._run", return_value=packet):
+            with patch.object(TowerIpseity, "record", side_effect=PermissionError("admission fault")):
+                with self.assertRaisesRegex(PermissionError, "admission fault"):
+                    sync_phantasmagorium(self.bridge, Path("fixture.zip"))
+            self.assertEqual(brain.store.digest(), before)
+            self.assertIsNone(brain.store.meta(STATE))
+            self.assertEqual(subject.verify_history(), prefix)
+            report = sync_phantasmagorium(self.bridge, Path("fixture.zip"))
+            entry = subject.verify_history()[-1]
+            self.assertEqual(entry["sha256"], report["ipseity_admission_sha256"])
+            self.assertEqual(entry["content"], [{"organ": "Phantasmagorium", "text": fancy_line(motif),
+                "mode": "internal_thought", "attribution": "imagined",
+                "source_refs": [memory["id"]], "external": True}])
+            self.assertIsNone(report["recollection_memory_id"])
+            self.assertEqual(brain.neural.tick, neural_before)
+            self.assertIsNone(sync_phantasmagorium(self.bridge, Path("fixture.zip")))
+            self.assertEqual(subject.verify_history(), prefix + [entry])
+
     def test_involuntary_utterance_becomes_real_doctor_memory_without_raw_body_data(self):
         self.bridge.act("walk", event_id="go-hall", station="station:hall")
         hit = self.bridge.act("walk", event_id="hit-stool", station="station:shop:private")

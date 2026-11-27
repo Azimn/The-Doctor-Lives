@@ -406,7 +406,7 @@ def select_world_affordance(brain, *, observation_memory_id, observation_source,
     # propositions about reality, physical offers, or instructions.
     interpretation_cues = conclave.cues(interpretation_context)
     from .tower_phantasmagorium import retrieval_motifs
-    imaginative_cues = retrieval_motifs(brain.store, observation_source)
+    imaginative_cues = retrieval_motifs(brain.store, observation_source, subject=subject)
     owned = None
     admission = None
     if tower_provider is not None:

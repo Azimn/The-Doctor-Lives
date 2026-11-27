@@ -39,6 +39,63 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             verified_fancy_motifs(dict(result, fragments=[dict(fragment, world_fact_authority=True)]))
 
+    def test_retrieval_requires_exact_owned_imagery_and_withholds_legacy_report(self):
+        from hashlib import sha256
+        from types import SimpleNamespace
+        from doctor_lives.tower_ipseity import TowerIpseity
+        from doctor_lives.tower_phantasmagorium import LATEST_FANCY, retrieval_motifs, fancy_line
+        from doctor_lives.lab_phantasmagorium import _digest, _stable
+        from doctor_lives.phenomenology import PhenomenalMode, SubjectiveSourceKind
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        from doctor_lives import PretoriusBrain, Experience
+        from test_brain import small_config
+        with tempfile.TemporaryDirectory() as tmp:
+            brain = PretoriusBrain(Path(tmp), neural_config=small_config())
+            store = brain.store
+            subject = TowerIpseity(brain)
+            source = "virtual-world:small-tower:fixture:action:reading"
+            observation = "virtual-world:small-tower:fixture:observation:next"
+            self.assertEqual(retrieval_motifs(store, observation), ())
+            # Controlled provenance fixture, not a live Tower qualification.
+            mid = brain.ingest(Experience("I read a folio.", source=source))["memory_id"]
+            memory = store.get_memory(mid)
+            digest = sha256(source.encode()).hexdigest()
+            key = "phantasmagorium:tower-event:" + digest
+            motif = "a clock made of clouds"
+            report = {"source_sha256": digest, "source_memory_id": mid,
+                      "source_event_id": memory["source_event_id"], "operation": "fancy",
+                      "donor_sha256": DONOR_SHA256, "world_authority": False,
+                      "factual_memory_eligible": False, "motor_authority": False,
+                      "fictional_motifs": [motif]}
+            def seal():
+                with store.transaction() as db:
+                    store.set_meta(key, _stable(report), db)
+                    store.set_meta(LATEST_FANCY, _stable({"key": key, "source": source,
+                                                        "report_sha256": _digest(report)}), db)
+            seal()
+            with self.assertRaises(PermissionError):
+                retrieval_motifs(store, observation)
+            with self.assertRaises(PermissionError):
+                retrieval_motifs(store, observation, subject=TowerIpseity(SimpleNamespace(store=object())))
+            self.assertEqual(retrieval_motifs(store, observation, subject=subject), ())
+            self.assertEqual(subject.verify_history(), [])
+            event = subject.event("Phantasmagorium", fancy_line(motif), PhenomenalMode.INTERNAL_THOUGHT,
+                                  (mid,), attribution=SubjectiveSourceKind.IMAGINED, external=True)
+            with store.transaction() as db:
+                admission = subject.record(db, "imagination:" + digest, (event,), phase="imagination")
+            report["ipseity_admission_sha256"] = admission["sha256"]
+            seal()
+            before = store.digest()
+            self.assertEqual(retrieval_motifs(store, observation, subject=subject), (motif,))
+            self.assertEqual(store.digest(), before)
+            brain.save() if hasattr(brain, "save") else None
+            reopened = PretoriusBrain(Path(tmp))
+            self.assertEqual(retrieval_motifs(reopened.store, observation, subject=TowerIpseity(reopened)), (motif,))
+            report["fictional_motifs"] = ["a mirror made of clouds"]
+            seal()
+            with self.assertRaisesRegex(PermissionError, "owned admission"):
+                retrieval_motifs(store, observation, subject=subject)
+
     def test_missing_archive_not_silently_ignored_after_activation(self):
         from unittest.mock import patch
         from doctor_lives.tower_phantasmagorium import require_archive, CURSOR

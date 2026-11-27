@@ -237,6 +237,7 @@ def sync_phantasmagorium(bridge, archive):
     if not _nonfactual(result, "dreamed_not_lived" if op == "sleep" else "hypothetical_only"):
         raise PermissionError("Original donor omitted fictional provenance")
     text = None
+    motifs = ()
     if op == "sleep":
         if not _nonfactual(recall, "dreamed_not_lived") or type(recall.get("has_recollection")) is not bool:
             raise PermissionError("Unmarked dream recollection")
@@ -249,8 +250,8 @@ def sync_phantasmagorium(bridge, archive):
             if implementation_leaks(text) or control_instruction_markers(text):
                 raise PermissionError("Dream text cannot cross subject boundary")
     else:
-        if any(not _nonfactual(f, "dreamed_not_lived") for f in result["fragments"]):
-            raise PermissionError("Unmarked fancy fragment")
+        from .tower_phantasmagorium import verified_fancy_motifs
+        motifs = verified_fancy_motifs(result)
     updated = dict(state, files=output["files"])
     updated[cursor] = revision
     if op == "sleep":
@@ -263,7 +264,7 @@ def sync_phantasmagorium(bridge, archive):
               "recollection_memory_id": None, "world_authority": False,
               "factual_memory_eligible": False, "motor_authority": False,
               "fragment_count": len(result.get("fragments", []))}
-    if text:
+    if text or motifs:
         from .tower_ipseity import TowerIpseity
         from .phenomenology import PhenomenalMode, SubjectiveSourceKind
         subject = TowerIpseity(brain)
@@ -286,12 +287,20 @@ def sync_phantasmagorium(bridge, archive):
             # Match the existing Tower donor ownership boundary: the memory,
             # original source lineage and admission commit atomically, before
             # any later policy/recurrent consumer can access the dream text.
-            event = subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
-                                  (memory["id"], mid),
-                                  attribution=SubjectiveSourceKind.DREAMED,
-                                  external=True, digest=subject_digest)
-            admission = subject.record(db, "imagination:" + digest, (event,),
-                                       phase="imagination")
+        events = []
+        if text:
+            events.append(subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
+                                        (memory["id"], mid), attribution=SubjectiveSourceKind.DREAMED,
+                                        external=True, digest=subject_digest))
+        if motifs:
+            from .tower_phantasmagorium import fancy_line
+            for motif in motifs:
+                events.append(subject.event("Phantasmagorium", fancy_line(motif),
+                                            PhenomenalMode.INTERNAL_THOUGHT, (memory["id"],),
+                                            attribution=SubjectiveSourceKind.IMAGINED,
+                                            external=True, digest=subject_digest))
+        if events:
+            admission = subject.record(db, "imagination:" + digest, events, phase="imagination")
             report["ipseity_admission_sha256"] = admission["sha256"]
         store.set_meta(STATE, _stable(envelope), db)
         store.set_meta(key, _stable(report), db)
