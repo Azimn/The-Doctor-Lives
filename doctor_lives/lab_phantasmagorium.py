@@ -367,6 +367,15 @@ def owned_dream_memory(store, row):
             if (not source or not source["active"] or source["external"]
                     or source["evidence_class"] != "lived_runtime_memory"):
                 continue
+            if prefix == "phantasmagorium:event:":
+                if source["source"] != "laboratory-home:action:" + digest:
+                    continue
+            elif (not source["source"].startswith("virtual-world:small-tower:")
+                    or ":action:" not in source["source"]
+                    or sha256(source["source"].encode()).hexdigest() != digest
+                    or not source.get("source_event_id")
+                    or source["source_event_id"] != report.get("source_event_id")):
+                continue
             expected = [{"organ": "Phantasmagorium", "text": row["text"],
                          "mode": "recollection", "attribution": "dreamed",
                          "source_refs": [source["id"], row["id"]], "external": True}]

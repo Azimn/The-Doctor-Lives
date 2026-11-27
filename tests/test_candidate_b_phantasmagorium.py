@@ -84,6 +84,51 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
             self.assertFalse(owned_dream_memory(store, row))
             self.assertIsNotNone(store.get_memory(mid))
 
+    def test_tower_fancy_retrieval_withholds_unowned_and_conflicting_reports(self):
+        from hashlib import sha256
+        from types import SimpleNamespace
+        from doctor_lives.lab_phantasmagorium import _digest, _stable, fancy_line
+        from doctor_lives.tower_phantasmagorium import LATEST_FANCY, retrieval_motifs
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        from doctor_lives.tower_ipseity import TowerIpseity
+        from doctor_lives.phenomenology import PhenomenalMode, SubjectiveSourceKind
+        with tempfile.TemporaryDirectory() as tmp:
+            store = BrainStore(Path(tmp) / "brain.sqlite3")
+            subject = TowerIpseity(SimpleNamespace(store=store))
+            source = "virtual-world:small-tower:epoch:action:read"
+            observation = "virtual-world:small-tower:epoch:observation:next"
+            digest = sha256(source.encode()).hexdigest()
+            key = "phantasmagorium:tower-event:" + digest
+            motif = "a clock made of clouds"
+            with store.transaction() as db:
+                mid = store.add_memory(db, store.tick, "I read a folio.", source, "action",
+                    "lived_runtime_memory", False, 1.0, False, .4, source_event_id="event")
+            report = {"operation": "fancy", "donor_sha256": DONOR_SHA256,
+                      "source_memory_id": mid, "source_event_id": "event",
+                      "world_authority": False, "factual_memory_eligible": False,
+                      "motor_authority": False, "fictional_motifs": [motif]}
+            def save_report(db):
+                store.set_meta(key, _stable(report), db)
+                store.set_meta(LATEST_FANCY, _stable({"key": key, "source": source,
+                    "report_sha256": _digest(report)}), db)
+            with store.transaction() as db:
+                save_report(db)
+            self.assertEqual(retrieval_motifs(store, observation), ())
+            event = subject.event("Phantasmagorium", fancy_line(motif),
+                PhenomenalMode.INTERNAL_THOUGHT, (mid,),
+                attribution=SubjectiveSourceKind.IMAGINED, external=True)
+            with store.transaction() as db:
+                admission = subject.record(db, "imagination:" + digest, (event,), phase="imagination")
+                report["ipseity_admission_sha256"] = admission["sha256"]
+                save_report(db)
+            self.assertEqual(retrieval_motifs(store, observation), (motif,))
+            reopened = BrainStore(Path(tmp) / "brain.sqlite3")
+            self.assertEqual(retrieval_motifs(reopened, observation), (motif,))
+            report["fictional_motifs"] = ["an altered clock"]
+            with store.transaction() as db:
+                save_report(db)
+            self.assertEqual(retrieval_motifs(store, observation), ())
+
     def test_missing_archive_not_silently_ignored_after_activation(self):
         from unittest.mock import patch
         from doctor_lives.tower_phantasmagorium import require_archive, CURSOR

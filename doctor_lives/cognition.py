@@ -613,10 +613,11 @@ class PretoriusBrain:
         open_terms = self._open_terms()
         suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
         from .lab_phantasmagorium import owned_dream_memory
-        rows = [
-            row for row in self.store.memories_with_classification()
-            if row["id"] not in suppressed_by_canon and owned_dream_memory(self.store, row)
-        ]
+        all_rows = self.store.memories_with_classification()
+        withheld_dreams = frozenset(row["id"] for row in all_rows
+                                   if not owned_dream_memory(self.store, row))
+        rows = [row for row in all_rows
+                if row["id"] not in suppressed_by_canon and row["id"] not in withheld_dreams]
         query_tokens = self._tokens(query or "")
         direct_ranked: list[tuple[float, dict[str, Any]]] = []
         for row in rows:
@@ -646,7 +647,8 @@ class PretoriusBrain:
 
         state_before = self.store.digest()
         bonuses, paths = spreading_activation(
-            self.store, seed_ids, decay=.55, max_depth=2, max_bonus=.28
+            self.store, seed_ids, decay=.55, max_depth=2, max_bonus=.28,
+            **({"excluded_memory_ids": withheld_dreams} if withheld_dreams else {})
         )
         state_after = self.store.digest()
         if state_before != state_after:
@@ -676,6 +678,7 @@ class PretoriusBrain:
                     "ranked_memory_ids_semantics": "post_spreading_ranked_retrieval",
                     "signed_inhibition": "terminal_negative_pressure",
                     "canon_conflict_suppressed_memory_ids": sorted(suppressed_by_canon),
+                    "unowned_imagination_withheld_memory_ids": sorted(withheld_dreams),
                 },
                 state_digest_before=state_before,
                 state_digest_after=state_after,
