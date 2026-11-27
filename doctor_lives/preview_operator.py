@@ -209,7 +209,7 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                         activity["kind"] + ":" + activity["goal_id"]
                         if activity["kind"] and activity["goal_id"]
                         else "native_laboratory_goal_opportunity")
-                    if activity["status"] in ("moved", "opened", "completed"):
+                    if activity["status"] in ("moved", "opened", "turned", "completed"):
                         report["last_action"] = activity["status"]
                         report["last_action_origin"] = "original_neural_tendency_host_mapped"
                     if activity["status"] == "commitment_interrupted":
@@ -235,7 +235,8 @@ def run(workspace: Path, *, resume: bool = False, native_source: Path | None = N
                             workspace / "state",
                             workspace / "laboratory.sqlite3",
                             affectus_source=effective_native,
-                            authorize_world=True,
+                            authorize_world=True, enable_habits=True,
+                            developmental_history_enabled=True,
                         )
                         append_activity(
                             workspace, event="candidate_b_daily_life_pulse",
@@ -308,5 +309,13 @@ def command(kind: str, workspace: Path, native_source: Path | None = None) -> in
             return run(workspace, resume=(kind == "preview-resume"), native_source=native_source)
         raise ValueError("Unknown preview command")
     except (OSError, RuntimeError, ValueError, KeyError) as exc:
+        from .r4_diagnostics import describe_exception
         print(f"{kind}: {exc}", file=sys.stderr)
+        print("R4_OPERATOR_EXCEPTION=" + json.dumps(describe_exception(exc, phase="operator"),
+                                                    sort_keys=True), file=sys.stderr, flush=True)
         return 2
+    except (Exception, KeyboardInterrupt) as exc:
+        from .r4_diagnostics import describe_exception
+        print("R4_OPERATOR_EXCEPTION=" + json.dumps(describe_exception(exc, phase="operator"),
+                                                    sort_keys=True), file=sys.stderr, flush=True)
+        raise

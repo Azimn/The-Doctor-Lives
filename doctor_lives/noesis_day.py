@@ -7,6 +7,8 @@ current independently maintained world state. No second planner or BrainStore.
 """
 from __future__ import annotations
 
+from contextlib import closing
+
 from dataclasses import dataclass
 import json
 import sqlite3
@@ -88,7 +90,7 @@ def pending_daily_action_ids(bridge: DoctorHomeBridge) -> tuple[str, ...]:
     """
     if not isinstance(bridge, DoctorHomeBridge):
         raise TypeError("Original Laboratory bridge required for pending-action audit")
-    with bridge.doctor.brain.store.connect() as db:
+    with closing(bridge.doctor.brain.store.connect()) as db:
         rows = db.execute(
             "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
             "WHERE trigger='noesis_situated_choice' ORDER BY rowid"
@@ -147,9 +149,13 @@ def daily_affordances(bridge: DoctorHomeBridge, observation: dict) -> tuple[str,
 
 
 def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = True,
-                            use_consequences: bool = True) -> DailyChoice:
+                            use_consequences: bool = True,
+                            enable_habits: bool = False,
+                            developmental_history_enabled: bool = False) -> DailyChoice:
     """One independent Noesis choice, without any operator action argument."""
-    if type(author_goal) is not bool or type(use_consequences) is not bool:
+    if (type(author_goal) is not bool or type(use_consequences) is not bool
+            or type(enable_habits) is not bool
+            or type(developmental_history_enabled) is not bool):
         raise TypeError("Typed researcher-lesion flags required")
     if pending_daily_action_ids(bridge):
         raise RuntimeError("A pending daily motor must reconcile before another choice")
@@ -167,7 +173,10 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
     # affordances. The recurrent dynamics, not a second controller, are used.
     from .organs import NoesisOrgan
     NoesisOrgan(bridge.doctor).deliberate(host_trigger="m2_daily_opportunity")
-    outcomes = _verified_work_outcomes(bridge) if use_consequences else ()
+    if developmental_history_enabled and not use_consequences:
+        raise ValueError("Developmental history requires consequence appraisal")
+    outcomes = (_verified_work_outcomes(bridge, require_original_choice=developmental_history_enabled)
+                if use_consequences else ())
     choice = select_with_original_noesis(
         bridge.doctor.brain,
         observation_memory_id=observed["memory_id"],
@@ -178,13 +187,16 @@ def offer_daily_opportunity(bridge: DoctorHomeBridge, *, author_goal: bool = Tru
         eligible_outcome_memory_ids=outcomes,
         author_day_goal=author_goal,
         interoception_enabled=True,
+        habit_bridge=bridge if enable_habits else None,
+        developmental_history_enabled=developmental_history_enabled,
     )
     return DailyChoice(choice["policy_decision_id"], choice["selected_action"],
                        observed["memory_id"], options)
 
 
 
-def compete_with_commitment(session, *, commitment_key: str, goal_id: str) -> DailyChoice | None:
+def compete_with_commitment(session, *, commitment_key: str, goal_id: str,
+                            allow_native_rest: bool = False):
     """Compete over actual bodily needs and one existing, verified intention.
 
     The current original goal is neither replaced nor completed by this
@@ -194,24 +206,49 @@ def compete_with_commitment(session, *, commitment_key: str, goal_id: str) -> Da
     """
     from .lab_six_organ_session import SixOrganLaboratoryCycle
     from .noesis_interoception import perceived_regulatory_pressure
+    from .organs import CognitiveProposal
+    from .noesis_situated_choice import _verified_active_commitment
+    if type(allow_native_rest) is not bool:
+        raise TypeError("Native restorative intention permission must be explicit")
     if type(session) is not SixOrganLaboratoryCycle:
         raise TypeError("Actual same-brain six-organ session required")
     bridge = session.bridge
     if pending_daily_action_ids(bridge):
         raise RuntimeError("Prior daily motor must reconcile")
     observed = bridge.observe()
-    def bodily_options(observed):
+    def bodily_pressure(observed):
         options = daily_affordances(bridge, observed)
         contributions, _ = perceived_regulatory_pressure(
             observed["subject"]["inner"], options)
-        return tuple(a for a in options if contributions[a] > 0.0)
-    if not bodily_options(observed):
+        return {a: contributions[a] for a in options if contributions[a] > 0.0}
+    pressure = bodily_pressure(observed)
+    if not pressure:
         return None
     cycle = session.cycle(authorized_world_action=False)
     if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
         raise RuntimeError("Incomplete six-organ commitment opportunity")
+    # The existing native AVOID tendency may originate an independent
+    # restorative intention while a meaningful project is still active.
+    # A fresh authenticated fatigue cue and genuine feasible rest/route
+    # must be at least as pressing as other observed bodily alternatives.
+    # Do not turn a sleep choice into a rest or reuse a stale policy.
+    rest_pressure = max(pressure.get("rest", 0), pressure.get("seek_bedroom", 0))
+    if (allow_native_rest and cycle.selected_tendency == "avoid"
+            and rest_pressure > 0 and rest_pressure >= max(pressure.values())):
+        brain = bridge.doctor.brain
+        _verified_active_commitment(brain, (commitment_key, goal_id))
+        with closing(brain.store.connect()) as db:
+            origin = db.execute(
+                "SELECT id,selected_action,trigger FROM policy_decisions ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+            thought = db.execute("SELECT id FROM thoughts WHERE generated_by=?",
+                                 ("neural_policy:" + origin["id"],)).fetchall()
+        if (origin["trigger"] != "six_organ_lab_cycle"
+                or origin["selected_action"] != "avoid" or len(thought) != 1):
+            raise PermissionError("Rest interruption lacks current original avoid policy")
+        return CognitiveProposal(origin["id"], thought[0]["id"], "avoid")
     observed = bridge.observe()
-    alternatives = bodily_options(observed)
+    alternatives = tuple(bodily_pressure(observed))
     if not alternatives:
         return None
     options = tuple(sorted((*alternatives, "continue_commitment")))
@@ -330,7 +367,7 @@ def reconcile_pending_daily_action(bridge: DoctorHomeBridge) -> tuple[dict, ...]
         raise RuntimeError("Multiple pending daily motors require integrity review")
     from .lab_home_bridge import _ACTION_DOMAINS
     store = bridge.doctor.brain.store
-    with store.connect() as db:
+    with closing(store.connect()) as db:
         rows = db.execute(
             "SELECT id,selected_action,state_pressure_json FROM policy_decisions "
             "WHERE trigger='noesis_situated_choice' ORDER BY rowid"
@@ -393,7 +430,7 @@ def act_on_noesis_choice(bridge: DoctorHomeBridge, choice: DailyChoice, *,
     if pending_daily_action_ids(bridge):
         raise PermissionError("Recover the prior daily motor before authorizing another")
     store = bridge.doctor.brain.store
-    with store.connect() as db:
+    with closing(store.connect()) as db:
         row = db.execute(
             "SELECT id,selected_action,trigger,policy_version,state_pressure_json "
             "FROM policy_decisions WHERE id=?", (choice.policy_id,)

@@ -220,7 +220,7 @@ class MnemosyneEndogenousPilot:
             self._pending_question = None
             self._pending_decision_id = None
 
-    def reflect_selected_recollection(self) -> PrivateRecollectionEffect:
+    def reflect_selected_recollection(self, *, reconstruct: bool = False) -> PrivateRecollectionEffect:
         """Recollection influences cognition only via a factory-created subject frame.
 
         Existing policy and BrainStore retain all decision/write authority;
@@ -258,6 +258,21 @@ class MnemosyneEndogenousPilot:
         if not matches:
             return PrivateRecollectionEffect(recall_id, None, None, 0, None)
         cue = matches[0][1]
+        if reconstruct:
+            from .mnemosyne_reconstruction import reconstruct_selected
+            cue = reconstruct_selected(brain, question, recall_id, cue)
+            if cue is None:
+                return PrivateRecollectionEffect(recall_id, None, None, 0, None)
+        # Private recollection belongs to the same subject in every environment.
+        # The read-only retrieval grant above does not itself admit experience.
+        from .tower_ipseity import TowerIpseity
+        from .phenomenology import PhenomenalMode
+        subject = TowerIpseity(brain)
+        admission = subject.admit_private(
+            "recollection:" + recall_id, "Mnemosyne", cue,
+            (recall_id,), mode=PhenomenalMode.RECOLLECTION,
+        )
+        cue = admission["content"][0]["text"]
         thought = self._port.brain.think(
             "mnemosyne_private_reflection", decision_text=cue
         )

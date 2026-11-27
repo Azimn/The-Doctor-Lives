@@ -827,7 +827,8 @@ def render_memory_for_workspace(row: dict[str, Any]) -> str:
 
 def spreading_activation(store: BrainStore, seed_memory_ids: list[str], *,
                          decay: float = 0.55, max_depth: int = 2,
-                         max_bonus: float = 0.28) -> tuple[dict[str, float], list[dict[str, Any]]]:
+                         max_bonus: float = 0.28,
+                         excluded_memory_ids: frozenset[str] = frozenset()) -> tuple[dict[str, float], list[dict[str, Any]]]:
     if not 0.0 < decay < 1.0:
         raise ValueError("decay must be between zero and one")
     if max_depth < 1:
@@ -851,7 +852,7 @@ def spreading_activation(store: BrainStore, seed_memory_ids: list[str], *,
 
     bonuses: dict[str, float] = defaultdict(float)
     paths: list[dict[str, Any]] = []
-    for seed_memory in sorted(set(seed_memory_ids)):
+    for seed_memory in sorted(set(seed_memory_ids) - excluded_memory_ids):
         seed_node = memory_to_node.get(seed_memory)
         if seed_node is None:
             continue
@@ -862,6 +863,8 @@ def spreading_activation(store: BrainStore, seed_memory_ids: list[str], *,
             if depth >= max_depth:
                 continue
             for target, weight, edge_id in adjacency.get(node_id, []):
+                if node_to_memory.get(target) in excluded_memory_ids:
+                    continue
                 next_depth = depth + 1
                 next_product = product * weight
                 key = (target, next_depth)

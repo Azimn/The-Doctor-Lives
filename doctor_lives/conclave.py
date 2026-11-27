@@ -334,7 +334,7 @@ class Conclave:
             db.execute("INSERT OR IGNORE INTO conclave_meta(key,value) VALUES('version',?)",
                        (VERSION,))
 
-    def _check_world_receipt(self, event_id: str) -> None:
+    def _check_world_receipt(self, event_id: str, *, stimulus_text: str | None = None) -> None:
         # This checks a canonical *record*, not privileged world state.
         # Important: the canonical ingress marks verified firsthand world
         # observations external=False and stores them as lived_runtime_memory.
@@ -342,7 +342,7 @@ class Conclave:
         # A bare events.external flag would INVERT the trust distinction.
         with closing(self._store.connect()) as db:
             row = db.execute(
-                """SELECT e.kind,e.source,e.evidence_class,e.external,m.id AS memory_id
+                """SELECT e.kind,e.source,e.evidence_class,e.external,m.id AS memory_id,m.text AS lived_text
                    FROM events AS e
                    JOIN memories AS m ON m.source_event_id=e.id
                     AND m.source=e.source AND m.external=0
@@ -358,6 +358,11 @@ class Conclave:
             raise PermissionError(
                 "world_verified requires canonical lived observation and verified Lab source"
             )
+        # A real receipt must not be used as a license for unrelated text.
+        # For lengthy book pages only the exact bounded first-person prefix
+        # may enter the interpretive kernel, not an invented summary.
+        if stimulus_text is not None and stimulus_text != row["lived_text"][:2000].strip():
+            raise PermissionError("Interpretation stimulus differs from its lived source")
 
     @staticmethod
     def _truth(db, reading_id: str) -> str:
@@ -406,7 +411,7 @@ class Conclave:
         if len(set(selected)) != len(selected) or any(s not in METHODS for s in selected):
             raise ValueError("invalid or repeated tradition")
         if stimulus.source_kind == "world_verified":
-            self._check_world_receipt(stimulus.source_event_id)
+            self._check_world_receipt(stimulus.source_event_id, stimulus_text=stimulus.text)
         drafts = [(tid, METHODS[tid](stimulus)) for tid in selected]
         clock = engineer_time()
         with self._store.transaction() as db:
