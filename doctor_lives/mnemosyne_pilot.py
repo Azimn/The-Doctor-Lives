@@ -242,9 +242,8 @@ class MnemosyneEndogenousPilot:
         # passed to the thought/renderer.
         brain = self._port.brain
         before = (brain.store.digest(), brain.neural.tick)
-        memory_count = len(
-            brain.cognitive_view(query=question, audit=False).experiences
-        )
+        memory_items = brain.cognitive_view(query=question, audit=False).experiences
+        memory_count = len(memory_items)
         if (brain.store.digest(), brain.neural.tick) != before:
             raise RuntimeError("Subject recollection changed while selecting cue")
         lines = SubjectRendererCapability.read(frame)[:memory_count]
@@ -255,30 +254,54 @@ class MnemosyneEndogenousPilot:
             key=lambda row: (-row[0], row[1]),
         )
         matches = [row for row in ranked if row[0] > 0]
-        if not matches:
-            return PrivateRecollectionEffect(recall_id, None, None, 0, None)
-        cue = matches[0][1]
-        if reconstruct:
-            from .mnemosyne_reconstruction import reconstruct_selected
-            cue = reconstruct_selected(brain, question, recall_id, cue)
-            if cue is None:
-                return PrivateRecollectionEffect(recall_id, None, None, 0, None)
-        # Private recollection belongs to the same subject in every environment.
-        # The read-only retrieval grant above does not itself admit experience.
         from .tower_ipseity import TowerIpseity
-        from .phenomenology import PhenomenalMode
+        from .phenomenology import PhenomenalMode, SubjectiveSourceKind
         subject = TowerIpseity(brain)
-        admission = subject.admit_private(
-            "recollection:" + recall_id, "Mnemosyne", cue,
-            (recall_id,), mode=PhenomenalMode.RECOLLECTION,
-        )
+        fragment = None
+        if not matches or matches[0][0] < 2:
+            from .dream_resurfacing import select_fragment
+            suppressed = brain.store.canon_conflict_suppressed_memory_ids()
+            rows = [r for r in brain.store.memories_with_classification() if r["id"] not in suppressed]
+            fragment = select_fragment(rows, subject.verify_history(), brain.store.tick, question)
+        if fragment is not None:
+            _, source_id, cue = fragment
+            source_ids = []
+            event = subject.event("Mnemosyne", cue, PhenomenalMode.RECOLLECTION,
+                                  (recall_id, source_id), attribution=SubjectiveSourceKind.UNKNOWN,
+                                  external=True)
+            with brain.store.transaction() as db:
+                admission = subject.record(db, "recollection:" + recall_id, (event,),
+                                           phase="private_experience")
+        else:
+            if not matches:
+                return PrivateRecollectionEffect(recall_id, None, None, 0, None)
+            cue = matches[0][1]
+            source_ids = [item.record_id for item in memory_items if item.first_person == cue]
+            if reconstruct:
+                from .mnemosyne_reconstruction import reconstruct_selected
+                cue = reconstruct_selected(brain, question, recall_id, cue)
+                if cue is None:
+                    return PrivateRecollectionEffect(recall_id, None, None, 0, None)
+            admission = subject.admit_private(
+                "recollection:" + recall_id, "Mnemosyne", cue,
+                (recall_id,), mode=PhenomenalMode.RECOLLECTION,
+            )
         cue = admission["content"][0]["text"]
         thought = self._port.brain.think(
             "mnemosyne_private_reflection", decision_text=cue
         )
+        # Only a uniquely identified completed owned reflection strengthens direct recall.
+        if len(source_ids) == 1:
+            from .dream_retention import is_dream_recollection
+            source = brain.store.get_memory(source_ids[0])
+            if source is not None and is_dream_recollection(source):
+                tick = brain.store.tick
+                with brain.store.transaction() as db:
+                    brain.store.rehearse(db, source_ids[0], tick, explicit_dream_reflection=True)
+                    brain.store.bump_state_version(db)
         return PrivateRecollectionEffect(
             recall_id, str(thought["policy_decision_id"]),
-            str(thought["selected_action"]), len(matches),
+            str(thought["selected_action"]), max(len(matches), int(fragment is not None)),
             hashlib.sha256(cue.encode("utf-8")).hexdigest(),
         )
 

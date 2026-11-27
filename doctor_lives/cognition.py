@@ -609,6 +609,7 @@ class PretoriusBrain:
         list[tuple[float, dict[str, Any]]],
     ]:
         """Return direct pre-spreading and activated retrieval sets from one retrieval."""
+        from .dream_retention import dream_accessibility
         now = self.store.tick
         open_terms = self._open_terms()
         suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
@@ -619,6 +620,9 @@ class PretoriusBrain:
         query_tokens = self._tokens(query or "")
         direct_ranked: list[tuple[float, dict[str, Any]]] = []
         for row in rows:
+            accessibility = dream_accessibility(row, now)
+            if accessibility == 0.0:
+                continue
             score = self._salience(row, now, open_terms)
             if query_tokens:
                 row_tokens = self._tokens(str(row["text"])) | {
@@ -626,7 +630,7 @@ class PretoriusBrain:
                 }
                 overlap = len(query_tokens & row_tokens) / max(1, len(query_tokens))
                 score += min(1.0, 1.0 * overlap)
-            direct_ranked.append((score, row))
+            direct_ranked.append((score * accessibility, row))
         direct_ranked.sort(
             key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]),
             reverse=True,
@@ -651,7 +655,8 @@ class PretoriusBrain:
         if state_before != state_after:
             raise AssertionError("retrieval-time spreading activation mutated canonical state")
 
-        ranked = [(score + bonuses.get(row["id"], 0.0), row) for score, row in direct_ranked]
+        ranked = [(score + bonuses.get(row["id"], 0.0) * dream_accessibility(row, now), row)
+                  for score, row in direct_ranked]
         ranked.sort(
             key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]),
             reverse=True,
@@ -1022,9 +1027,15 @@ class PretoriusBrain:
                     or len(latest["content"]) != 1):
                 raise PermissionError("Fresh owned recollection required")
             item = latest["content"][0]
+            recall_id = latest["key"].removeprefix(RECORD + "recollection:")
+            refs = item["source_refs"]
+            valid_refs = refs == [recall_id]
+            if (len(refs) == 2 and refs[0] == recall_id
+                    and item["attribution"] == "unknown" and item["external"] is True):
+                from .dream_resurfacing import verify_selected_fragment
+                valid_refs = verify_selected_fragment(self, history, recall_id, refs[1], item["text"])
             if (item["organ"] != "Mnemosyne" or item["mode"] != "recollection"
-                    or item["text"] != decision_text
-                    or item["source_refs"] != [latest["key"].removeprefix(RECORD + "recollection:")]):
+                    or item["text"] != decision_text or not valid_refs):
                 raise PermissionError("Recollection differs from owned admission")
         if tower_subject is not None and decision_text is not None:
             from .first_person_governance import first_person_line
