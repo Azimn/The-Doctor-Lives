@@ -130,9 +130,11 @@ def evaluate_schema_only(workspace: Path) -> dict:
                 assert raw is not None, "missing canonical goal"
                 envelope = json.loads(raw[0])
                 intent = envelope["payload"]
-                if kind in ("rest", "work") and intent.get("id") != gid:
+                if intent.get("id") != gid:
                     # Same original completion, now archived under its exact ID.
-                    historical_key = "six_organ_native_" + kind + "_history_v1:" + gid
+                    prefix = ("six_organ_endogenous_book_history_v1:" if kind == "read_book"
+                              else "six_organ_native_" + kind + "_history_v1:")
+                    historical_key = prefix + gid
                     historical = db.execute(
                         "SELECT value FROM meta WHERE key=?",
                         (historical_key,),
@@ -187,6 +189,10 @@ def evaluate_schema_only(workspace: Path) -> dict:
                     assert table == "books_events"
                     assert source.get("action", {}).get("op") == "read"
                     assert source.get("page_receipt") is not None
+                    if "target_page" in intent:
+                        assert source["page_receipt"]["page_number"] == intent["target_page"]
+                        assert source["action"]["book_id"] == intent["target"]
+                        assert fields["world_event_id"] == "eb_" + gid + "_read"
                     assert "I read a page of " in memory["text"]
                 elif kind == "rest":
                     assert table == "rhythm_events" and source.get("op") == "rest"
@@ -400,7 +406,7 @@ def verify_external_origin_witness(path: Path | None, expected: dict) -> dict:
             expected_row = expected.get(goal_id)
             if expected_row is None:
                 continue
-            if kind.startswith(("rest_history:", "work_history:")):
+            if kind.startswith(("rest_history:", "work_history:", "read_book_history:")):
                 historical_kind = kind.split("_history:", 1)[0]
                 if (kind != historical_kind + "_history:" + str(goal_id)
                         or expected_row["kind"] != historical_kind):
@@ -446,7 +452,8 @@ def evaluate(workspace: Path, *, origin_witness: Path | None = None) -> dict:
             for row in db.execute(
                 "SELECT value FROM meta WHERE key IN (?,?,?) "
                 "OR key LIKE 'six_organ_native_rest_history_v1:%' "
-                "OR key LIKE 'six_organ_native_work_history_v1:%'",
+                "OR key LIKE 'six_organ_native_work_history_v1:%' "
+                "OR key LIKE 'six_organ_endogenous_book_history_v1:%'",
                 ("six_organ_endogenous_book_goal_v1",
                  "six_organ_native_rest_intention_v1",
                  "six_organ_native_work_intention_v1"),

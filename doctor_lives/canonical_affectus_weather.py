@@ -163,12 +163,19 @@ class CanonicalWeather:
     def modulation(self):
         return self._weather.modulation()
 
+    def felt_first_person(self):
+        """Natural-language realization of original donor quantized felt report."""
+        from .tower_affectus import felt_words
+        report=self._weather.emit_interoception(self.tick,"weather-perception")
+        return felt_words(report.value)
+
     def last_consumed_world_source(self) -> str | None:
         return self._port.brain.store.meta(_WORLD_CONSUMED_META)
 
     def step(self, tick: int, drivers: tuple, *,
              authorized: bool = False,
-             consumed_world_source: str | None = None) -> WeatherReceipt:
+             consumed_world_source: str | None = None,
+             tower_memory_id: str | None = None) -> WeatherReceipt:
         if authorized is not True:
             raise PermissionError("Only trusted host can advance weather")
         if type(tick) is not int or tick != (1 if self.tick == -1 else self.tick + 1):
@@ -177,6 +184,32 @@ class CanonicalWeather:
             type(event) is not self._module.DriverEvent for event in drivers
         ):
             raise TypeError("Drivers must be source-pinned typed events")
+        tower_key = None
+        tower_record = None
+        if tower_memory_id is not None:
+            if consumed_world_source is not None:
+                raise PermissionError("One weather source authority at a time")
+            store = self._port.brain.store
+            memory = store.get_memory(tower_memory_id)
+            if (not memory or not memory["active"] or memory["external"]
+                    or memory["evidence_class"] != "lived_runtime_memory"
+                    or not memory["source"].startswith("virtual-world:small-tower:")
+                    or not memory.get("source_event_id")
+                    or any(d.source_ref != memory["source"] for d in drivers)):
+                raise PermissionError("Exact admitted Tower memory required")
+            tower_key = "affectus:tower-event:" + sha256(memory["source"].encode()).hexdigest()
+            tower_record = {
+                "memory_id": tower_memory_id, "source": memory["source"],
+                "source_event_id": memory["source_event_id"],
+                "drivers": [asdict(driver) for driver in drivers],
+            }
+            prior = store.meta(tower_key)
+            if prior is not None:
+                previous = json.loads(prior)
+                if previous.get("source_record") != tower_record:
+                    raise PermissionError("Conflicting Tower weather replay")
+                return WeatherReceipt(tick=previous["tick"], replay=True,
+                                      modulation=asdict(self._weather.modulation()))
         if consumed_world_source is not None:
             if (type(consumed_world_source) is not str
                     or not consumed_world_source.startswith(
@@ -192,6 +225,11 @@ class CanonicalWeather:
             if consumed_world_source == self.last_consumed_world_source():
                 raise RuntimeError("One physical consequence cannot drive weather twice")
         old = self._stored_digest
+        subject=None
+        if tower_key is not None:
+            from .tower_ipseity import TowerIpseity
+            subject=TowerIpseity(self._port.brain)
+            subject_digest=subject.store.digest()
         self._weather.step(tick, drivers)
         envelope = self._envelope()
         new = _digest(envelope)
@@ -208,6 +246,17 @@ class CanonicalWeather:
                 self._port.brain.store.set_meta(
                     _WORLD_CONSUMED_META, consumed_world_source, conn,
                 )
+            if tower_key is not None:
+                if conn.execute("SELECT 1 FROM meta WHERE key=?", (tower_key,)).fetchone():
+                    raise RuntimeError("Concurrent Tower weather receipt")
+                self._port.brain.store.set_meta(
+                    tower_key, _json({"source_record": tower_record, "tick": tick}), conn,
+                )
+                from .phenomenology import PhenomenalMode
+                events=tuple(subject.event("Affectus",line,PhenomenalMode.FEELING,
+                                           (tower_memory_id,),digest=subject_digest)
+                             for line in self.felt_first_person())
+                subject.record(conn,"affect:"+tower_memory_id,events,phase="affect")
             self._port.brain.store.bump_state_version(conn)
         self._stored_digest = new
         return WeatherReceipt(

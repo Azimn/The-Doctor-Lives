@@ -272,6 +272,39 @@ class R4WitnessTests(unittest.TestCase):
 
 
 
+class R4CapacityVerdictTests(unittest.TestCase):
+    def test_early_operator_exit_is_not_watchdog(self):
+        from tools.run_uncoached_r4_trial import _capacity_stop_reason
+        self.assertEqual(_capacity_stop_reason("watchdog", "operator_return_code_2"),
+                         "operator_error")
+        self.assertEqual(_capacity_stop_reason("watchdog", "operator_exited_before_graceful_stop"),
+                         "operator_error")
+        self.assertEqual(_capacity_stop_reason("receipt_progress_target", "operator_did_not_terminate"),
+                         "operator_error")
+        self.assertEqual(_capacity_stop_reason("watchdog", None), "watchdog")
+        self.assertEqual(_capacity_stop_reason("receipt_progress_target", None), "receipt_progress_target")
+        self.assertEqual(_capacity_stop_reason("watchdog", "independent_final_witness_error:ValueError"),
+                         "witness_or_operator_error")
+
+    def test_capacity_requires_source_pass_and_progress(self):
+        from tools.run_uncoached_r4_trial import _capacity_result
+        data = {"status": "PASS", "problems": []}
+        self.assertEqual(_capacity_result(data, progress_reached=True, operator_error=None), "PASS")
+        self.assertEqual(_capacity_result(data, progress_reached=False, operator_error=None), "INCONCLUSIVE")
+
+    def test_missing_activity_is_not_incapacity_or_pass(self):
+        from tools.run_uncoached_r4_trial import _capacity_result
+        data = {"status": "FAIL", "problems": ["three_distinct_uncoached_activities_not_observed"]}
+        self.assertEqual(_capacity_result(data, progress_reached=True, operator_error=None), "INCONCLUSIVE")
+
+    def test_source_defect_and_operator_error_remain_failures(self):
+        from tools.run_uncoached_r4_trial import _capacity_result
+        data = {"status": "FAIL", "problems": ["unauthenticated_completion"]}
+        self.assertEqual(_capacity_result(data, progress_reached=True, operator_error=None), "FAIL")
+        self.assertEqual(_capacity_result({"status": "PASS", "problems": []}, progress_reached=True,
+                                         operator_error="operator_error"), "FAIL")
+
+
 class R4GracefulStopObservationTests(unittest.TestCase):
     def test_late_authentic_completion_is_observed_before_process_exit(self):
         """A real change during stop must be sampled LIVE, not posthumously."""

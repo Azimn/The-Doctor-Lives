@@ -220,7 +220,7 @@ class MnemosyneEndogenousPilot:
             self._pending_question = None
             self._pending_decision_id = None
 
-    def reflect_selected_recollection(self) -> PrivateRecollectionEffect:
+    def reflect_selected_recollection(self, *, reconstruct: bool = False) -> PrivateRecollectionEffect:
         """Recollection influences cognition only via a factory-created subject frame.
 
         Existing policy and BrainStore retain all decision/write authority;
@@ -242,9 +242,8 @@ class MnemosyneEndogenousPilot:
         # passed to the thought/renderer.
         brain = self._port.brain
         before = (brain.store.digest(), brain.neural.tick)
-        memory_count = len(
-            brain.cognitive_view(query=question, audit=False).experiences
-        )
+        experiences = brain.cognitive_view(query=question, audit=False).experiences
+        memory_count = len(experiences)
         if (brain.store.digest(), brain.neural.tick) != before:
             raise RuntimeError("Subject recollection changed while selecting cue")
         lines = SubjectRendererCapability.read(frame)[:memory_count]
@@ -258,6 +257,37 @@ class MnemosyneEndogenousPilot:
         if not matches:
             return PrivateRecollectionEffect(recall_id, None, None, 0, None)
         cue = matches[0][1]
+        from .lab_phantasmagorium import owned_dream_memory
+        matching_sources = [item for item in experiences if item.first_person == cue]
+        dream_sources = [item for item in matching_sources
+                         if item.provenance.evidence_class == "dreamed_not_lived"]
+        dream_id = None
+        if dream_sources:
+            if len(matching_sources) != 1:
+                raise PermissionError("Ambiguous dream recollection source")
+            dream_id = dream_sources[0].record_id
+            row = brain.store.get_memory(dream_id)
+            if row is None or not owned_dream_memory(brain.store, row):
+                raise PermissionError("Dream recollection requires original ownership")
+        if reconstruct:
+            from .mnemosyne_reconstruction import reconstruct_selected
+            cue = reconstruct_selected(brain, question, recall_id, cue)
+            if cue is None:
+                return PrivateRecollectionEffect(recall_id, None, None, 0, None)
+        # Private recollection belongs to the same subject in every environment.
+        # The read-only retrieval grant above does not itself admit experience.
+        from .tower_ipseity import TowerIpseity
+        from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+        subject = TowerIpseity(brain)
+        admission = subject.admit_private(
+            "recollection:" + recall_id, "Mnemosyne", cue,
+            (recall_id, dream_id) if dream_id else (recall_id,),
+            mode=PhenomenalMode.RECOLLECTION,
+            attribution=(SubjectiveSourceKind.DREAMED if dream_id
+                         else SubjectiveSourceKind.SELF_OBSERVED),
+            external=bool(dream_id),
+        )
+        cue = admission["content"][0]["text"]
         thought = self._port.brain.think(
             "mnemosyne_private_reflection", decision_text=cue
         )

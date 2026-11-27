@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import gc
 import json
+import os
 from pathlib import Path, PurePosixPath
 import shutil
 import sqlite3
@@ -270,7 +271,10 @@ def backup(state: Path, world: Path, destination: Path) -> dict:
         (staging / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
-        staging.rename(destination)
+        # M6 reviewed source: kernel-enforced no-replace publication, not
+        # a final check followed by a potentially destructive POSIX rename.
+        from .lab_preview import _publish_noreplace
+        _publish_noreplace(staging, destination)
         return {"schema": SCHEMA, "files": len(files), "status": "backed_up"}
     finally:
         if staging.exists():
@@ -283,6 +287,8 @@ def restore(archive: Path, state: Path, world: Path) -> dict:
     journal = Path(str(world) + ".doctor-action-intents.sqlite3")
     if state.exists() or world.exists() or journal.exists():
         raise FileExistsError("Restore requires absent brain, world and action journal")
+    if world == state or state in world.parents or world in state.parents:
+        raise ValueError("Restore needs separate brain directory and Laboratory file")
     manifest = json.loads((archive / "manifest.json").read_text(encoding="utf-8"))
     if manifest.get("schema") != SCHEMA or not isinstance(manifest.get("files"), dict):
         raise RuntimeError("Unsupported or malformed backup manifest")
@@ -315,22 +321,53 @@ def restore(archive: Path, state: Path, world: Path) -> dict:
         actual["action-intents.sqlite3"],
     )
     _verify_neural_checkpoint(actual["brain/pretorius_recurrent.npz"])
-    try:
-        state.mkdir(parents=True)
+    # Stage complete authorities on their respective destination filesystems.
+    # Each publish is kernel-enforced no-replace. Publish the brain directory
+    # last so a cooperative host cannot open a partially restored mind.
+    # Cross-filesystem three-path publication is not one atomic transaction;
+    # after a hard process kill the operator must inspect any incomplete
+    # destinations. Never automatically destroy a path of unknown ownership.
+    from .lab_preview import _publish_noreplace
+    state.parent.mkdir(parents=True, exist_ok=True)
+    world.parent.mkdir(parents=True, exist_ok=True)
+    with ExitStack() as staging:
+        brain_stage = Path(staging.enter_context(tempfile.TemporaryDirectory(
+            prefix=".doctor-restore-brain-", dir=state.parent)))
+        world_stage = Path(staging.enter_context(tempfile.TemporaryDirectory(
+            prefix=".doctor-restore-world-", dir=world.parent)))
+        brain_copy = brain_stage / "brain"
+        brain_copy.mkdir()
+        world_copy = world_stage / "world.sqlite3"
+        journal_copy = world_stage / "action-intents.sqlite3"
         for name, source in sorted(actual.items()):
             if name.startswith("brain/"):
-                target = state.joinpath(*PurePosixPath(name).parts[1:])
+                target = brain_copy.joinpath(*PurePosixPath(name).parts[1:])
             elif name == "world.sqlite3":
-                target = world
+                target = world_copy
             else:
-                target = journal
+                target = journal_copy
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
+            # A changing archive cannot be admitted between validation and
+            # copying. Verify the actual staged bytes that will be published.
+            if target.stat().st_size != files[name]["bytes"] or _digest(target) != files[name]["sha256"]:
+                raise RuntimeError("Backup member changed during restore staging")
+        published = []
+        try:
+            for source, destination in ((world_copy, world), (journal_copy, journal),
+                                        (brain_copy, state)):
+                identity = source.lstat()
+                _publish_noreplace(source, destination)
+                published.append((destination, identity))
+        except BaseException:
+            # Only unlink our own files. A failed rename never establishes
+            # ownership, and a competing replacement is never a cleanup target.
+            for destination, identity in reversed(published):
+                try:
+                    current = destination.lstat()
+                except FileNotFoundError:
+                    continue
+                if os.path.samestat(current, identity) and destination.is_file() and not destination.is_symlink():
+                    destination.unlink()
+            raise
         return {"schema": SCHEMA, "files": len(files), "status": "restored"}
-    except BaseException:
-        if state.exists():
-            shutil.rmtree(state)
-        for path in (world, journal):
-            if path.exists():
-                path.unlink()
-        raise

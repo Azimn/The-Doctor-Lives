@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from doctor_lives.store import BrainStore
+from doctor_lives.cognition import PretoriusBrain
 from doctor_lives.phantasmagorium_bridge import PhantasmagoriumBridge, verify_archive
 
 
@@ -23,6 +24,172 @@ class PinnedOrganoidBoundaryTests(unittest.TestCase):
                 PhantasmagoriumBridge(store, bad, enabled=False)
             with self.assertRaises(FileNotFoundError):
                 PhantasmagoriumBridge(store, root / "missing.zip", enabled=True)
+
+    def test_tower_refuses_unverified_provider(self):
+        from doctor_lives.tower_phantasmagorium import sync_tower_phantasmagorium
+        with self.assertRaises(PermissionError):
+            sync_tower_phantasmagorium(None, object(), None, "invented", None)
+
+    def test_fancy_motif_requires_original_fiction_labels(self):
+        from doctor_lives.tower_phantasmagorium import verified_fancy_motifs
+        fragment = {"epistemic_status": "dreamed_not_lived", "marked": True,
+                    "factual_memory_eligible": False, "world_fact_authority": False,
+                    "tool_authority": False, "motif": "a clock made of clouds"}
+        result = dict(fragment, epistemic_status="hypothetical_only", fragments=[fragment])
+        self.assertEqual(verified_fancy_motifs(result), ("a clock made of clouds",))
+        with self.assertRaises(PermissionError):
+            verified_fancy_motifs(dict(result, fragments=[dict(fragment, world_fact_authority=True)]))
+
+    def test_owned_dream_retrieval_requires_exact_committed_admission(self):
+        from types import SimpleNamespace
+        from doctor_lives.lab_phantasmagorium import SOURCE, _stable, owned_dream_memory
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        from doctor_lives.tower_ipseity import TowerIpseity, RECORD
+        from doctor_lives.phenomenology import PhenomenalMode, SubjectiveSourceKind
+        with tempfile.TemporaryDirectory() as tmp:
+            store = BrainStore(Path(tmp) / "brain.sqlite3")
+            subject = TowerIpseity(SimpleNamespace(store=store))
+            digest = "a" * 64
+            text = "I recall a dream: a clock made of clouds."
+            with store.transaction() as db:
+                source = store.add_memory(db, store.tick, "I slept.",
+                    "laboratory-home:action:" + digest, "action",
+                    "lived_runtime_memory", False, 1.0, False, .4,
+                    classification=PretoriusBrain._runtime_classification(
+                        "action", "laboratory-home:action:" + digest))
+                mid = store.add_memory(db, store.tick, text, SOURCE + digest,
+                    "dream_recollection", "dreamed_not_lived", True, 1.0, False, .35)
+            row = store.get_memory(mid)
+            self.assertFalse(owned_dream_memory(store, row))
+            report = {"source_sha256": digest, "operation": "night",
+                      "donor_sha256": DONOR_SHA256, "source_memory_id": source,
+                      "recollection_memory_id": mid, "world_authority": False,
+                      "factual_memory_eligible": False, "motor_authority": False}
+            key = "phantasmagorium:event:" + digest
+            with store.transaction() as db:
+                store.set_meta(key, _stable(report), db)
+            self.assertFalse(owned_dream_memory(store, row))
+            event = subject.event("Phantasmagorium", text, PhenomenalMode.RECOLLECTION,
+                (source, mid), attribution=SubjectiveSourceKind.DREAMED, external=True)
+            with store.transaction() as db:
+                entry = subject.record(db, "imagination:" + digest, (event,), phase="imagination")
+                report["ipseity_admission_sha256"] = entry["sha256"]
+                store.set_meta(key, _stable(report), db)
+            before = store.digest()
+            self.assertTrue(owned_dream_memory(store, row))
+            self.assertFalse(owned_dream_memory(store, dict(row, text="I recall a dream: altered.")))
+            self.assertEqual(store.digest(), before)
+            reopened = BrainStore(Path(tmp) / "brain.sqlite3")
+            self.assertTrue(owned_dream_memory(reopened, reopened.get_memory(mid)))
+            with store.transaction() as db:
+                store.set_meta(RECORD + "imagination:" + digest,
+                               _stable(dict(entry, subject="other")), db)
+            self.assertFalse(owned_dream_memory(store, row))
+            self.assertIsNotNone(store.get_memory(mid))
+
+    def test_tower_fancy_retrieval_withholds_unowned_and_conflicting_reports(self):
+        from hashlib import sha256
+        from types import SimpleNamespace
+        from doctor_lives.lab_phantasmagorium import _digest, _stable, fancy_line
+        from doctor_lives.tower_phantasmagorium import LATEST_FANCY, retrieval_motifs
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        from doctor_lives.tower_ipseity import TowerIpseity
+        from doctor_lives.phenomenology import PhenomenalMode, SubjectiveSourceKind
+        with tempfile.TemporaryDirectory() as tmp:
+            store = BrainStore(Path(tmp) / "brain.sqlite3")
+            subject = TowerIpseity(SimpleNamespace(store=store))
+            source = "virtual-world:small-tower:epoch:action:read"
+            observation = "virtual-world:small-tower:epoch:observation:next"
+            digest = sha256(source.encode()).hexdigest()
+            key = "phantasmagorium:tower-event:" + digest
+            motif = "a clock made of clouds"
+            with store.transaction() as db:
+                mid = store.add_memory(db, store.tick, "I read a folio.", source, "action",
+                    "lived_runtime_memory", False, 1.0, False, .4, source_event_id="event",
+                    classification=PretoriusBrain._runtime_classification("action", source))
+            report = {"operation": "fancy", "donor_sha256": DONOR_SHA256,
+                      "source_memory_id": mid, "source_event_id": "event",
+                      "world_authority": False, "factual_memory_eligible": False,
+                      "motor_authority": False, "fictional_motifs": [motif]}
+            def save_report(db):
+                store.set_meta(key, _stable(report), db)
+                store.set_meta(LATEST_FANCY, _stable({"key": key, "source": source,
+                    "report_sha256": _digest(report)}), db)
+            with store.transaction() as db:
+                save_report(db)
+            self.assertEqual(retrieval_motifs(store, observation), ())
+            event = subject.event("Phantasmagorium", fancy_line(motif),
+                PhenomenalMode.INTERNAL_THOUGHT, (mid,),
+                attribution=SubjectiveSourceKind.IMAGINED, external=True)
+            with store.transaction() as db:
+                admission = subject.record(db, "imagination:" + digest, (event,), phase="imagination")
+                report["ipseity_admission_sha256"] = admission["sha256"]
+                save_report(db)
+            self.assertEqual(retrieval_motifs(store, observation), (motif,))
+            reopened = BrainStore(Path(tmp) / "brain.sqlite3")
+            self.assertEqual(retrieval_motifs(reopened, observation), (motif,))
+            report["fictional_motifs"] = ["an altered clock"]
+            with store.transaction() as db:
+                save_report(db)
+            self.assertEqual(retrieval_motifs(store, observation), ())
+
+    def test_missing_archive_not_silently_ignored_after_activation(self):
+        from unittest.mock import patch
+        from doctor_lives.tower_phantasmagorium import require_archive, CURSOR
+        with tempfile.TemporaryDirectory() as tmp:
+            store = BrainStore(Path(tmp) / "brain.sqlite3")
+            with patch.dict(os.environ, {"PRETORIUS_PHANTA_DONOR": ""}):
+                self.assertIsNone(require_archive(store))
+                with self.assertRaises(FileNotFoundError):
+                    require_archive(store, required=True)
+                with store.transaction() as db:
+                    store.set_meta(CURSOR, '{"epoch":"test","cursor":0}', db)
+                with self.assertRaises(FileNotFoundError):
+                    require_archive(store)
+
+    def test_canonical_snapshot_and_fiction_boundary(self):
+        from doctor_lives.lab_phantasmagorium import _snapshot, _digest, _nonfactual
+        import json
+        blank = _snapshot(None, "world-1")
+        self.assertEqual(blank["nights"], 0)
+        sealed = json.dumps({"payload": blank, "sha256": _digest(blank)})
+        self.assertEqual(_snapshot(sealed, "world-1"), blank)
+        with self.assertRaises(PermissionError):
+            _snapshot(sealed, "world-2")
+        packet = {"epistemic_status": "dreamed_not_lived", "marked": True,
+                  "factual_memory_eligible": False, "world_fact_authority": False,
+                  "tool_authority": False}
+        self.assertTrue(_nonfactual(packet, "dreamed_not_lived"))
+        for key in ("factual_memory_eligible", "world_fact_authority", "tool_authority"):
+            self.assertFalse(_nonfactual(dict(packet, **{key: True}), "dreamed_not_lived"))
+
+    @unittest.skipUnless(os.environ.get("PRETORIUS_PHANTA_DONOR"),
+                         "Exact v0.5 donor must be explicitly provided")
+    def test_actual_persistent_facade_two_nights_and_fancy(self):
+        from doctor_lives.lab_phantasmagorium import _run, _nonfactual
+        from doctor_lives.phantasmagorium_bridge import DONOR_SHA256
+        archive = verify_archive(os.environ["PRETORIUS_PHANTA_DONOR"])
+        request = {"pin": DONOR_SHA256, "files": {}, "day": 1, "seed": 42,
+                   "cues": ["I read a page of a book about the moon."],
+                   "op": "fancy", "scene": {"initial_scene": {"entities": [
+                       {"id": "book", "kind": "book", "properties": {"form": "bound volume"}},
+                       {"id": "page", "kind": "page", "properties": {"words": "The moon is cold."}},
+                   ], "relations": []}, "max_fragments": 4}}
+        fancy = _run(archive, request)
+        self.assertGreater(len(fancy["result"]["fragments"]), 0)
+        self.assertTrue(_nonfactual(fancy["result"], "hypothetical_only"))
+        from doctor_lives.tower_phantasmagorium import verified_fancy_motifs
+        self.assertTrue(verified_fancy_motifs(fancy["result"]))
+        request.update(files=fancy["files"], op="night", seed=123)
+        first = _run(archive, request)
+        self.assertTrue(_nonfactual(first["result"], "dreamed_not_lived"))
+        self.assertTrue(_nonfactual(first["recall"], "dreamed_not_lived"))
+        request.update(files=first["files"], day=2, seed=333)
+        second = _run(archive, request)
+        self.assertTrue(_nonfactual(second["result"], "dreamed_not_lived"))
+        self.assertEqual(second["result"]["day"], 2)
+        self.assertEqual(second["result"]["id"], first["result"]["id"] + 1)
+        self.assertIn("dream_ecology/dream_journal.json", second["files"])
 
     @unittest.skipUnless(os.environ.get("PRETORIUS_PHANTA_DONOR"),
                          "Exact v0.5 donor must be explicitly provided")

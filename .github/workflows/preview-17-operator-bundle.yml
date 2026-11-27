@@ -7,6 +7,9 @@ on:
       - doctor_lives/preview_17_books.py
       - doctor_lives/cli.py
       - doctor_lives/lab_native_goal_choice.py
+      - doctor_lives/lab_conclave_reflection.py
+      - doctor_lives/conclave.py
+      - tests/test_conclave.py
       - tests/test_six_organ_native_goal_choice.py
       - tools/install_17_operator_bundle.py
       - tools/assemble_17_operator_bundle.py
@@ -15,6 +18,10 @@ on:
       - tools/run_uncoached_r4_trial.py
       - tools/archive_r4_source_evidence.py
       - tools/observe_uncoached_r4.py
+      - doctor_lives/r4_diagnostics.py
+      - tests/test_r4_termination.py
+      - tools/profile_r4_boundaries.py
+      - tests/test_r4_profile.py
       - tests/test_r4_uncoached_witness.py
       - tests/test_r4_source_archive.py
       - tests/test_candidate_b_r4_audit_contract.py
@@ -177,7 +184,7 @@ jobs:
   independent-uncoached-r4:
     needs: platform-bundle-install
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
         with:
@@ -193,6 +200,10 @@ jobs:
         run: python -m pip install .
       - name: Independent read-only witness regression, no donor imports
         run: python -m unittest discover -s tests -p test_r4_uncoached_witness.py -v
+      - name: Verify termination taxonomy and evidence-driven watchdog classification
+        run: python -m unittest discover -s tests -p test_r4_termination.py -v
+      - name: Profile boundary accounting regressions, no donor execution
+        run: python -m unittest discover -s tests -p test_r4_profile.py -v
       - name: Verify read-only source archiver includes WAL and rejects absent originals
         run: python -m unittest discover -s tests -p test_r4_source_archive.py -v
       - name: Install verified source-pinned world offline with zero goal inputs
@@ -208,10 +219,10 @@ jobs:
               pack.extractall(target)
           PY
           python "${{ runner.temp }}/operator-source/install.py" --install-root "${{ runner.temp }}/r4-installed"
-      - name: Independent three-distinct-activity R4 test, no task messages or scripted choices
+      - name: Independent R4 capacity observation, no task messages or scripted choices
         run: |
           python tools/run_uncoached_r4_trial.py \
-            --install-root "${{ runner.temp }}/r4-installed" --seconds 600 \
+            --install-root "${{ runner.temp }}/r4-installed" --seconds 3600 --capacity-receipts 520 \
             --report "${{ runner.temp }}/independent-r4-report.json"
       - name: Snapshot original Laboratory, canonical BrainStore and operator ledger even on R4 failure
         if: always()
@@ -245,5 +256,9 @@ jobs:
             ${{ runner.temp }}/independent-r4-report.origins.jsonl
             ${{ runner.temp }}/independent-r4-report.operator.stdout.txt
             ${{ runner.temp }}/independent-r4-report.operator.stderr.txt
+            ${{ runner.temp }}/independent-r4-report.source-audit.json
+            ${{ runner.temp }}/independent-r4-report.audit.stdout.txt
+            ${{ runner.temp }}/independent-r4-report.audit.stderr.txt
+            ${{ runner.temp }}/independent-r4-report.operator-profile.jsonl
           retention-days: 30
           if-no-files-found: warn

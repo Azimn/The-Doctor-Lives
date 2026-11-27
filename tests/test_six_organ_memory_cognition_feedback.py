@@ -68,6 +68,14 @@ class RecollectionInfluencesCognitionTests(unittest.TestCase):
         # retrieved first-person content to influence the next decision.
         b.recollect()
         baseline = control._port.brain.think("mnemosyne_private_reflection")
+        # The no-cue control may think, but must not manufacture a recollection.
+        from doctor_lives.tower_ipseity import TowerIpseity
+        control_history = TowerIpseity(control._port.brain).verify_history()
+        self.assertFalse(any(item["mode"] == "recollection"
+                             for entry in control_history for item in entry["content"]))
+        self.assertEqual(control_history[-1]["phase"], "private_thought")
+        self.assertIn(baseline["policy_decision_id"],
+                      control_history[-1]["content"][0]["source_refs"])
         self.assertIsNotNone(treatment.next_policy_decision_id)
         self.assertTrue(treatment.cue_sha256)
         self.assertGreater(treatment.relevant_lines, 0)

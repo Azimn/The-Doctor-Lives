@@ -1,3 +1,30 @@
+# Pretorius ten-organ product registry
+
+**Current governing architecture: ten mandatory organs, Synthetic Ipseity as the linchpin and owning subject.** The owner directive of 2026-11-24 supersedes the historical six-organ and nine-organ taxonomies. No existing organ is removed.
+
+Synthetic Ipseity is not a speech formatter, a transport, an optional outbox or a peer service. It is the single persistent first-person perspective through which conscious impressions, feelings, perceptions, sensations, recollections, beliefs, hypotheses, intentions, decisions, thoughts, imagination and perceived expression must become available to Pretorius himself. Natural language is the shared conscious representation used by the original cognition and the language renderer. Private latent neural or physiological computation and objective source verification may exist outside awareness; they may not impersonate an owned conscious experience or bypass the owning subject when made conscious.
+
+| Organ | Contribution to the one subject |
+|---|---|
+| **Synthetic Ipseity** | Owns, admits, orders and makes conscious first-person experience causally available; maintains continuity of the same self. |
+| Sensus | Source-bound percepts and uncertain scenes. |
+| Corpus | Felt bodily sensations, situated abilities and physical consequences. |
+| Affectus | Felt appraisals and motivational experience. |
+| Mnemosyne | Recollections, source attribution, learning and consolidation. |
+| Noesis | Thought, deliberation and chosen intentions. |
+| Expression | Subject-only communication and actually perceived self-expression. |
+| Telos | Self-owned intentions, commitments and prospective continuity. |
+| Conclave | Explicitly uncertain interpretations and associations. |
+| Phantasmagorium | Explicitly imagined or dreamed experiences, never factual authority. |
+
+Each conscious output of the nine enters Synthetic Ipseity and returns to cognition as first-person natural language. The source/world remains authoritative for physical events; the subject's impressions can be uncertain. A typed frame is not qualification unless its contents influence downstream cognition. The release gate requires an actual ordinary Tower trace from an earlier self-originated decision through later first-person access, choice, authorized physical action and consequence, plus a matched Ipseity impairment that changes behavior without changing the source history or external authority.
+
+The historic six-port API and migration documents remain compatibility evidence, not the governing product organ count. The canonical store and recurrent brain remain unchanged in identity. The register in `docs/product-v1/product_completion.json` tracks qualification honestly.
+
+---
+
+## Historical six-organ responsibility map (superseded taxonomy, retained evidence)
+
 # Pretorius organ registry, target architecture v1
 
 Status: **proposed D1 registry for review**. Source: `PRETORIUS_SIX_ORGAN_IMPLEMENTATION_GUIDE.md` at draft PR #88. This is a responsibility map, **not a declaration of six implemented or empirically validated runtime organs**. Canonical mind remains `The-Doctor-Lives`. No new database, model, sub-agent or runtime is introduced.

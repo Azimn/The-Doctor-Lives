@@ -4,6 +4,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from doctor_lives.chassis import PretoriusBrainPort
 from doctor_lives.lab_home_bridge import DoctorHomeBridge
@@ -60,6 +61,127 @@ class RealDoctorHomeBridgeTests(unittest.TestCase):
         self.assertEqual(mem["text"], first["subject"]["inner"])
         self.assertEqual(mem["evidence_class"], "lived_runtime_memory")
         self.assertFalse(mem["external"])
+
+    def test_legacy_laboratory_admission_precedes_actual_recurrent_step(self):
+        from doctor_lives.tower_ipseity import TowerIpseity
+
+        brain = self.doctor.brain
+        self.assertIsNone(brain.store.meta("small-tower:world-binding-v1"))
+        subject = TowerIpseity(brain)
+        step = brain.neural.step
+        observed = []
+
+        def checked_step(text, *args, **kwargs):
+            # Read from a separate SQLite connection, inside the actual
+            # recurrent call: an uncommitted or post-hoc history cannot pass.
+            memory = next(m for m in self.source_memories() if m["text"] == text)
+            entries = subject.verify_history()
+            owned = [entry for entry in entries
+                     if entry["key"].endswith("acquisition:" + memory["id"])]
+            self.assertEqual(len(owned), 1)
+            item = owned[0]["content"][0]
+            self.assertEqual(item["text"], text)
+            self.assertEqual(item["attribution"], "lived")
+            self.assertFalse(item["external"])
+            self.assertIn(memory["source_event_id"], item["source_refs"])
+            self.assertEqual(owned[0]["phase"], "acquisition")
+            observed.append((memory["id"], owned[0]["sha256"]))
+            return step(text, *args, **kwargs)
+
+        with patch.object(brain.neural, "step", side_effect=checked_step):
+            first = self.bridge.observe()
+            retry = self.bridge.observe()
+            self.assertEqual(retry["memory_id"], first["memory_id"])
+            move = self.bridge.act("walk", event_id="qi02-hall", station="station:hall")
+        self.assertEqual([m for m, _ in observed], [first["memory_id"], move["memory_id"]])
+        entries = subject.verify_history()
+        self.assertEqual([e["sha256"] for e in entries], [h for _, h in observed])
+        reopened = PretoriusBrainPort(brain.state_dir)
+        self.assertEqual(TowerIpseity(reopened.brain).verify_history(), entries)
+
+    def test_failed_laboratory_subject_admission_does_not_reach_recurrence(self):
+        from doctor_lives.tower_ipseity import TowerIpseity
+
+        brain = self.doctor.brain
+        tick = brain.store.tick
+        neural_tick = brain.neural.tick
+        before = TowerIpseity(brain).verify_history()
+        with patch.object(TowerIpseity, "record", side_effect=PermissionError("admission fault")), \
+                patch.object(brain.neural, "step", wraps=brain.neural.step) as recurrent:
+            with self.assertRaisesRegex(PermissionError, "admission fault"):
+                self.bridge.observe()
+            recurrent.assert_not_called()
+        self.assertEqual(brain.store.tick, tick)
+        self.assertEqual(brain.neural.tick, neural_tick)
+        self.assertEqual(TowerIpseity(brain).verify_history(), before)
+        self.assertFalse(self.source_memories())
+        self.assertEqual(self.bridge.observe()["status"], "admitted")
+
+    def test_conscious_dream_recollection_requires_owned_admission_before_deliberation(self):
+        # Controlled donor-output fixture. The actual Laboratory sleep and
+        # source receipt are real; this does not qualify the external donor.
+        from doctor_lives.lab_phantasmagorium import STATE, sync_phantasmagorium
+        from doctor_lives.tower_ipseity import TowerIpseity
+        brain = self.doctor.brain
+        self.assertIsNone(brain.store.meta("small-tower:world-binding-v1"))
+        for index, station in enumerate(("station:hall", "station:bedroom")):
+            self.bridge.act("walk", event_id=f"qi02-dream-walk-{index}", station=station)
+        sleep = self.bridge.act("sleep", event_id="qi02-dream-sleep")
+        subject = TowerIpseity(brain)
+        prefix = subject.verify_history()
+        digest_before = brain.store.digest()
+        neural_before = brain.neural.tick
+        world_before = self.world.verify()
+        text = "I recall a dream: a silver pendulum swayed above the sea."
+        marked = {"epistemic_status": "dreamed_not_lived", "marked": True,
+                  "factual_memory_eligible": False, "world_fact_authority": False,
+                  "tool_authority": False}
+        packet = {"files": {}, "result": dict(marked, fragments=[]),
+                  "recall": dict(marked, has_recollection=True, text=text), "echo": None}
+        with patch("doctor_lives.lab_phantasmagorium.verify_archive", return_value=Path("fixture.zip")), \
+                patch("doctor_lives.lab_phantasmagorium._run", return_value=packet):
+            with patch.object(TowerIpseity, "record", side_effect=PermissionError("admission fault")):
+                with self.assertRaisesRegex(PermissionError, "admission fault"):
+                    sync_phantasmagorium(self.bridge, Path("fixture.zip"))
+            self.assertEqual(brain.store.digest(), digest_before)
+            self.assertIsNone(brain.store.meta(STATE))
+            self.assertEqual(subject.verify_history(), prefix)
+            report = sync_phantasmagorium(self.bridge, Path("fixture.zip"))
+            history = subject.verify_history()
+            self.assertEqual(history[:-1], prefix)
+            self.assertEqual(len(history), len(prefix) + 1)
+            entry = history[-1]
+            self.assertEqual(entry["sha256"], report["ipseity_admission_sha256"])
+            self.assertEqual(entry["phase"], "imagination")
+            item = entry["content"][0]
+            mid = report["recollection_memory_id"]
+            self.assertEqual(item["organ"], "Phantasmagorium")
+            self.assertEqual(item["mode"], "recollection")
+            self.assertEqual(item["attribution"], "dreamed")
+            self.assertEqual(item["text"], text)
+            self.assertEqual(item["source_refs"], [sleep["memory_id"], mid])
+            self.assertEqual(brain.store.get_memory(mid)["evidence_class"], "dreamed_not_lived")
+            self.assertTrue(brain.store.get_memory(mid)["external"])
+            for key in ("world_authority", "factual_memory_eligible", "motor_authority"):
+                self.assertFalse(report[key])
+            self.assertEqual(brain.neural.tick, neural_before)
+            self.assertEqual(self.world.verify(), world_before)
+            self.assertIsNone(sync_phantasmagorium(self.bridge, Path("fixture.zip")))
+            self.assertEqual(subject.verify_history(), history)
+        # Controlled downstream cue: the actual selector must see the
+        # already committed donor admission, not an unowned dream string.
+        original = brain._state_policy_scores
+        witnessed = []
+        def checked_policy(*args, **kwargs):
+            self.assertEqual(kwargs["decision_text"], text)
+            self.assertEqual(subject.verify_history()[-1], entry)
+            witnessed.append(entry["sha256"])
+            return original(*args, **kwargs)
+        with patch.object(brain, "_state_policy_scores", side_effect=checked_policy):
+            brain.think("test_post_dream_deliberation", decision_text=text)
+        self.assertEqual(witnessed, [entry["sha256"]])
+        reopened = PretoriusBrainPort(brain.state_dir)
+        self.assertIn(entry, TowerIpseity(reopened.brain).verify_history())
 
     def test_involuntary_utterance_becomes_real_doctor_memory_without_raw_body_data(self):
         self.bridge.act("walk", event_id="go-hall", station="station:hall")

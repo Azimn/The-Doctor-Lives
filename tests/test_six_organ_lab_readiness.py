@@ -46,7 +46,8 @@ class SixOrganActualLabReadiness(unittest.TestCase):
             )
             self.assertEqual({d.name for d in ORGAN_REGISTRY}, {
                 "Noesis", "Mnemosyne", "Affectus", "Sensus",
-                "Synthetic Ipseity", "Corpus",
+                "Synthetic Ipseity", "Corpus", "Expression", "Telos",
+                "Conclave", "Phantasmagorium",
             })
             self.assertEqual({id(port._port) for port in ports}, {id(rt._port)})
             self.assertEqual(len(ports), 6)
