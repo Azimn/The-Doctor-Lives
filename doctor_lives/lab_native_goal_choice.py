@@ -47,14 +47,15 @@ class NativeLaboratoryGoalChooser:
     def __init__(self, session, *, authorized: bool = False,
                  enable_sustained_work: bool = False,
                  enable_recurring_goals: bool = False,
-                 enable_commitment_competition: bool = False):
+                 enable_commitment_competition: bool = False,
+                 enable_telos: bool = False,
+                 enable_nested_rest: bool = False):
         from .lab_six_organ_session import SixOrganLaboratoryCycle
         if type(session) is not SixOrganLaboratoryCycle or authorized is not True:
             raise PermissionError("Trusted opt-in six-organ Laboratory host needed")
         self.host = session
         self.runtime = session.runtime
         self.store = session.runtime._port.brain.store
-        self.book = EndogenousBookPursuit(session, authorized=True)
         self._load_rest()
         if type(enable_sustained_work) is not bool:
             raise TypeError("Native work capability requires a typed opt-in")
@@ -62,10 +63,19 @@ class NativeLaboratoryGoalChooser:
                 enable_recurring_goals and not enable_sustained_work):
             raise ValueError("Recurring commitments require native work capability")
         self.enable_recurring_goals = enable_recurring_goals
+        self.book = EndogenousBookPursuit(
+            session, authorized=True, recurring=enable_recurring_goals)
         if type(enable_commitment_competition) is not bool or (
                 enable_commitment_competition and not enable_sustained_work):
             raise ValueError("Commitment competition requires native work capability")
         self.enable_commitment_competition = enable_commitment_competition
+        if type(enable_telos) is not bool:
+            raise TypeError("Telos integration requires explicit enablement")
+        self.enable_telos = enable_telos
+        if type(enable_nested_rest) is not bool or (
+                enable_nested_rest and not enable_commitment_competition):
+            raise ValueError("Nested rest requires actual competing commitments")
+        self.enable_nested_rest = enable_nested_rest
         self.work = None
         if enable_sustained_work:
             from .lab_native_work_goal import NativeWorkPursuit
@@ -240,7 +250,22 @@ class NativeLaboratoryGoalChooser:
         from .lab_endogenous_book_task import _KEY as BOOK_KEY
         from .store import new_id
         key = WORK_KEY if kind == "work" else BOOK_KEY
-        choice = compete_with_commitment(self.host, commitment_key=key, goal_id=goal_id)
+        rest = self._load_rest()
+        allow_rest = (self.enable_nested_rest
+                      and (rest is None or rest["phase"] == "complete")
+                      and self._new_physical_rest_need())
+        choice = compete_with_commitment(
+            self.host, commitment_key=key, goal_id=goal_id,
+            allow_native_rest=allow_rest,
+        )
+        from .organs import CognitiveProposal
+        if type(choice) is CognitiveProposal:
+            if not allow_rest:
+                raise PermissionError("Unexpected restorative commitment")
+            # Original book/work phase and origin remain untouched. Native
+            # rest now owns one subsequent opportunity at a time until its
+            # authentic consequence closes it; then the project resumes.
+            return self._originate_rest(choice)
         if choice is None or choice.action == "continue_commitment":
             return None
         effect = act_on_noesis_choice(
@@ -256,6 +281,15 @@ class NativeLaboratoryGoalChooser:
         """A host provides an opportunity and permission, never goal/destination."""
         if type(authorized_world_action) is not bool:
             raise TypeError("Typed world authorization required")
+        if self.enable_telos and authorized_world_action:
+            from .lab_telos import sync_native_commitments
+            sync_native_commitments(self)
+            result = self._step(authorized_world_action=authorized_world_action)
+            sync_native_commitments(self)
+            return result
+        return self._step(authorized_world_action=authorized_world_action)
+
+    def _step(self, *, authorized_world_action: bool):
         rest = self._load_rest()
         book = self.book.status()
         work = self.work._load() if self.work is not None else None
@@ -266,7 +300,8 @@ class NativeLaboratoryGoalChooser:
             # Noesis-origin rest intention. Complete that temporary recovery
             # before resuming the original work goal, across cold restarts.
             if rest is not None and rest["phase"] != "complete":
-                if work["phase"] != "blocked":
+                if work["phase"] != "blocked" and not (
+                        self.enable_nested_rest and work["phase"] == "travel"):
                     raise RuntimeError("Unreviewed competing work and rest")
                 return self._continue_rest(rest, authorized_world_action)
             # Do not supersede a previously selected concrete work motor.
@@ -291,7 +326,9 @@ class NativeLaboratoryGoalChooser:
         if (rest is not None and rest["phase"] != "complete"
                 and book.goal_id is not None and book.phase not in (
                     "complete", "exhausted")):
-            raise RuntimeError("Competing pending goals require explicit review")
+            if not self.enable_nested_rest:
+                raise RuntimeError("Competing pending goals require explicit review")
+            return self._continue_rest(rest, authorized_world_action)
         if book.goal_id is not None and book.phase not in ("complete", "exhausted"):
             interruption = self._consider_interruption(
                 "read_book", book.goal_id, authorized_world_action)
@@ -353,7 +390,19 @@ class NativeLaboratoryGoalChooser:
                         self.host.subject.habitat).catalog())
                 except LabError:
                     available_books = False
-                if prior_book_complete or not available_books:
+                if self.enable_recurring_goals:
+                    available_books = self.book.has_reading_opportunity()
+                # Recency of genuine completed activities affects whether
+                # an exploration can return to reading. This is bounded
+                # host goal mapping, not a required round-robin schedule.
+                prefer_new_read = False
+                if self.enable_recurring_goals and prior_book_complete and available_books and work:
+                    read_memory = self.store.get_memory(book.memory_id)
+                    work_memory = self.store.get_memory(work["memory_id"])
+                    prefer_new_read = (
+                        read_memory is not None and work_memory is not None
+                        and work_memory["created_tick"] > read_memory["created_tick"])
+                if (prior_book_complete and not prefer_new_read) or not available_books:
                     if work is not None and not self.enable_recurring_goals:
                         return NativeGoalChoiceReceipt(
                             "already_complete", "work", work["id"],
@@ -361,7 +410,8 @@ class NativeLaboratoryGoalChooser:
                         )
                     alternative = self.work.originate(
                         proposal, allow_recurrence=self.enable_recurring_goals)
-                    if work is not None and alternative.goal_id is None:
+                    if work is not None and alternative.goal_id is None and not (
+                            self.enable_recurring_goals and prior_book_complete and available_books):
                         return NativeGoalChoiceReceipt(
                             "no_situated_goal", None, None, selected_tendency="explore")
                     if alternative.goal_id is not None:
@@ -370,9 +420,11 @@ class NativeLaboratoryGoalChooser:
                             alternative.memory_id,
                             selected_tendency=alternative.selected_tendency
                         )
-            if book.goal_id is not None:
-                # Exhausted or completed once: never accidentally reopen
-                # the original volume or start an alias of the old goal.
+            if book.goal_id is not None and not (
+                    self.enable_recurring_goals and prior_book_complete
+                    and self.book.has_reading_opportunity()):
+                # Completed legacy fixture or no actual remaining reading:
+                # preserve history rather than reissue the old page.
                 return NativeGoalChoiceReceipt(
                     "already_complete" if prior_book_complete else "exhausted",
                     "read_book", book.goal_id, book.memory_id,

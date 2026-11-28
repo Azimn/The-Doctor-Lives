@@ -259,7 +259,8 @@ class NativeWorkPursuit:
             if len(cycle.ports_used) != 6 or cycle.subjective_delivery_count != 1:
                 raise RuntimeError("Incomplete canonical six-organ work opportunity")
             proposed = propose_noesis_work(
-                self.host.bridge, outcome_learning_enabled=True
+                self.host.bridge, outcome_learning_enabled=True,
+                developmental_history_enabled=True,
             )
             state["phase"] = "execute"
             state["work_policy_id"] = proposed.decision_id

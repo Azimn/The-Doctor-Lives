@@ -128,9 +128,13 @@ class ConclaveKernelTests(unittest.TestCase):
             ))
         self._event_fixture("world:real1", verified=True)
         admitted = self.kernel.interpret(Stimulus(
-            "world:real1", "world_verified", "garden_1", "fire"
-        ), spokes=("agrippan-wheel",))
+            "world:real1", "world_verified", "garden_1", "A verified perception"
+        ), spokes=("brunian-memory",))
         self.assertEqual(admitted[0].source_kind, "world_verified")
+        with self.assertRaises(PermissionError):
+            self.kernel.interpret(Stimulus(
+                "world:real1", "world_verified", "garden_1", "fire"
+            ), spokes=("agrippan-wheel",))
 
     def test_no_dream_source_laundering(self):
         dream = Stimulus("dream:d1", "dreamed", "sleep_1",
@@ -225,6 +229,49 @@ class ConclaveKernelTests(unittest.TestCase):
              if sum(dot == 1 for dot in dots) % 2 == 0},
             allowed_judges,
         )
+
+    def test_competing_interpretations_later_one_changes_actual_noesis_choice(self):
+        """Three rival readings; only the third activates a real prior commitment."""
+        from dataclasses import replace
+        from unittest.mock import patch
+        from doctor_lives import PretoriusBrain
+        from doctor_lives.neural import DEFAULT_CONFIG, ACTIONS
+        from doctor_lives.lab_conclave_reflection import compile_readings
+        cfg=dict(DEFAULT_CONFIG)
+        cfg.update(neurons=96,sensory_dim=48,avg_recurrent_degree=8,input_degree=4,
+                   action_population_size=6,seed=1842)
+        brain=PretoriusBrain(Path(self.tmp.name)/"real-noesis",neural_config=cfg)
+        brain.add_commitment("examine zephyrite",importance=1.0)
+        with brain.store.transaction() as db:
+            db.execute("UPDATE needs SET felt=0.5")
+        original=self.kernel.interpret(self.stimulus,spokes=("agrippan-wheel","brunian-memory","llullian-ars"))
+        readings=tuple(replace(r,proposition=p,question=q) for r,p,q in zip(original,
+            ("The first possibility concerns velarium.","The second possibility concerns orpiment.",
+             "The third possibility concerns zephyrite."),
+            ("Could velarium be relevant?","Could orpiment be relevant?","Could zephyrite be relevant?")))
+        query, packet=compile_readings(readings)
+        self.assertEqual(len(packet),3)
+        self.assertEqual([p["reading_id"] for p in packet],[r.id for r in readings])
+        self.assertEqual([p["source_event_id"] for p in packet],[r.source_event_id for r in readings])
+        self.assertTrue(all(p["first_person"] in query and p["considered"] for p in packet))
+        self.assertEqual(compile_readings(tuple(reversed(readings))),(query,packet))
+        first_only,_=compile_readings(readings[:1])
+        without_last,_=compile_readings(readings[:2])
+        scores=dict.fromkeys(ACTIONS,.08)
+        scores.update(explore=.13,persist=.10)
+        # Control recurrent prior only; original retrieval, appraisal and
+        # selection remain live. Later interpretation activates the commitment.
+        with patch.object(brain.neural,"action_scores",return_value=scores):
+            self.assertEqual(brain.think("first-reading-control",decision_text=first_only)["selected_action"],"explore")
+            self.assertEqual(brain.think("two-reading-control",decision_text=without_last)["selected_action"],"explore")
+            full=brain.think("all-readings-regression",decision_text=query)
+        self.assertEqual(full["selected_action"],"persist")
+        self.assertTrue(full["state_pressure"]["source_ids"]["commitments"])
+        # Explicit exclusion retains provenance rather than silently dropping.
+        _, excluded=compile_readings((*readings[:2],replace(readings[2],state="withdrawn")))
+        self.assertEqual(excluded[2]["exclusion_reason"],"withdrawn")
+        self.assertEqual(excluded[2]["source_event_id"],readings[2].source_event_id)
+        self.assertFalse(excluded[2]["considered"])
 
     def test_states_are_audit_history_not_deletions(self):
         r = self.kernel.interpret(self.stimulus, spokes=("brunian-memory",))[0]

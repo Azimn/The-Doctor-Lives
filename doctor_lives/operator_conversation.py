@@ -160,15 +160,17 @@ class OperatorConversation:
             return {"called":False,"tokens":0,"latency_ms":0.0,"draft":""}
         if not valid_local_model(model):
             raise ValueError("Invalid local Ollama model")
-        prompt = ("Speak naturally to the operator about the conversation. "
-                  "Do not invent Pretorius actions or memories. If describing "
-                  "his past, ONLY repeat one of the exact first-person sentences "
-                  "in verified_claims. Otherwise avoid first-person accounts. "
-                  "Only source-qualified firsthand claims are allowed.\n"
-                  +json.dumps({"operator_utterance":question,
-                    "verified_claims":[v["text"] for v in verified[-8:]]},
-                    ensure_ascii=False))
-        payload=json.dumps({"model":model,"prompt":prompt,"stream":False,
+        from .first_person_governance import first_person_line, renderer_instruction, admissible_output
+        from .models import SubjectRendererCapability
+        # The exact existing admitted user communication and subjective
+        # experience, not a JSON packet of facts, ids or engineering state.
+        frame = self.doctor.subject_frame(question)
+        prompt = "\n".join(first_person_line(line)
+                           for line in SubjectRendererCapability.read(frame))
+        instruction = renderer_instruction(
+            "Speak naturally in first person. Do not invent actions or memories. "
+            "Do not claim unverified firsthand events. Preserve uncertainty.")
+        payload=json.dumps({"model":model,"prompt":prompt,"system":instruction,"stream":False,
                             "options":{"temperature":0,"num_predict":128}}).encode()
         start=time.monotonic()
         try:
@@ -178,6 +180,8 @@ class OperatorConversation:
             tokens=int(response.get("eval_count",0))
             if not isinstance(draft,str) or tokens < 0:
                 raise ValueError("Invalid model reply")
+            if draft and not admissible_output(draft):
+                draft = ""
         except (OSError,ValueError,TimeoutError,UnicodeError):
             draft=""; tokens=0
         return {"called":True,"tokens":tokens,
@@ -191,6 +195,14 @@ class OperatorConversation:
         if not isinstance(question,str) or not question.strip():
             raise ValueError("Question must contain text")
         with self._guard:
+            # Return a previously prepared turn before calling any renderer.
+            # A cold retry must not generate a second different response.
+            if turn_id is not None:
+                existing = next((r for r in self.history() if r["turn_id"] == turn_id), None)
+                if existing:
+                    if existing["role"] != "pretorius":
+                        raise ValueError("Response key belongs to another speaker")
+                    return existing
             claim_pool=self.verified_claims()
             if absence_days is not None:
                 recap=self.absence(absence_days)
@@ -258,6 +270,74 @@ class OperatorConversation:
         reply=self.respond(text,model=model,turn_id=reply_key,day=day,
                            absence_days=day if "what have you been doing" in text.casefold() else None)
         return reply
+
+    def publish_reply(self, turn_id: str, sink) -> dict:
+        """Expression: acknowledge actual host output, not generated prose.
+
+        Call only under the canonical host lease. The existing emission
+        journal commits the attempt before calling the trusted local sink.
+        An uncertain write is never automatically repeated. The canonical
+        self-observation is added atomically with its source event.
+        """
+        from .speech_emission import SpeechEmissionJournal, SpeechEmissionUncertain
+        from .models import Experience
+        with self._guard:
+            turn = next((row for row in self.history() if row["turn_id"] == turn_id), None)
+            if turn is None or turn["role"] != "pretorius":
+                raise PermissionError("Only an existing Pretorius turn can be emitted")
+            brain = self.doctor.brain
+            store = brain.store
+            key = "operator-expression:" + turn_id
+            # Bound speech without truncating it or falsely acknowledging
+            # only part of a large historical recap.
+            with SpeechEmissionJournal(self.state_dir) as journal:
+                journal.prepare(key, turn["text"], before_tick=store.tick,
+                                before_neural_tick=int(brain.neural.tick))
+                receipt = journal.emit_once(key, sink)
+            source = key
+            statement = "I see my words appear in the conversation: “" + receipt.text + "”"
+            try:
+                event = Experience(text=statement, source=source,
+                                   kind="confirmed_written_utterance",
+                                   tags=("host_attested_emission",))
+                if len(event.text) > 4000:
+                    raise ValueError("Bounded subject quotation required")
+            except (ValueError, TypeError):
+                event = Experience(
+                    text="I see that my reply has been written to the conversation.",
+                    source=source, kind="confirmed_written_utterance",
+                    tags=("host_attested_emission", "content_withheld"))
+            with store.transaction() as db:
+                rows = db.execute("SELECT id,text,source_event_id FROM memories WHERE source=?",
+                                  (source,)).fetchall()
+                if len(rows) > 1:
+                    raise SpeechEmissionUncertain("Duplicate acknowledged expression")
+                if rows:
+                    row = rows[0]
+                    if row["text"] != event.text or not row["source_event_id"]:
+                        raise SpeechEmissionUncertain("Changed expression recollection")
+                    original = db.execute("SELECT payload_json FROM events WHERE id=? AND source=?",
+                                          (row["source_event_id"], source)).fetchone()
+                    if (original is None or json.loads(original[0]).get("content_sha256")
+                            != receipt.content_sha256):
+                        raise SpeechEmissionUncertain("Changed expression source receipt")
+                    memory_id = row["id"]
+                else:
+                    # A host write is self-observed communication, NOT
+                    # proof that words were heard, believed, or factual.
+                    tick = store.tick
+                    event_id = store.event(db, tick, event.kind, source,
+                        {"content_sha256": receipt.content_sha256, "sink_id": receipt.sink_id,
+                         "turn_id": turn_id, "emitted_utc": receipt.emitted_utc},
+                        "self_observed_expression", False, 1.0)
+                    memory_id = store.add_memory(db, tick, event.text, source, event.kind,
+                        "self_observed_expression", False, 1.0, False, .35,
+                        tags=event.tags, source_event_id=event_id)
+                    store.bump_state_version(db)
+            return {"turn_id": turn_id, "memory_id": memory_id,
+                    "content_sha256": receipt.content_sha256, "sink_id": receipt.sink_id,
+                    "host_write_acknowledged": True, "human_receipt_proven": False,
+                    "factual_claim_authority": False}
 
     def record_initiative_receipt(self, event_id: str, *, day: int) -> dict:
         """Publish an ALREADY completed original-Noesis outgoing message.

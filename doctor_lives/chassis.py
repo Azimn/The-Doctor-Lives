@@ -136,6 +136,10 @@ class PretoriusBrainPort:
                 or receipt.world_epoch != environment._epoch
                 or event.get("channel") != "world"
                 or event.get("percept") != receipt.first_person
+                or event.get("actor") != receipt.actor
+                or event.get("valence", 0.0) != receipt.social_valence
+                or event.get("social", 0.0) != (0.5 if receipt.actor else 0.0)
+                or event.get("kind") != (receipt.social_kind or "virtual_world_observation")
                 or event.get("source") != (
                     "virtual-world:" + receipt.world_id + ":"
                     + receipt.world_epoch + ":" + receipt.kind + ":"
@@ -178,6 +182,7 @@ class PretoriusBrainPort:
         reserved = (
             "laboratory-home:", "virtual-world:",
             "sensus-pilot-verified:", "mock-robot-fixture:",
+            "phantasmagorium:dream-recollection:", "operator-expression:",
         )
         claimed = event.get("source")
         # In particular, an untrusted report with an invented Laboratory
@@ -199,7 +204,20 @@ class PretoriusBrainPort:
             _laboratory_verified=laboratory_verified,
             _mock_fixture=mock_fixture,
         )
-        result = self.brain.ingest(projected.experience)
+        # Validate the first-person representation before recurrent ingestion.
+        if isinstance(claimed,str) and claimed.startswith("virtual-world:small-tower:"):
+            from .models import SubjectRendererCapability
+            frame = SubjectFrame.from_events((projected.event,))
+            if SubjectRendererCapability.read(frame) != (projected.experience.text,):
+                raise PermissionError("Tower cognition cannot bypass owned first-person ingress")
+        if (self.brain.store.meta("small-tower:world-binding-v1") is not None
+                or (laboratory_verified and isinstance(claimed, str)
+                    and claimed.startswith("laboratory-home:"))):
+            result = self.brain.ingest(projected.experience, projected_event=projected.event)
+        else:
+            # Preserve the original non-Tower port contract, including
+            # speech-recovery fault injection and existing legacy hosts.
+            result = self.brain.ingest(projected.experience)
         result["ingress"] = {
             "channel": projected.channel.value,
             "raw_sha256": projected.raw_sha256,

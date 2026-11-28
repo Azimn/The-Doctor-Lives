@@ -144,6 +144,8 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
         state, world, affectus_source=affectus_source, steps=1,
         allow_world_actions=True, enable_sustained_work=True,
         enable_recurring_goals=True, enable_commitment_competition=True,
+        enable_conclave_reflection=True, enable_telos=True,
+        enable_nested_rest=True,
     )
     receipt = result["receipts"][-1]
     event = {
@@ -156,6 +158,8 @@ def native_step(state: Path, world: Path, affectus_source: Path) -> dict:
         "source_attestation_independent": False,
         "competition_policy_id": receipt.get("competition_policy_id"),
         "interrupting_action": receipt.get("interrupting_action"),
+        "conclave_reflection": receipt.get("conclave_reflection"),
+        "phantasmagorium": receipt.get("phantasmagorium"),
     }
     if receipt["goal_id"] is not None:
         event.update(_intent_source(state, receipt["goal_id"]))

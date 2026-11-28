@@ -19,9 +19,10 @@ from .six_organ_book_task import SHELVES, _verified_looks
 
 
 _KEY = "six_organ_endogenous_book_goal_v1"
+BOOK_HISTORY = "six_organ_endogenous_book_history_v1:"
 _GOAL = "I want to discover a book here and read what it actually says."
 _SCHEMA = "pretorius.endogenous-book-pursuit.v1"
-_PHASES = {"search", "open", "read", "complete", "exhausted"}
+_PHASES = {"search", "open", "turn", "read", "complete", "exhausted"}
 _BOOK_ID = re.compile(r"book:[0-9]{3}\Z")
 
 
@@ -52,10 +53,14 @@ class EndogenousBookPursuit:
     preserved intention rather than a host resending a goal or a prompt.
     """
 
-    def __init__(self, session, *, authorized: bool = False):
+    def __init__(self, session, *, authorized: bool = False,
+                 recurring: bool = False):
         from .lab_six_organ_session import SixOrganLaboratoryCycle
         if type(session) is not SixOrganLaboratoryCycle or authorized is not True:
             raise PermissionError("Explicit opt-in canonical Laboratory session required")
+        if type(recurring) is not bool:
+            raise TypeError("Recurring reading requires an explicit mode")
+        self.recurring = recurring
         self.host = session
         self.runtime = session.runtime
         self.subject = session.subject
@@ -84,7 +89,13 @@ class EndogenousBookPursuit:
                 "origin_policy_id", "origin_thought_id", "searched",
                 "target", "target_sighting", "steps", "read_memory_id",
             }
-            if (type(state) is not dict or set(state) != expected
+            if (type(state) is not dict
+                    or set(state) not in (expected, expected | {"target_page"})
+                    or ("target_page" in state and (
+                        state["target_page"] is not None and
+                        (type(state["target_page"]) is not int or state["target_page"] < 1)
+                        or (state["phase"] in ("open", "turn", "read", "complete")
+                            and state["target_page"] is None)))
                     or state["schema"] != _SCHEMA
                     or state["world_epoch"] != self._epoch()
                     or state["goal"] != _GOAL or state["phase"] not in _PHASES
@@ -115,13 +126,105 @@ class EndogenousBookPursuit:
         except (ValueError, TypeError, KeyError, AttributeError) as exc:
             raise RuntimeError("Corrupt or unauthorized endogenous goal state") from exc
 
-    def _save(self, state):
+    def _save(self, state, *, archive_completed=None):
         if state["steps"] > 40:
             raise RuntimeError("Endogenous task action budget exhausted")
         envelope = {"payload": state, "sha256": _digest(state)}
         with self.store.transaction() as db:
+            if archive_completed is not None:
+                current = db.execute("SELECT value FROM meta WHERE key=?", (_KEY,)).fetchone()
+                if (current is None or archive_completed["phase"] != "complete"
+                        or json.loads(current["value"])["payload"] != archive_completed
+                        or state["id"] == archive_completed["id"]):
+                    raise RuntimeError("Book goal changed before historical archival")
+                key = BOOK_HISTORY + archive_completed["id"]
+                if db.execute("SELECT 1 FROM meta WHERE key=?", (key,)).fetchone():
+                    raise RuntimeError("Duplicate historical reading archival")
+                self.store.set_meta(key, current["value"], db)
             self.store.set_meta(_KEY, _stable(envelope), db)
             self.store.bump_state_version(db)
+
+    def _verified_read_pages(self):
+        """Only admitted, original source reads count as lived reading history."""
+        from .lab_home_bridge import _row
+        pages = {}
+        with self.host.bridge.world._open() as db:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE name='books_events'").fetchone() is None:
+                return pages
+            for memory in self.store.memories():
+                if (not memory["active"] or memory["external"]
+                        or memory["evidence_class"] != "lived_runtime_memory"
+                        or not memory["source"].startswith("laboratory-home:action:")
+                        or not memory["text"].startswith("I read a page of ")):
+                    continue
+                digest = memory["source"].removeprefix("laboratory-home:action:")
+                hits = db.execute(
+                    "SELECT event_id FROM books_events WHERE event_hash=?", (digest,)
+                ).fetchall()
+                if len(hits) != 1:
+                    continue
+                event, checked = _row(db, "books_events", hits[0][0])
+                page = event.get("page_receipt")
+                action = event.get("action", {})
+                if (checked == digest and action.get("op") == "read"
+                        and event.get("world_epoch") == self._epoch()
+                        and event.get("access_proof") and type(page) is dict
+                        and type(page.get("page_number")) is int):
+                    pages.setdefault(action["book_id"], set()).add(page["page_number"])
+        return pages
+
+    def _reading_plans(self, candidates=None):
+        """Host-only physical feasibility; never reveal unread text or catalog.
+
+        A closed, not-yet-read volume may open at page one. A physically
+        open volume may be read at its current unread page or turned one
+        leaf forward from a previously lived page. A closed partially
+        read volume requires a future bookmark/return mechanism.
+        """
+        from pretorius_lab.book_library import BookLibrary
+        from pretorius_lab.physics import LabError
+        try:
+            catalog = BookLibrary(self.subject.habitat).catalog()
+        except LabError:
+            return {}
+        seen = self._verified_read_pages()
+        plans = {}
+        for book_id, info in catalog.items():
+            if candidates is not None and book_id not in candidates:
+                continue
+            pages = seen.get(book_id, set())
+            if not info["opened"]:
+                if 1 not in pages:
+                    plans[book_id] = ("open", 1)
+            else:
+                page = info["page_if_open"]
+                if page not in pages:
+                    plans[book_id] = ("read", page)
+                elif page < info["page_count"] and page + 1 not in pages:
+                    plans[book_id] = ("turn", page + 1)
+        return plans
+
+    def has_reading_opportunity(self):
+        return bool(self._reading_plans())
+
+    def _completed_source(self, state):
+        from .lab_home_bridge import _row
+        memory = self.store.get_memory(state["read_memory_id"])
+        if (memory is None or not memory["active"] or memory["external"]
+                or memory["evidence_class"] != "lived_runtime_memory"
+                or not memory["source"].startswith("laboratory-home:action:")
+                or not memory["text"].startswith("I read a page of ")):
+            raise RuntimeError("Prior book goal lacks a verified lived read")
+        with self.host.bridge.world._open() as db:
+            event, digest = _row(db, "books_events", "eb_" + state["id"] + "_read")
+        page = event.get("page_receipt")
+        if (memory["source"] != "laboratory-home:action:" + digest
+                or event.get("action") != {"op": "read", "book_id": state["target"]}
+                or event.get("world_epoch") != self._epoch()
+                or not event.get("access_proof") or not page
+                or ("target_page" in state and page.get("page_number") != state["target_page"])):
+            raise RuntimeError("Prior book completion lacks exact original page receipt")
+        return event
 
     def _at(self):
         return self.subject.embodied.verify()["station"]
@@ -171,12 +274,18 @@ class EndogenousBookPursuit:
         if type(authorized_world_action) is not bool:
             raise TypeError("World authorization must be an explicit boolean")
         state = self._load()
+        prior = None
         if state and state["phase"] in ("complete", "exhausted"):
-            return EndogenousTaskReceipt(
-                "already_complete" if state["phase"] == "complete" else "exhausted",
-                state["id"], state["phase"], memory_id=state["read_memory_id"],
-                goal_origin="original-neural-explore-with-situated-evidence",
-            )
+            if (self.recurring and state["phase"] == "complete"
+                    and native_proposal is not None and self.has_reading_opportunity()):
+                self._completed_source(state)
+                prior, state = state, None
+            else:
+                return EndogenousTaskReceipt(
+                    "already_complete" if state["phase"] == "complete" else "exhausted",
+                    state["id"], state["phase"], memory_id=state["read_memory_id"],
+                    goal_origin="original-neural-explore-with-situated-evidence",
+                )
         observed = self.host.bridge.observe()
         lived = self.store.get_memory(observed["memory_id"])
         if (lived is None or lived["evidence_class"] != "lived_runtime_memory"
@@ -257,7 +366,11 @@ class EndogenousBookPursuit:
                 "searched": [], "target": None, "target_sighting": None,
                 "steps": 0, "read_memory_id": None,
             }
-            self._save(state)
+            if self.recurring:
+                state["target_page"] = None
+            if prior is not None and prior["origin_policy_id"] == proposal.policy_decision_id:
+                raise PermissionError("Historical reading cannot reuse its neural origin")
+            self._save(state, archive_completed=prior)
             return EndogenousTaskReceipt(
                 "goal_created", ident, "search",
                 goal_origin="original-neural-explore-with-situated-evidence",
@@ -295,6 +408,9 @@ class EndogenousBookPursuit:
                     and self.books.memory_hint(x["object_id"]) is not None
                     and self.books.memory_hint(x["object_id"])["station"] == station
                 )
+                plans = self._reading_plans(candidates) if "target_page" in state else None
+                if plans is not None:
+                    candidates = [book_id for book_id in candidates if book_id in plans]
                 if candidates:
                     # Preference comes from the original Doctor's verified
                     # autobiographical reading history, not the host's book
@@ -309,7 +425,10 @@ class EndogenousBookPursuit:
                         raise RuntimeError("Visible book lacks canonical sight memory")
                     state["target"] = chosen
                     state["target_sighting"] = proof["memory_id"]
-                    state["phase"] = "open"
+                    if plans is not None:
+                        state["phase"], state["target_page"] = plans[chosen]
+                    else:
+                        state["phase"] = "open"
                 else:
                     state["searched"].append(station)
                 state["steps"] += 1
@@ -358,23 +477,42 @@ class EndogenousBookPursuit:
                 consequence.memory_id, "original-neural-explore-with-situated-evidence",
             )
         op = state["phase"]
+        event_id = "eb_" + state["id"] + "_" + op
+        if "target_page" in state:
+            from pretorius_lab.book_library import BookLibrary
+            with self.host.bridge.world._open() as db:
+                previous = db.execute(
+                    "SELECT 1 FROM books_events WHERE event_id=?", (event_id,)
+                ).fetchone()
+            if previous is None:
+                info = BookLibrary(self.subject.habitat).catalog(state["target"])[state["target"]]
+                page = state["target_page"]
+                valid = ((op == "open" and not info["opened"] and page == 1)
+                         or (op == "turn" and info["opened"]
+                             and info["page_if_open"] == page - 1
+                             and page <= info["page_count"])
+                         or (op == "read" and info["opened"] and info["page_if_open"] == page))
+                if not valid:
+                    raise PermissionError("Physical book changed before selected page operation")
         receipt = self.host.book_action(
-            state["target"], op, event_id="eb_" + state["id"] + "_" + op,
-            authorized=True,
+            state["target"], op, event_id=event_id,
+            authorized=True, direction=1 if op == "turn" else None,
         )
         if receipt["status"] not in ("admitted", "already_admitted"):
             raise RuntimeError("Book action lacks original Doctor lived memory")
         state["steps"] += 1
-        if op == "open":
+        if op in ("open", "turn"):
             state["phase"] = "read"
         elif op == "read":
             if "I read a page of " not in receipt["subject"]["inner"]:
                 raise RuntimeError("No source-backed book content was experienced")
             state["phase"] = "complete"
             state["read_memory_id"] = receipt["memory_id"]
+            if "target_page" in state:
+                self._completed_source(state)
         self._save(state)
         return EndogenousTaskReceipt(
-            "completed" if op == "read" else "opened",
+            "completed" if op == "read" else "turned" if op == "turn" else "opened",
             state["id"], state["phase"], state["target"], receipt["memory_id"],
             "original-neural-explore-with-situated-evidence",
         )

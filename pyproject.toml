@@ -23,4 +23,4 @@ doctor-lives-local = "doctor_lives.ipseity_local:main"
 packages = ["doctor_lives"]
 
 [tool.setuptools.package-data]
-doctor_lives = ["data/*.json"]
+doctor_lives = ["data/*.json", "data/affectus_donor/README.md", "data/affectus_donor/sensus_artificialis/*.py"]

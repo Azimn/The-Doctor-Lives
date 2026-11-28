@@ -10,6 +10,8 @@ manual. Host-verified physical offers remain an external environmental input.
 """
 from __future__ import annotations
 
+from contextlib import closing
+
 import hashlib
 import json
 import re
@@ -54,7 +56,7 @@ def _cue_is_perceived(cue: str, first_person_observation: str) -> bool:
 
 _ACTIVE_COMMITMENTS = {
     "six_organ_native_work_intention_v1": ("travel", "blocked"),
-    "six_organ_endogenous_book_goal_v1": ("search", "open", "read"),
+    "six_organ_endogenous_book_goal_v1": ("search", "open", "turn", "read"),
 }
 # Engineering prior for persistence, bounded below pressing bodily pressure.
 COMMITMENT_WEIGHT = 0.10
@@ -76,7 +78,7 @@ def _verified_active_commitment(brain, ref):
     if (digest != envelope.get("sha256") or goal["id"] != goal_id
             or goal["phase"] not in _ACTIVE_COMMITMENTS[key]):
         raise PermissionError("Commitment is not active and source-bound")
-    with brain.store.connect() as db:
+    with closing(brain.store.connect()) as db:
         origin = db.execute(
             "SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
             (goal["origin_policy_id"],),
@@ -104,6 +106,8 @@ def select_with_original_noesis(
     author_day_goal: bool = False,
     interoception_enabled: bool = False,
     active_commitment: tuple[str, str] | None = None,
+    habit_bridge=None,
+    developmental_history_enabled: bool = False,
 ) -> dict[str, Any]:
     """Commit one original-brain choice and detailed engineer-only audit.
 
@@ -115,8 +119,11 @@ def select_with_original_noesis(
     """
     if (type(learning_enabled) is not bool or type(neural_prior_enabled) is not bool
             or type(outcome_learning_enabled) is not bool or type(author_day_goal) is not bool
-            or type(interoception_enabled) is not bool):
+            or type(interoception_enabled) is not bool
+            or type(developmental_history_enabled) is not bool):
         raise TypeError("Research lesion switches must be explicit booleans")
+    if developmental_history_enabled and not outcome_learning_enabled:
+        raise ValueError("Developmental history requires outcome learning")
     if type(observation_memory_id) is not str:
         raise TypeError("An original brain observation memory ID is required")
     if type(eligible_read_memory_ids) is not tuple or any(
@@ -184,8 +191,11 @@ def select_with_original_noesis(
     eligible_outcomes = []
     used_outcomes = []
     if outcome_learning_enabled:
-        from .noesis_consequences import consequence_pressure
-        outcome_scores, eligible_outcomes, used_outcomes = consequence_pressure(
+        from .noesis_consequences import (consequence_pressure,
+                                           developmental_consequence_pressure)
+        appraisal = (developmental_consequence_pressure if developmental_history_enabled
+                     else consequence_pressure)
+        outcome_scores, eligible_outcomes, used_outcomes = appraisal(
             brain, observation=observation["text"],
             verified_outcome_memory_ids=eligible_outcome_memory_ids,
             feasible_actions=feasible_actions,
@@ -206,9 +216,26 @@ def select_with_original_noesis(
         for action in feasible_actions:
             final[action] += body_scores[action]
     commitment_scores = {action: 0.0 for action in feasible_actions}
+    telos_id = None
     if commitment is not None:
-        commitment_scores["continue_commitment"] = COMMITMENT_WEIGHT
-        final["continue_commitment"] += COMMITMENT_WEIGHT
+        from .lab_telos import DEFAULT_IMPORTANCE, active_persistence
+        telos_id, importance = active_persistence(brain, commitment)
+        # Preserve the reviewed baseline persistence prior while attaching
+        # its contribution to the actual existing canonical commitment.
+        weight = min(0.15, COMMITMENT_WEIGHT * importance / DEFAULT_IMPORTANCE)
+        commitment_scores["continue_commitment"] = weight
+        final["continue_commitment"] += weight
+    habit_scores = {action: 0.0 for action in feasible_actions}
+    habit_ids = []
+    habit_counts = {}
+    if habit_bridge is not None:
+        if not interoception_enabled:
+            raise PermissionError("Household habits require situated perception")
+        from .lab_habits import verified_habit_pressure
+        habit_scores, habit_ids, habit_counts = verified_habit_pressure(
+            brain, habit_bridge, observation_memory_id, feasible_actions)
+        for action in feasible_actions:
+            final[action] += habit_scores[action]
     selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
     active_version = (DAILY_BODY_VERSION if interoception_enabled else
                       OUTCOME_VERSION if outcome_learning_enabled else VERSION)
@@ -216,14 +243,22 @@ def select_with_original_noesis(
     evidence = {
         "version": active_version,
         "outcome_learning_enabled": outcome_learning_enabled,
+        "developmental_history_enabled": developmental_history_enabled,
+        "developmental_history_version": ("work-history-appraisal-v2"
+                                          if developmental_history_enabled else None),
         "eligible_verified_outcome_ids": eligible_outcomes,
         "used_outcome_memory_ids": used_outcomes,
         "outcome_contributions": outcome_scores,
         "interoception_enabled": interoception_enabled,
         "perceived_body_cues": list(body_cues),
         "interoceptive_contributions": body_scores,
+        "habit_enabled": habit_bridge is not None,
+        "habit_contributions": habit_scores,
+        "habit_practice_counts": habit_counts,
+        "habit_source_memory_ids": habit_ids,
         "commitment_contributions": commitment_scores,
         "active_commitment_id": commitment["id"] if commitment else None,
+        "telos_commitment_id": telos_id,
         "active_commitment_origin": commitment["origin_policy_id"] if commitment else None,
         "neural_affordance_map": {a: NEURAL_AFFORDANCE_MAP[a] for a in feasible_actions},
         "neural_prior_weight": NEURAL_WEIGHT,
@@ -257,8 +292,8 @@ def select_with_original_noesis(
              selected_action, json.dumps(native, sort_keys=True),
              json.dumps(evidence, sort_keys=True),
              json.dumps(final, sort_keys=True),
-             json.dumps([observation_memory_id] + eligible),
-             json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
+             json.dumps(list(dict.fromkeys([observation_memory_id] + eligible + eligible_outcomes + habit_ids))),
+             json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
              int(brain.neural.tick), checkpoint, active_version),
         )
         if selected_action == "continue_commitment":
@@ -281,7 +316,7 @@ def select_with_original_noesis(
             VALUES(?,?,?,?,?,?,?)""",
             (tid, brain.store.tick, subject_thought, "noesis_situated_choice",
              "noesis_situated_choice:" + pid,
-             json.dumps([observation_memory_id] + chosen_evidence + used_outcomes),
+             json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
              json.dumps(final, sort_keys=True)),
         )
         # Construct a bounded intention from Noesis's own selected cognitive
@@ -319,3 +354,207 @@ def select_with_original_noesis(
         "observation_memory_id": observation_memory_id,
         "policy_version": active_version,
     }
+
+
+
+def select_world_affordance(brain, *, observation_memory_id, observation_source,
+                            narrative, offers, affordance_map, regulatory_pressure,
+                            tower_provider=None, subject=None, affective_lines=()):
+    """Original Noesis concrete choice on a trusted world's admitted perception.
+
+    The adapter supplies feasible offers and bounded physical cue pressure,
+    not the selected action. Canonical abstract deliberation supplies the
+    common prior. Reapply its existing state families to each offer's own
+    semantic cues so distinct actions sharing a neural tendency can compete
+    on relevant history, commitments, concerns and relationships. This is a
+    bounded engineering projection, not a new learned competence mechanism.
+    """
+    observation = brain.store.get_memory(observation_memory_id)
+    if (observation is None or not observation["active"]
+            or observation["evidence_class"] != "lived_runtime_memory"
+            or observation["source"] != observation_source
+            or not observation_source.startswith("virtual-world:small-tower:")
+            or not observation["text"].startswith("I ")):
+        raise PermissionError("Current authenticated Tower observation required")
+    if (not offers or len(offers) > 32 or len({o["key"] for o in offers}) != len(offers)
+            or any(o["key"] not in affordance_map
+                   or affordance_map[o["key"]] not in ACTIONS
+                   or not o["text"].startswith("I could ") for o in offers)):
+        raise ValueError("Bounded unique feasible offers required")
+    if any(type(v) not in (int, float) or not -.20 <= v <= .20
+           for v in regulatory_pressure.values()):
+        raise ValueError("Invalid bounded physical cue pressure")
+    if brain.store.meta("small-tower:world-binding-v1") is not None and tower_provider is None:
+        raise PermissionError("Bound Tower choice cannot use the legacy selector fixture")
+    if tower_provider is not None:
+        from .tower_ipseity import TowerIpseity
+        if type(subject) is not TowerIpseity or subject.brain is not brain:
+            raise PermissionError("Ordinary Tower cognition requires its owning Synthetic Ipseity organ")
+    context = " ".join([*narrative, *(o["text"] for o in offers)])
+    # Conclave is a normal participant in this embodied opportunity, not a
+    # second chooser. Only the exact authenticated perception can seed it.
+    from .conclave import Conclave, Stimulus
+    conclave = Conclave(brain.store, enabled=True)
+    source_event = observation.get("source_event_id")
+    if not source_event:
+        raise PermissionError("Tower observation lacks canonical event provenance")
+    interpretation_context = "tower:" + hashlib.sha256(source_event.encode()).hexdigest()[:32]
+    readings = conclave.interpret(Stimulus(
+        source_event, "world_verified", interpretation_context,
+        observation["text"][:2000].strip()))
+    # Use the existing kernel's associations as retrieval cues, not as
+    # propositions about reality, physical offers, or instructions.
+    interpretation_cues = conclave.cues(interpretation_context)
+    from .tower_phantasmagorium import retrieval_motifs
+    imaginative_cues = retrieval_motifs(brain.store, observation_source, subject=subject)
+    owned = None
+    admission = None
+    if tower_provider is not None:
+        from .models import SubjectRendererCapability
+        frame, owned, admission = subject.capture(observation, narrative, offers,
+                                                   interpretation_cues, imaginative_cues, affective_lines)
+        context = " ".join(SubjectRendererCapability.read(frame))
+        retrieval_context = context
+        with subject.cognitive_access(owned):
+            abstract = brain.think("small_tower_native_opportunity", decision_text=context)
+            direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
+    else:
+        # Legacy controlled selector fixtures do not claim product no-bypass.
+        retrieval_context = " ".join((context, *interpretation_cues, *imaginative_cues))
+        abstract = brain.think("small_tower_native_opportunity", decision_text=context)
+        direct, ranked = brain._ranked_memory_sets(48, query=retrieval_context, audit=True)
+    base, scores, local, candidate_ids = {}, {}, {}, [observation_memory_id]
+    by_key = {o["key"]: o for o in offers}
+    outcome_scores = dict.fromkeys(by_key, 0.0)
+    outcome_ids = {key: [] for key in by_key}
+    if tower_provider is not None:
+        from .tower_development import verified_consequence_pressure
+        outcome_scores, outcome_ids = verified_consequence_pressure(
+            brain, tower_provider, observation, tuple(by_key))
+    procedure_scores = dict.fromkeys(by_key, 0.0)
+    procedure_ids = {key: [] for key in by_key}
+    if tower_provider is not None:
+        from .tower_procedure import verified_sequences
+        procedure_scores, procedure_ids = verified_sequences(
+            brain, tower_provider, observation, tuple(by_key))
+    prospective = None
+    if tower_provider is not None:
+        from .tower_prospective import assess
+        prospective = assess(brain, tower_provider, observation, offers, abstract, affordance_map,
+                             owned_commitments=owned)
+    # Deferred intentions remain consciously owned, but must not leak back
+    # into the separate action-specific commitment family and defeat deferral.
+    deferred = prospective.get("deferred_owned_goals", {}) if prospective else {}
+    actionable_owned = None if owned is None else {
+        rid: wording for rid, wording in owned.items() if rid not in deferred}
+    for key in sorted(by_key):
+        offer = by_key[key]
+        tendency = affordance_map[key]
+        # Common words such as "could" must not activate the same commitment
+        # for every alternative. Offer labels remain actual perceived options.
+        cue = key.replace("_", " ") + " " + offer["text"][8:]
+        if subject is not None:
+            # The actual first-person offered action, not an engineer key,
+            # is the conscious semantic cue competing with my own intentions.
+            with subject.cognitive_access(actionable_owned):
+                _, _, appraisal = brain._state_policy_scores(
+                    ranked, decision_text=offer["text"], direct_history_ranked=direct)
+        else:
+            _, _, appraisal = brain._state_policy_scores(
+                ranked, decision_text=cue, direct_history_ranked=direct)
+        families = appraisal["families"]
+        # A relevant commitment is an action-specific persistence pressure,
+        # even if its concrete continuation happens to map to explore/create.
+        commitment = max(families["commitments"][tendency],
+                         families["commitments"]["persist"])
+        specific = (commitment + families["history"][tendency]
+                    + families["relationships"][tendency]
+                    + families["concerns"][tendency])
+        specific = max(-.05, min(.05, specific))
+        base[key] = NEURAL_WEIGHT * abstract["action_scores"][tendency]
+        goal_pressure = prospective["scores"][key] if prospective else 0.0
+        scores[key] = (base[key] + regulatory_pressure.get(key, 0.0) + specific
+                       + outcome_scores[key] + goal_pressure + procedure_scores[key])
+        local[key] = {"tendency": tendency, "cue": cue,
+                      "commitment": commitment, "specific_pressure": specific,
+                      "prospective_pressure": goal_pressure,
+                      "procedural_pressure": procedure_scores[key],
+                      "procedural_memory_ids": procedure_ids[key],
+                      "developmental_pressure": outcome_scores[key],
+                      "developmental_memory_ids": outcome_ids[key],
+                      "source_ids": appraisal["source_ids"],
+                      "families": families}
+        candidate_ids.extend(appraisal["source_ids"]["history"])
+        candidate_ids.extend(outcome_ids[key])
+        candidate_ids.extend(procedure_ids[key])
+    selected = max(sorted(scores), key=scores.get)
+    selected_ids = list(dict.fromkeys([observation_memory_id]
+                        + local[selected]["source_ids"]["history"] + outcome_ids[selected]
+                        + procedure_ids[selected]))
+    evidence = {"version": "noesis-world-affordance-v1",
+                "abstract_policy_id": abstract["policy_decision_id"],
+                "observation_memory_id": observation_memory_id,
+                "selector_authority": "original_noesis",
+                "physical_authority": "none",
+                "offer_appraisals": local,
+                "conclave": {
+                    "context_key": interpretation_context,
+                    "source_event_id": source_event,
+                    "reading_ids": [r.id for r in readings],
+                    "retrieval_cues": list(interpretation_cues),
+                    "retrieval_query_sha256": hashlib.sha256(retrieval_context.encode()).hexdigest(),
+                    "motor_authority": False,
+                    "lived_fact_authority": False,
+                },
+                "phantasmagorium": {"retrieval_cues": list(imaginative_cues),
+                                    "world_authority": False, "motor_authority": False,
+                                    "lived_fact_authority": False},
+                "ipseity": {"required": tower_provider is not None,
+                            "admission_key": admission["key"] if admission else None,
+                            "admission_sha256": admission["sha256"] if admission else None,
+                            "owned_commitments": owned,
+                            "conscious_query_sha256": hashlib.sha256(context.encode()).hexdigest()},
+                "prospective_goals": prospective,
+                "procedural_memory": {"enabled": tower_provider is not None,
+                                      "version": "tower-contextual-procedure-v1",
+                                      "contributions": procedure_scores,
+                                      "source_memory_ids": procedure_ids},
+                "developmental_history": {"enabled": tower_provider is not None,
+                                          "version": "tower-contextual-consequence-v1",
+                                          "contributions": outcome_scores,
+                                          "source_memory_ids": outcome_ids},
+                "physical_cue_pressure": {k: regulatory_pressure.get(k, 0.0)
+                                          for k in scores},
+                "candidate_base_scores": base,
+                "candidate_final_scores": scores}
+    pid, tid = new_id("policy"), new_id("thought")
+    intention = "I intend to " + by_key[selected]["text"][8:]
+    owned_selection = None
+    if subject is not None:
+        from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+        owned_selection = subject.event("Noesis",intention,PhenomenalMode.INTENTION,
+                                        (pid,tid),attribution=SubjectiveSourceKind.SELF_OBSERVED)
+    with brain.store.transaction() as db:
+        db.execute(
+            """INSERT INTO policy_decisions
+            (id,tick,created_at,trigger,selected_action,base_action_scores_json,
+             state_pressure_json,action_scores_json,candidate_record_ids_json,
+             selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (pid, brain.store.tick, utc_now(), "noesis_world_affordance",
+             selected, json.dumps(base, sort_keys=True), json.dumps(evidence, sort_keys=True),
+             json.dumps(scores, sort_keys=True), json.dumps(list(dict.fromkeys(candidate_ids))),
+             json.dumps(selected_ids), int(brain.neural.tick),
+             brain._neural_checkpoint_sha256(), "noesis-world-affordance-v1"))
+        db.execute(
+            """INSERT INTO thoughts
+            (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
+            VALUES(?,?,?,?,?,?,?)""",
+            (tid, brain.store.tick, intention,
+             "noesis_world_affordance", "noesis_world_affordance:" + pid,
+             json.dumps(selected_ids), json.dumps(scores, sort_keys=True)))
+        if owned_selection is not None:
+            subject.record(db,"decision:"+pid,(owned_selection,),phase="decision")
+        brain.store.bump_state_version(db)
+    return {"policy_decision_id": pid, "abstract_policy_id": abstract["policy_decision_id"],
+            "selected_action": selected, "action_scores": scores, "appraisals": local}
