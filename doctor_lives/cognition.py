@@ -1022,14 +1022,22 @@ class PretoriusBrain:
             from .tower_ipseity import RECORD
             history = tower_subject.verify_history()
             latest = history[-1] if history else None
+            grant = getattr(self, "_pending_recollection_processing", None)
+            self._pending_recollection_processing = None
             if (latest is None or latest["phase"] != "private_experience"
                     or not latest["key"].startswith(RECORD + "recollection:")
-                    or len(latest["content"]) != 1):
-                raise PermissionError("Fresh owned recollection required")
+                    or len(latest["content"]) != 1 or latest["tick"] != self.store.tick
+                    or grant is None or grant != (latest["sha256"], self.store.tick,
+                                                 self.store.digest(), self.neural.tick)):
+                raise PermissionError("Fresh one-use owned recollection required")
             item = latest["content"][0]
             recall_id = latest["key"].removeprefix(RECORD + "recollection:")
+            from .dream_resurfacing import selected_recall_question
+            if selected_recall_question(self, recall_id) is None:
+                raise PermissionError("Recollection lacks a current selected concern")
             refs = item["source_refs"]
-            valid_refs = refs == [recall_id]
+            valid_refs = (refs == [recall_id] and item["attribution"] == "self_observed"
+                          and item["external"] is False)
             if (len(refs) == 2 and refs[0] == recall_id
                     and item["attribution"] == "unknown" and item["external"] is True):
                 from .dream_resurfacing import verify_selected_fragment

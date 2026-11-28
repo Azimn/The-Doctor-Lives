@@ -231,6 +231,9 @@ class MnemosyneEndogenousPilot:
         if question is None or recall_id is None:
             raise PermissionError("No selected recollection awaiting reflection")
         frame = self.recollect()  # consumes the original state-bound one-use grant
+        from .dream_resurfacing import selected_recall_question
+        if selected_recall_question(self._port.brain, recall_id) != question:
+            raise PermissionError("Selected recollection is stale or unauthorized")
         if type(frame) is not SubjectFrame:
             raise TypeError("Recollection returned noncanonical subject frame")
         terms = _cue_terms(question)
@@ -266,12 +269,9 @@ class MnemosyneEndogenousPilot:
         if fragment is not None:
             _, source_id, cue = fragment
             source_ids = []
-            event = subject.event("Mnemosyne", cue, PhenomenalMode.RECOLLECTION,
-                                  (recall_id, source_id), attribution=SubjectiveSourceKind.UNKNOWN,
-                                  external=True)
-            with brain.store.transaction() as db:
-                admission = subject.record(db, "recollection:" + recall_id, (event,),
-                                           phase="private_experience")
+            refs = (recall_id, source_id)
+            attribution = SubjectiveSourceKind.UNKNOWN
+            external = True
         else:
             if not matches:
                 return PrivateRecollectionEffect(recall_id, None, None, 0, None)
@@ -282,14 +282,47 @@ class MnemosyneEndogenousPilot:
                 cue = reconstruct_selected(brain, question, recall_id, cue)
                 if cue is None:
                     return PrivateRecollectionEffect(recall_id, None, None, 0, None)
-            admission = subject.admit_private(
-                "recollection:" + recall_id, "Mnemosyne", cue,
-                (recall_id,), mode=PhenomenalMode.RECOLLECTION,
-            )
-        cue = admission["content"][0]["text"]
-        thought = self._port.brain.think(
-            "mnemosyne_private_reflection", decision_text=cue
-        )
+            refs = (recall_id,)
+            attribution = SubjectiveSourceKind.SELF_OBSERVED
+            external = False
+        # Only this invocation, which consumed the original retrieval grant
+        # and selected the exact cue, can authorize its conscious admission.
+        # Neither a policy row nor a raw history entry is a bearer credential.
+        from .first_person_governance import first_person_line
+        cue = first_person_line(cue)
+        if selected_recall_question(brain, recall_id) != question:
+            raise PermissionError("Selected recollection is stale or unauthorized")
+        if (getattr(brain, "_pending_recollection_admission", None) is not None
+                or getattr(brain, "_pending_recollection_processing", None) is not None):
+            raise PermissionError("Another selected recollection is pending")
+        key = "recollection:" + recall_id
+        content = [{"organ": "Mnemosyne", "text": cue, "mode": "recollection",
+                    "attribution": attribution.value, "source_refs": list(refs), "external": external}]
+        brain._pending_recollection_admission = (
+            key, "private_experience", content, brain.store.tick, brain.store.digest(), brain.neural.tick)
+        try:
+            if external:
+                event = subject.event("Mnemosyne", cue, PhenomenalMode.RECOLLECTION,
+                                      refs, attribution=attribution, external=True)
+                with brain.store.transaction() as db:
+                    admission = subject.record(db, key, (event,), phase="private_experience")
+            else:
+                admission = subject.admit_private(
+                    key, "Mnemosyne", cue, refs, mode=PhenomenalMode.RECOLLECTION)
+        finally:
+            brain._pending_recollection_admission = None
+        history = subject.verify_history()
+        if (not history or history[-1] != admission or admission["content"] != content
+                or admission["tick"] != brain.store.tick):
+            raise PermissionError("Selected recollection admission was not committed freshly")
+        # This process-local handoff is lost on restart and consumed at the
+        # Noesis boundary before ranking or policy. Do not persist a live grant.
+        brain._pending_recollection_processing = (
+            admission["sha256"], brain.store.tick, brain.store.digest(), brain.neural.tick)
+        try:
+            thought = brain.think("mnemosyne_private_reflection", decision_text=cue)
+        finally:
+            brain._pending_recollection_processing = None
         # Only a uniquely identified completed owned reflection strengthens direct recall.
         if len(source_ids) == 1:
             from .dream_retention import is_dream_recollection

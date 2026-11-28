@@ -81,27 +81,36 @@ def verify_fragment(row, history, now, line):
                 and _owned_source(row, history)
                 and line in {fragment_line(phrase) for phrase in _images(row)})
 
-def verify_selected_fragment(brain, history, recall_id, memory_id, line):
+def selected_recall_question(brain, recall_id):
+    """A policy row is evidence of selection, not a reusable authorization."""
     from contextlib import closing
     from hashlib import sha256
     import json
     from .mnemosyne_pilot import _TRIGGER, _SOURCE as CONCERN_SOURCE, _ACTOR
     with closing(brain.store.connect()) as db:
-        decision = db.execute("SELECT trigger,selected_action,state_pressure_json FROM policy_decisions WHERE id=?",
+        decision = db.execute("SELECT tick,trigger,selected_action,state_pressure_json FROM policy_decisions WHERE id=?",
                               (recall_id,)).fetchone()
-    if decision is None or decision["trigger"] != _TRIGGER or decision["selected_action"] != "recall":
-        return False
+    if (decision is None or decision["trigger"] != _TRIGGER
+            or decision["selected_action"] != "recall" or decision["tick"] != brain.store.tick):
+        return None
     audit = json.loads(decision["state_pressure_json"])
     selected = audit.get("selected_gap_ids")
     if not isinstance(selected, list) or len(selected) != 1:
-        return False
+        return None
     concern = next((c for c in brain.store.open_concerns() if c["id"] == selected[0]
                     and c["source"] == CONCERN_SOURCE and c["actor"] == _ACTOR), None)
     if concern is None:
-        return False
+        return None
     description = " ".join(str(concern["description"]).split()).rstrip(".?")
     question = f"What do I remember of {description}?"
     if sha256(question.encode()).hexdigest() != audit.get("question_sha256"):
+        return None
+    return question
+
+
+def verify_selected_fragment(brain, history, recall_id, memory_id, line):
+    question = selected_recall_question(brain, recall_id)
+    if question is None:
         return False
     suppressed = brain.store.canon_conflict_suppressed_memory_ids()
     rows = [r for r in brain.store.memories_with_classification() if r["id"] not in suppressed]
