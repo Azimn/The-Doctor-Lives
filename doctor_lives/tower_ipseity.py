@@ -14,13 +14,15 @@ from .models import SubjectFrame, SubjectRendererCapability
 from .phenomenology import (PhenomenalEvent, PhenomenalMode, AwarenessLevel,
     PrivacyState, ObjectiveProvenance, SubjectiveSourceAttribution,
     SubjectiveSourceKind, CertaintyBand, assert_subject_text_safe)
-from .first_person_governance import first_person_line
+from .first_person_governance import first_person_line, require_subject_line
 from .store import new_id
 
 HEAD = "ipseity:tower-history-head:v1"
 # Restricts future cognition; never grants source, motor or historical authority.
 LABORATORY_OWNERSHIP = "ipseity:laboratory-ownership-required:v1"
 RECORD = "ipseity:tower-history:"
+TAIL = "ipseity:tower-history-tail-key:v1"
+DELIBERATION = "ipseity:deliberation:v1:"
 VERSION = "tower-owning-subject-v1"
 _FIRST = re.compile(r"^(I\b|My\b|Me\b|Mine\b)",re.I)
 
@@ -36,6 +38,41 @@ def _digest(value):
 def _read(db,key):
     row=db.execute("SELECT value FROM meta WHERE key=?",(key,)).fetchone()
     return row["value"] if row else None
+
+
+def ownership_required(brain):
+    return (brain.store.meta("small-tower:world-binding-v1") is not None
+            or brain.store.meta(LABORATORY_OWNERSHIP) is not None)
+
+
+def _checked_entry(raw, key):
+    entry=json.loads(raw)
+    payload={k:v for k,v in entry.items() if k!="sha256"}
+    if (entry["subject"]!="pretorius" or entry["key"]!=key
+            or entry["sha256"]!=_digest(payload)):
+        raise PermissionError("Broken first-person history continuity")
+    for item in entry["content"]:
+        if not _FIRST.match(item["text"]) or first_person_line(item["text"])!=item["text"]:
+            raise PermissionError("Non-subject content in history")
+    return entry
+
+
+def verify_subject_history(db):
+    """Full audit in one caller-held SQLite snapshot. Never repairs evidence."""
+    rows=db.execute("SELECT key,value FROM meta WHERE key LIKE ?",(RECORD+"%",)).fetchall()
+    entries=sorted((_checked_entry(row[1],row[0]) for row in rows),key=lambda e:e["sequence"])
+    previous=None
+    for sequence,entry in enumerate(entries,1):
+        if entry["sequence"]!=sequence or entry["previous_sha256"]!=previous:
+            raise PermissionError("Broken first-person history continuity")
+        previous=entry["sha256"]
+    head=json.loads(_read(db,HEAD) or '{"sequence":0,"sha256":null}')
+    if head!={"sequence":len(entries),"sha256":previous}:
+        raise PermissionError("First-person history head mismatch")
+    tail=_read(db,TAIL)
+    if tail is not None and (not entries or tail!=entries[-1]["key"]):
+        raise PermissionError("First-person history tail mismatch")
+    return entries
 
 
 class TowerIpseity:
@@ -86,20 +123,21 @@ class TowerIpseity:
             if (grant is None or grant!=expected or (tick is not None and tick!=self.store.tick)
                     or _read(db,RECORD+key) is not None):
                 raise PermissionError("No fresh one-use selected recollection admission")
+        previous=self.verify_tail(db)
         key=RECORD+key
         prior=_read(db,key)
         if prior:
-            old=json.loads(prior)
+            old=_checked_entry(prior,key)
             if old["content"]!=content or old["phase"]!=phase:
                 raise PermissionError("Conflicting first-person history replay")
             return old
-        previous=json.loads(_read(db,HEAD) or '{"sequence":0,"sha256":null}')
         payload={"subject":"pretorius","sequence":previous["sequence"]+1,
                  "previous_sha256":previous["sha256"],"key":key,
                  "phase":phase,"tick":self.store.tick if tick is None else tick,"content":content}
         entry=dict(payload,sha256=_digest(payload))
         self.store.set_meta(key,_stable(entry),db)
         self.store.set_meta(HEAD,_stable({"sequence":entry["sequence"],"sha256":entry["sha256"]}),db)
+        self.store.set_meta(TAIL,key,db)
         self.store.bump_state_version(db)
         return entry
 
@@ -110,6 +148,19 @@ class TowerIpseity:
         if projected is None:
             if (exp.source.startswith("local-emission:")
                     and exp.kind in ("confirmed_written_utterance","perceived_utterance")):
+                if self.store.meta(LABORATORY_OWNERSHIP) is not None:
+                    from .speech_emission import SpeechEmissionJournal
+                    key=exp.source.removeprefix("local-emission:")
+                    if not (self.brain.state_dir / "speech_emission.sqlite3").is_file():
+                        raise PermissionError("Missing acknowledged local emission")
+                    with SpeechEmissionJournal(self.brain.state_dir) as journal:
+                        row=journal._row(key)
+                    if row is None or row[2]!="acknowledged" or exp.external or not row[3]:
+                        raise PermissionError("Missing acknowledged local emission")
+                    quote="I see my words appear in the conversation: “"+row[0]+"”"
+                    fallback="I see that my reply has been written to the conversation."
+                    if exp.text not in (quote,fallback) or self.store.tick!=row[4] or self.brain.neural.tick!=row[5]:
+                        raise PermissionError("Local emission differs from acknowledged source")
                 return
             raise PermissionError("Tower input requires the canonical ingress projector")
         if (type(projected) is not PhenomenalEvent or projected.subject_id!="pretorius"
@@ -162,6 +213,25 @@ class TowerIpseity:
         """Reacquire my own earlier native decision; do not assume every row is mine."""
         source=item["source"]
         prefix="telos:native:"
+        # The verified Laboratory chooser creates this admission only after
+        # authenticating its native goal. Generic SQL commitments cannot enter.
+        if source.startswith(prefix) and not source.startswith((prefix+"tower:",prefix+"tower-prospective:")):
+            key=RECORD+"laboratory-intention:"+item["id"]
+            with closing(self.store.connect()) as db:
+                raw=_read(db,key)
+            if raw is None:
+                return None
+            entry=_checked_entry(raw,key)
+            line="I still intend to "+item["description"]+"."
+            content=entry["content"]
+            if (entry["phase"]!="intention" or len(content)!=1
+                    or content[0]["organ"]!="Telos" or content[0]["mode"]!="intention"
+                    or content[0]["text"]!=line or content[0]["external"]
+                    or content[0]["attribution"]!="self_observed"
+                    or content[0]["source_refs"][:2]!=[item["id"],source.removeprefix(prefix)]):
+                raise PermissionError("Laboratory intention differs from owned goal")
+            return self.event("Telos",line,PhenomenalMode.INTENTION,content[0]["source_refs"],
+                              attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=digest)
         if not source.startswith(prefix+"tower:") and not source.startswith(prefix+"tower-prospective:"):
             return None
         pid=source.rsplit(":",1)[-1]
@@ -196,9 +266,12 @@ class TowerIpseity:
                           attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=digest)
 
     def owned_events(self, digest=None):
+        rows=self.store.open_commitments()
+        if not rows:
+            return []
         digest=digest or self.store.digest()
         result=[]
-        for item in self.store.open_commitments():
+        for item in rows:
             event=self.commitment_event(item,digest)
             if event is not None:
                 result.append((item["id"],event))
@@ -206,9 +279,7 @@ class TowerIpseity:
 
     def admit_private(self, key, organ, text, refs=(), *, mode=PhenomenalMode.INTERNAL_THOUGHT,
                       attribution=SubjectiveSourceKind.SELF_OBSERVED):
-        line=first_person_line(text)
-        if line.startswith("I cannot make sense of"):
-            raise PermissionError("Private experience is not subject-safe")
+        line=require_subject_line(text)
         event=self.event(organ,line,mode,refs,attribution=attribution)
         with self.store.transaction() as db:
             return self.record(db,key,(event,),phase="private_experience")
@@ -245,25 +316,30 @@ class TowerIpseity:
             self.record(db,new_id("expression-context"),events,phase="expression_context")
         return subject_frame
 
-    def verify_history(self):
-        """Read-only verification of the single ordered subject history."""
-        with closing(self.store.connect()) as db:
-            rows=db.execute("SELECT value FROM meta WHERE key LIKE ?",(RECORD+"%",)).fetchall()
-            head=json.loads(_read(db,HEAD) or '{"sequence":0,"sha256":null}')
-        entries=sorted((json.loads(row["value"]) for row in rows),key=lambda x:x["sequence"])
-        previous=None
-        for sequence,entry in enumerate(entries,1):
-            payload={k:v for k,v in entry.items() if k!="sha256"}
-            if (entry["subject"]!="pretorius" or entry["sequence"]!=sequence
-                    or entry["previous_sha256"]!=previous or entry["sha256"]!=_digest(payload)):
-                raise PermissionError("Broken first-person history continuity")
-            for item in entry["content"]:
-                if not _FIRST.match(item["text"]) or first_person_line(item["text"])!=item["text"]:
-                    raise PermissionError("Non-subject content in history")
-            previous=entry["sha256"]
-        if head!={"sequence":len(entries),"sha256":previous}:
+    def verify_tail(self, db=None):
+        """O(1) append check after full cold-open audit; older histories use full scan."""
+        if db is None:
+            with closing(self.store.connect()) as conn:
+                conn.execute("BEGIN")
+                return self.verify_tail(conn)
+        head=json.loads(_read(db,HEAD) or '{"sequence":0,"sha256":null}')
+        tail=_read(db,TAIL)
+        if tail is None:
+            verify_subject_history(db)
+            return head
+        raw=_read(db,tail)
+        if raw is None or not tail.startswith(RECORD):
+            raise PermissionError("Missing first-person history tail")
+        entry=_checked_entry(raw,tail)
+        if head!={"sequence":entry["sequence"],"sha256":entry["sha256"]}:
             raise PermissionError("First-person history head mismatch")
-        return entries
+        return head
+
+    def verify_history(self):
+        """Read-only full verification of the single ordered subject history."""
+        with closing(self.store.connect()) as db:
+            db.execute("BEGIN")
+            return verify_subject_history(db)
 
     def capture(self, observation, narrative, offers, interpretation_cues, imaginative_cues, affective_lines=()):
         """Conscious working experience before deliberation, not after rendering."""

@@ -132,6 +132,12 @@ def _validate_authority_binding(brain: Path, world: Path, journal: Path) -> None
         return sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)
 
     with closing(read_only(brain)) as mind, closing(read_only(world)) as physical, closing(read_only(journal)) as intents:
+        from .tower_ipseity import verify_subject_history, HEAD, LABORATORY_OWNERSHIP
+        mind.row_factory = sqlite3.Row
+        if mind.execute("SELECT 1 FROM meta WHERE key IN (?,?,?)",
+                        (HEAD,LABORATORY_OWNERSHIP,"small-tower:world-binding-v1")).fetchone():
+            verify_subject_history(mind)
+        mind.row_factory = None
         world_tables = {
             row[0] for row in physical.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"

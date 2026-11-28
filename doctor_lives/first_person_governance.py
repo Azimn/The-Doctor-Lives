@@ -25,6 +25,26 @@ _ENGINEERING = re.compile(r"\b(?:world_epoch|centibeats|policyRef|sourceEventId|
 _FALLBACK = "I cannot put that into words with confidence."
 
 
+_ACCOUNT_PREFIX = "I have this account in mind, without claiming I witnessed it: “"
+
+
+def require_subject_line(text):
+    """Explicit validation for cognitive admission; no ambiguous fallback sentinel."""
+    if type(text) is not str or not text.strip():
+        raise ValueError("Subject content must be nonblank natural language")
+    text = text.strip()
+    if implementation_leaks(text) or control_instruction_markers(text) or _ENGINEERING.search(text):
+        raise PermissionError("Unsafe conscious decision context")
+    return first_person_line(text)
+
+
+def semantic_subject_text(line):
+    """Exclude the fixed attribution wrapper from lexical retrieval only."""
+    if line.startswith(_ACCOUNT_PREFIX) and line.endswith("”"):
+        return line[len(_ACCOUNT_PREFIX):-1]
+    return line
+
+
 def first_person_line(text):
     if type(text) is not str or not text.strip():
         raise ValueError("Subject content must be natural language")
@@ -34,7 +54,7 @@ def first_person_line(text):
     if not _FIRST.match(text):
         # Older inherited/reference material can have third-person wording.
         # Do not mechanically convert names into lived first-person claims.
-        return "I have this account in mind, without claiming I witnessed it: “" + text + "”"
+        return _ACCOUNT_PREFIX + text + "”"
     return text
 
 

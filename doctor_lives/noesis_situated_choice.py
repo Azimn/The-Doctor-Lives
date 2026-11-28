@@ -96,6 +96,39 @@ def _verified_active_commitment(brain, ref):
     return goal
 
 
+# These are natural-language presentations of the existing feasible offers,
+# not new motor capabilities or a preference order.
+_OFFER_WORDING = {
+    "experiment": "conduct an experiment", "repair": "make repairs",
+    "clean": "clean", "light": "light the lamp", "extinguish": "put out the lamp",
+    "brew_tea": "brew tea", "prepare_meal": "prepare a meal", "eat": "eat",
+    "rest": "rest", "sleep": "sleep", "advance": "continue with the day",
+    "seek_kitchen": "go to the kitchen", "seek_bedroom": "go to the bedroom",
+    "continue_commitment": "continue my present undertaking",
+}
+
+
+def _require_owned_lab_memory(subject, memory):
+    """Validate an existing lived admission; never backfill from a raw SQL row."""
+    from .tower_ipseity import RECORD, _checked_entry
+    if (memory is None or not memory["active"] or memory["external"]
+            or memory["evidence_class"] != "lived_runtime_memory"
+            or not memory.get("source_event_id")):
+        raise PermissionError("Situated input lacks a lived source")
+    key = RECORD + "acquisition:" + memory["id"]
+    raw = subject.store.meta(key)
+    if raw is None:
+        raise PermissionError("Situated input lacks first-person admission")
+    entry = _checked_entry(raw, key)
+    expected_organ = "Corpus" if ":action:" in memory["source"] else "Sensus"
+    if (entry["phase"] != "acquisition" or entry["content"] != [{
+            "organ": expected_organ, "mode": "percept", "text": memory["text"],
+            "attribution": "lived", "source_refs": [memory["id"], memory["source_event_id"]],
+            "external": False}]):
+        raise PermissionError("Situated input differs from owned experience")
+    return entry
+
+
 def select_with_original_noesis(
     brain, *, observation_memory_id: str,
     eligible_read_memory_ids: tuple[str, ...],
@@ -152,208 +185,257 @@ def select_with_original_noesis(
             or not observation["text"].startswith(("I ", "My "))):
         raise PermissionError("No newly admitted original-brain first-person perception")
 
-    native = brain.neural.action_scores()
-    if set(native) != set(ACTIONS):
-        raise RuntimeError("Existing canonical neural action vocabulary changed")
-    base = {action: NEURAL_WEIGHT * float(native[NEURAL_AFFORDANCE_MAP[action]])
-            if neural_prior_enabled else 0.0 for action in feasible_actions}
-    final = dict(base)
-    considered = []
-    eligible = []
-    for memory_id in eligible_read_memory_ids:
-        memory = brain.store.get_memory(memory_id)
-        if (memory is None or not memory["active"]
-                or memory["evidence_class"] != "lived_runtime_memory"
-                or not memory["source"].startswith("laboratory-home:action:")
-                or not memory["text"].startswith("I read a page of ")
-                or "The words before me read: " not in memory["text"]):
-            continue
-        eligible.append(memory_id)
-        if not learning_enabled:
-            continue
-        page = memory["text"].split("The words before me read: ", 1)[1]
-        matched = INSTRUCTION.search(" ".join(page.split()))
-        if not matched:
-            continue
-        a, b = matched.group("first").lower(), matched.group("second").lower()
-        if (a == b or a not in feasible_actions or b not in feasible_actions
-                or not _cue_is_perceived(matched.group("cue"), observation["text"])):
-            continue
-        considered.append((int(memory["created_tick"]), memory_id, a, b))
+    from .tower_ipseity import TowerIpseity, ownership_required, DELIBERATION
+    from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+    subject = TowerIpseity(brain) if ownership_required(brain) else None
+    context = None
+    if subject is not None:
+        subject.verify_tail()
+        _require_owned_lab_memory(subject, observation)
+        wording = "I consider what I may do here: " + "; ".join(
+            _OFFER_WORDING[a] for a in feasible_actions) + "."
+        event = subject.event("Noesis", wording, PhenomenalMode.INTERNAL_THOUGHT,
+                              (observation_memory_id,), attribution=SubjectiveSourceKind.UNKNOWN)
+        with brain.store.transaction() as db:
+            context = subject.record(db, new_id("situated-context"), (event,),
+                                     phase="thought_context")
+            brain.store.set_meta(DELIBERATION+context["sha256"], json.dumps({
+                "status":"pending", "input_sha256":hashlib.sha256(wording.encode()).hexdigest()},
+                sort_keys=True), db)
+    try:
+        native = brain.neural.action_scores()
+        if set(native) != set(ACTIONS):
+            raise RuntimeError("Existing canonical neural action vocabulary changed")
+        base = {action: NEURAL_WEIGHT * float(native[NEURAL_AFFORDANCE_MAP[action]])
+                if neural_prior_enabled else 0.0 for action in feasible_actions}
+        final = dict(base)
+        considered = []
+        eligible = []
+        for memory_id in eligible_read_memory_ids:
+            memory = brain.store.get_memory(memory_id)
+            if (memory is None or not memory["active"]
+                    or memory["evidence_class"] != "lived_runtime_memory"
+                    or not memory["source"].startswith("laboratory-home:action:")
+                    or not memory["text"].startswith("I read a page of ")
+                    or "The words before me read: " not in memory["text"]):
+                continue
+            if subject is not None and learning_enabled:
+                _require_owned_lab_memory(subject, memory)
+            eligible.append(memory_id)
+            if not learning_enabled:
+                continue
+            page = memory["text"].split("The words before me read: ", 1)[1]
+            matched = INSTRUCTION.search(" ".join(page.split()))
+            if not matched:
+                continue
+            a, b = matched.group("first").lower(), matched.group("second").lower()
+            if (a == b or a not in feasible_actions or b not in feasible_actions
+                    or not _cue_is_perceived(matched.group("cue"), observation["text"])):
+                continue
+            considered.append((int(memory["created_tick"]), memory_id, a, b))
 
-    # Latest matching actually lived instruction breaks contradictory advice.
-    # This is a fixed recency heuristic, not evidence of human-like judgment.
-    considered.sort(key=lambda row: (row[0], row[1]), reverse=True)
-    chosen_evidence = [considered[0][1]] if considered else []
-    if chosen_evidence:
-        final[considered[0][2]] += MEMORY_WEIGHT
-    outcome_scores = {action: 0.0 for action in feasible_actions}
-    eligible_outcomes = []
-    used_outcomes = []
-    if outcome_learning_enabled:
-        from .noesis_consequences import (consequence_pressure,
-                                           developmental_consequence_pressure)
-        appraisal = (developmental_consequence_pressure if developmental_history_enabled
-                     else consequence_pressure)
-        outcome_scores, eligible_outcomes, used_outcomes = appraisal(
-            brain, observation=observation["text"],
-            verified_outcome_memory_ids=eligible_outcome_memory_ids,
-            feasible_actions=feasible_actions,
-        )
-        for action in feasible_actions:
-            final[action] += outcome_scores[action]
-    elif eligible_outcome_memory_ids:
-        # In opt-out controls, do not inspect or implicitly use outcome IDs.
-        if type(eligible_outcome_memory_ids) is not tuple:
-            raise TypeError("Outcome evidence IDs must be a tuple")
-    body_scores = {action: 0.0 for action in feasible_actions}
-    body_cues = ()
-    if interoception_enabled:
-        from .noesis_interoception import perceived_regulatory_pressure
-        body_scores, body_cues = perceived_regulatory_pressure(
-            observation["text"], feasible_actions,
-        )
-        for action in feasible_actions:
-            final[action] += body_scores[action]
-    commitment_scores = {action: 0.0 for action in feasible_actions}
-    telos_id = None
-    if commitment is not None:
-        from .lab_telos import DEFAULT_IMPORTANCE, active_persistence
-        telos_id, importance = active_persistence(brain, commitment)
-        # Preserve the reviewed baseline persistence prior while attaching
-        # its contribution to the actual existing canonical commitment.
-        weight = min(0.15, COMMITMENT_WEIGHT * importance / DEFAULT_IMPORTANCE)
-        commitment_scores["continue_commitment"] = weight
-        final["continue_commitment"] += weight
-    habit_scores = {action: 0.0 for action in feasible_actions}
-    habit_ids = []
-    habit_counts = {}
-    if habit_bridge is not None:
-        if not interoception_enabled:
-            raise PermissionError("Household habits require situated perception")
-        from .lab_habits import verified_habit_pressure
-        habit_scores, habit_ids, habit_counts = verified_habit_pressure(
-            brain, habit_bridge, observation_memory_id, feasible_actions)
-        for action in feasible_actions:
-            final[action] += habit_scores[action]
-    selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
-    active_version = (DAILY_BODY_VERSION if interoception_enabled else
-                      OUTCOME_VERSION if outcome_learning_enabled else VERSION)
+        # Latest matching actually lived instruction breaks contradictory advice.
+        # This is a fixed recency heuristic, not evidence of human-like judgment.
+        considered.sort(key=lambda row: (row[0], row[1]), reverse=True)
+        chosen_evidence = [considered[0][1]] if considered else []
+        if chosen_evidence:
+            final[considered[0][2]] += MEMORY_WEIGHT
+        outcome_scores = {action: 0.0 for action in feasible_actions}
+        eligible_outcomes = []
+        used_outcomes = []
+        if outcome_learning_enabled:
+            from .noesis_consequences import (consequence_pressure,
+                                               developmental_consequence_pressure)
+            appraisal = (developmental_consequence_pressure if developmental_history_enabled
+                         else consequence_pressure)
+            outcome_scores, eligible_outcomes, used_outcomes = appraisal(
+                brain, observation=observation["text"],
+                verified_outcome_memory_ids=eligible_outcome_memory_ids,
+                feasible_actions=feasible_actions,
+            )
+            if subject is not None:
+                for mid in used_outcomes:
+                    _require_owned_lab_memory(subject, brain.store.get_memory(mid))
+            for action in feasible_actions:
+                final[action] += outcome_scores[action]
+        elif eligible_outcome_memory_ids:
+            # In opt-out controls, do not inspect or implicitly use outcome IDs.
+            if type(eligible_outcome_memory_ids) is not tuple:
+                raise TypeError("Outcome evidence IDs must be a tuple")
+        body_scores = {action: 0.0 for action in feasible_actions}
+        body_cues = ()
+        if interoception_enabled:
+            from .noesis_interoception import perceived_regulatory_pressure
+            body_scores, body_cues = perceived_regulatory_pressure(
+                observation["text"], feasible_actions,
+            )
+            for action in feasible_actions:
+                final[action] += body_scores[action]
+        commitment_scores = {action: 0.0 for action in feasible_actions}
+        telos_id = None
+        if commitment is not None:
+            from .lab_telos import DEFAULT_IMPORTANCE, active_persistence
+            telos_id, importance = active_persistence(brain, commitment)
+            # Preserve the reviewed baseline persistence prior while attaching
+            # its contribution to the actual existing canonical commitment.
+            weight = min(0.15, COMMITMENT_WEIGHT * importance / DEFAULT_IMPORTANCE)
+            commitment_scores["continue_commitment"] = weight
+            final["continue_commitment"] += weight
+        habit_scores = {action: 0.0 for action in feasible_actions}
+        habit_ids = []
+        habit_counts = {}
+        if habit_bridge is not None:
+            if not interoception_enabled:
+                raise PermissionError("Household habits require situated perception")
+            from .lab_habits import verified_habit_pressure
+            habit_scores, habit_ids, habit_counts = verified_habit_pressure(
+                brain, habit_bridge, observation_memory_id, feasible_actions)
+            if subject is not None:
+                for mid in habit_ids:
+                    _require_owned_lab_memory(subject, brain.store.get_memory(mid))
+            for action in feasible_actions:
+                final[action] += habit_scores[action]
+        selected_action = max(sorted(feasible_actions), key=lambda a: final[a])
+        active_version = (DAILY_BODY_VERSION if interoception_enabled else
+                          OUTCOME_VERSION if outcome_learning_enabled else VERSION)
 
-    evidence = {
-        "version": active_version,
-        "outcome_learning_enabled": outcome_learning_enabled,
-        "developmental_history_enabled": developmental_history_enabled,
-        "developmental_history_version": ("work-history-appraisal-v2"
-                                          if developmental_history_enabled else None),
-        "eligible_verified_outcome_ids": eligible_outcomes,
-        "used_outcome_memory_ids": used_outcomes,
-        "outcome_contributions": outcome_scores,
-        "interoception_enabled": interoception_enabled,
-        "perceived_body_cues": list(body_cues),
-        "interoceptive_contributions": body_scores,
-        "habit_enabled": habit_bridge is not None,
-        "habit_contributions": habit_scores,
-        "habit_practice_counts": habit_counts,
-        "habit_source_memory_ids": habit_ids,
-        "commitment_contributions": commitment_scores,
-        "active_commitment_id": commitment["id"] if commitment else None,
-        "telos_commitment_id": telos_id,
-        "active_commitment_origin": commitment["origin_policy_id"] if commitment else None,
-        "neural_affordance_map": {a: NEURAL_AFFORDANCE_MAP[a] for a in feasible_actions},
-        "neural_prior_weight": NEURAL_WEIGHT,
-        "learning_weight": MEMORY_WEIGHT,
-        "learning_enabled": learning_enabled,
-        "neural_prior_enabled": neural_prior_enabled,
-        "observation_memory_id": observation_memory_id,
-        "eligible_verified_memory_ids": eligible,
-        "matched_memory_ids": [x[1] for x in considered],
-        "used_memory_ids": chosen_evidence,
-        "native_abstract_scores": native,
-        "candidate_base_scores": base,
-        "candidate_final_scores": final,
-        "selector_authority": "original_noesis",
-        "physical_authority": "none",
-        "note": "host validates receipt/feasibility; Noesis chooses; host authorizes physical execution",
-    }
-    checkpoint = brain._neural_checkpoint_sha256()
-    # Both the decision and its first-person cognitive intention share the
-    # original canonical DB transaction. No independent policy table/store.
-    with brain.store.transaction() as db:
-        pid = new_id("policy")
-        tid = new_id("thought")
-        db.execute(
-            """INSERT INTO policy_decisions
-            (id,tick,created_at,trigger,selected_action,base_action_scores_json,
-             state_pressure_json,action_scores_json,candidate_record_ids_json,
-             selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (pid, brain.store.tick, utc_now(), "noesis_situated_choice",
-             selected_action, json.dumps(native, sort_keys=True),
-             json.dumps(evidence, sort_keys=True),
-             json.dumps(final, sort_keys=True),
-             json.dumps(list(dict.fromkeys([observation_memory_id] + eligible + eligible_outcomes + habit_ids))),
-             json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
-             int(brain.neural.tick), checkpoint, active_version),
-        )
-        if selected_action == "continue_commitment":
-            subject_thought = "I intend to continue what I was doing."
-        elif selected_action in ("seek_kitchen", "seek_bedroom"):
-            subject_thought = (
-                "I intend to make my way to the kitchen."
-                if selected_action == "seek_kitchen"
-                else "I intend to make my way to the bedroom."
+        evidence = {
+            "version": active_version,
+            "outcome_learning_enabled": outcome_learning_enabled,
+            "developmental_history_enabled": developmental_history_enabled,
+            "developmental_history_version": ("work-history-appraisal-v2"
+                                              if developmental_history_enabled else None),
+            "eligible_verified_outcome_ids": eligible_outcomes,
+            "used_outcome_memory_ids": used_outcomes,
+            "outcome_contributions": outcome_scores,
+            "interoception_enabled": interoception_enabled,
+            "perceived_body_cues": list(body_cues),
+            "interoceptive_contributions": body_scores,
+            "habit_enabled": habit_bridge is not None,
+            "habit_contributions": habit_scores,
+            "habit_practice_counts": habit_counts,
+            "habit_source_memory_ids": habit_ids,
+            "commitment_contributions": commitment_scores,
+            "active_commitment_id": commitment["id"] if commitment else None,
+            "telos_commitment_id": telos_id,
+            "active_commitment_origin": commitment["origin_policy_id"] if commitment else None,
+            "neural_affordance_map": {a: NEURAL_AFFORDANCE_MAP[a] for a in feasible_actions},
+            "neural_prior_weight": NEURAL_WEIGHT,
+            "learning_weight": MEMORY_WEIGHT,
+            "learning_enabled": learning_enabled,
+            "neural_prior_enabled": neural_prior_enabled,
+            "observation_memory_id": observation_memory_id,
+            "eligible_verified_memory_ids": eligible,
+            "matched_memory_ids": [x[1] for x in considered],
+            "used_memory_ids": chosen_evidence,
+            "native_abstract_scores": native,
+            "candidate_base_scores": base,
+            "candidate_final_scores": final,
+            "selector_authority": "original_noesis",
+            "physical_authority": "none",
+            "note": "host validates receipt/feasibility; Noesis chooses; host authorizes physical execution",
+        }
+        if context is not None:
+            evidence["ipseity_context"] = {"key":context["key"], "sha256":context["sha256"]}
+        checkpoint = brain._neural_checkpoint_sha256()
+        # Both the decision and its first-person cognitive intention share the
+        # original canonical DB transaction. No independent policy table/store.
+        with brain.store.transaction() as db:
+            pid = new_id("policy")
+            tid = new_id("thought")
+            db.execute(
+                """INSERT INTO policy_decisions
+                (id,tick,created_at,trigger,selected_action,base_action_scores_json,
+                 state_pressure_json,action_scores_json,candidate_record_ids_json,
+                 selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (pid, brain.store.tick, utc_now(), "noesis_situated_choice",
+                 selected_action, json.dumps(native, sort_keys=True),
+                 json.dumps(evidence, sort_keys=True),
+                 json.dumps(final, sort_keys=True),
+                 json.dumps(list(dict.fromkeys([observation_memory_id] + eligible + eligible_outcomes + habit_ids))),
+                 json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
+                 int(brain.neural.tick), checkpoint, active_version),
             )
-        else:
-            subject_thought = (
-                "I judge that " + selected_action
-                + (" is the action I should try next." if interoception_enabled or author_day_goal
-                   else " is the action I should try next at the workbench.")
+            if selected_action == "continue_commitment":
+                subject_thought = "I intend to continue what I was doing."
+            elif selected_action in ("seek_kitchen", "seek_bedroom"):
+                subject_thought = (
+                    "I intend to make my way to the kitchen."
+                    if selected_action == "seek_kitchen"
+                    else "I intend to make my way to the bedroom."
+                )
+            else:
+                subject_thought = (
+                    "I judge that " + selected_action
+                    + (" is the action I should try next." if interoception_enabled or author_day_goal
+                       else " is the action I should try next at the workbench.")
+                )
+            db.execute(
+                """INSERT INTO thoughts
+                (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
+                VALUES(?,?,?,?,?,?,?)""",
+                (tid, brain.store.tick, subject_thought, "noesis_situated_choice",
+                 "noesis_situated_choice:" + pid,
+                 json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
+                 json.dumps(final, sort_keys=True)),
             )
-        db.execute(
-            """INSERT INTO thoughts
-            (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
-            VALUES(?,?,?,?,?,?,?)""",
-            (tid, brain.store.tick, subject_thought, "noesis_situated_choice",
-             "noesis_situated_choice:" + pid,
-             json.dumps(list(dict.fromkeys([observation_memory_id] + chosen_evidence + used_outcomes + habit_ids))),
-             json.dumps(final, sort_keys=True)),
-        )
-        # Construct a bounded intention from Noesis's own selected cognitive
-        # thought, in the ORIGINAL BrainStore and original policy transaction.
-        if author_day_goal:
-            key = "pretorius_day_noesis_goal_v1"
-            existing = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
-            if existing is None:
-                goal = {
-                    "schema": "pretorius.native-day-goal.v1",
-                    "id": hashlib.sha256(pid.encode()).hexdigest()[:24],
-                    "origin_policy_id": pid, "origin_thought_id": tid,
-                    "observation_memory_id": observation_memory_id,
-                    "selected_action": selected_action,
-                    "intention": subject_thought, "phase": "active",
-                }
-                envelope = {
-                    "payload": goal,
-                    "sha256": hashlib.sha256(json.dumps(
-                        goal, sort_keys=True, separators=(",", ":"),
-                        ensure_ascii=False,
-                    ).encode()).hexdigest(),
-                }
-                brain.store.set_meta(key, json.dumps(envelope, sort_keys=True), db)
-        brain.store.bump_state_version(db)
-    return {
-        "policy_decision_id": pid,
-        "thought_id": tid,
-        "selected_action": selected_action,
-        "action_scores": final,
-        "base_action_scores": base,
-        "source_memory_ids": chosen_evidence,
-        "used_outcome_memory_ids": used_outcomes,
-        "outcome_contributions": outcome_scores,
-        "observation_memory_id": observation_memory_id,
-        "policy_version": active_version,
-    }
+            if subject is not None:
+                refs = tuple(dict.fromkeys([tid, pid, observation_memory_id] +
+                            chosen_evidence + used_outcomes + habit_ids))
+                owned = subject.event("Noesis", subject_thought, PhenomenalMode.INTENTION,
+                                      refs, attribution=SubjectiveSourceKind.SELF_OBSERVED)
+                subject.record(db, "thought:"+tid, (owned,), phase="private_thought")
+                brain.store.set_meta(DELIBERATION+context["sha256"], json.dumps({
+                    "status":"completed", "input_sha256":hashlib.sha256(wording.encode()).hexdigest(),
+                    "policy_id":pid, "thought_id":tid}, sort_keys=True), db)
+            # Construct a bounded intention from Noesis's own selected cognitive
+            # thought, in the ORIGINAL BrainStore and original policy transaction.
+            if author_day_goal:
+                key = "pretorius_day_noesis_goal_v1"
+                existing = db.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+                if existing is None:
+                    goal = {
+                        "schema": "pretorius.native-day-goal.v1",
+                        "id": hashlib.sha256(pid.encode()).hexdigest()[:24],
+                        "origin_policy_id": pid, "origin_thought_id": tid,
+                        "observation_memory_id": observation_memory_id,
+                        "selected_action": selected_action,
+                        "intention": subject_thought, "phase": "active",
+                    }
+                    envelope = {
+                        "payload": goal,
+                        "sha256": hashlib.sha256(json.dumps(
+                            goal, sort_keys=True, separators=(",", ":"),
+                            ensure_ascii=False,
+                        ).encode()).hexdigest(),
+                    }
+                    brain.store.set_meta(key, json.dumps(envelope, sort_keys=True), db)
+            brain.store.bump_state_version(db)
+        return {
+            "policy_decision_id": pid,
+            "thought_id": tid,
+            "selected_action": selected_action,
+            "action_scores": final,
+            "base_action_scores": base,
+            "source_memory_ids": chosen_evidence,
+            "used_outcome_memory_ids": used_outcomes,
+            "outcome_contributions": outcome_scores,
+            "observation_memory_id": observation_memory_id,
+            "policy_version": active_version,
+        }
+    except Exception:
+        if context is not None:
+            # A process interruption leaves the existing pending admission.
+            try:
+                with brain.store.transaction() as db:
+                    brain.store.set_meta(DELIBERATION+context["sha256"], json.dumps({
+                        "status":"failed", "input_sha256":hashlib.sha256(wording.encode()).hexdigest()},
+                        sort_keys=True), db)
+                    brain.store.bump_state_version(db)
+            except Exception:
+                pass
+        raise
 
 
 

@@ -7,6 +7,17 @@ on:
     paths:
       - doctor_lives/lab_home_bridge.py
       - tests/test_lab_home_bridge.py
+      - tests/test_lab_ownership_hardening.py
+      - doctor_lives/cognition.py
+      - doctor_lives/chassis.py
+      - doctor_lives/tower_ipseity.py
+      - doctor_lives/first_person_governance.py
+      - doctor_lives/operator_conversation.py
+      - doctor_lives/lab_telos.py
+      - doctor_lives/mnemosyne_pilot.py
+      - doctor_lives/canonical_background.py
+      - doctor_lives/ipseity_integration.py
+      - doctor_lives/lab_backup.py
       - tests/test_six_organ_lab_comparison.py
       - tests/test_six_organ_lab_readiness.py
       - tests/test_six_organ_environment_port.py
@@ -52,6 +63,7 @@ jobs:
           PYTHONPATH: donor-laboratory
         run: |
           python -m unittest discover -s tests -p test_lab_home_bridge.py -v
+          python -m unittest discover -s tests -p test_lab_ownership_hardening.py -v
       - name: Test one actual-Laboratory session through all six shared organs
         env:
           PYTHONPATH: donor-laboratory

@@ -165,6 +165,8 @@ class OperatorConversation:
         # The exact existing admitted user communication and subjective
         # experience, not a JSON packet of facts, ids or engineering state.
         frame = self.doctor.subject_frame(question)
+        from .tower_ipseity import TowerIpseity
+        frame = TowerIpseity(self.doctor.brain).expression_frame(frame)
         prompt = "\n".join(first_person_line(line)
                            for line in SubjectRendererCapability.read(frame))
         instruction = renderer_instruction(
@@ -287,6 +289,10 @@ class OperatorConversation:
                 raise PermissionError("Only an existing Pretorius turn can be emitted")
             brain = self.doctor.brain
             store = brain.store
+            from .tower_ipseity import TowerIpseity, RECORD
+            from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+            subject = TowerIpseity(brain)
+            subject.verify_tail()
             key = "operator-expression:" + turn_id
             # Bound speech without truncating it or falsely acknowledging
             # only part of a large historical recap.
@@ -322,6 +328,19 @@ class OperatorConversation:
                             != receipt.content_sha256):
                         raise SpeechEmissionUncertain("Changed expression source receipt")
                     memory_id = row["id"]
+                    # Old acknowledgments are not silently backfilled. The
+                    # preserved host receipt enables explicit recovery review.
+                    owned = db.execute("SELECT value FROM meta WHERE key=?",
+                        (RECORD+"acquisition:"+memory_id,)).fetchone()
+                    if owned is None:
+                        raise SpeechEmissionUncertain("Historical acknowledgment lacks owned admission")
+                    from .tower_ipseity import _checked_entry
+                    admitted = _checked_entry(owned[0],RECORD+"acquisition:"+memory_id)
+                    expected = {"organ":"Expression","mode":"self_perception",
+                        "attribution":"self_observed","text":event.text,
+                        "source_refs":[memory_id,row["source_event_id"]],"external":False}
+                    if admitted["phase"]!="acquisition" or admitted["content"]!=[expected]:
+                        raise SpeechEmissionUncertain("Acknowledgment differs from owned admission")
                 else:
                     # A host write is self-observed communication, NOT
                     # proof that words were heard, believed, or factual.
@@ -333,6 +352,9 @@ class OperatorConversation:
                     memory_id = store.add_memory(db, tick, event.text, source, event.kind,
                         "self_observed_expression", False, 1.0, False, .35,
                         tags=event.tags, source_event_id=event_id)
+                    owned_event=subject.event("Expression",event.text,PhenomenalMode.SELF_PERCEPTION,
+                        (memory_id,event_id),attribution=SubjectiveSourceKind.SELF_OBSERVED,tick=tick)
+                    subject.record(db,"acquisition:"+memory_id,(owned_event,),phase="acquisition",tick=tick)
                     store.bump_state_version(db)
             return {"turn_id": turn_id, "memory_id": memory_id,
                     "content_sha256": receipt.content_sha256, "sink_id": receipt.sink_id,
