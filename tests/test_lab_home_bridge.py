@@ -95,9 +95,55 @@ class RealDoctorHomeBridgeTests(unittest.TestCase):
             move = self.bridge.act("walk", event_id="qi02-hall", station="station:hall")
         self.assertEqual([m for m, _ in observed], [first["memory_id"], move["memory_id"]])
         entries = subject.verify_history()
-        self.assertEqual([e["sha256"] for e in entries], [h for _, h in observed])
+        acquisitions = [e for e in entries if e["phase"] == "acquisition"]
+        self.assertEqual([e["sha256"] for e in acquisitions], [h for _, h in observed])
         reopened = PretoriusBrainPort(brain.state_dir)
         self.assertEqual(TowerIpseity(reopened.brain).verify_history(), entries)
+
+    def test_laboratory_noesis_context_is_owned_before_policy_and_survives_reopen(self):
+        from doctor_lives.tower_ipseity import TowerIpseity, RECORD
+
+        brain = self.doctor.brain
+        self.bridge.observe()
+        subject = TowerIpseity(brain)
+        prefix = subject.verify_history()
+        context = "I wonder what I should do next."
+        original = brain._state_policy_scores
+
+        def checked_policy(*args, **kwargs):
+            latest = subject.verify_history()[-1]
+            self.assertEqual(latest["phase"], "thought_context")
+            self.assertEqual(latest["content"][0]["text"], context)
+            self.assertEqual(kwargs["decision_text"], context)
+            return original(*args, **kwargs)
+
+        with patch.object(brain, "_state_policy_scores", side_effect=checked_policy):
+            result = brain.think("lab_ownership_control", decision_text=context)
+        history = subject.verify_history()
+        self.assertEqual(history[:len(prefix)], prefix)
+        self.assertEqual(history[-2]["sha256"], result["state_pressure"]["ipseity_context"]["sha256"])
+        self.assertEqual(history[-1]["key"], RECORD + "thought:" + result["id"])
+        self.assertIn(result["policy_decision_id"], history[-1]["content"][0]["source_refs"])
+        self.assertEqual(history[-1]["content"][0]["text"], result["text"])
+
+        # Failure must occur before policy, and must not change canonical state.
+        before = brain.store.digest()
+        with patch.object(TowerIpseity, "record", side_effect=PermissionError("denied")), \
+                patch.object(brain, "_state_policy_scores", wraps=original) as policy:
+            with self.assertRaisesRegex(PermissionError, "denied"):
+                brain.think("lab_ownership_control", decision_text=context)
+            policy.assert_not_called()
+        self.assertEqual(brain.store.digest(), before)
+
+        # Reopen without constructing a new world bridge: the ownership
+        # restriction persists and the old history is not reconstructed.
+        reopened = PretoriusBrainPort(brain.state_dir)
+        reopened_subject = TowerIpseity(reopened.brain)
+        self.assertEqual(reopened_subject.verify_history(), history)
+        thought = reopened.cognition("heartbeat")
+        self.assertEqual(reopened_subject.verify_history()[-1]["key"],
+                         RECORD + "thought:" + thought["id"])
+        self.assertEqual(reopened_subject.verify_history()[:-1], history)
 
     def test_failed_laboratory_subject_admission_does_not_reach_recurrence(self):
         from doctor_lives.tower_ipseity import TowerIpseity

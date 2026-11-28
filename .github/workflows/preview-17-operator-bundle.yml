@@ -3,6 +3,10 @@ name: Source-pinned seventeen-book offline operator bundle
 on:
   pull_request:
     paths:
+      - doctor_lives/cognition.py
+      - doctor_lives/chassis.py
+      - doctor_lives/tower_ipseity.py
+      - tests/test_lab_home_bridge.py
       - doctor_lives/lab_preview.py
       - doctor_lives/preview_17_books.py
       - doctor_lives/cli.py

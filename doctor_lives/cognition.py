@@ -1007,8 +1007,9 @@ class PretoriusBrain:
         tower_subject = None
         tower_bound = self.store.meta("small-tower:world-binding-v1") is not None
         recollection = trigger == "mnemosyne_private_reflection"
-        if tower_bound or recollection:
-            from .tower_ipseity import TowerIpseity
+        from .tower_ipseity import LABORATORY_OWNERSHIP, TowerIpseity
+        laboratory_owned = self.store.meta(LABORATORY_OWNERSHIP) is not None
+        if tower_bound or laboratory_owned or recollection:
             tower_subject = TowerIpseity(self)
             # Preserve the existing Tower-specific commitment policy.
             if tower_bound and getattr(self,"_ipseity_owned_commitments",None) is None:
