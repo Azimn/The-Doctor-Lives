@@ -68,6 +68,10 @@ def sync_native_commitments(chooser):
         states.append(("work", chooser.work._load()))
     store = chooser.store
     projections = []
+    from .tower_ipseity import TowerIpseity, ownership_required, RECORD
+    from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+    brain = chooser.runtime._port.brain
+    subject = TowerIpseity(brain) if ownership_required(brain) else None
     for kind, state in states:
         if state is None:
             continue
@@ -82,10 +86,19 @@ def sync_native_commitments(chooser):
                                 (state["origin_policy_id"],)).fetchone()
         if origin is None:
             raise PermissionError("Missing original goal policy")
-        projections.append((rid, source, description, int(origin["tick"]), status, outcome))
+        event = None
+        if subject is not None and status == "open":
+            event = subject.event("Telos", "I still intend to "+description+".",
+                PhenomenalMode.INTENTION, (rid,state["origin_policy_id"],state["origin_thought_id"]),
+                attribution=SubjectiveSourceKind.SELF_OBSERVED)
+        projections.append((rid, source, description, int(origin["tick"]), status, outcome, event))
     with store.transaction() as db:
         changed = False
-        for rid, source, description, created, status, outcome in projections:
+        for rid, source, description, created, status, outcome, event in projections:
+            if event is not None:
+                # Current reacquisition from an already validated active goal,
+                # never a claim that historical thoughts were admitted then.
+                subject.record(db,"laboratory-intention:"+rid,(event,),phase="intention")
             row = db.execute("SELECT * FROM commitments WHERE id=?", (rid,)).fetchone()
             if row is None:
                 db.execute(
@@ -129,4 +142,7 @@ def active_persistence(brain, goal):
             or row["actor"] is not None or row["due_tick"] is not None
             or row["importance"] != DEFAULT_IMPORTANCE):
         raise PermissionError("Active native intention has invalid Telos projection")
+    from .tower_ipseity import TowerIpseity, ownership_required
+    if ownership_required(brain) and TowerIpseity(brain).commitment_event(dict(row), brain.store.digest()) is None:
+        raise PermissionError("Active native commitment lacks first-person admission")
     return rid, float(row["importance"])

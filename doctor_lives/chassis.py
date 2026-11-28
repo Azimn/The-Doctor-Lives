@@ -7,6 +7,7 @@ from typing import Any, Callable, Mapping
 from .cognition import PretoriusBrain
 from .ingress import IngressProjectionError, project_raw_ingress
 from .models import SubjectFrame
+from .tower_ipseity import LABORATORY_OWNERSHIP, TowerIpseity, ownership_required
 from .projection import ProjectionContext
 from .subject_inquiry import (
     SubjectInquiryAuthorizationError,
@@ -82,9 +83,9 @@ class PretoriusBrainPort:
         bridge.subject.verify()
         # A verified host must not fall back to unowned Noesis after a cold open.
         # This durable restriction creates no experience or historical backfill.
-        from .tower_ipseity import LABORATORY_OWNERSHIP
-        if self.brain.store.meta(LABORATORY_OWNERSHIP) is None:
-            with self.brain.store.transaction() as db:
+        with self.brain.store.transaction() as db:
+            TowerIpseity(self.brain).verify_tail(db)
+            if db.execute("SELECT 1 FROM meta WHERE key=?", (LABORATORY_OWNERSHIP,)).fetchone() is None:
                 self.brain.store.set_meta(LABORATORY_OWNERSHIP, "required", db)
                 self.brain.store.bump_state_version(db)
         self._verified_laboratory_bridges.add(bridge)
@@ -189,7 +190,7 @@ class PretoriusBrainPort:
         reserved = (
             "laboratory-home:", "virtual-world:",
             "sensus-pilot-verified:", "mock-robot-fixture:",
-            "phantasmagorium:dream-recollection:", "operator-expression:",
+            "phantasmagorium:dream-recollection:", "operator-expression:", "local-emission:",
         )
         claimed = event.get("source")
         # In particular, an untrusted report with an invented Laboratory
@@ -217,7 +218,7 @@ class PretoriusBrainPort:
             frame = SubjectFrame.from_events((projected.event,))
             if SubjectRendererCapability.read(frame) != (projected.experience.text,):
                 raise PermissionError("Tower cognition cannot bypass owned first-person ingress")
-        if (self.brain.store.meta("small-tower:world-binding-v1") is not None
+        if (ownership_required(self.brain)
                 or (laboratory_verified and isinstance(claimed, str)
                     and claimed.startswith("laboratory-home:"))):
             result = self.brain.ingest(projected.experience, projected_event=projected.event)

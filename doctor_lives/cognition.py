@@ -45,6 +45,8 @@ from .projection import (
     project_relationship_feeling,
 )
 from .store import BrainStore, clamp, new_id, utc_now
+from .tower_ipseity import LABORATORY_OWNERSHIP, DELIBERATION, TowerIpseity, ownership_required
+from .first_person_governance import require_subject_line, semantic_subject_text
 
 
 class PretoriusBrain:
@@ -60,6 +62,8 @@ class PretoriusBrain:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.evidence = CanonicalEvidenceAuthority(self.state_dir).prepare()
         self.store = BrainStore(self.state_dir / "brain.sqlite3")
+        if ownership_required(self):
+            TowerIpseity(self).verify_history()
         self._bind_canonical_evidence()
         self.neural_path = self.state_dir / "pretorius_recurrent.npz"
         self.bootstrap = json.loads(
@@ -512,12 +516,11 @@ class PretoriusBrain:
             raise ValueError("experience text is required")
         subject=None
         subject_digest=None
-        if (self.store.meta("small-tower:world-binding-v1") is not None
-                or exp.source.startswith("laboratory-home:")):
+        if ownership_required(self) or exp.source.startswith("laboratory-home:"):
             # The source-verified Laboratory bridge shares the same owning
             # subject and pre-recurrent admission transaction as Small Tower.
-            from .tower_ipseity import TowerIpseity
             subject=TowerIpseity(self)
+            subject.verify_tail()
             subject_digest=self.store.digest()
             subject.validate_ingress(exp, projected_event)
         with self.store.transaction() as conn:
@@ -579,11 +582,19 @@ class PretoriusBrain:
             "felt_state": self._felt_state(),
         }
 
+    def _owned_commitment_texts(self):
+        owned = getattr(self, "_ipseity_owned_commitments", None)
+        if owned is None and ownership_required(self):
+            subject = TowerIpseity(self)
+            subject.verify_tail()
+            owned = {rid:event[1].subject_text for rid,event in subject.owned_events()}
+        return owned
+
     def _open_terms(self) -> set[str]:
         terms: set[str] = set()
         for row in self.store.open_concerns():
             terms |= self._tokens(str(row["description"]))
-        owned = getattr(self, "_ipseity_owned_commitments", None)
+        owned = self._owned_commitment_texts()
         for row in self.store.open_commitments():
             if owned is None:
                 terms |= self._tokens(str(row["description"]))
@@ -617,7 +628,7 @@ class PretoriusBrain:
             row for row in self.store.memories_with_classification()
             if row["id"] not in suppressed_by_canon
         ]
-        query_tokens = self._tokens(query or "")
+        query_tokens = self._tokens(semantic_subject_text(query or ""))
         direct_ranked: list[tuple[float, dict[str, Any]]] = []
         for row in rows:
             accessibility = dream_accessibility(row, now)
@@ -703,7 +714,7 @@ class PretoriusBrain:
         pre-spreading retrieval operation for this decision. It never scans the
         full store and never consumes spreading-activation bonuses.
         """
-        decision_tokens = self._tokens(decision_text or "")
+        decision_tokens = self._tokens(semantic_subject_text(decision_text or ""))
         if not decision_tokens:
             return []
         candidates: list[tuple[float, dict[str, Any]]] = []
@@ -757,7 +768,7 @@ class PretoriusBrain:
             for key in ("needs", "relationships", "commitments", "history", "concerns")
         }
         source_ids: dict[str, list[str]] = {key: [] for key in families}
-        decision_tokens = self._tokens(decision_text or "")
+        decision_tokens = self._tokens(semantic_subject_text(decision_text or ""))
 
         def add(family: str, action: str, delta: float) -> None:
             families[family][action] += float(delta)
@@ -805,7 +816,7 @@ class PretoriusBrain:
             add("relationships", "challenge", 0.035 * negative)
             add("relationships", "avoid", 0.025 * negative)
 
-        owned = getattr(self, "_ipseity_owned_commitments", None)
+        owned = self._owned_commitment_texts()
         for item in self.store.open_commitments():
             if owned is not None and item["id"] not in owned:
                 continue
@@ -1007,12 +1018,11 @@ class PretoriusBrain:
         tower_subject = None
         tower_bound = self.store.meta("small-tower:world-binding-v1") is not None
         recollection = trigger == "mnemosyne_private_reflection"
-        from .tower_ipseity import LABORATORY_OWNERSHIP, TowerIpseity
         laboratory_owned = self.store.meta(LABORATORY_OWNERSHIP) is not None
         if tower_bound or laboratory_owned or recollection:
             tower_subject = TowerIpseity(self)
-            # Preserve the existing Tower-specific commitment policy.
-            if tower_bound and getattr(self,"_ipseity_owned_commitments",None) is None:
+            tower_subject.verify_tail()
+            if (tower_bound or laboratory_owned) and getattr(self,"_ipseity_owned_commitments",None) is None:
                 owned = {rid:event[1].subject_text for rid,event in tower_subject.owned_events()}
                 with tower_subject.cognitive_access(owned):
                     return self.think(trigger,decision_text=decision_text,bridge_enabled=bridge_enabled)
@@ -1047,10 +1057,8 @@ class PretoriusBrain:
                     or item["text"] != decision_text or not valid_refs):
                 raise PermissionError("Recollection differs from owned admission")
         if tower_subject is not None and decision_text is not None:
-            from .first_person_governance import first_person_line
-            line=first_person_line(decision_text)
-            if line.startswith("I cannot make sense of"):
-                raise PermissionError("Unsafe conscious decision context")
+            line=require_subject_line(decision_text)
+            raw_decision_sha=hashlib.sha256(decision_text.encode("utf-8")).hexdigest()
             decision_text=line
             from .phenomenology import PhenomenalMode, SubjectiveSourceKind
             context_event=tower_subject.event("Noesis",line,PhenomenalMode.INTERNAL_THOUGHT,
@@ -1058,87 +1066,108 @@ class PretoriusBrain:
             with self.store.transaction() as db:
                 context_entry=tower_subject.record(db,new_id("thought-context"),(context_event,),
                                                    phase="thought_context")
+                context_status=DELIBERATION+context_entry["sha256"]
+                self.store.set_meta(context_status,json.dumps({"status":"pending",
+                    "input_sha256":raw_decision_sha},sort_keys=True),db)
         else:
             context_entry=None
-        direct_ranked_all, ranked_all = self._ranked_memory_sets(
-            48, query=decision_text, audit=True
-        )
-        base_scores, scores, state_pressure = self._state_policy_scores(
-            ranked_all,
-            decision_text=decision_text,
-            direct_history_ranked=direct_ranked_all,
-            bridge_enabled=bridge_enabled,
-        )
-        if context_entry is not None:
-            state_pressure["ipseity_context"]={"key":context_entry["key"],"sha256":context_entry["sha256"]}
-        tendency = max(scores, key=scores.get)
-        candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
-        if not candidates:
-            candidates = ranked_all
-        policy_ranked = self._policy_rank(candidates, tendency)
-        chosen_rows = [row for _, row in policy_ranked[:4]]
-        selected = [self._view_item(score, row) for score, row in policy_ranked[:4]]
-        if selected:
-            lead = selected[0].first_person
-            second = selected[1].first_person if len(selected) > 1 else ""
-            text = f"I keep coming back to this thought: {lead}"
-            if second and second != lead:
-                text += f" Another thought pulls at me too: {second}"
-        else:
-            text = "I do not feel any particular thought holding my attention right now."
-        record_ids = [item.record_id for item in selected]
-        candidate_ids = [row["id"] for _, row in candidates]
-        checkpoint_sha = self._neural_checkpoint_sha256()
-        policy_version = str(self.evolution_policy["neural_policy_version"])
-        subject_digest = self.store.digest() if tower_subject is not None else None
-        with self.store.transaction() as conn:
-            decision_id = new_id("policy")
-            conn.execute(
-                """INSERT INTO policy_decisions
-                (id,tick,created_at,trigger,selected_action,base_action_scores_json,
-                 state_pressure_json,action_scores_json,candidate_record_ids_json,
-                 selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (
-                    decision_id, self.store.tick, utc_now(), trigger, tendency,
-                    json.dumps(base_scores, sort_keys=True),
-                    json.dumps(state_pressure, sort_keys=True),
-                    json.dumps(scores, sort_keys=True), json.dumps(candidate_ids),
-                    json.dumps(record_ids), int(self.neural.tick), checkpoint_sha, policy_version,
-                ),
+        try:
+            direct_ranked_all, ranked_all = self._ranked_memory_sets(
+                48, query=decision_text, audit=True
             )
-            tid = new_id("thought")
-            conn.execute(
-                """INSERT INTO thoughts
-                (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
-                VALUES(?,?,?,?,?,?,?)""",
-                (
-                    tid, self.store.tick, text, trigger, f"neural_policy:{decision_id}",
-                    json.dumps(record_ids), json.dumps(scores, sort_keys=True),
-                ),
+            base_scores, scores, state_pressure = self._state_policy_scores(
+                ranked_all,
+                decision_text=decision_text,
+                direct_history_ranked=direct_ranked_all,
+                bridge_enabled=bridge_enabled,
             )
-            for rid in record_ids:
-                self.store.rehearse(conn, rid, self.store.tick)
-            if tower_subject is not None:
-                from .phenomenology import PhenomenalMode, SubjectiveSourceKind
-                event=tower_subject.event("Noesis",text,PhenomenalMode.INTERNAL_THOUGHT,
-                                          (tid,decision_id,*record_ids),
-                                          attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=subject_digest)
-                tower_subject.record(conn,"thought:"+tid,(event,),phase="private_thought")
-            self.store.bump_state_version(conn)
-        return {
-            "id": tid,
-            "tick": self.store.tick,
-            "text": text,
-            "source_record_ids": record_ids,
-            "policy_decision_id": decision_id,
-            "selected_action": tendency,
-            "base_action_scores": base_scores,
-            "state_pressure": state_pressure,
-            "action_scores": scores,
-            "neural_checkpoint_sha256": checkpoint_sha,
-            "policy_version": policy_version,
-        }
+            if context_entry is not None:
+                state_pressure["ipseity_context"]={"key":context_entry["key"],"sha256":context_entry["sha256"]}
+                state_pressure["raw_decision_text_sha256"]=raw_decision_sha
+            tendency = max(scores, key=scores.get)
+            candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
+            if not candidates:
+                candidates = ranked_all
+            policy_ranked = self._policy_rank(candidates, tendency)
+            chosen_rows = [row for _, row in policy_ranked[:4]]
+            selected = [self._view_item(score, row) for score, row in policy_ranked[:4]]
+            if selected:
+                lead = selected[0].first_person
+                second = selected[1].first_person if len(selected) > 1 else ""
+                text = f"I keep coming back to this thought: {lead}"
+                if second and second != lead:
+                    text += f" Another thought pulls at me too: {second}"
+            else:
+                text = "I do not feel any particular thought holding my attention right now."
+            record_ids = [item.record_id for item in selected]
+            candidate_ids = [row["id"] for _, row in candidates]
+            checkpoint_sha = self._neural_checkpoint_sha256()
+            policy_version = str(self.evolution_policy["neural_policy_version"])
+            subject_digest = self.store.digest() if tower_subject is not None else None
+            with self.store.transaction() as conn:
+                decision_id = new_id("policy")
+                conn.execute(
+                    """INSERT INTO policy_decisions
+                    (id,tick,created_at,trigger,selected_action,base_action_scores_json,
+                     state_pressure_json,action_scores_json,candidate_record_ids_json,
+                     selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        decision_id, self.store.tick, utc_now(), trigger, tendency,
+                        json.dumps(base_scores, sort_keys=True),
+                        json.dumps(state_pressure, sort_keys=True),
+                        json.dumps(scores, sort_keys=True), json.dumps(candidate_ids),
+                        json.dumps(record_ids), int(self.neural.tick), checkpoint_sha, policy_version,
+                    ),
+                )
+                tid = new_id("thought")
+                conn.execute(
+                    """INSERT INTO thoughts
+                    (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
+                    VALUES(?,?,?,?,?,?,?)""",
+                    (
+                        tid, self.store.tick, text, trigger, f"neural_policy:{decision_id}",
+                        json.dumps(record_ids), json.dumps(scores, sort_keys=True),
+                    ),
+                )
+                for rid in record_ids:
+                    self.store.rehearse(conn, rid, self.store.tick)
+                if tower_subject is not None:
+                    from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+                    event=tower_subject.event("Noesis",text,PhenomenalMode.INTERNAL_THOUGHT,
+                                              (tid,decision_id,*record_ids),
+                                              attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=subject_digest)
+                    tower_subject.record(conn,"thought:"+tid,(event,),phase="private_thought")
+                if context_entry is not None:
+                    self.store.set_meta(context_status,json.dumps({"status":"completed",
+                        "input_sha256":raw_decision_sha,"policy_id":decision_id,"thought_id":tid},sort_keys=True),conn)
+                self.store.bump_state_version(conn)
+            return {
+                "id": tid,
+                "tick": self.store.tick,
+                "text": text,
+                "source_record_ids": record_ids,
+                "policy_decision_id": decision_id,
+                "selected_action": tendency,
+                "base_action_scores": base_scores,
+                "state_pressure": state_pressure,
+                "action_scores": scores,
+                "neural_checkpoint_sha256": checkpoint_sha,
+                "policy_version": policy_version,
+            }
+        except Exception:
+            if context_entry is not None:
+                # If even this write fails (disk/process interruption), the
+                # durable pending record remains explicitly NOT completed.
+                try:
+                    with self.store.transaction() as conn:
+                        self.store.set_meta(context_status,json.dumps({"status":"failed",
+                            "input_sha256":raw_decision_sha},sort_keys=True),conn)
+                        self.store.bump_state_version(conn)
+                except Exception:
+                    pass
+            raise
+
 
     def choose_feasible_action(
         self, *, observation_memory_id: str,

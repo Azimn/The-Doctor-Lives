@@ -99,9 +99,6 @@ class MnemosyneEndogenousPilot:
         if type(cooldown_ticks) is not int or not 1 <= cooldown_ticks <= 100:
             raise ValueError("Cooldown must be in [1,100]")
         brain = self._port.brain
-        base, adjusted, bridge = brain._state_policy_scores(
-            [], decision_text=None, bridge_enabled=True
-        )
         with closing(brain.store.connect()) as conn:
             needs = {
                 str(row["key"]): float(row["felt"])
@@ -137,71 +134,119 @@ class MnemosyneEndogenousPilot:
         candidates.sort(key=lambda row: (-row[0], row[1]))
         best = candidates[0] if candidates else None
         pressure = best[0] if best else 0.0
-        cooldown = (
-            last is not None
-            and 0 <= brain.store.tick - int(last["tick"]) < cooldown_ticks
-        )
-        # Direct adaptation of PR #59 bounded epistemic policy. It does not
-        # replace the existing ten-action recurrent neural substrate.
-        raw = {
-            "recall": max(
-                0.0, 0.12 + 0.72 * pressure + 0.12 * curiosity
-                + 0.10 * adjusted["explore"] - float(recall_cost)
-                - 0.50 * fatigue,
-            ) if best is not None and not cooldown else 0.0,
-            "continue": 0.35 + 0.35 * adjusted["persist"],
-            "ask": 0.16 + 0.20 * pressure * (1.0 - curiosity),
-            "defer": 0.07 + 0.50 * fatigue,
-        }
-        total = sum(raw.values())
-        scores = {key: value / total for key, value in raw.items()}
-        chosen = max(_ORDER, key=lambda key: raw[key])
-        gap_id = best[1] if chosen == "recall" else None
-        question = best[2] if gap_id else None
-        audit = {
-            "schema": "the-doctor-lives.endogenous-recall-research.v0.1",
-            "policy_version": _POLICY,
-            "origin": "trusted_host_sensus_conflict_preview",
-            "autonomous_model_authorship_proven": False,
-            "memory_retrieval_performed": False,
-            "information_need_family": {
-                "recall_pressure": pressure,
-                "curiosity": curiosity,
-                "fatigue": fatigue,
-                "recollection_cost": recall_cost,
-                "cooldown_active": cooldown,
-            },
-            "candidate_gap_ids": [c[1] for c in candidates],
-            "selected_gap_ids": [gap_id] if gap_id else [],
-            "question_sha256": hashlib.sha256(
-                question.encode("utf-8")
-            ).hexdigest() if question else None,
-            "deliberative_raw_scores": raw,
-            "state_policy_bridge": bridge,
-        }
-        decision_id = new_id("policy")
-        with brain.store.transaction() as conn:
-            conn.execute(
-                """INSERT INTO policy_decisions
-                (id,tick,created_at,trigger,selected_action,
-                 base_action_scores_json,state_pressure_json,
-                 action_scores_json,candidate_record_ids_json,
-                 selected_record_ids_json,neural_tick,
-                 neural_checkpoint_sha256,policy_version)
-                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (
-                    decision_id, brain.store.tick, utc_now(), _TRIGGER, chosen,
-                    json.dumps(base, sort_keys=True),
-                    json.dumps(audit, sort_keys=True),
-                    json.dumps(scores, sort_keys=True),
-                    json.dumps(audit["candidate_gap_ids"]),
-                    json.dumps(audit["selected_gap_ids"]),
-                    int(brain.neural.tick),
-                    brain._neural_checkpoint_sha256(),
-                    _POLICY,
-                ),
+        # Candidate ranking is latent. The selected uncertainty is admitted
+        # before the original epistemic policy consumes it. No host question
+        # or externally supplied goal is introduced.
+        from .tower_ipseity import TowerIpseity, ownership_required, DELIBERATION
+        from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+        subject = TowerIpseity(brain) if ownership_required(brain) else None
+        context = None
+        status_key = None
+        if subject is not None:
+            subject.verify_tail()
+            if best is not None:
+                event = subject.event("Mnemosyne", "I ask myself: " + best[2],
+                                      PhenomenalMode.INTERNAL_THOUGHT, (best[1],),
+                                      attribution=SubjectiveSourceKind.UNKNOWN)
+                with brain.store.transaction() as db:
+                    context = subject.record(db, new_id("recall-context"), (event,),
+                                             phase="recall_context")
+                    status_key = DELIBERATION + context["sha256"]
+                    brain.store.set_meta(status_key, json.dumps({"status": "pending"}, sort_keys=True), db)
+        try:
+            base, adjusted, bridge = brain._state_policy_scores(
+                [], decision_text=None, bridge_enabled=True
             )
-            brain.store.bump_state_version(conn)
+            cooldown = (
+                last is not None
+                and 0 <= brain.store.tick - int(last["tick"]) < cooldown_ticks
+            )
+            # Direct adaptation of PR #59 bounded epistemic policy. It does not
+            # replace the existing ten-action recurrent neural substrate.
+            raw = {
+                "recall": max(
+                    0.0, 0.12 + 0.72 * pressure + 0.12 * curiosity
+                    + 0.10 * adjusted["explore"] - float(recall_cost)
+                    - 0.50 * fatigue,
+                ) if best is not None and not cooldown else 0.0,
+                "continue": 0.35 + 0.35 * adjusted["persist"],
+                "ask": 0.16 + 0.20 * pressure * (1.0 - curiosity),
+                "defer": 0.07 + 0.50 * fatigue,
+            }
+            total = sum(raw.values())
+            scores = {key: value / total for key, value in raw.items()}
+            chosen = max(_ORDER, key=lambda key: raw[key])
+            gap_id = best[1] if chosen == "recall" else None
+            question = best[2] if gap_id else None
+            audit = {
+                "schema": "the-doctor-lives.endogenous-recall-research.v0.1",
+                "policy_version": _POLICY,
+                "origin": "trusted_host_sensus_conflict_preview",
+                "autonomous_model_authorship_proven": False,
+                "memory_retrieval_performed": False,
+                "information_need_family": {
+                    "recall_pressure": pressure,
+                    "curiosity": curiosity,
+                    "fatigue": fatigue,
+                    "recollection_cost": recall_cost,
+                    "cooldown_active": cooldown,
+                },
+                "candidate_gap_ids": [c[1] for c in candidates],
+                "selected_gap_ids": [gap_id] if gap_id else [],
+                "question_sha256": hashlib.sha256(
+                    question.encode("utf-8")
+                ).hexdigest() if question else None,
+                "deliberative_raw_scores": raw,
+                "state_policy_bridge": bridge,
+            }
+            decision_id = new_id("policy")
+            if context is not None:
+                audit["ipseity_context"] = {"key": context["key"], "sha256": context["sha256"]}
+            if subject is not None:
+                wording = {"recall": "I want to recall what I can of this.",
+                           "continue": "I mean to continue with what presently occupies me.",
+                           "ask": "I would like to ask about what I do not understand.",
+                           "defer": "I will leave this uncertainty for another moment."}[chosen]
+                intention = subject.event("Mnemosyne", wording, PhenomenalMode.INTENTION,
+                                          (decision_id,) + ((gap_id,) if gap_id else ()),
+                                          attribution=SubjectiveSourceKind.SELF_OBSERVED)
+            with brain.store.transaction() as conn:
+                conn.execute(
+                    """INSERT INTO policy_decisions
+                    (id,tick,created_at,trigger,selected_action,
+                     base_action_scores_json,state_pressure_json,
+                     action_scores_json,candidate_record_ids_json,
+                     selected_record_ids_json,neural_tick,
+                     neural_checkpoint_sha256,policy_version)
+                     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        decision_id, brain.store.tick, utc_now(), _TRIGGER, chosen,
+                        json.dumps(base, sort_keys=True),
+                        json.dumps(audit, sort_keys=True),
+                        json.dumps(scores, sort_keys=True),
+                        json.dumps(audit["candidate_gap_ids"]),
+                        json.dumps(audit["selected_gap_ids"]),
+                        int(brain.neural.tick),
+                        brain._neural_checkpoint_sha256(),
+                        _POLICY,
+                    ),
+                )
+                if subject is not None:
+                    subject.record(conn, "recall-decision:" + decision_id, (intention,),
+                                   phase="private_experience")
+                if status_key is not None:
+                    brain.store.set_meta(status_key, json.dumps({"status": "completed",
+                        "policy_id": decision_id}, sort_keys=True), conn)
+                brain.store.bump_state_version(conn)
+        except Exception:
+            if status_key is not None:
+                try:
+                    with brain.store.transaction() as db:
+                        brain.store.set_meta(status_key, json.dumps({"status": "failed"}, sort_keys=True), db)
+                        brain.store.bump_state_version(db)
+                except Exception:
+                    pass  # Durable pending is not completed after interruption.
+            raise
         if question is not None:
             self._pending_question = question
             self._pending_decision_id = decision_id
