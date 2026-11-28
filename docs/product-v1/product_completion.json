@@ -1,7 +1,7 @@
 {
   "schema": "pretorius.product-completion.v1",
   "objective": "Complete the existing Doctor Septimus Pretorius as one persistent embodied artificial individual; product and engineering qualification primary",
-  "as_of": "2026-11-25",
+  "as_of": "2026-11-27",
   "branch": "integration/pretorius-v1-unified-completion",
   "pr": 124,
   "canonical_main": "784cff39d58a7fe46bb5e4ffc16e0284e6663c78",
@@ -63,8 +63,8 @@
       "repository": "Azimn/The-Doctor-Lives",
       "locations": "lab_native_goal_choice.py; lab_native_work_goal.py; noesis_day.py",
       "status": "partial",
-      "evidence": "Exact 5bba8ad independent R4 PASS 45548799763 / 138988547124, 5 validated goals, all 3 activities; full 21 workflow passes. Longitudinal competence remains open.",
-      "next": "Fix prerequisite action selection, re-run independent trial; preserve gate and complete longer-term goals."
+      "evidence": "Exact PR #124 integration head 83d3c8232ca7e81fa5f675f2b70d9a82a73fcd98: 22/22 returned workflow runs passed. Independent R4 PASS run 45936446376, job 140303331982: 524 authenticated additional original-world receipts (520 target), 9 validated goals, 61 independent origin observations, read_book/rest/work, all five original physics verifiers, zero operator errors, capacity completion 1835.429 s. Archived source 15172059210 and diagnostics 15172755805; service digests recorded in PR #124, independent offline replay pending. This evidence belongs to 83d3c82, not the PR #129 successor. Historical 5bba8ad evidence retained in the historical sections. Longitudinal competence remains scientific qualification.",
+      "next": "Verify recovered PR #129 authorization candidate and universal first-person admission, then rerun the unchanged R4 capacity gate on the controlled integration successor. Independently replay archived originals; matched performance profiling is diagnostic, not a waiver or substitute for R4."
     },
     {
       "id": "R05",
