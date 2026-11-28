@@ -80,6 +80,13 @@ class PretoriusBrainPort:
         if bridge.subject.habitat is not bridge.world:
             raise PermissionError("Laboratory subject and physical world do not match")
         bridge.subject.verify()
+        # A verified host must not fall back to unowned Noesis after a cold open.
+        # This durable restriction creates no experience or historical backfill.
+        from .tower_ipseity import LABORATORY_OWNERSHIP
+        if self.brain.store.meta(LABORATORY_OWNERSHIP) is None:
+            with self.brain.store.transaction() as db:
+                self.brain.store.set_meta(LABORATORY_OWNERSHIP, "required", db)
+                self.brain.store.bump_state_version(db)
         self._verified_laboratory_bridges.add(bridge)
 
     def _ingest_verified_laboratory(self, event: Mapping[str, Any], *,

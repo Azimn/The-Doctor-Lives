@@ -95,9 +95,55 @@ class RealDoctorHomeBridgeTests(unittest.TestCase):
             move = self.bridge.act("walk", event_id="qi02-hall", station="station:hall")
         self.assertEqual([m for m, _ in observed], [first["memory_id"], move["memory_id"]])
         entries = subject.verify_history()
-        self.assertEqual([e["sha256"] for e in entries], [h for _, h in observed])
+        acquisitions = [e for e in entries if e["phase"] == "acquisition"]
+        self.assertEqual([e["sha256"] for e in acquisitions], [h for _, h in observed])
         reopened = PretoriusBrainPort(brain.state_dir)
         self.assertEqual(TowerIpseity(reopened.brain).verify_history(), entries)
+
+    def test_laboratory_noesis_context_is_owned_before_policy_and_survives_reopen(self):
+        from doctor_lives.tower_ipseity import TowerIpseity, RECORD
+
+        brain = self.doctor.brain
+        self.bridge.observe()
+        subject = TowerIpseity(brain)
+        prefix = subject.verify_history()
+        context = "I wonder what I should do next."
+        original = brain._state_policy_scores
+
+        def checked_policy(*args, **kwargs):
+            latest = subject.verify_history()[-1]
+            self.assertEqual(latest["phase"], "thought_context")
+            self.assertEqual(latest["content"][0]["text"], context)
+            self.assertEqual(kwargs["decision_text"], context)
+            return original(*args, **kwargs)
+
+        with patch.object(brain, "_state_policy_scores", side_effect=checked_policy):
+            result = brain.think("lab_ownership_control", decision_text=context)
+        history = subject.verify_history()
+        self.assertEqual(history[:len(prefix)], prefix)
+        self.assertEqual(history[-2]["sha256"], result["state_pressure"]["ipseity_context"]["sha256"])
+        self.assertEqual(history[-1]["key"], RECORD + "thought:" + result["id"])
+        self.assertIn(result["policy_decision_id"], history[-1]["content"][0]["source_refs"])
+        self.assertEqual(history[-1]["content"][0]["text"], result["text"])
+
+        # Failure must occur before policy, and must not change canonical state.
+        before = brain.store.digest()
+        with patch.object(TowerIpseity, "record", side_effect=PermissionError("denied")), \
+                patch.object(brain, "_state_policy_scores", wraps=original) as policy:
+            with self.assertRaisesRegex(PermissionError, "denied"):
+                brain.think("lab_ownership_control", decision_text=context)
+            policy.assert_not_called()
+        self.assertEqual(brain.store.digest(), before)
+
+        # Reopen without constructing a new world bridge: the ownership
+        # restriction persists and the old history is not reconstructed.
+        reopened = PretoriusBrainPort(brain.state_dir)
+        reopened_subject = TowerIpseity(reopened.brain)
+        self.assertEqual(reopened_subject.verify_history(), history)
+        thought = reopened.cognition("heartbeat")
+        self.assertEqual(reopened_subject.verify_history()[-1]["key"],
+                         RECORD + "thought:" + thought["id"])
+        self.assertEqual(reopened_subject.verify_history()[:-1], history)
 
     def test_failed_laboratory_subject_admission_does_not_reach_recurrence(self):
         from doctor_lives.tower_ipseity import TowerIpseity
@@ -168,20 +214,53 @@ class RealDoctorHomeBridgeTests(unittest.TestCase):
             self.assertEqual(self.world.verify(), world_before)
             self.assertIsNone(sync_phantasmagorium(self.bridge, Path("fixture.zip")))
             self.assertEqual(subject.verify_history(), history)
-        # Controlled downstream cue: the actual selector must see the
-        # already committed donor admission, not an unowned dream string.
+        # Controlled downstream cue: both the original dreamed attribution
+        # and the new Noesis context must be durably owned BEFORE selection.
+        # A context record is a thought about the dream, not a lived event.
         original = brain._state_policy_scores
         witnessed = []
         def checked_policy(*args, **kwargs):
             self.assertEqual(kwargs["decision_text"], text)
-            self.assertEqual(subject.verify_history()[-1], entry)
-            witnessed.append(entry["sha256"])
+            committed = subject.verify_history()
+            self.assertEqual(committed[:-1], history)
+            self.assertEqual(committed[-2], entry)
+            context = committed[-1]
+            self.assertEqual(context["phase"], "thought_context")
+            self.assertEqual(context["previous_sha256"], entry["sha256"])
+            self.assertEqual(context["sequence"], entry["sequence"] + 1)
+            self.assertEqual(context["content"], [{
+                "organ": "Noesis", "mode": "internal_thought",
+                "attribution": "unknown", "text": text,
+                "source_refs": [], "external": False,
+            }])
+            witnessed.append(context)
             return original(*args, **kwargs)
         with patch.object(brain, "_state_policy_scores", side_effect=checked_policy):
-            brain.think("test_post_dream_deliberation", decision_text=text)
-        self.assertEqual(witnessed, [entry["sha256"]])
+            decision = brain.think("test_post_dream_deliberation", decision_text=text)
+        self.assertEqual(len(witnessed), 1)
+        context = witnessed[0]
+        self.assertEqual(decision["state_pressure"]["ipseity_context"],
+                         {"key": context["key"], "sha256": context["sha256"]})
+        committed = subject.verify_history()
+        self.assertEqual(committed[:-1], history + [context])
+        thought = committed[-1]
+        self.assertEqual(thought["phase"], "private_thought")
+        self.assertEqual(thought["previous_sha256"], context["sha256"])
+        self.assertEqual(thought["sequence"], context["sequence"] + 1)
+        self.assertEqual(thought["content"][0]["text"], decision["text"])
+        self.assertIn(decision["id"], thought["content"][0]["source_refs"])
+        self.assertIn(decision["policy_decision_id"], thought["content"][0]["source_refs"])
+        # Do not promote the dreamed recollection into factual or lived memory.
+        dream_memory = brain.store.get_memory(mid)
+        self.assertEqual(dream_memory["evidence_class"], "dreamed_not_lived")
+        self.assertTrue(dream_memory["external"])
+        self.assertEqual(dream_memory["text"], text)
+        self.assertEqual(self.world.verify(), world_before)
+        self.assertEqual(brain.neural.tick, neural_before)
         reopened = PretoriusBrainPort(brain.state_dir)
-        self.assertIn(entry, TowerIpseity(reopened.brain).verify_history())
+        self.assertEqual(TowerIpseity(reopened.brain).verify_history(), committed)
+        self.assertEqual(reopened.brain.store.get_memory(mid)["evidence_class"],
+                         "dreamed_not_lived")
 
     def test_waking_fancy_commits_owned_motifs_or_rolls_back(self):
         from doctor_lives.lab_phantasmagorium import STATE, sync_phantasmagorium

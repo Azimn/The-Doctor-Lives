@@ -18,6 +18,8 @@ from .first_person_governance import first_person_line
 from .store import new_id
 
 HEAD = "ipseity:tower-history-head:v1"
+# Restricts future cognition; never grants source, motor or historical authority.
+LABORATORY_OWNERSHIP = "ipseity:laboratory-ownership-required:v1"
 RECORD = "ipseity:tower-history:"
 VERSION = "tower-owning-subject-v1"
 _FIRST = re.compile(r"^(I\b|My\b|Me\b|Mine\b)",re.I)
