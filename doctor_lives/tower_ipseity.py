@@ -74,6 +74,16 @@ class TowerIpseity:
                   "attribution":e.subjective_source.kind.value,
                   "source_refs":list(e.source_state_refs),"external":e.objective_provenance.external}
                  for (organ,e),text in zip(events,lines)]
+        if key.startswith("recollection:"):
+            # Only the active Mnemosyne reflection may admit its selected cue.
+            # Raw record/admit_private calls and read-only retrieval cannot mint
+            # this handoff. Consume it even if validation or recording fails.
+            grant=getattr(self.brain,"_pending_recollection_admission",None)
+            self.brain._pending_recollection_admission=None
+            expected=(key,phase,content,self.store.tick,self.store.digest(),self.brain.neural.tick)
+            if (grant is None or grant!=expected or (tick is not None and tick!=self.store.tick)
+                    or _read(db,RECORD+key) is not None):
+                raise PermissionError("No fresh one-use selected recollection admission")
         key=RECORD+key
         prior=_read(db,key)
         if prior:
