@@ -1,0 +1,105 @@
+name: M6 operator conversation and frozen semantic acceptance
+on:
+  push:
+    branches: [integration/m6]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-conversation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Verify actual Laboratory pin
+        run: |
+          test "$(git -C donor-laboratory rev-parse HEAD)" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+          PYTHONPATH=donor-laboratory python -c "from pretorius_lab.subject_port import SubjectPort; print(SubjectPort)"
+      - name: Original donor-claim negatives and same-Lab operator channel
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          python -m unittest discover -s tests -p test_verify_conversation.py -v
+          python -m unittest discover -s tests -p test_m6_conversation.py -v
+      - name: Independent 40-family frozen semantic corpus
+        run: python scripts/verify_m6_semantics.py | tee /tmp/m6-semantic-heldout.json
+      - name: Measure each donor call path on actual original-Noesis decisions and source-backed targeted cases
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: python scripts/m6_donor_coverage.py --out /tmp/m6-donor-coverage.json
+      - name: No model original M6 dialogue and causal judges
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          python scripts/run_m6_conversation.py --root /tmp/m6-offline --model-off --report /tmp/m6-offline-report.json
+          python scripts/verify_conversation.py --report /tmp/m6-offline-report.json --model-off-only --require-source
+      - name: Original M2, M4 and preregistered semantic judge contracts
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          python -m unittest discover -s tests -p test_verify_day.py -v
+          python -m unittest discover -s tests -p test_verify_open.py -v
+          python -m unittest discover -s tests -p test_verify_semantics.py -v
+          python -m unittest discover -s tests -p test_chatgpt_semantics.py -v
+          python scripts/verify_semantics.py
+      - name: Upload no-model dialogue and judge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m6-source-backed-offline-dialogue
+          path: |
+            /tmp/m6-*.json
+            /tmp/m6-offline/
+          retention-days: 14
+          if-no-files-found: warn
+  live-ollama-conversation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Start free local Ollama, no remote inference
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > /tmp/m6-ollama.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          ollama pull qwen2.5:0.5b
+      - name: Actual 3 simulated days, two-way local model and source gate
+        env:
+          PYTHONPATH: donor-laboratory:.
+          NO_REMOTE_INFERENCE: '1'
+        run: |
+          python scripts/run_m6_conversation.py --root /tmp/m6-live --model qwen2.5:0.5b --report /tmp/m6-live-report.json
+          python scripts/verify_conversation.py --report /tmp/m6-live-report.json --require-source
+      - name: Upload original-world receipts, model calls and conversations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m6-live-ollama-conversation
+          path: |
+            /tmp/m6-live/
+            /tmp/m6-live-report.json
+            /tmp/m6-ollama.log
+          retention-days: 14
+          if-no-files-found: warn

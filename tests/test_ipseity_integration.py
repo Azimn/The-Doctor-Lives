@@ -8,6 +8,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from doctor_lives.neural import DEFAULT_CONFIG
 
@@ -78,6 +79,16 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
             self.assertNotIn(inquiry, text)
             self.assertNotIn("I read a message from User", text)
 
+    def test_publication_uses_typed_host_port_instead_of_engineer_shortcut(self):
+        with self.session() as session:
+            with patch.object(
+                session._doctor, "subject_frame",
+                wraps=session._doctor.subject_frame,
+            ) as access:
+                publication = session.publish_current()
+                access.assert_called_once_with(None)
+                self.assertIsNotNone(publication.outbox_id)
+
     def test_normal_subject_frame_through_same_durable_port(self):
         with self.session() as session:
             self.add_observation(session)
@@ -142,6 +153,57 @@ class DoctorIpseityIntegrationTests(unittest.TestCase):
             self.assertEqual(reopened.pending_count(), 1)
             self.assertEqual(reopened._ipseity.checkpoint().last_tick,
                              checkpoint.last_tick + 1)
+
+    def _long_typed_frame(self):
+        from doctor_lives.models import SubjectFrame
+        from doctor_lives.phenomenology import (
+            PhenomenalEvent, PhenomenalMode, AwarenessLevel, PrivacyState,
+            ObjectiveProvenance,
+        )
+        # Controlled transport fixture, not an observed runtime memory.
+        page = ("I read a page of an old treatise. " + "The words remain before me, café. " * 300)[:7629]
+        texts = ("I have a book open.", page, "I recall the page.", "I " + "x" * 998)
+        frame = SubjectFrame.from_events(tuple(PhenomenalEvent(
+            tick=1, subject_id="pretorius", mode=PhenomenalMode.RECOLLECTION,
+            awareness=AwarenessLevel.CONSCIOUS, canonical_first_person=t,
+            privacy=PrivacyState.PRIVATE, projection_rule_version="transport-test",
+            source_state_digest="transport-fixture",
+            objective_provenance=ObjectiveProvenance(evidence_class="test_fixture", source="transport-test"),
+        ) for t in texts))
+        return frame
+
+    def test_oversized_owned_text_is_delivered_exactly_after_restart(self):
+        frame = self._long_typed_frame()
+        expected = "\n".join(frame.renderer_context())
+        with self.session() as session:
+            brain = session._doctor.brain
+            before = (brain.store.digest(), brain.store.tick, brain.neural.tick)
+            with patch.object(session._doctor, "subject_frame", return_value=frame):
+                receipt = session.publish_current()
+            self.assertIsNotNone(receipt.outbox_id)
+            self.assertTrue(session._transport_path.is_file())
+            self.assertEqual(session.pending_count(), 1)
+            self.assertEqual(before, (brain.store.digest(), brain.store.tick, brain.neural.tick))
+        with self.session() as reopened:
+            self.assertIsNotNone(reopened.deliver_next(now_ms=1000))
+            self.assertEqual(self.sent, [expected])
+            self.assertEqual(reopened.pending_count(), 0)
+            self.assertFalse(reopened._transport_path.exists())
+            brain = reopened._doctor.brain
+            self.assertEqual(before, (brain.store.digest(), brain.store.tick, brain.neural.tick))
+
+    def test_oversized_transport_metadata_mismatch_does_not_deliver(self):
+        import json
+        with self.session() as session:
+            with patch.object(session._doctor, "subject_frame", return_value=self._long_typed_frame()):
+                session.publish_current()
+            manifest = json.loads(session._transport_path.read_text())
+            manifest["original_sha256"] = "0" * 64
+            session._transport_path.write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "reconstruction mismatch"):
+                session.deliver_next(now_ms=1000)
+            self.assertEqual(self.sent, [])
+            self.assertEqual(session.pending_count(), 1)
 
     def test_unreviewed_donor_version_fails_before_opening_brain(self):
         from unittest.mock import patch

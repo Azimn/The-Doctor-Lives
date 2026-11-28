@@ -1,0 +1,773 @@
+"""Candidate B real six-organ daily-life pulse, with original donor integration.
+
+No credit for general autonomy merely because one feasible physical action
+was selected after the host provided an opportunity.
+"""
+from __future__ import annotations
+
+import gc
+import importlib.util
+import os
+from pathlib import Path
+import tempfile
+import unittest
+
+from doctor_lives.lab_daily_life_cycle import run_daily_life_cycle
+from doctor_lives.lab_recovery_census import audit_original_life
+from doctor_lives.organs import SixOrganRuntime
+
+REQUIRED = ("pretorius_lab", "sensus_artificialis", "synthetic_ipseity")
+HAS_DONORS = (all(importlib.util.find_spec(i) is not None for i in REQUIRED)
+              and bool(os.environ.get("PRETORIUS_PINNED_AFFECTUS_ROOT")))
+
+
+@unittest.skipUnless(HAS_DONORS, "Source-pinned three donor integration required")
+class CandidateBDailyLifeIntegration(unittest.TestCase):
+    def setUp(self):
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.home_life import HomeLife
+        from pretorius_lab.daily_rhythm import DailyRhythm
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._cleanup_test_resources)
+        root = Path(self.tmp.name)
+        self.state = root / "brain"
+        self.world = root / "world.sqlite3"
+        self.lab = SpatialHabitat.create(self.world)
+        HomeLife(self.lab).initialize()
+        DailyRhythm(self.lab).initialize()
+        self.source = Path(os.environ["PRETORIUS_PINNED_AFFECTUS_ROOT"])
+
+    def _cleanup_test_resources(self):
+        # sqlite3's context manager commits but does not close. Collect
+        # unreferenced original-world/BrainStore handles before Windows
+        # removes the temporary directory. Do not suppress a real lock error.
+        gc.collect()
+        self.tmp.cleanup()
+
+    def test_six_organs_real_physics_and_canonical_weather_continue(self):
+        from pretorius_lab.subject_port import SubjectPort
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(SubjectPort(self.lab), authorized=True)
+        census = audit_original_life(bridge)
+        self.assertEqual(census["source"], "pinned_original_lab_pure_transition")
+        self.assertFalse(census["noesis_goal_selection_proven"])
+        self.assertIn("water", census["finite_supplies"])
+        runtime.checkpoint()
+        first = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=False)
+        self.assertEqual(len(first["all_six_ports_invoked"]), 6)
+        self.assertTrue(first["one_subject_delivery"])
+        self.assertFalse(first["world_action_authorized"])
+        rt = SixOrganRuntime.open(self.state)
+        self.assertEqual(rt._port.brain.store.meta(
+            "six_organ_canonical_weather_v1") is not None, True)
+        second = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=True)
+        self.assertEqual(len(second["all_six_ports_invoked"]), 6)
+        self.assertTrue(second["one_subject_delivery"])
+        self.assertTrue(second["world_action_authorized"])
+        self.assertTrue(second["daily_noesis_policy_id"])
+        self.assertIn(second["daily_noesis_selected"],
+                      second["world_feasible_actions"])
+        self.assertEqual(second["world_effect"]["status"], "admitted")
+        self.assertNotEqual(first["weather_state_digest"],
+                            second["weather_state_digest"])
+        # Every source-verified physical effect is admitted once into
+        # the SAME canonical memory store, not manufactured as a test fixture.
+        rt2 = SixOrganRuntime.open(self.state)
+        self.assertIsNotNone(rt2._port.brain.store.get_memory(
+            second["world_effect"]["memory_id"]))
+        self.assertFalse(second["independent_three_activity_r4_proven"])
+
+
+    def test_original_article08_practice_influences_live_noesis_after_restart(self):
+        """Coached real tea practice, not an independent-life autonomy trial."""
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import offer_daily_opportunity
+        from doctor_lives.lab_habits import WEIGHT, verified_habit_pressure
+        subject = SubjectPort(self.lab)
+        rt = SixOrganRuntime.open(self.state)
+        bridge = rt.bind_laboratory(subject, authorized=True)
+        bridge.act("walk", event_id="habits-hall", station="station:hall")
+        bridge.act("walk", event_id="habits-kitchen", station="station:kitchen")
+        first = bridge.act("brew_tea", event_id="habits-first-tea")
+        bridge.act("walk", event_id="habits-hall-night", station="station:hall")
+        bridge.act("walk", event_id="habits-bedroom", station="station:bedroom")
+        # Actual physical time to bedtime, never a fabricated genesis.
+        remaining = 23 * 60 - subject.rhythm.audit_state()["minute"]
+        i = 0
+        while remaining:
+            amount = min(remaining, 240)
+            bridge.act("advance", event_id="habits-time-" + str(i), minutes=amount)
+            remaining -= amount
+            i += 1
+        bridge.act("sleep", event_id="habits-sleep")
+        bridge.act("walk", event_id="habits-wake-hall", station="station:hall")
+        bridge.act("walk", event_id="habits-wake-kitchen", station="station:kitchen")
+        second = bridge.act("brew_tea", event_id="habits-second-tea")
+        rt.checkpoint()
+        cold = SixOrganRuntime.open(self.state)
+        bridge = cold.bind_laboratory(subject, authorized=True)
+        before = subject.rhythm.audit_state()
+        choice = offer_daily_opportunity(bridge, enable_habits=True)
+        store = cold._port.brain.store
+        with store.connect() as db:
+            policy = json.loads(db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                                           (choice.policy_id,)).fetchone()[0])
+        self.assertEqual(policy["habit_contributions"]["brew_tea"], WEIGHT)
+        self.assertEqual(policy["habit_practice_counts"], {"tea": 2, "tidy": 0})
+        self.assertEqual(policy["habit_source_memory_ids"], [first["memory_id"], second["memory_id"]])
+        self.assertEqual(subject.rhythm.audit_state(), before)
+        self.assertAlmostEqual(policy["candidate_final_scores"]["brew_tea"],
+            policy["candidate_base_scores"]["brew_tea"]
+            + policy["outcome_contributions"]["brew_tea"]
+            + policy["interoceptive_contributions"]["brew_tea"] + WEIGHT)
+        with self.assertRaises(PermissionError):
+            verified_habit_pressure(cold._port.brain, bridge, second["memory_id"], ("brew_tea",))
+        self.assertFalse((self.state / "habits.sqlite3").exists())
+        control = offer_daily_opportunity(bridge, enable_habits=False)
+        with store.connect() as db:
+            control_policy = json.loads(db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                                                    (control.policy_id,)).fetchone()[0])
+        self.assertEqual(control_policy["habit_contributions"]["brew_tea"], 0)
+        self.assertEqual(control_policy["habit_source_memory_ids"], [])
+        subject.verify()
+
+    def test_daily_original_noesis_uses_perceived_needs_without_hidden_body(self):
+        """Actual pinned observation; isolated hunger/thirst fixture."""
+        import json
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.home_life import HomeLife
+        from pretorius_lab.daily_rhythm import DailyRhythm
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import offer_daily_opportunity
+
+        world = SpatialHabitat.create(Path(self.tmp.name) / "body-fixture.sqlite3")
+        HomeLife(world).initialize()
+        DailyRhythm(world).initialize()
+        subject = SubjectPort(world)
+        # Never reseed the canonical genesis: build hunger and thirst by
+        # replayable original physical time, sleep, and ordinary activity.
+        subject.act("walk", event_id="body-fixture-hall", station="station:hall")
+        subject.act("walk", event_id="body-fixture-bedroom", station="station:bedroom")
+        for i in range(2):
+            subject.act("advance", event_id=f"body-fixture-day-{i}", minutes=240)
+        subject.act("sleep", event_id="body-fixture-sleep")
+        for i in range(2):
+            subject.act("advance", event_id=f"body-fixture-night-{i}", minutes=240)
+        subject.act("walk", event_id="body-fixture-back-hall", station="station:hall")
+        subject.act("walk", event_id="body-fixture-kitchen", station="station:kitchen")
+        subject.act("clean", event_id="body-fixture-clean")
+        before = subject.rhythm.audit_state()
+        self.assertLess(before["fatigue"], 4)
+        self.assertGreaterEqual(before["hunger"], 7)
+        self.assertGreaterEqual(before["thirst"], 6)
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(subject, authorized=True)
+        choice = offer_daily_opportunity(bridge)
+        with runtime._port.brain.store.connect() as db:
+            row = db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (choice.policy_id,),
+            ).fetchone()
+        audit = json.loads(row["state_pressure_json"])
+        self.assertEqual(audit["version"], "noesis-situated-choice-v0.4-body")
+        self.assertEqual(audit["perceived_body_cues"], ["painfully_hungry", "thirsty"])
+        self.assertEqual(audit["observation_memory_id"], choice.observation_id)
+        contributions = audit["interoceptive_contributions"]
+        self.assertEqual(set(contributions), set(choice.options))
+        self.assertGreater(contributions["prepare_meal"], 0)
+        self.assertGreater(contributions["brew_tea"], 0)
+        self.assertEqual(contributions["advance"], 0)
+        for action in choice.options:
+            self.assertAlmostEqual(
+                audit["candidate_final_scores"][action],
+                audit["candidate_base_scores"][action]
+                + audit["outcome_contributions"][action] + contributions[action],
+            )
+        self.assertIn(choice.action, choice.options)
+        self.assertEqual(audit["physical_authority"], "none")
+        self.assertEqual(subject.rhythm.audit_state(), before)
+        runtime.checkpoint()
+        # Begin the authorized sequence elsewhere in his established house.
+        # No host action or destination is passed into the production loop.
+        subject.act("walk", event_id="body-fixture-leave-kitchen", station="station:hall")
+        subject.act("walk", event_id="body-fixture-return-bedroom", station="station:bedroom")
+        actions = set()
+        visits = []
+        for _ in range(9):
+            prior = subject.rhythm.audit_state()
+            result = run_daily_life_cycle(
+                self.state, Path(self.tmp.name) / "body-fixture.sqlite3",
+                affectus_source=self.source, authorize_world=True)
+            self.assertEqual(len(result["all_six_ports_invoked"]), 6)
+            self.assertTrue(result["one_subject_delivery"])
+            self.assertIsNotNone(result["daily_noesis_policy_id"])
+            receipt = result["world_effect"]
+            self.assertIsNotNone(receipt)
+            self.assertEqual(receipt["status"], "admitted")
+            selected = result["daily_noesis_selected"]
+            self.assertEqual(receipt["action"], selected)
+            self.assertIn(selected, result["world_feasible_actions"])
+            from doctor_lives.lab_home_bridge import _row
+            with world._open() as world_db:
+                if receipt["motor_op"] == "walk":
+                    event, event_hash = _row(world_db, "embodied_events", receipt["event_id"])
+                    self.assertEqual(event["kind"], "move")
+                    self.assertEqual(event["after_station"], receipt["motor_args"]["station"])
+                    visits.append(event["after_station"])
+                else:
+                    event, event_hash = _row(world_db, "rhythm_events", receipt["event_id"])
+                    self.assertEqual(event["op"], selected)
+            store = SixOrganRuntime.open(self.state)._port.brain.store
+            memory = store.get_memory(receipt["memory_id"])
+            self.assertEqual(memory["source"], "laboratory-home:action:" + event_hash)
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertEqual(sum(m["source"] == memory["source"]
+                                 for m in store.memories(False)), 1)
+            after = subject.rhythm.audit_state()
+            if selected == "brew_tea":
+                for key in ("water", "tea", "fuel"):
+                    self.assertEqual(after["supplies"][key], prior["supplies"][key] - 1)
+                self.assertLess(after["thirst"], prior["thirst"])
+            elif selected == "prepare_meal":
+                for key in ("water", "fuel", "rations"):
+                    self.assertEqual(after["supplies"][key], prior["supplies"][key] - 1)
+                self.assertTrue(after["meal_ready"])
+            elif selected == "eat":
+                self.assertFalse(after["meal_ready"])
+                self.assertLess(after["hunger"], prior["hunger"])
+            actions.add(selected)
+            if {"brew_tea", "prepare_meal", "eat"} <= actions:
+                break
+        self.assertIn("seek_kitchen", actions)
+        self.assertIn("station:hall", visits)
+        self.assertIn("station:kitchen", visits)
+        self.assertTrue({"brew_tea", "prepare_meal", "eat"} <= actions,
+                        f"Unfulfilled domestic needs; observed {actions}")
+
+    def test_household_route_denies_target_swap_and_recovers_before_new_native_goal(self):
+        """Actual Noesis chooses a route; fault injection only interrupts its motor."""
+        import json
+        from unittest.mock import patch
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.noesis_day import (
+            offer_daily_opportunity, act_on_noesis_choice, pending_daily_action_ids,
+        )
+        from doctor_lives.lab_home_bridge import _row
+
+        subject = SubjectPort(self.lab)
+        subject.act("walk", event_id="route-fixture-hall", station="station:hall")
+        subject.act("walk", event_id="route-fixture-bedroom", station="station:bedroom")
+        for i in range(2):
+            subject.act("advance", event_id=f"route-fixture-day-{i}", minutes=240)
+        subject.act("sleep", event_id="route-fixture-sleep")
+        for i in range(2):
+            subject.act("advance", event_id=f"route-fixture-night-{i}", minutes=240)
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(subject, authorized=True)
+        choice = offer_daily_opportunity(bridge)
+        self.assertEqual(choice.action, "seek_kitchen")
+        event_id = "route-fixture-crash-before-world"
+        with patch.object(bridge, "act", side_effect=RuntimeError("injected pre-world crash")):
+            with self.assertRaisesRegex(RuntimeError, "pre-world crash"):
+                act_on_noesis_choice(bridge, choice, event_id=event_id, authorized=True)
+        runtime.checkpoint()
+        self.assertEqual(pending_daily_action_ids(bridge), (choice.policy_id,))
+        self.assertEqual(subject.embodied.verify()["station"], "station:bedroom")
+        with bridge.doctor.brain.store.connect() as db:
+            audit = json.loads(db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (choice.policy_id,)).fetchone()[0])
+        self.assertEqual(audit["motor_op"], "walk")
+        self.assertEqual(audit["motor_args"], {"station": "station:hall"})
+        # A substituted destination is not authorized by this policy.
+        with self.assertRaises(PermissionError):
+            bridge.act("walk", event_id=event_id, station="station:threshold")
+        with self.assertRaisesRegex(PermissionError, "requires world authorization"):
+            run_native_laboratory(
+                self.state, self.world, affectus_source=self.source,
+                allow_world_actions=False, enable_sustained_work=True)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM embodied_events WHERE event_id=?",
+                (event_id,)).fetchone()[0], 0)
+        result = run_native_laboratory(
+            self.state, self.world, affectus_source=self.source, steps=4,
+            allow_world_actions=True, enable_sustained_work=True)
+        self.assertEqual(result["status"], "recovered_daily_action")
+        self.assertEqual(result["steps"], 1)
+        self.assertEqual(subject.embodied.verify()["station"], "station:hall")
+        with self.lab._open() as db:
+            event, digest = _row(db, "embodied_events", event_id)
+            self.assertEqual(event["after_station"], "station:hall")
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM embodied_events WHERE event_id=?",
+                (event_id,)).fetchone()[0], 1)
+        reopened = SixOrganRuntime.open(self.state)
+        recovered_bridge = reopened.bind_laboratory(subject, authorized=True)
+        self.assertEqual(pending_daily_action_ids(recovered_bridge), ())
+        memory = reopened._port.brain.store.get_memory(result["receipts"][0]["memory_id"])
+        self.assertEqual(memory["source"], "laboratory-home:action:" + digest)
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+
+    def test_product_daily_host_reconciles_actual_physical_fatigue(self):
+        """Full host cycle consumes real Corpus state, never a mock body."""
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_corpus_regulation import KEY, reconcile_fatigue
+
+        subject = SubjectPort(self.lab)
+        runtime = SixOrganRuntime.open(self.state)
+        runtime.checkpoint()
+        first = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=False)
+        self.assertTrue(first["one_subject_delivery"])
+        self.assertEqual(len(first["all_six_ports_invoked"]), 6)
+        reopened = SixOrganRuntime.open(self.state)
+        store = reopened._port.brain.store
+        initial = json.loads(store.meta(KEY))
+        self.assertEqual(initial["physical_fatigue"], 2)
+        with store.connect() as db:
+            actual = db.execute(
+                "SELECT actual FROM needs WHERE key='fatigue'").fetchone()[0]
+        self.assertAlmostEqual(actual, 0.23)
+        bridge = reopened.bind_laboratory(subject, authorized=True)
+        before = store.state_version
+        self.assertFalse(reconcile_fatigue(bridge, initial["observation_id"]))
+        self.assertEqual(store.state_version, before)
+        subject.act("advance", event_id="fatigue-fixture-exertion", minutes=240)
+        # A prior observation cannot be used to consume a new physical state.
+        with self.assertRaises(PermissionError):
+            reconcile_fatigue(bridge, initial["observation_id"])
+        reopened.checkpoint()
+        second = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=False)
+        self.assertEqual(len(second["all_six_ports_invoked"]), 6)
+        final = SixOrganRuntime.open(self.state)._port.brain.store
+        updated = json.loads(final.meta(KEY))
+        self.assertEqual(updated["physical_fatigue"], 3)
+        self.assertEqual(updated["minute"], initial["minute"] + 240)
+        with final.connect() as db:
+            actual = db.execute(
+                "SELECT actual FROM needs WHERE key='fatigue'").fetchone()[0]
+        self.assertAlmostEqual(actual, 0.32)
+        self.assertNotEqual(updated["observation_id"], initial["observation_id"])
+
+    def test_original_daily_rest_couples_homeostasis_once_after_cold_reopen(self):
+        """Source-backed physical rest, synthetic MOTOR fixture, NOT autonomous R4.
+
+        The original Laboratory and original BrainStore are real. Only the
+        policy reservation is a deliberately explicit synthetic fixture to
+        isolate exactly-once post-world admission and forged-memory denial.
+        This test cannot count as an uncoached neural rest selection.
+        """
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_home_bridge import _row
+        from doctor_lives.noesis_day import _complete_daily_motor
+
+        runtime = SixOrganRuntime.open(self.state)
+        subject = SubjectPort(self.lab)
+        # Source-defined physical route; this is test setup, not Pretorius
+        # autonomously choosing a destination.
+        subject.embodied.move("station:hall", event_id="fixture_daily_hall")
+        subject.embodied.move("station:bedroom", event_id="fixture_daily_bedroom")
+        self.assertEqual(subject.embodied.verify()["station"], "station:bedroom")
+        bridge = runtime.bind_laboratory(subject, authorized=True)
+        # A separate ORIGINAL physical event supplies a mismatched lived
+        # memory. A post-movement composite LOOK can legitimately change
+        # domestic catch-up state, so do not use that unstable fixture here.
+        unrelated_event_id = "fixture_daily_advance"
+        unrelated_frame = subject.act(
+            "advance", event_id=unrelated_event_id, minutes=60)
+        with self.lab._open() as world_db:
+            _, unrelated_hash = _row(
+                world_db, "rhythm_events", unrelated_event_id)
+        unrelated_memory_id = bridge._admit_verified(
+            unrelated_frame, "laboratory-home:action:" + unrelated_hash,
+            kind="observation",
+        )["memory_id"]
+        event_id = "fixture_original_daily_rest"
+        frame = subject.act("rest", event_id=event_id)
+        self.assertEqual(subject.rhythm.audit_state()["fatigue"], 0)
+        with self.lab._open() as world_db:
+            original, event_hash = _row(world_db, "rhythm_events", event_id)
+        self.assertEqual(original["op"], "rest")
+        self.assertEqual(original["station"], "station:bedroom")
+        admitted = bridge._admit_verified(
+            frame, "laboratory-home:action:" + event_hash,
+            kind="observation",
+        )
+        memory_id = admitted["memory_id"]
+        store = runtime._port.brain.store
+        policy_id = "fixture_daily_rest_motor_policy"
+        evidence = {
+            "selector_authority": "original_noesis",
+            "motor_authorization": "authorized",
+            "motor_event_id": event_id,
+            "motor_memory_id": None,
+        }
+        with store.transaction() as db:
+            db.execute(
+                "INSERT INTO policy_decisions "
+                "(id,tick,created_at,trigger,selected_action,"
+                "base_action_scores_json,state_pressure_json,action_scores_json,"
+                "candidate_record_ids_json,selected_record_ids_json,"
+                "neural_tick,neural_checkpoint_sha256,policy_version) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (policy_id, store.tick, "2026-10-31T00:00:00+00:00",
+                 "noesis_situated_choice", "rest", "{}",
+                 json.dumps(evidence, sort_keys=True), "{}", "[]", "[]",
+                 0, "0" * 64, "synthetic-fixture-not-r4"),
+            )
+        before = store.tick
+        with self.assertRaisesRegex(PermissionError, "matching original"):
+            _complete_daily_motor(bridge, policy_id, event_id,
+                                  unrelated_memory_id)
+        self.assertEqual(store.tick, before)
+        _complete_daily_motor(bridge, policy_id, event_id, memory_id)
+        self.assertEqual(store.tick, before + 6)
+        with store.connect() as db:
+            after = tuple(db.execute(
+                "SELECT actual,felt FROM needs WHERE key='fatigue'"
+            ).fetchone())
+            completed = json.loads(db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (policy_id,),
+            ).fetchone()[0])
+        self.assertEqual(completed["motor_completion"], "admitted")
+        self.assertEqual(completed["motor_memory_id"], memory_id)
+        runtime.checkpoint()
+        cold = SixOrganRuntime.open(self.state)
+        reopened = cold.bind_laboratory(SubjectPort(self.lab), authorized=True)
+        _complete_daily_motor(reopened, policy_id, event_id, memory_id)
+        self.assertEqual(cold._port.brain.store.tick, before + 6)
+        with cold._port.brain.store.connect() as db:
+            self.assertEqual(tuple(db.execute(
+                "SELECT actual,felt FROM needs WHERE key='fatigue'"
+            ).fetchone()), after)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        self.assertEqual(sum(
+            m["source"] == "laboratory-home:action:" + event_hash
+            for m in cold._port.brain.store.memories(False)
+        ), 1)
+
+    def _original_six_rest_session(self):
+        """Real original neural policy and pinned world, no autonomy claim."""
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
+        subject = SubjectPort(self.lab)
+        subject.embodied.move("station:hall", event_id="six_rest_test_hall")
+        subject.embodied.move("station:bedroom", event_id="six_rest_test_bedroom")
+        # The original 4,096-neuron profile and an explicit fatigue
+        # precondition reproduce the observed AVOID attractor. This is a
+        # targeted original-neural regression, NOT an uncoached R4 trial.
+        runtime = SixOrganRuntime.open(self.state)
+        with runtime._port.brain.store.transaction() as db:
+            db.execute("UPDATE needs SET actual=0.95,felt=0.95 WHERE key='fatigue'")
+        session = SixOrganLaboratoryCycle(
+            runtime, subject, affectus_source=self.source,
+            renderer=lambda _: "I remember the room.", authorized=True,
+        )
+        proposal = None
+        for _ in range(24):
+            candidate = runtime.noesis.deliberate(host_trigger="six_organ_lab_cycle")
+            if candidate.selected_tendency == "avoid":
+                proposal = candidate
+                break
+        self.assertIsNotNone(proposal, "Original neural policy did not choose AVOID")
+        return runtime, session, proposal
+
+    def test_original_six_avoid_rest_world_kill_reconciles_brain_once(self):
+        """Real neural AVOID, actual original rest, simulated post-world kill.
+
+        This is an isolated source-backed negative/crash-window regression.
+        It does NOT demonstrate independent three-class R4 or an OS kill.
+        """
+        from unittest.mock import patch
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
+        from doctor_lives.lab_home_bridge import _row
+
+        runtime, session, proposal = self._original_six_rest_session()
+        store = runtime._port.brain.store
+        with store.transaction() as db:
+            db.execute("UPDATE needs SET actual=0.95,felt=0.95 WHERE key='fatigue'")
+        session._reserve_rest(proposal)
+        event_id = session._rest_event_id(proposal.policy_decision_id)
+        before = store.tick
+        with patch.object(session.bridge, "_admit",
+                          side_effect=RuntimeError("injected post-world kill")):
+            with self.assertRaisesRegex(RuntimeError, "post-world kill"):
+                session._reconcile_pending_rest()
+        self.assertIsNotNone(session._pending_rest())
+        with self.lab._open() as db:
+            event, digest = _row(db, "rhythm_events", event_id)
+        self.assertEqual(event["op"], "rest")
+        self.assertEqual(event["station"], "station:bedroom")
+        session.close()
+
+        reopened = SixOrganRuntime.open(self.state)
+        with SixOrganLaboratoryCycle(
+            reopened, SubjectPort(self.lab), affectus_source=self.source,
+            renderer=lambda _: "I remember the room.", authorized=True,
+        ) as recovered:
+            self.assertIsNone(recovered._pending_rest())
+            self.assertGreaterEqual(reopened._port.brain.store.tick, before + 6)
+            after = reopened._port.brain.store.tick
+            with reopened._port.brain.store.connect() as db:
+                fatigue = db.execute(
+                    "SELECT actual,felt FROM needs WHERE key='fatigue'"
+                ).fetchone()
+            self.assertLess(fatigue["actual"], 0.95)
+            self.assertLess(fatigue["felt"], 0.95)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        memories = reopened._port.brain.store.memories(False)
+        self.assertEqual(sum(
+            m["source"] == "laboratory-home:action:" + digest
+            for m in memories
+        ), 1)
+        reopened.checkpoint()
+        again = SixOrganRuntime.open(self.state)
+        with SixOrganLaboratoryCycle(
+            again, SubjectPort(self.lab), affectus_source=self.source,
+            renderer=lambda _: "I remember the room.", authorized=True,
+        ) as replay:
+            self.assertIsNone(replay._pending_rest())
+            self.assertEqual(again._port.brain.store.tick, after)
+            self.assertIsNone(replay._reconcile_pending_rest())
+
+    def test_read_only_public_hosts_cannot_execute_reserved_six_rest(self):
+        from doctor_lives.lab_runtime import run_native_laboratory
+
+        runtime, session, proposal = self._original_six_rest_session()
+        session._reserve_rest(proposal)
+        event_id = session._rest_event_id(proposal.policy_decision_id)
+        session.close()
+        for call in (
+            lambda: run_daily_life_cycle(
+                self.state, self.world, affectus_source=self.source,
+                authorize_world=False),
+            lambda: run_native_laboratory(
+                self.state, self.world, affectus_source=self.source,
+                allow_world_actions=False),
+        ):
+            with self.assertRaisesRegex(PermissionError, "requires world authorization"):
+                call()
+            with self.lab._open() as db:
+                self.assertEqual(db.execute(
+                    "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                    (event_id,),
+                ).fetchone()[0], 0)
+            reopened = SixOrganRuntime.open(self.state)
+            self.assertIsNotNone(reopened._port.brain.store.meta(
+                "six_organ_lab_pending_verified_rest_v1"))
+        result = run_native_laboratory(
+            self.state, self.world, affectus_source=self.source,
+            allow_world_actions=True, steps=4)
+        self.assertEqual(result["status"], "recovered_world_action")
+        self.assertEqual(result["steps"], 1)
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+        reopened = SixOrganRuntime.open(self.state)
+        self.assertIsNone(reopened._port.brain.store.meta(
+            "six_organ_lab_pending_verified_rest_v1"))
+
+    def test_original_six_rest_rejects_wrong_station_and_substituted_memory(self):
+        from unittest.mock import patch
+        from doctor_lives.lab_home_bridge import _row
+
+        runtime, session, proposal = self._original_six_rest_session()
+        session._reserve_rest(proposal)
+        event_id = session._rest_event_id(proposal.policy_decision_id)
+        original = session.bridge.act("rest", event_id=event_id)
+        self.assertEqual(original["status"], "admitted")
+        unrelated = session.bridge.observe()
+        before = runtime._port.brain.store.tick
+        with patch.object(session.bridge, "act", return_value={
+            "status": "admitted", "memory_id": unrelated["memory_id"],
+        }):
+            with self.assertRaisesRegex(PermissionError, "physical/lived receipt"):
+                session._reconcile_pending_rest()
+        self.assertEqual(runtime._port.brain.store.tick, before)
+        self.assertIsNotNone(session._pending_rest())
+        session._reconcile_pending_rest()
+        after = runtime._port.brain.store.tick
+        self.assertEqual(after, before + 6)
+        self.assertIsNone(session._pending_rest())
+        session.close()
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,),
+            ).fetchone()[0], 1)
+
+    def _reserve_crash_window(self):
+        """Inject the exact durable motor reservation without a host action."""
+        import json
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import offer_daily_opportunity
+        runtime = SixOrganRuntime.open(self.state)
+        bridge = runtime.bind_laboratory(SubjectPort(self.lab), authorized=True)
+        choice = offer_daily_opportunity(
+            bridge, author_goal=False, use_consequences=False)
+        event_id = "candidate_b_fault_" + choice.policy_id[-16:]
+        store = runtime._port.brain.store
+        with store.transaction() as db:
+            row = db.execute(
+                "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                (choice.policy_id,)
+            ).fetchone()
+            evidence = json.loads(row["state_pressure_json"])
+            self.assertEqual(evidence["selector_authority"], "original_noesis")
+            evidence["motor_authorization"] = "authorized"
+            evidence["motor_event_id"] = event_id
+            db.execute(
+                "UPDATE policy_decisions SET state_pressure_json=? WHERE id=?",
+                (json.dumps(evidence, sort_keys=True), choice.policy_id)
+            )
+            store.bump_state_version(db)
+        runtime.checkpoint()
+        return bridge, choice, event_id
+
+    def _verify_one_replayed_world_action(self, bridge, choice, event_id):
+        from doctor_lives.lab_home_bridge import _ACTION_DOMAINS
+        from doctor_lives.noesis_day import reconcile_pending_daily_action
+        replay = reconcile_pending_daily_action(bridge)
+        self.assertEqual(len(replay), 1)
+        self.assertEqual(replay[0]["policy_decision_id"], choice.policy_id)
+        self.assertEqual(replay[0]["action"], choice.action)
+        self.assertFalse(replay[0]["new_goal_selected"])
+        self.assertEqual(reconcile_pending_daily_action(bridge), ())
+        memory_id = replay[0]["memory_id"]
+        store = bridge.doctor.brain.store
+        memory = store.get_memory(memory_id)
+        self.assertIsNotNone(memory)
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+        self.assertEqual(
+            len([m for m in store.memories(False) if m["source"] == memory["source"]]),
+            1
+        )
+        with bridge.world._open() as db:
+            count = db.execute(
+                "SELECT count(*) FROM " + _ACTION_DOMAINS[choice.action]
+                + " WHERE event_id=?", (event_id,)
+            ).fetchone()[0]
+        self.assertEqual(count, 1)
+        return replay[0]
+
+
+    def test_pending_daily_motor_requires_permission_and_preempts_new_action(self):
+        """A restart may reconcile ONE original motor, never silently do TWO.
+
+        No-permission cycles still exercise six organs, but cannot execute a
+        reserved action. An authorized cold cycle replays its original receipt
+        and lived memory without selecting another physical daily motor.
+        """
+        from doctor_lives.lab_home_bridge import _ACTION_DOMAINS
+        from doctor_lives.noesis_day import reconcile_pending_daily_action
+        bridge, choice, event_id = self._reserve_crash_window()
+        with self.lab._open() as db:
+            original_moves = db.execute(
+                "SELECT count(*) FROM embodied_events WHERE "
+                "json_extract(envelope, '$.kind')='move'"
+            ).fetchone()[0]
+        denied = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=False)
+        self.assertEqual(denied["pending_prior_noesis_actions"],
+                         [choice.policy_id])
+        self.assertTrue(denied["new_motor_suppressed_for_recovery"])
+        self.assertIsNone(denied["world_effect"])
+        self.assertIsNone(denied["daily_noesis_policy_id"])
+        self.assertEqual(len(denied["all_six_ports_invoked"]), 6)
+        self.assertIsNone(bridge.existing_action_intent(event_id))
+
+        allowed = run_daily_life_cycle(
+            self.state, self.world, affectus_source=self.source,
+            authorize_world=True)
+        self.assertEqual(allowed["pending_prior_noesis_actions"], [])
+        self.assertTrue(allowed["new_motor_suppressed_for_recovery"])
+        self.assertEqual(len(allowed["reconciled_prior_noesis_actions"]), 1)
+        self.assertEqual(allowed["reconciled_prior_noesis_actions"][0]["event_id"],
+                         event_id)
+        self.assertIsNone(allowed["world_effect"])
+        self.assertIsNone(allowed["daily_noesis_policy_id"])
+        self.assertEqual(len(allowed["all_six_ports_invoked"]), 6)
+        self.assertEqual(reconcile_pending_daily_action(bridge), ())
+        with self.lab._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM " + _ACTION_DOMAINS[choice.action]
+                + " WHERE event_id=?", (event_id,)).fetchone()[0], 1)
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM embodied_events WHERE "
+                "json_extract(envelope, '$.kind')='move'"
+            ).fetchone()[0], original_moves)
+        store = SixOrganRuntime.open(self.state)._port.brain.store
+        with store.connect() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM policy_decisions "
+                "WHERE trigger='noesis_situated_choice'"
+            ).fetchone()[0], 1)
+        recovered = allowed["reconciled_prior_noesis_actions"][0]
+        memory = store.get_memory(recovered["memory_id"])
+        self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+        self.assertEqual(sum(
+            m["source"] == memory["source"] for m in store.memories(False)
+        ), 1)
+
+    def test_reserved_daily_motor_restarts_without_second_noesis_choice(self):
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+        bridge, choice, event_id = self._reserve_crash_window()
+        # No world action occurred: a killed host after the BrainStore commit.
+        self.assertIsNone(bridge.existing_action_intent(event_id))
+        reopened = SixOrganRuntime.open(self.state).bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world)), authorized=True)
+        receipt = self._verify_one_replayed_world_action(
+            reopened, choice, event_id)
+        self.assertFalse(receipt["original_world_receipt_replayed"])
+
+    def test_world_committed_memory_unadmitted_replays_once_after_restart(self):
+        from unittest.mock import patch
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.subject_port import SubjectPort
+        from doctor_lives.noesis_day import physical_args
+        bridge, choice, event_id = self._reserve_crash_window()
+        # Deterministic crash-window injection after ORIGINAL physical commit,
+        # before first-person admission. This is NOT an external OS-kill test.
+        with patch.object(bridge, "_admit_verified",
+                          side_effect=RuntimeError("injected post-world interruption")):
+            with self.assertRaisesRegex(RuntimeError, "injected post-world"):
+                bridge.act(choice.action, event_id=event_id,
+                           **physical_args(choice.action))
+        self.assertEqual(bridge.existing_action_intent(event_id)["status"], "pending")
+        reopened = SixOrganRuntime.open(self.state).bind_laboratory(
+            SubjectPort(SpatialHabitat(self.world)), authorized=True)
+        receipt = self._verify_one_replayed_world_action(
+            reopened, choice, event_id)
+        self.assertTrue(receipt["original_world_receipt_replayed"])
+
+
+if __name__ == "__main__":
+    unittest.main()

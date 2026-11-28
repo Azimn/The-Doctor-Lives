@@ -1,0 +1,768 @@
+"""Actual original-world integration for B's persistent native work goal.
+
+Targeted implementation evidence only. Waiting for a naturally selected neural
+PERSIST tendency is a laboratory test setup, not proof of independent three-goal
+autonomy, externally killed process recovery, or a four-hour trial.
+"""
+from __future__ import annotations
+
+import gc
+import importlib.util
+import json
+import os
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
+import tempfile
+import unittest
+
+from doctor_lives.lab_native_goal_choice import NativeLaboratoryGoalChooser
+from doctor_lives.lab_native_work_goal import WORK_KEY, _hash, _stable
+from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
+from doctor_lives.neural import DEFAULT_CONFIG
+from doctor_lives.organs import SixOrganRuntime
+
+DONORS_PRESENT = all(
+    importlib.util.find_spec(x) is not None
+    for x in ("pretorius_lab", "sensus_artificialis", "synthetic_ipseity")
+) and bool(os.environ.get("PRETORIUS_PINNED_AFFECTUS_ROOT"))
+
+
+def small_neural():
+    config = dict(DEFAULT_CONFIG)
+    config.update(neurons=128, sensory_dim=64, avg_recurrent_degree=8,
+                  input_degree=4, action_population_size=8, seed=1842)
+    return config
+
+
+@unittest.skipUnless(DONORS_PRESENT, "Real original Lab and reviewed donors required")
+class CandidateBSourceBackedWork(unittest.TestCase):
+    def setUp(self):
+        from pretorius_lab.habitat_v2 import SpatialHabitat
+        from pretorius_lab.home_life import HomeLife
+        from pretorius_lab.daily_rhythm import DailyRhythm
+        from pretorius_lab.subject_port import SubjectPort
+        self.temp = tempfile.TemporaryDirectory(prefix="candidate-b-real-work-")
+        self.addCleanup(self._cleanup_test_resources)
+        self.root = Path(self.temp.name)
+        self.world = SpatialHabitat.create(self.root / "original.sqlite3")
+        HomeLife(self.world).initialize()
+        DailyRhythm(self.world).initialize()
+        self.subject = SubjectPort(self.world)
+        self.state = self.root / "same-canonical-brain"
+        self.donor = Path(os.environ["PRETORIUS_PINNED_AFFECTUS_ROOT"])
+
+    def _cleanup_test_resources(self):
+        # Python sqlite3 context managers do not close connections. On
+        # Windows release unreferenced source-world and BrainStore handles
+        # before removing the fixture, without suppressing lock failures.
+        gc.collect()
+        self.temp.cleanup()
+
+    def session(self, runtime):
+        def renderer(subject_text):
+            if not isinstance(subject_text, str) or not subject_text.startswith(("I ", "My ")):
+                raise PermissionError("Host diagnostics cannot enter subject channel")
+            return subject_text
+        return SixOrganLaboratoryCycle(
+            runtime, self.subject, affectus_source=self.donor,
+            renderer=renderer, authorized=True)
+
+    def test_original_work_goal_rejects_policy_trigger_swap_before_world_action(self):
+        """A matching neural tendency from a different trigger is not an origin.
+
+        This is an original-physics negative test, not uncoached R4 credit.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            created = chooser.step(authorized_world_action=False)
+            self.assertEqual((created.kind, created.status),
+                             ("work", "goal_created"))
+            state = json.loads(rt._port.brain.store.meta(WORK_KEY))["payload"]
+            self.assertEqual(state["id"], created.goal_id)
+            with rt._port.brain.store.connect() as db:
+                original = db.execute(
+                    "SELECT trigger,selected_action FROM policy_decisions WHERE id=?",
+                    (state["origin_policy_id"],)).fetchone()
+            self.assertEqual(original["trigger"], "six_organ_lab_cycle")
+            self.assertIn(original["selected_action"], ("explore", "persist"))
+            before = self.subject.embodied.verify()["revision"]
+            with rt._port.brain.store.transaction() as db:
+                db.execute(
+                    "UPDATE policy_decisions SET trigger=? WHERE id=?",
+                    ("unrelated_neural_policy", state["origin_policy_id"]))
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or forged native work"):
+                chooser.work._load()
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or forged native work"):
+                chooser.step(authorized_world_action=True)
+            self.assertEqual(self.subject.embodied.verify()["revision"], before)
+
+    def test_real_persist_goal_moves_and_executes_noesis_selected_work_once(self):
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        epoch = self.subject.verify()["world_epoch"]
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            # Exercise the shipping chooser, not a host-picked action or
+            # directly injected goal. The original world has no books
+            # installed, so a real native EXPLORE may investigate the seen
+            # workbench; an AVOID/other origin remains a measured negative.
+            created = chooser.step(authorized_world_action=False)
+            self.assertEqual(created.status, "goal_created")
+            self.assertEqual(created.kind, "work")
+            self.assertIn(created.selected_tendency, ("explore", "persist"))
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:threshold")
+            denied = chooser.step(authorized_world_action=False)
+            self.assertEqual(denied.kind, "work")
+            self.assertEqual(denied.status, "authorization_required")
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:threshold")
+            rt.checkpoint()
+
+        resumed = SixOrganRuntime.open(self.state)
+        with self.session(resumed) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            for turn in range(12):
+                result = chooser.step(authorized_world_action=True)
+                self.assertEqual(result.kind, "work")
+                self.assertEqual(result.goal_id, created.goal_id)
+                if result.status == "completed":
+                    break
+            else:
+                self.fail("A genuine source-feasible native work goal did not complete")
+            self.assertGreaterEqual(turn, 2)
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:bench")
+            memory = resumed._port.brain.store.get_memory(result.memory_id)
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertFalse(memory["external"])
+            self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+            record = json.loads(resumed._port.brain.store.meta(WORK_KEY))["payload"]
+            self.assertEqual(record["origin_policy_id"] is not None, True)
+            self.assertIn(record["selected_action"], ("repair", "experiment"))
+            with resumed._port.brain.store.connect() as db:
+                policy = db.execute(
+                    "SELECT selected_action FROM policy_decisions WHERE id=?",
+                    (record["origin_policy_id"],)).fetchone()
+                chosen = db.execute(
+                    "SELECT selected_action FROM policy_decisions WHERE id=?",
+                    (record["work_policy_id"],)).fetchone()
+            self.assertEqual(policy["selected_action"], created.selected_tendency)
+            self.assertEqual(chosen["selected_action"], record["selected_action"])
+            next_goal = chooser.step(authorized_world_action=True)
+            # A later original exploratory/avoid choice may legitimately
+            # originate a DIFFERENT book/rest goal. Neither reopens work.
+            self.assertIn(next_goal.status, ("already_complete", "goal_created",
+                                             "no_situated_goal"))
+            if next_goal.status == "goal_created":
+                self.assertIn(next_goal.kind, ("read_book", "rest"))
+                self.assertNotEqual(next_goal.goal_id, created.goal_id)
+            resumed.checkpoint()
+
+        with self.world._open() as db:
+            rows = db.execute(
+                "SELECT envelope FROM rhythm_events WHERE event_id=?",
+                ("ng_" + created.goal_id + "_work",)).fetchall()
+        self.assertEqual(len(rows), 1)
+        receipt = json.loads(rows[0][0])
+        self.assertEqual(receipt["op"], record["selected_action"])
+        self.assertEqual(self.subject.verify()["world_epoch"], epoch)
+        cold = SixOrganRuntime.open(self.state)
+        with self.session(cold) as host:
+            work = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True).work
+            self.assertEqual(work._load()["phase"], "complete")
+            self.assertEqual(work._load()["memory_id"], result.memory_id)
+            self.assertEqual(len([m for m in cold._port.brain.store.memories(False)
+                                  if m["source"] == memory["source"]]), 1)
+        # Independent read-only Python process, not the in-process chooser,
+        # checks the exact same original BrainStore and physical Laboratory.
+        # This is one real WORK positive, not 3/3 uncoached acceptance.
+        witness_script = r"""
+import json, sqlite3, sys
+from pathlib import Path
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.daily_rhythm import DailyRhythm
+brain_path, world_path, policy_id, thought_id, event_id, memory_id = sys.argv[1:]
+with sqlite3.connect(Path(brain_path).absolute().as_uri() + "?mode=ro", uri=True) as db:
+    policy = db.execute("SELECT selected_action,trigger FROM policy_decisions WHERE id=?",
+                        (policy_id,)).fetchone()
+    thought = db.execute("SELECT generated_by FROM thoughts WHERE id=?",
+                         (thought_id,)).fetchone()
+    memory = db.execute("SELECT source,evidence_class,external FROM memories WHERE id=?",
+                        (memory_id,)).fetchone()
+assert policy and policy[0] in ("explore", "persist")
+assert policy[1] == "six_organ_lab_cycle"
+assert thought == ("neural_policy:" + policy_id,)
+assert memory and memory[1] == "lived_runtime_memory" and memory[2] == 0
+lab = SpatialHabitat(Path(world_path))
+physics = lab.verify()
+rhythm = DailyRhythm(lab).verify()
+assert physics["world_epoch"] == rhythm["world_epoch"]
+with sqlite3.connect(Path(world_path).absolute().as_uri() + "?mode=ro", uri=True) as db:
+    event = db.execute("SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                       (event_id,)).fetchone()
+assert event and memory[0] == "laboratory-home:action:" + event[0]
+print("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=" + json.dumps({
+    "source_pinned_original_world": True,
+    "original_neural_policy": policy[0],
+    "original_thought": True,
+    "source_world_receipt": True,
+    "lived_memory": True,
+    "three_uncoached_goals_proven": False,
+}, sort_keys=True))
+"""
+        witnessed = subprocess.run(
+            [sys.executable, "-c", witness_script,
+             str(self.state / "brain.sqlite3"), str(self.root / "original.sqlite3"),
+             record["origin_policy_id"], record["origin_thought_id"],
+             "ng_" + created.goal_id + "_work", result.memory_id],
+            capture_output=True, text=True, timeout=45,
+        )
+        self.assertEqual(witnessed.returncode, 0, witnessed.stderr)
+        self.assertIn("B_REAL_WORK_EXTERNAL_SOURCE_WITNESS=",
+                      witnessed.stdout)
+
+        print("B_NATIVE_REAL_WORK_TARGETED=" + json.dumps({
+            "original_neural_source": created.selected_tendency, "actual_concrete_noesis": record["selected_action"],
+            "original_world_receipt": True, "one_lived_memory": True,
+            "cold_reopen": True, "host_routed": True,
+            "independent_three_goal_acceptance": False,
+        }, sort_keys=True))
+
+    def test_product_competing_body_need_interrupts_and_resumes_same_work(self):
+        """Physical thirst competes with a real work goal; the goal survives cold restart."""
+        self._exercise_competing_body_need(False)
+
+    def test_product_telos_commitment_survives_thirst_and_closes_only_on_real_work(self):
+        """Canonical commitment remains subject-visible during actual interruption."""
+        self._exercise_competing_body_need(True)
+
+    def _exercise_competing_body_need(self, enable_telos):
+        from doctor_lives.lab_runtime import run_native_laboratory
+        runtime = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(runtime) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            original = chooser.step(authorized_world_action=False)
+            self.assertEqual((original.kind, original.status), ("work", "goal_created"))
+            saved = chooser.work._load()
+            runtime.checkpoint()
+        # Authentic source fixture: ordinary elapsed time causes thirst.
+        # No policy, goal, fatigue number or physical genesis is fabricated.
+        self.subject.act("advance", event_id="competition-fixture-time-a", minutes=240)
+        self.subject.act("advance", event_id="competition-fixture-time-b", minutes=240)
+        before = self.subject.rhythm.audit_state()
+        self.assertGreaterEqual(before["thirst"], 6)
+        actions = []
+        result = None
+        for _ in range(16):
+            outcome = run_native_laboratory(
+                self.state, self.root / "original.sqlite3", affectus_source=self.donor,
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=True,
+                enable_telos=enable_telos,
+            )["receipts"][0]
+            self.assertEqual(outcome["goal_id"], original.goal_id)
+            cold_brain = SixOrganRuntime.open(self.state)._port.brain
+            cold = cold_brain.store
+            active = json.loads(cold.meta(WORK_KEY))["payload"]
+            if enable_telos:
+                with cold.connect() as db:
+                    commitment = dict(db.execute(
+                        "SELECT * FROM commitments WHERE id=?",
+                        ("telos_" + original.goal_id,),
+                    ).fetchone())
+                self.assertEqual(commitment["source"], "telos:native:" + saved["origin_policy_id"])
+                self.assertEqual(commitment["status"], "kept" if outcome["status"] == "completed" else "open")
+                with self.assertRaises(PermissionError):
+                    cold_brain.resolve_commitment(commitment["id"], "invented completion")
+                if outcome["status"] == "completed":
+                    self.assertEqual(commitment["outcome"], cold.get_memory(outcome["memory_id"])["text"])
+                else:
+                    self.assertIn(commitment["id"], [c["id"] for c in cold.open_commitments()])
+                    self.assertIsNone(commitment["outcome"])
+            self.assertEqual(active["origin_policy_id"], saved["origin_policy_id"])
+            if outcome["status"] == "commitment_interrupted":
+                actions.append(outcome["interrupting_action"])
+                with cold.connect() as db:
+                    row = db.execute("SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                                     (outcome["competition_policy_id"],)).fetchone()
+                evidence = json.loads(row[0])
+                self.assertEqual(evidence["active_commitment_id"], original.goal_id)
+                self.assertEqual(evidence.get("telos_commitment_id"),
+                                 "telos_" + original.goal_id if enable_telos else None)
+                self.assertIn("continue_commitment", evidence["candidate_final_scores"])
+                self.assertEqual(evidence["motor_completion"], "admitted")
+                self.assertGreater(evidence["interoceptive_contributions"][outcome["interrupting_action"]], 0)
+                self.assertEqual(active["phase"], saved["phase"])
+            if outcome["status"] == "completed":
+                result = outcome
+                break
+        self.assertIn("seek_kitchen", actions)
+        self.assertIn("brew_tea", actions)
+        self.assertLess(self.subject.rhythm.audit_state()["thirst"], before["thirst"])
+        self.assertIsNotNone(result, "Interrupted work was not completed after need relief")
+        self.assertEqual(self.subject.embodied.verify()["station"], "station:bench")
+        self.subject.verify()
+
+    def test_product_nighttime_thirst_resolves_prerequisite_without_losing_project(self):
+        """Actual source darkness cannot cause work/kitchen oscillation."""
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.lab_home_bridge import _row
+        runtime = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(runtime) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            original = chooser.step(authorized_world_action=False)
+            self.assertEqual((original.kind, original.status), ("work", "goal_created"))
+            saved = chooser.work._load()
+            runtime.checkpoint()
+        # Use actual clock transitions (initial 06:00); nighttime light is
+        # absent, thirst is urgent, and the original lamp has finite oil.
+        for i in range(3):
+            self.subject.act("advance", event_id=f"night-need-fixture-{i}", minutes=240)
+        before = self.subject.rhythm.audit_state()
+        self.assertGreaterEqual(before["thirst"], 6)
+        self.assertGreaterEqual(before["minute"] % 1440, 1080)
+        interruptions = []
+        for _ in range(12):
+            result = run_native_laboratory(
+                self.state, self.root / "original.sqlite3", affectus_source=self.donor,
+                steps=1, allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True, enable_commitment_competition=True,
+            )["receipts"][0]
+            self.assertEqual(result["goal_id"], original.goal_id)
+            current = SixOrganRuntime.open(self.state)._port.brain.store
+            self.assertEqual(json.loads(current.meta(WORK_KEY))["payload"]["origin_policy_id"],
+                             saved["origin_policy_id"])
+            if result["status"] == "commitment_interrupted":
+                action = result["interrupting_action"]
+                interruptions.append(action)
+                with current.connect() as db:
+                    audit = json.loads(db.execute(
+                        "SELECT state_pressure_json FROM policy_decisions WHERE id=?",
+                        (result["competition_policy_id"],)).fetchone()[0])
+                self.assertEqual(audit["motor_completion"], "admitted")
+                self.assertEqual(audit["active_commitment_id"], original.goal_id)
+                if action in ("light", "brew_tea"):
+                    with self.world._open() as db:
+                        event, digest = _row(db, "rhythm_events", audit["motor_event_id"])
+                    self.assertEqual(event["op"], action)
+                    self.assertEqual(event["station"], "station:kitchen")
+                    self.assertEqual(current.get_memory(result["memory_id"])["source"],
+                                     "laboratory-home:action:" + digest)
+                if action == "brew_tea":
+                    break
+        self.assertIn("seek_kitchen", interruptions)
+        self.assertIn("light", interruptions)
+        self.assertIn("brew_tea", interruptions)
+        self.assertLess(interruptions.index("light"), interruptions.index("brew_tea"))
+        after = self.subject.rhythm.audit_state()
+        self.assertLess(after["thirst"], before["thirst"])
+        self.assertLess(after["supplies"]["oil"], before["supplies"]["oil"])
+        self.assertLess(after["supplies"]["tea"], before["supplies"]["tea"])
+        self.assertEqual(self.subject.embodied.verify()["station"], "station:kitchen")
+        self.subject.verify()
+
+    def test_product_recurring_work_preserves_completed_project_and_real_consumption(self):
+        """Two separate neural work origins, actual world outcomes and cold continuity."""
+        from doctor_lives.lab_runtime import run_native_laboratory
+        from doctor_lives.lab_native_work_goal import WORK_HISTORY
+        from doctor_lives.lab_home_bridge import _row
+        runtime = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        runtime.checkpoint()
+        first = None
+        second = None
+        records = []
+        for _ in range(35):
+            receipt = run_native_laboratory(
+                self.state, self.root / "original.sqlite3",
+                affectus_source=self.donor, steps=1,
+                allow_world_actions=True, enable_sustained_work=True,
+                enable_recurring_goals=True,
+            )["receipts"][0]
+            if receipt["kind"] != "work" or receipt["status"] != "completed":
+                continue
+            current = SixOrganRuntime.open(self.state)._port.brain.store
+            record = json.loads(current.meta(WORK_KEY))["payload"]
+            records.append(record)
+            if first is None:
+                first = receipt
+            else:
+                second = receipt
+                break
+        self.assertIsNotNone(first, "No original work completion")
+        self.assertIsNotNone(second, "No second independently selected feasible project")
+        self.assertNotEqual(first["goal_id"], second["goal_id"])
+        self.assertNotEqual(first["memory_id"], second["memory_id"])
+        self.assertNotEqual(records[0]["origin_policy_id"], records[1]["origin_policy_id"])
+        cold = SixOrganRuntime.open(self.state)._port.brain.store
+        archived = json.loads(cold.meta(WORK_HISTORY + first["goal_id"]))
+        self.assertEqual(archived["payload"], records[0])
+        self.assertEqual(archived["sha256"], _hash(records[0]))
+        for record in records:
+            memory = cold.get_memory(record["memory_id"])
+            with self.world._open() as db:
+                event, digest = _row(db, "rhythm_events", "ng_" + record["id"] + "_work")
+                self.assertEqual(db.execute(
+                    "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                    ("ng_" + record["id"] + "_work",)).fetchone()[0], 1)
+            self.assertEqual(memory["source"], "laboratory-home:action:" + digest)
+            self.assertEqual(event["op"], record["selected_action"])
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+        self.subject.verify()
+
+    def test_original_neural_work_intention_survives_real_darkness_without_ghost_work(self):
+        """A real original bench cue can sustain a temporarily blocked goal.
+
+        Nightfall is a physical fixture intervention, NOT Pretorius choosing
+        to darken the room or independently completing a three-class R4.
+        No supplies, work event or invented motor may be granted by origin.
+        """
+        from pretorius_lab.daily_rhythm import transition
+        from pretorius_lab.physics import Conflict
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        epoch = self.subject.verify()["world_epoch"]
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            proposal = chooser._native_policy()
+            self.assertIn(proposal.selected_tendency, ("explore", "persist"))
+            from doctor_lives.lab_endogenous_book_task import _verified_looks
+            self.assertTrue(any(
+                e["after_station"] == "station:threshold"
+                and "workbench" in e["offered_payload"]["perceived_features"]
+                for e, _ in _verified_looks(self.subject.embodied)
+            ))
+            # Actual pinned-world time transition, not a patched state.
+            # Original Laboratory caps each advance at 240 minutes.
+            # Three real, independently replayable source events reach night.
+            for n in range(3):
+                self.subject.rhythm.advance(
+                    240, event_id=f"external-fixture-nightfall-{n}")
+            physical = self.subject.rhythm.audit_state()
+            self.assertGreater(physical["supplies"]["reagents"], 0)
+            self.assertGreater(physical["supplies"]["spares"], 0)
+            for op in ("repair", "experiment"):
+                with self.assertRaises(Conflict):
+                    transition(physical, op, {}, "station:bench")
+            before = self.subject.rhythm.verify()["revision"]
+            created = chooser.work.originate(proposal)
+            self.assertEqual(created.status, "goal_created")
+            self.assertEqual(created.selected_tendency,
+                             proposal.selected_tendency)
+            self.assertEqual(chooser.work._load()["phase"], "blocked")
+            self.assertEqual(chooser.work._load()["origin_policy_id"],
+                             proposal.policy_decision_id)
+            self.assertEqual(self.subject.rhythm.verify()["revision"], before)
+            rt.checkpoint()
+
+        reopened = SixOrganRuntime.open(self.state)
+        with self.session(reopened) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            state = chooser.work._load()
+            self.assertEqual(state["id"], created.goal_id)
+            self.assertEqual(state["phase"], "blocked")
+            self.assertIsNone(state["work_policy_id"])
+            self.assertIsNone(state["memory_id"])
+            denied = chooser.step(authorized_world_action=False)
+            self.assertEqual((denied.kind, denied.status, denied.goal_id),
+                             ("work", "authorization_required", created.goal_id))
+            self.assertEqual(self.subject.rhythm.verify()["revision"], before)
+            self.assertEqual(self.subject.verify()["world_epoch"], epoch)
+        with self.world._open() as db:
+            work_events = db.execute(
+                "SELECT count(*) FROM rhythm_events "
+                "WHERE json_extract(envelope, '$.op') IN ('repair','experiment')"
+            ).fetchone()[0]
+        self.assertEqual(work_events, 0)
+
+    def test_original_neural_work_goal_survives_departure_from_seen_bench(self):
+        """An original policy may commit to a previously SEEN bench.
+
+        The relocation here is external fixture setup, not an autonomous
+        rest/book/work sequence. No physical work or R4 credit is claimed.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            proposal = chooser._native_policy()
+            self.assertIn(proposal.selected_tendency, ("explore", "persist"))
+            # The authentic six-organ cycle already calls the original
+            # bridge.observe(), which persists a real physical LOOK.
+            # Inspect that source record rather than pretending the room
+            # was unseen. No host-authored second LOOK is inserted.
+            from doctor_lives.lab_endogenous_book_task import _verified_looks
+            seen = [
+                e for e, _ in _verified_looks(self.subject.embodied)
+                if e["after_station"] == "station:threshold"
+                and "workbench" in e["offered_payload"]["perceived_features"]
+            ]
+            self.assertTrue(seen, "Original neural cycle did not witness bench")
+            self.subject.embodied.move(
+                "station:hall", event_id="external-fixture-work-hall")
+            self.subject.embodied.move(
+                "station:bedroom", event_id="external-fixture-work-bedroom")
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:bedroom")
+            created = chooser.work.originate(proposal)
+            self.assertEqual(created.status, "goal_created")
+            self.assertIsNotNone(created.goal_id)
+            self.assertEqual(chooser.work._load()["phase"], "travel")
+            self.assertEqual(chooser.work._load()["origin_policy_id"],
+                             proposal.policy_decision_id)
+            denied = chooser.step(authorized_world_action=False)
+            self.assertEqual((denied.kind, denied.status, denied.goal_id),
+                             ("work", "authorization_required", created.goal_id))
+            rt.checkpoint()
+        reopened = SixOrganRuntime.open(self.state)
+        with self.session(reopened) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            self.assertEqual(chooser.work._load()["id"], created.goal_id)
+            self.assertEqual(chooser.work._load()["phase"], "travel")
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:bedroom")
+        with self.world._open() as db:
+            # Original six-organ observation may advance physical time.
+            # Deny only an actual unapproved repair/experiment receipt,
+            # not legitimate unrelated rhythm events.
+            physical = [
+                json.loads(row[0]).get("op")
+                for row in db.execute("SELECT envelope FROM rhythm_events")
+            ]
+        self.assertFalse(any(op in ("repair", "experiment") for op in physical))
+        print("B_SEEN_WORK_CUE_PERSISTENCE=" + json.dumps({
+            "original_neural_origin": True,
+            "original_world_look": True,
+            "external_fixture_relocation": True,
+            "cold_goal_reopen": True,
+            "physical_work_completed": False,
+            "uncoached_r4_credit": False,
+        }, sort_keys=True))
+
+    def test_original_neural_exploration_can_revisit_only_a_physically_seen_cue(self):
+        """Source-backed single movement, not a new or completed R4 goal.
+
+        Fixture setup is explicitly external. The Doctor's actual neural
+        decision authorizes ONLY the final move and original lived receipt.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            proposal = chooser._native_policy()
+            self.assertIn(proposal.selected_tendency, ("explore", "persist"))
+            # Actual original-world LOOK, never a fabricated scene or title.
+            cue = self.subject.embodied.look(event_id="external-fixture-seen-threshold")
+            self.assertIn("workbench", cue["offered_payload"]["perceived_features"])
+            # External fixture positioning is NOT a Doctor action or R4 proof.
+            self.subject.embodied.move("station:hall", event_id="external-fixture-to-hall")
+            self.subject.embodied.move("station:bedroom", event_id="external-fixture-to-bed")
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:bedroom")
+            denied = chooser._move_to_remembered_cue(proposal, False)
+            self.assertEqual(denied.status, "no_situated_goal")
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:bedroom")
+            actual = chooser._move_to_remembered_cue(proposal, True)
+            self.assertEqual((actual.status, actual.kind, actual.goal_id),
+                             ("moved", None, None))
+            self.assertEqual(self.subject.embodied.verify()["station"], "station:hall")
+            memory = rt._port.brain.store.get_memory(actual.memory_id)
+            self.assertIsNotNone(memory)
+            self.assertEqual(memory["evidence_class"], "lived_runtime_memory")
+            self.assertFalse(memory["external"])
+            self.assertTrue(memory["source"].startswith("laboratory-home:action:"))
+            digest = memory["source"].removeprefix("laboratory-home:action:")
+            with self.world._open() as db:
+                rows = db.execute("SELECT event_id FROM embodied_events WHERE event_hash=?",
+                                  (digest,)).fetchall()
+            self.assertEqual(len(rows), 1)
+            self.subject.embodied.verify()
+            rt.checkpoint()
+        print("B_WITNESSED_CUE_EXPLORATION=" + json.dumps({
+            "source_pinned_look": True, "original_neural_policy": proposal.selected_tendency,
+            "real_world_move": True, "canonical_lived_memory": True,
+            "external_fixture_positioning": True,
+            "new_goal_created": False, "uncoached_r4_credit": False,
+        }, sort_keys=True))
+
+    def test_original_lab_authority_rejects_foreign_rhythm_epoch(self):
+        # This uses the REAL pinned DailyRhythm.verify, not a fabricated
+        # SQLite-only positive or an auditor bypass.
+        from pretorius_lab.physics import Conflict
+        self.subject.rhythm.verify()
+        with sqlite3.connect(self.root / "original.sqlite3") as db:
+            db.execute(
+                "UPDATE rhythm_meta SET value=? WHERE key='world_epoch'",
+                (json.dumps("forged-other-world"),),
+            )
+        with self.assertRaises(Conflict):
+            self.subject.rhythm.verify()
+
+    def test_original_lab_full_replay_rejects_torn_physical_chain(self):
+        from pretorius_lab.physics import Conflict
+        # A genuine physical time action first commits to original world.
+        self.subject.rhythm.act("advance", event_id="original-chain-probe",
+                                minutes=10)
+        self.subject.rhythm.verify()
+        with sqlite3.connect(self.root / "original.sqlite3") as db:
+            db.execute(
+                "UPDATE rhythm_events SET prev_hash=? WHERE event_id=?",
+                ("f" * 64, "original-chain-probe"),
+            )
+        with self.assertRaises(Conflict):
+            self.subject.rhythm.verify()
+
+    def test_self_consistent_forged_goal_cannot_create_work(self):
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        with self.session(rt) as host:
+            fabricated = {
+                "schema": "pretorius.native-work-intention.v1",
+                "id": "f" * 24, "world_epoch": self.subject.verify()["world_epoch"],
+                "goal": "I want to undertake worthwhile work at my laboratory bench.",
+                "phase": "complete", "steps": 3,
+                "origin_policy_id": "forged_policy",
+                "origin_thought_id": "forged_thought",
+                "work_policy_id": "forged_choice",
+                "selected_action": "experiment",
+                "memory_id": "forged_memory",
+            }
+            with rt._port.brain.store.transaction() as db:
+                rt._port.brain.store.set_meta(
+                    WORK_KEY, _stable({"payload": fabricated,
+                                        "sha256": _hash(fabricated)}), db)
+            with self.assertRaisesRegex(RuntimeError, "Corrupt or forged"):
+                NativeLaboratoryGoalChooser(
+                    host, authorized=True, enable_sustained_work=True)
+            with self.world._open() as db:
+                self.assertEqual(db.execute(
+                    "SELECT count(*) FROM rhythm_events").fetchone()[0], 0)
+
+
+    def test_real_os_kill_after_world_before_brain_recovers_exactly_once(self):
+        """External process dies after real physical work, before lived admission.
+
+        This is a deliberately injected OS crash at a known custody seam.
+        It proves one targeted same-goal work replay, NOT uncoached R4 3/3.
+        """
+        rt = SixOrganRuntime.open(self.state, neural_config=small_neural())
+        epoch = self.subject.verify()["world_epoch"]
+        with self.session(rt) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            created = chooser.step(authorized_world_action=False)
+            self.assertEqual((created.kind, created.status),
+                             ("work", "goal_created"))
+            for _ in range(12):
+                if self.subject.embodied.verify()["station"] == "station:bench":
+                    break
+                moved = chooser.step(authorized_world_action=True)
+                self.assertEqual(moved.status, "moved")
+            self.assertEqual(self.subject.embodied.verify()["station"],
+                             "station:bench")
+            rt.checkpoint()
+
+        event_id = "ng_" + created.goal_id + "_work"
+        child = r"""
+import os
+import sys
+from pathlib import Path
+from doctor_lives.organs import SixOrganRuntime
+from doctor_lives.lab_native_goal_choice import NativeLaboratoryGoalChooser
+from doctor_lives.lab_six_organ_session import SixOrganLaboratoryCycle
+from pretorius_lab.habitat_v2 import SpatialHabitat
+from pretorius_lab.subject_port import SubjectPort
+
+state, world, donor = map(Path, sys.argv[1:])
+runtime = SixOrganRuntime.open(state)
+subject = SubjectPort(SpatialHabitat(world))
+with SixOrganLaboratoryCycle(
+        runtime, subject, affectus_source=donor,
+        renderer=lambda text: text, authorized=True) as host:
+    original_admission = host.bridge._admit_verified
+    def die_after_original_world_commit(frame, source, **kwargs):
+        if not source.startswith("laboratory-home:action:"):
+            return original_admission(frame, source, **kwargs)
+        # DoctorHomeBridge calls this only AFTER SubjectPort.act has
+        # durably written the actual Laboratory receipt. Kill the whole
+        # process without Python unwinding or closing the cognitive session.
+        print("REAL_WORLD_COMMITTED_BRAIN_NOT_ADMITTED", flush=True)
+        os._exit(73)
+    host.bridge._admit_verified = die_after_original_world_commit
+    chooser = NativeLaboratoryGoalChooser(
+        host, authorized=True, enable_sustained_work=True)
+    chooser.step(authorized_world_action=True)
+os._exit(99)
+"""
+        killed = subprocess.run(
+            [sys.executable, "-c", child, str(self.state),
+             str(self.root / "original.sqlite3"), str(self.donor)],
+            capture_output=True, text=True, timeout=90)
+        self.assertEqual(killed.returncode, 73, killed.stderr)
+        self.assertIn("REAL_WORLD_COMMITTED_BRAIN_NOT_ADMITTED",
+                      killed.stdout)
+        self.subject.rhythm.verify()
+        with self.world._open() as db:
+            original = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (event_id,)).fetchall()
+        self.assertEqual(len(original), 1)
+        digest = original[0][0]
+        with sqlite3.connect(self.state / "brain.sqlite3") as db:
+            before = db.execute(
+                "SELECT count(*) FROM memories WHERE source=?",
+                ("laboratory-home:action:" + digest,)).fetchone()[0]
+        self.assertEqual(before, 0)
+
+        # A completely new Python runtime reconciles the existing original
+        # world event, prior original Noesis motor binding, and canonical goal.
+        reopened = SixOrganRuntime.open(self.state)
+        with self.session(reopened) as host:
+            chooser = NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True)
+            result = chooser.step(authorized_world_action=True)
+            self.assertEqual(result.status, "completed")
+            self.assertEqual(result.goal_id, created.goal_id)
+            self.assertEqual(chooser.work._load()["phase"], "complete")
+            reopened.checkpoint()
+        self.assertEqual(self.subject.verify()["world_epoch"], epoch)
+        self.subject.rhythm.verify()
+        with self.world._open() as db:
+            rows = db.execute(
+                "SELECT event_hash FROM rhythm_events WHERE event_id=?",
+                (event_id,)).fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], digest)
+        with sqlite3.connect(self.state / "brain.sqlite3") as db:
+            memories = db.execute(
+                "SELECT id FROM memories WHERE source=?",
+                ("laboratory-home:action:" + digest,)).fetchall()
+        self.assertEqual(len(memories), 1)
+        self.assertEqual(memories[0][0], result.memory_id)
+
+        # Another cold reopen is read-only with respect to this work event.
+        again = SixOrganRuntime.open(self.state)
+        with self.session(again) as host:
+            self.assertEqual(NativeLaboratoryGoalChooser(
+                host, authorized=True, enable_sustained_work=True
+            ).work._load()["memory_id"], result.memory_id)
+        with self.world._open() as db:
+            self.assertEqual(db.execute(
+                "SELECT count(*) FROM rhythm_events WHERE event_id=?",
+                (event_id,)).fetchone()[0], 1)
+        print("B_REAL_OS_KILL_WORLD_BEFORE_BRAIN=" + json.dumps({
+            "real_process_exit": 73,
+            "original_world_event_exactly_once": True,
+            "canonical_lived_memory_exactly_once": True,
+            "same_goal_after_cold_restart": True,
+            "uncoached_three_class_R4": False,
+        }, sort_keys=True))
+
+
+if __name__ == "__main__":
+    unittest.main()

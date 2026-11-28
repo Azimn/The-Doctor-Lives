@@ -1,0 +1,63 @@
+name: Experimental preview operator installed-wheel lifecycle
+
+on:
+  pull_request:
+    paths:
+      - doctor_lives/preview_operator.py
+      - doctor_lives/cli.py
+      - tests/wheel_preview_operator_smoke.py
+      - tests/test_preview_ledger.py
+      - doctor_lives/preview_ledger.py
+      - doctor_lives/lab_runtime.py
+      - .github/workflows/preview-operator.yml
+  workflow_dispatch:
+
+jobs:
+  installed-wheel-operator:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build actual Doctor and original Laboratory wheels
+        run: python -m pip wheel --wheel-dir ${{ runner.temp }}/preview-wheels . ./donor-laboratory
+      - name: Install wheels into clean virtual environment (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/preview-venv"
+          "$RUNNER_TEMP/preview-venv/bin/python" -m pip install --no-index --find-links "$RUNNER_TEMP/preview-wheels" "the-doctor-lives[laboratory]==0.5.0rc2"
+          cd "$RUNNER_TEMP"
+          PYTHONPATH="" "$RUNNER_TEMP/preview-venv/bin/python" -m unittest discover -s "$GITHUB_WORKSPACE/tests" -p test_preview_ledger.py -v
+          PYTHONPATH="" PATH="$RUNNER_TEMP/preview-venv/bin:$PATH" "$RUNNER_TEMP/preview-venv/bin/python" "$GITHUB_WORKSPACE/tests/wheel_preview_operator_smoke.py"
+      - name: Install wheels into clean virtual environment (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $venv = Join-Path $env:RUNNER_TEMP "preview-venv"
+          python -m venv $venv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $venv "Scripts/python.exe"
+          & $python -m pip install --no-index --find-links (Join-Path $env:RUNNER_TEMP "preview-wheels") "the-doctor-lives[laboratory]==0.5.0rc2"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PYTHONPATH = ""
+          $env:PATH = (Join-Path $venv "Scripts") + ";" + $env:PATH
+          Push-Location $env:RUNNER_TEMP
+          try {
+            & $python -m unittest discover -s (Join-Path $env:GITHUB_WORKSPACE "tests") -p test_preview_ledger.py -v
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $python (Join-Path $env:GITHUB_WORKSPACE "tests/wheel_preview_operator_smoke.py")
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          finally { Pop-Location }

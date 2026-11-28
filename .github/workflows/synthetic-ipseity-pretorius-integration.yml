@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - integration/synthetic-ipseity-subject-path
+      - integration/m5
   pull_request:
     paths:
       - doctor_lives/ipseity_integration.py
+      - doctor_lives/organs.py
+      - tests/test_six_organ_durable_ipseity.py
       - doctor_lives/ipseity_local.py
       - doctor_lives/speech_emission.py
       - doctor_lives/store.py
@@ -46,6 +49,10 @@ jobs:
         run: python tools/ipseity_entrypoint_gate.py
       - name: Run actual cognitive integration tests
         run: python -m unittest discover -s tests -p test_ipseity_integration.py -v
+      - name: Verify durable Ipseity uses single six-organ brain, fail-closed and crash-safe
+        run: |
+          python -c "import synthetic_ipseity; print(synthetic_ipseity.__file__)"
+          python -m unittest discover -s tests -p test_six_organ_durable_ipseity.py -v
       - name: Check updated donor action gateway with real Pretorius source frames
         run: python -m unittest discover -s tests -p test_ipseity_action_reference.py -v
       - name: Run fail-closed local session suite

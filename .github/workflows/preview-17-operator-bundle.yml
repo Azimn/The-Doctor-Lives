@@ -1,0 +1,268 @@
+name: Source-pinned seventeen-book offline operator bundle
+
+on:
+  pull_request:
+    paths:
+      - doctor_lives/cognition.py
+      - doctor_lives/chassis.py
+      - doctor_lives/tower_ipseity.py
+      - tests/test_lab_home_bridge.py
+      - doctor_lives/lab_preview.py
+      - doctor_lives/preview_17_books.py
+      - doctor_lives/cli.py
+      - doctor_lives/lab_native_goal_choice.py
+      - doctor_lives/lab_conclave_reflection.py
+      - doctor_lives/conclave.py
+      - tests/test_conclave.py
+      - tests/test_six_organ_native_goal_choice.py
+      - tools/install_17_operator_bundle.py
+      - tools/assemble_17_operator_bundle.py
+      - tools/check_17_operator_bundle.py
+      - tools/audit_three_uncoached.py
+      - tools/run_uncoached_r4_trial.py
+      - tools/archive_r4_source_evidence.py
+      - tools/observe_uncoached_r4.py
+      - doctor_lives/r4_diagnostics.py
+      - tests/test_r4_termination.py
+      - tools/profile_r4_boundaries.py
+      - tests/test_r4_profile.py
+      - tests/test_r4_uncoached_witness.py
+      - tests/test_r4_source_archive.py
+      - tests/test_candidate_b_r4_audit_contract.py
+      - .github/workflows/preview-17-operator-bundle.yml
+  workflow_dispatch:
+
+# Only the latest B pull-request head deserves costly donor builds.
+# This does not apply to the separately marker-gated four-hour workflow.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  independent-r4-auditor-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject ten-plus forged or unauthenticated R4 evidence classes
+        run: python -m unittest discover -s tests -p test_candidate_b_r4_audit_contract.py -v
+
+  verified-unread-17:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Preserve literal reviewed bytes
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 802e459ee68950414347d5fa324484c034f57b81
+          path: donor-sensus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: donor-affectus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/synthetic-ipseity
+          ref: e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          path: donor-ipseity
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned source dependencies for actual 17-volume builder
+        run: |
+          python -m pip install ./donor-ipseity ./donor-laboratory .
+      - name: Build verified full texts and pristine untouched 17-book world
+        env:
+          PYTHONPATH: ${{ github.workspace }}/donor-laboratory:${{ github.workspace }}/donor-sensus
+        run: |
+          python tools/verify_17_full_text_lab.py --lab-source donor-laboratory --affectus-source donor-affectus --output-dir "${{ runner.temp }}/seventeen"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "seventeen"
+          report = json.loads((p / "acceptance.json").read_text())
+          assert report["pristine_book_count"] == 17
+          assert report["physical_shelves_verified"] == 17
+          assert report["pristine_prior_world_moves"] == 0
+          assert report["distinct_lived_read_memories"] == 17
+          from doctor_lives.preview_17_books import verify_unread_seventeen
+          check = verify_unread_seventeen(p / "unread-17-full-text-lab.sqlite3")
+          assert check["books_installed"] == 17 and check["prior_reads"] == 0
+          print("PRISTINE_17_LIBRARY=" + json.dumps(check, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reviewed-pristine-seventeen-source-evidence
+          path: |
+            ${{ runner.temp }}/seventeen/unread-17-full-text-lab.sqlite3
+            ${{ runner.temp }}/seventeen/acceptance.json
+            ${{ runner.temp }}/seventeen/catalog.json
+          retention-days: 30
+          if-no-files-found: error
+
+  platform-bundle-install:
+    needs: verified-unread-17
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
+    steps:
+      - name: Preserve reviewed donor bytes including Windows LF
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 802e459ee68950414347d5fa324484c034f57b81
+          path: donor-sensus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: donor-affectus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/synthetic-ipseity
+          ref: e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          path: donor-ipseity
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: reviewed-pristine-seventeen-source-evidence
+          path: ${{ runner.temp }}/seventeen
+      - name: Assemble sealed platform wheelhouse
+        shell: bash
+        run: |
+          python -m pip wheel --wheel-dir "$RUNNER_TEMP/wheelhouse"             "numpy==2.5.4" "scipy==1.18.1" . ./donor-laboratory ./donor-ipseity
+          python tools/assemble_17_operator_bundle.py             --wheels "$RUNNER_TEMP/wheelhouse"             --source-report "$RUNNER_TEMP/seventeen/acceptance.json"             --sensus donor-sensus --affectus donor-affectus             --laboratory donor-laboratory --ipseity donor-ipseity             --output "$RUNNER_TEMP/pretorius-seventeen-${{ matrix.platform }}.zip"             --doctor-commit "${{ github.event.pull_request.head.sha || github.sha }}"             --platform "${{ matrix.platform }}"
+      - name: Clean offline install with untouched 17-book world, installed wheels and donor checks
+        shell: bash
+        run: |
+          python tools/check_17_operator_bundle.py             --archive "$RUNNER_TEMP/pretorius-seventeen-${{ matrix.platform }}.zip"             --expected-sha "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: experimental-17-book-operator-${{ matrix.platform }}
+          path: ${{ runner.temp }}/pretorius-seventeen-${{ matrix.platform }}.zip
+          retention-days: 30
+          if-no-files-found: error
+
+  independent-uncoached-r4:
+    needs: platform-bundle-install
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: experimental-17-book-operator-linux
+          path: ${{ runner.temp }}/operator-download
+      - name: Install Candidate B runtime dependencies for independent witness
+        run: python -m pip install .
+      - name: Independent read-only witness regression, no donor imports
+        run: python -m unittest discover -s tests -p test_r4_uncoached_witness.py -v
+      - name: Verify termination taxonomy and evidence-driven watchdog classification
+        run: python -m unittest discover -s tests -p test_r4_termination.py -v
+      - name: Profile boundary accounting regressions, no donor execution
+        run: python -m unittest discover -s tests -p test_r4_profile.py -v
+      - name: Verify read-only source archiver includes WAL and rejects absent originals
+        run: python -m unittest discover -s tests -p test_r4_source_archive.py -v
+      - name: Install verified source-pinned world offline with zero goal inputs
+        run: |
+          python - <<'PY'
+          import os, pathlib, zipfile
+          root = pathlib.Path(os.environ["RUNNER_TEMP"])
+          target = root / "operator-source"
+          target.mkdir()
+          with zipfile.ZipFile(root / "operator-download/pretorius-seventeen-linux.zip") as pack:
+              assert all(not (x.startswith("/") or ".." in pathlib.Path(x).parts)
+                         for x in pack.namelist())
+              pack.extractall(target)
+          PY
+          python "${{ runner.temp }}/operator-source/install.py" --install-root "${{ runner.temp }}/r4-installed"
+      - name: Independent R4 capacity observation, no task messages or scripted choices
+        run: |
+          python tools/run_uncoached_r4_trial.py \
+            --install-root "${{ runner.temp }}/r4-installed" --seconds 3600 --capacity-receipts 520 \
+            --report "${{ runner.temp }}/independent-r4-report.json"
+      - name: Snapshot original Laboratory, canonical BrainStore and operator ledger even on R4 failure
+        if: always()
+        run: |
+          python tools/archive_r4_source_evidence.py \
+            --workspace "${{ runner.temp }}/r4-installed/workspace" \
+            --output-dir "${{ runner.temp }}/r4-source-evidence"
+      - name: Verify witness scores against actual archived original BrainStore even when R4 fails
+        if: always()
+        env:
+          PRETORIUS_ARCHIVED_BRAINSTORE: ${{ runner.temp }}/r4-source-evidence/canonical-brain.sqlite3
+        run: |
+          test -f "$PRETORIUS_ARCHIVED_BRAINSTORE"
+          python -m unittest discover -s tests -p test_r4_uncoached_witness.py -v
+      - name: Upload source-replayable R4 original databases and ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-uncoached-r4-original-source-ledger
+          path: ${{ runner.temp }}/r4-source-evidence/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Retain exact-R4 failure evidence regardless of verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-uncoached-three-activities-r4
+          path: |
+            ${{ runner.temp }}/independent-r4-report.json
+            ${{ runner.temp }}/independent-r4-report.witness.jsonl
+            ${{ runner.temp }}/independent-r4-report.origins.jsonl
+            ${{ runner.temp }}/independent-r4-report.operator.stdout.txt
+            ${{ runner.temp }}/independent-r4-report.operator.stderr.txt
+            ${{ runner.temp }}/independent-r4-report.source-audit.json
+            ${{ runner.temp }}/independent-r4-report.audit.stdout.txt
+            ${{ runner.temp }}/independent-r4-report.audit.stderr.txt
+            ${{ runner.temp }}/independent-r4-report.operator-profile.jsonl
+          retention-days: 30
+          if-no-files-found: warn

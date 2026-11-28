@@ -111,6 +111,64 @@ class BrainIntegrationTests(unittest.TestCase):
         self.assertEqual(brain.store.tick, before)
         self.assertEqual(result["store_tick"], before)
 
+    def test_unconscious_sleep_replay_does_not_manufacture_experience(self):
+        from contextlib import closing
+        from unittest.mock import patch
+        from doctor_lives.tower_ipseity import TowerIpseity
+        brain = self.make_brain()
+        brain.ingest(Experience("A quiet laboratory observation.", novelty=0.1))
+        subject = TowerIpseity(brain)
+        subject.admit_private("replay-test-prefix", "Noesis", "I wonder about the quiet room.")
+        before_history = subject.verify_history()
+        before_tick, before_neural = brain.store.tick, brain.neural.tick
+        before_ids = {m["id"] for m in brain.store.memories(False)}
+        original_step = brain.neural.step
+        witnessed = []
+
+        def checked_step(text, *args, **kwargs):
+            with closing(brain.store.connect()) as db:
+                rows = db.execute("SELECT * FROM sleep_fragments WHERE trigger=?",
+                                  ("associative_replay_pending",)).fetchall()
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            refs = json.loads(row["record_ids_json"])
+            self.assertEqual(text, " | ".join(brain.store.get_memory(r)["text"] for r in refs))
+            self.assertEqual(row["summary"], text[:1000])
+            self.assertEqual(subject.verify_history(), before_history)
+            witnessed.append(row["id"])
+            return original_step(text, *args, **kwargs)
+
+        with patch.object(brain.neural, "step", side_effect=checked_step):
+            report = brain.sleep(4)
+        self.assertEqual(report["fragments"], 4)
+        self.assertEqual(len(set(witnessed)), 4)
+        self.assertEqual(brain.store.tick, before_tick)
+        self.assertGreater(brain.neural.tick, before_neural)
+        self.assertEqual(subject.verify_history(), before_history)
+        self.assertEqual({m["id"] for m in brain.store.memories(False)}, before_ids)
+        with closing(brain.store.connect()) as db:
+            completed = {r[0] for r in db.execute(
+                "SELECT id FROM sleep_fragments WHERE trigger='associative_replay'")}
+            self.assertEqual(completed, set(witnessed))
+        self.assertEqual(TowerIpseity(PretoriusBrain(brain.state_dir)).verify_history(), before_history)
+
+    def test_failed_unconscious_replay_is_not_counted_as_completed(self):
+        from contextlib import closing
+        from unittest.mock import patch
+        from doctor_lives.tower_ipseity import TowerIpseity
+        brain = self.make_brain()
+        brain.ingest(Experience("A quiet laboratory observation.", novelty=0.1))
+        before = TowerIpseity(brain).verify_history()
+        count = brain.status()["dream_fragments"]
+        with patch.object(brain.neural, "step", side_effect=RuntimeError("replay fault")):
+            with self.assertRaisesRegex(RuntimeError, "replay fault"):
+                brain.sleep(1)
+        with closing(brain.store.connect()) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM sleep_fragments WHERE trigger=?",
+                                       ("associative_replay_pending",)).fetchone()[0], 1)
+        self.assertEqual(brain.status()["dream_fragments"], count)
+        self.assertEqual(TowerIpseity(brain).verify_history(), before)
+
     def test_restart_preserves_continuity(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)

@@ -1,0 +1,78 @@
+name: M4 original-Noesis open-intention gate
+on:
+  push:
+    branches: [integration/m4]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-open:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Test adversarial judge before running the subject
+        run: python -m unittest discover -s tests -p test_verify_open.py -v
+      - name: Run twenty original-neural seeded three-day trials and independent M2 fallback
+        env:
+          PYTHONPATH: donor-laboratory:.
+          NO_REMOTE_INFERENCE: '1'
+        run: |
+          set -euo pipefail
+          test "$(git -C donor-laboratory rev-parse HEAD)" = 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          python scripts/run_m4_open.py --run /tmp/m4-study --lab-root donor-laboratory --provider fallback | tee /tmp/m4-output.json
+      - name: Independently verify immutable study evidence
+        env:
+          PYTHONPATH: donor-laboratory:.
+        run: |
+          python scripts/verify_open.py --run /tmp/m4-study --lab-root donor-laboratory
+          python scripts/verify_day.py --run /tmp/m4-study/fallback-day --lab-root donor-laboratory
+      - name: Preserve all actual source evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m4-complete-saved-evidence
+          path: |
+            /tmp/m4-study/
+            /tmp/m4-output.json
+          retention-days: 10
+          if-no-files-found: warn
+  local-ollama-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e .
+      - name: Install local Ollama model and run loopback inference only
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 1
+          done
+          ollama pull qwen2.5:0.5b
+          python - <<'PY'
+          from doctor_lives.open_inference import LocalOllama
+          context = {"situation": "I am in a research laboratory.",
+                     "memories": ["I took notes about the manuscript."],
+                     "needs": [{"need":"curiosity","felt":0.6}],
+                     "affordances":[{"description":"read the research document","label":"study"},
+                                    {"description":"append to my daily journal","label":"journal"},
+                                    {"description":"send a message to the operator inbox","label":"correspond"}]}
+          proposals = LocalOllama("qwen2.5:0.5b").propose(context)
+          assert 3 <= len(proposals) <= 8
+          print({"provider":"LocalOllama","local":True,"proposals":proposals})
+          PY

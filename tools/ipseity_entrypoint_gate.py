@@ -24,6 +24,16 @@ RESEARCH_ONLY = {
     "neural_robustness.py": {"subprocess"},
 }
 
+REVIEWED_OPERATOR_GLOSS = {"local_subject_gloss.py": {"http"}}
+# M4/M5 opt-in research adapters are separate from the subject renderer.
+REVIEWED_LOCAL_RESEARCH = {"open_inference.py": {"urllib"},
+                           "semantic_intentions.py": {"urllib"}}
+REVIEWED_LOCAL_TRANSPORT = {"local_ollama_transport.py": {"http"}}
+REVIEWED_LOOPBACK_UI = {"operator_chat_web.py": {"http"}, "tower_web.py": {"http"}}
+REVIEWED_WORLD_PORT = {"small_tower.py": {"subprocess"}}
+REVIEWED_PINNED_ORGANOID = {"phantasmagorium_bridge.py": {"subprocess"},
+                           "lab_phantasmagorium.py": {"subprocess"}}
+
 MODEL_PROVIDER_ROOTS = {
     "urllib", "requests", "httpx", "http", "openai", "anthropic",
     "ollama", "transformers", "subprocess", "litellm", "llama_cpp",
@@ -56,11 +66,106 @@ def run() -> dict:
         content = file.read_text("utf-8")
         root = ast.parse(content, filename=str(file))
         found = imports(root) & MODEL_PROVIDER_ROOTS
-        if found != RESEARCH_ONLY.get(file.name, set()):
+        expected = RESEARCH_ONLY.get(file.name, REVIEWED_OPERATOR_GLOSS.get(
+            file.name, REVIEWED_LOCAL_RESEARCH.get(file.name,
+                REVIEWED_LOCAL_TRANSPORT.get(file.name, REVIEWED_LOOPBACK_UI.get(
+                    file.name, REVIEWED_PINNED_ORGANOID.get(file.name,
+                        REVIEWED_WORLD_PORT.get(file.name, set())))))))
+        if found != expected:
             raise AssertionError(
                 f"Unreviewed model/process/network import in {file.name}: "
-                f"{sorted(found)}; expected {sorted(RESEARCH_ONLY.get(file.name, set()))}"
+                f"{sorted(found)}; expected {sorted(expected)}"
             )
+        if file.name in REVIEWED_LOCAL_RESEARCH:
+            # Existing M4 proposer and M5 embeddings are research-only.
+            # Require the literal loopback allowlist and their sole Ollama
+            # route, not an arbitrary URL/provider or subject-renderer bypass.
+            route = ("/api/generate" if file.name == "open_inference.py"
+                     else "/api/embed")
+            required = ('url=urlsplit(endpoint)', 'url.scheme!="http"',
+                        'url.hostname not in ("localhost","127.0.0.1","::1")',
+                        'url.username', 'url.password', 'url.query',
+                        'url.fragment', 'url.path.strip("/")', route)
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Name)]
+            if (not all(part in content for part in required)
+                    or sum(n.func.id == "post_local_ollama" for n in calls) != 1
+                    or "urlopen(" in content or "Request(" in content):
+                raise AssertionError("Unreviewed local research provider route")
+            audits[file.name] = "audited loopback-only research adapter, not renderer"
+        if file.name in REVIEWED_LOCAL_TRANSPORT:
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute)]
+            connections = [n for n in calls if n.func.attr == "HTTPConnection"]
+            requests = [n for n in calls if n.func.attr == "request"]
+            required = ('"::1" if hostname == "::1" else "127.0.0.1"',
+                        'route not in ("/api/generate", "/api/embed")',
+                        'if response.status != 200:', 'response.read(max_response_bytes + 1)')
+            if (len(connections) != 1 or len(requests) != 1
+                    or not all(part in content for part in required)
+                    or "urlopen(" in content):
+                raise AssertionError("Unreviewed local research HTTP transport")
+            audits[file.name] = "direct numeric-loopback POST; no proxies or redirects"
+        if file.name == "local_subject_gloss.py":
+            # Only this operator-only adapter may use a network import, and
+            # only for a literal fixed-loopback Ollama POST. This does not
+            # authorize an alternative subjective renderer or provider URL.
+            calls = [node for node in ast.walk(root)
+                     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)]
+            connections = [node for node in calls if node.func.attr == "HTTPConnection"]
+            requests = [node for node in calls if node.func.attr == "request"]
+            def literal(node):
+                return node.value if isinstance(node, ast.Constant) else None
+            if (len(connections) != 1 or len(connections[0].args) < 2
+                    or [literal(a) for a in connections[0].args[:2]]
+                    != ["127.0.0.1", 11434]
+                    or len(requests) != 1 or len(requests[0].args) < 2
+                    or [literal(a) for a in requests[0].args[:2]]
+                    != ["POST", "/api/generate"]):
+                raise AssertionError("Operator gloss must use only fixed-loopback Ollama")
+            audits[file.name] = "fixed-loopback operator gloss only; not a subject renderer"
+        if file.name in REVIEWED_LOOPBACK_UI:
+            servers = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                       and isinstance(n.func, ast.Name)
+                       and n.func.id == "ThreadingHTTPServer"]
+            if (len(servers) != 1 or not servers[0].args
+                    or not isinstance(servers[0].args[0], ast.Tuple)
+                    or not servers[0].args[0].elts
+                    or not isinstance(servers[0].args[0].elts[0], ast.Constant)
+                    or servers[0].args[0].elts[0].value != "127.0.0.1"
+                    or "from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer" not in content):
+                raise AssertionError("Operator web UI must bind one numeric loopback server")
+            audits[file.name] = "numeric-loopback-only operator UI, no model provider"
+        if file.name in REVIEWED_PINNED_ORGANOID:
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute)
+                     and n.func.attr == "run"]
+            expected_hash = "31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8"
+            if file.name == "phantasmagorium_bridge.py":
+                required = (expected_hash, "def verify_archive(",
+                            '[sys.executable, "-I", "-c", WORKER, str(self.archive), method]')
+            else:
+                # Persistent facade: same exact source pin, rechecked in the
+                # isolated worker before import. No arbitrary executable or shell.
+                required = ("from .phantasmagorium_bridge import verify_archive, DONOR_SHA256",
+                            "archive = verify_archive(archive)",
+                            'hashlib.sha256(archive.read_bytes()).hexdigest() != request["pin"]',
+                            '"pin": DONOR_SHA256',
+                            '[sys.executable, "-I", "-c", WORKER, str(archive)]',
+                            "timeout=30", "TemporaryDirectory(")
+            if (len(calls) != 1 or not all(x in content for x in required)
+                    or "shell=True" in content):
+                raise AssertionError("Unreviewed isolated Phantasmagorium subprocess")
+            audits[file.name] = "exact-digest offline organoid donor, isolated process; no subject renderer"
+        if file.name in REVIEWED_WORLD_PORT:
+            calls = [n for n in ast.walk(root) if isinstance(n, ast.Call)
+                     and isinstance(n.func, ast.Attribute) and n.func.attr == "run"]
+            required = ('verify_source(self.root)', 'small_tower_source.json',
+                        '[self.node, str(self.root / "src/doctor_world_cli.js"), str(self.world)]',
+                        'env.pop(key, None)', 'timeout=60', 'VirtualWorldEnvironmentPort')
+            if len(calls)!=1 or not all(x in content for x in required) or "shell=True" in content:
+                raise AssertionError("Unreviewed original Small Tower transport")
+            audits[file.name] = "source-pinned local world subprocess, not a model renderer"
         if file.name in AUTHORIZED_LOCAL_MODULES:
             if found:
                 raise AssertionError("Production subject modules may not directly access provider")

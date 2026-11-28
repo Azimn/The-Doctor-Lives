@@ -894,7 +894,23 @@ class BrainStore:
             ).fetchone()
         return None if row is None else dict(row)
 
-    def rehearse(self, conn: sqlite3.Connection, record_id: str, tick: int) -> None:
+    def rehearse(self, conn: sqlite3.Connection, record_id: str, tick: int,
+                 *, explicit_dream_reflection: bool = False) -> None:
+        # Passive policy selection and unconscious replay cannot refresh dreams.
+        from .dream_retention import is_dream_recollection, dream_accessibility
+        if not explicit_dream_reflection:
+            conn.execute(
+                """UPDATE memories SET rehearsal_count=rehearsal_count+1,last_rehearsed_tick=?,updated_tick=?
+                WHERE id=? AND active=1
+                AND NOT (kind='dream_recollection' AND evidence_class='dreamed_not_lived')""",
+                (tick,tick,record_id),
+            )
+            return
+        row = conn.execute("SELECT * FROM memories WHERE id=? AND active=1", (record_id,)).fetchone()
+        if (row is None or not is_dream_recollection(row)
+                or dream_accessibility(row, tick) == 0.0
+                or row["last_rehearsed_tick"] == tick):
+            return
         conn.execute(
             """UPDATE memories SET rehearsal_count=rehearsal_count+1,last_rehearsed_tick=?,updated_tick=?
             WHERE id=? AND active=1""", (tick,tick,record_id)

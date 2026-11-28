@@ -1,0 +1,1331 @@
+{
+  "schema": "pretorius.product-completion.v1",
+  "objective": "Complete the existing Doctor Septimus Pretorius as one persistent embodied artificial individual; product and engineering qualification primary",
+  "as_of": "2026-11-27",
+  "branch": "integration/pretorius-v1-unified-completion",
+  "pr": 124,
+  "canonical_main": "784cff39d58a7fe46bb5e4ffc16e0284e6663c78",
+  "baseline_candidate_b": "8cf836a927cfbbbe5469d805831f3dac200568f2",
+  "m6": "62f372c47959d1f577be1e980d4ae191981ac83d",
+  "laboratory": "6e49795752835d64fa6fd63d16359669a1ca2ba7",
+  "donor_leads": {
+    "inhabitant": "7add1e04f4d49760ca1ebfb2c838450d23193bd9",
+    "duck": "30a11ea8308ebd0fc89a06bb994ab0e23bd02886",
+    "sensus": "802e459ee68950414347d5fa324484c034f57b81",
+    "affectus": "904bf11861700739ccc03d4b0d4340ff3422a7d3",
+    "ipseity": "e2d1dc3978c952e59d270a29e84704c8a1fe264a"
+  },
+  "package_hashes": {
+    "v32": "9b076a875cb10165b0c0fc5765d75f52f3acae099a3c6f89b92231e1e65a6d52",
+    "v31": "de5cac729e352414d0b267673f0c03aa5b53ae54244044bc92197045d4771fe9",
+    "v3": "576ca029a7671e5c16c82d235ac0fbec028601e33c4de648bd74ead874f29c8f"
+  },
+  "authority": {
+    "world": "Pretorius-Laboratory SQLite",
+    "subject": "canonical BrainStore and recurrent state",
+    "rendering": "subject-only Ipseity and communication release gateway",
+    "motor": "original Noesis plus trusted world gateway",
+    "donors": "mechanisms only; no foreign biography or independent brain",
+    "status": "provisional source inspection; service principal enforcement not fully audited"
+  },
+  "historical_substitutions": "Letters, correspondence, books, newspapers, clocks and visitors for modern digital life; no dropped functionality; details pending",
+  "requirements": [
+    {
+      "id": "R01",
+      "requirement": "Persistent world, individual, clock, replay",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_runtime.py; store.py; lab_recovery_census.py",
+      "status": "partial",
+      "evidence": "Candidate B recovery 41322140162",
+      "next": "Unify M6, verify seven-day and forced interruptions"
+    },
+    {
+      "id": "R02",
+      "requirement": "Reality/observation/belief/memory separation",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_home_bridge.py; evidence_authority.py; organs.py; ipseity_integration.py",
+      "status": "partial",
+      "evidence": "Candidate B Ipseity 41322140168",
+      "next": "Full entrypoint and hidden-state audit"
+    },
+    {
+      "id": "R03",
+      "requirement": "Grounded authorized action and communication",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_six_organ_session.py; conversation_claims.py; operator_conversation.py",
+      "status": "partial",
+      "evidence": "81282b002640158bac3b8e44a3a5593889d894bc; new motor tests pending",
+      "next": "Qualify existing speech acknowledgment reuse; web-client delivery and voice; held-out grounded dialogue."
+    },
+    {
+      "id": "R04",
+      "requirement": "Independent goals, competence and physiology",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_native_goal_choice.py; lab_native_work_goal.py; noesis_day.py",
+      "status": "partial",
+      "evidence": "Exact PR #124 integration head 83d3c8232ca7e81fa5f675f2b70d9a82a73fcd98: 22/22 returned workflow runs passed. Independent R4 PASS run 45936446376, job 140303331982: 524 authenticated additional original-world receipts (520 target), 9 validated goals, 61 independent origin observations, read_book/rest/work, all five original physics verifiers, zero operator errors, capacity completion 1835.429 s. Archived source 15172059210 and diagnostics 15172755805; service digests recorded in PR #124, independent offline replay pending. This evidence belongs to 83d3c82, not the PR #129 successor. Historical 5bba8ad evidence retained in the historical sections. Longitudinal competence remains scientific qualification.",
+      "next": "Verify recovered PR #129 authorization candidate and universal first-person admission, then rerun the unchanged R4 capacity gate on the controlled integration successor. Independently replay archived originals; matched performance profiling is diagnostic, not a waiver or substitute for R4."
+    },
+    {
+      "id": "R05",
+      "requirement": "Durable learning mechanisms",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "noesis_consequences.py; experience_to_action.py; mnemosyne_pilot.py",
+      "status": "partial",
+      "evidence": "41322140126; 41322140183 historical candidate head",
+      "next": "Held-out skill, habit, belief and practice tests"
+    },
+    {
+      "id": "R06",
+      "requirement": "Shared temporal/social world",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_runtime.py; open_intentions.py; environment_port.py",
+      "status": "partial",
+      "evidence": "No integrated reciprocal social proof inspected",
+      "next": "Source-pinned Small Tower integration qualification, partner-specific belief and economy endurance; no Village required."
+    },
+    {
+      "id": "R07",
+      "requirement": "Stable revisable individuality",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "history.py; source_monitoring.py; cognition.py; projection.py",
+      "status": "partial",
+      "evidence": "Inherited canonical code and donor locks; new continuity not run",
+      "next": "Regression and protected migration"
+    },
+    {
+      "id": "R08",
+      "requirement": "Grounded multimodal interaction",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "operator_chat_web.py; speech_emission.py",
+      "status": "unknown",
+      "evidence": "Files located, not audited",
+      "next": "Scene snapshots and acknowledged speech; voice/media adapters"
+    },
+    {
+      "id": "R09",
+      "requirement": "Security, ethics, permissions",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "lab_runtime.py; evidence_authority.py; ingress.py",
+      "status": "partial",
+      "evidence": "Motor permission defect repaired; unverified",
+      "next": "100 negative authority, 100 world integrity and privacy gates"
+    },
+    {
+      "id": "R10",
+      "requirement": "Reproducible evaluation",
+      "repository": "Azimn/The-Doctor-Lives",
+      "locations": "tools/run_uncoached_r4_trial.py; .github/workflows/",
+      "status": "partial",
+      "evidence": "Exact Candidate B CI; human equivalence not required by directive",
+      "next": "Engineering qualification and separately tracked scientific work"
+    }
+  ],
+  "inventory": [
+    {
+      "id": "C01",
+      "component": "World, time, event ledger",
+      "requirements": [
+        "R01"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_runtime.py; Pretorius-Laboratory",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C02",
+      "component": "Perception, attention, body, motor",
+      "requirements": [
+        "R02",
+        "R04"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_six_organ_session.py; organs.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C03",
+      "component": "Episodic, semantic, working, procedural, prospective memory",
+      "requirements": [
+        "R02",
+        "R05"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "store.py; mnemosyne_pilot.py; recollection.py",
+      "status": "partial",
+      "evidence": "Integrated original P4/P5/P6 reconstruction, source monitoring, awareness and reconsolidation into endogenous Lab recall, per-source immutable trace ledger in canonical BrainStore; no additional autobiographical event. Detail/time distortion only when later actual conditions support it. Runtime qualification pending."
+    },
+    {
+      "id": "C04",
+      "component": "Beliefs, reconstruction, self-appraisal",
+      "requirements": [
+        "R02",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "reconsolidation.py; distortion.py; source_monitoring.py",
+      "status": "unknown",
+      "evidence": "Original typed recollection, source monitoring and reconsolidation now routed through active recall, not general belief integration. Restored original Self-Reference Governor pinned a70a7e9 and guarded first-person production rendering. Qualification pending."
+    },
+    {
+      "id": "C05",
+      "component": "Motivation, goals, life structure, habits, boredom",
+      "requirements": [
+        "R04",
+        "R05"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_native_goal_choice.py; cognition.py",
+      "status": "partial",
+      "evidence": "Existing native work/read/rest goals and same-brain competition; now actual canonical commitments table projection via Telos, source-authorized completion, old goal histories preserved, original situated persistence cites exact projection. Generic prose cannot resolve native goal. Partial, not general goal generation or abandonment. Original Article08 context/material gain/minimum-practice mechanism restored from e398cc10. Actual daily selector uses verified past material gains at the same context, bounded .025 contribution, no parallel habit database, no motor authority. Qualification pending."
+    },
+    {
+      "id": "C06",
+      "component": "Values, morality, culture, taste, humor, bias",
+      "requirements": [
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "cognition.py; history.py",
+      "status": "unknown",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C07",
+      "component": "Emotion, mood, health, aging",
+      "requirements": [
+        "R04"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "canonical_affectus_weather.py; affectus_lab_pilot.py",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C08",
+      "component": "Skills, work, finances",
+      "requirements": [
+        "R04",
+        "R05"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_native_work_goal.py; noesis_day.py",
+      "status": "partial",
+      "evidence": "Original Noesis work consequence learning, source-backed recurring work; Article08 household habit adapter reads original canonical memories and replayed material outcomes (coached or endogenous, no autonomy credit). Finances and supply replenishment not integrated."
+    },
+    {
+      "id": "C09",
+      "component": "Relationships, recursive theory of mind, persistent NPCs",
+      "requirements": [
+        "R06",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Village integration TBD",
+      "status": "partial",
+      "evidence": "Small Tower real scripted Rosa Brandl and Mr. McFeely, witnessed events and letter testimony, source-pinned port maps actual encounter to existing canonical relationship updates; full social belief/endurance qualification pending."
+    },
+    {
+      "id": "C10",
+      "component": "Communication, claim/action verification, injection protection",
+      "requirements": [
+        "R03",
+        "R09"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "operator_conversation.py; conversation_claims.py",
+      "status": "partial",
+      "evidence": "Existing grounded conversation and original speech_emission.py journal joined for actual interactive terminal output; source-specific self-observed expression, canonical event/memory atomic, uncertain sink never auto-repeats. Browser acknowledgment, voice and 300-turn qualification remain."
+    },
+    {
+      "id": "C11",
+      "component": "Period equivalents to digital device and open world",
+      "requirements": [
+        "R06",
+        "R08"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Letters, visits, newspapers, clocks; implementation TBD",
+      "status": "partial",
+      "evidence": "Exact Small Tower world port 0924fff64de70cfdcfcd7655cb274af4eeb2b2d3 offers finite food/fuel/water/tea, gardening, preservation, barter, credit, postal and account settlement. Source pin and same-brain virtual-world adapter, no Village dependency. New rehearsal only; current Lab migration and economy endurance pending."
+    },
+    {
+      "id": "C12",
+      "component": "Multimodality",
+      "requirements": [
+        "R08"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Scene and acknowledged utterance adapters TBD",
+      "status": "unknown",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C13",
+      "component": "Neural substrate, state encoding, adaptation",
+      "requirements": [
+        "R05",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "neural.py; cognition.py; DONORS.lock.json",
+      "status": "partial",
+      "evidence": "Initial inventory only; no new qualification asserted"
+    },
+    {
+      "id": "C14",
+      "component": "Welfare, governance, evaluation",
+      "requirements": [
+        "R09",
+        "R10"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "lab_recovery_census.py; CI; operator controls",
+      "status": "partial",
+      "evidence": "Restored exact M6 independent process observer and tests; host-health evidence only. Recovery c814c0c installed Linux/Windows green. Longer live operation and full governance gate pending."
+    },
+    {
+      "id": "C15",
+      "component": "Conclave and Phantasmagorium",
+      "requirements": [
+        "R02",
+        "R05",
+        "R07"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "conclave.py; phantasmagorium_bridge.py; organs.py",
+      "status": "partial",
+      "evidence": "Recovered exact original Phantasmagorium v0.5 Cabinet of Fancy archive, 375642 bytes SHA-256 31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8. 66 targeted original donor tests passed locally. New live native/daily/explicit-sleep host integration uses original facade and canonical snapshot plus nonfactual dream recall, no second durable brain. Exact source externally supplied via PRETORIUS_PHANTA_DONOR; original archive source notice requires license review before redistribution. Whole runtime qualification pending."
+    }
+  ],
+  "phases": [
+    {
+      "id": "P01",
+      "name": "Foundation freeze and evidence reconciliation",
+      "status": "in_progress"
+    },
+    {
+      "id": "P02",
+      "name": "Unified contracts, security and transactional substrate",
+      "status": "pending"
+    },
+    {
+      "id": "P03",
+      "name": "Executive integration within actual Pretorius",
+      "status": "pending"
+    },
+    {
+      "id": "P04",
+      "name": "Experiential learning engineering",
+      "status": "pending"
+    },
+    {
+      "id": "P05",
+      "name": "Epistemic, action and expression integrity",
+      "status": "pending"
+    },
+    {
+      "id": "P06",
+      "name": "Reciprocal developmental functions",
+      "status": "pending"
+    },
+    {
+      "id": "P07",
+      "name": "Human calibration (secondary research)",
+      "status": "secondary_research"
+    },
+    {
+      "id": "P08",
+      "name": "Personal psychology",
+      "status": "pending"
+    },
+    {
+      "id": "P09",
+      "name": "Sustained independent daily life",
+      "status": "pending"
+    },
+    {
+      "id": "P10",
+      "name": "Expressive relational individual",
+      "status": "pending"
+    },
+    {
+      "id": "P11",
+      "name": "Society and ecology",
+      "status": "pending"
+    },
+    {
+      "id": "P12",
+      "name": "Historical communication and grounded multimodality",
+      "status": "pending"
+    },
+    {
+      "id": "P13",
+      "name": "Advanced learning and efficiency",
+      "status": "pending"
+    },
+    {
+      "id": "P14",
+      "name": "Longitudinal and operational qualification",
+      "status": "pending"
+    },
+    {
+      "id": "P15",
+      "name": "Scientific qualification (secondary research)",
+      "status": "secondary_research"
+    },
+    {
+      "id": "P16",
+      "name": "Product release",
+      "status": "pending"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "PT-001",
+      "prerequisites": [],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "release/pretorius-complete-v1",
+      "acceptance": "Preserve original main and candidate pins; check M6 divergence and all donor licenses; reproduce baselines",
+      "status": "in_progress",
+      "evidence": [
+        "branch created",
+        "PR #109",
+        "main 784cff39d58a7fe46bb5e4ffc16e0284e6663c78",
+        "Candidate B 8cf836a927cfbbbe5469d805831f3dac200568f2",
+        "M6 62f372c47959d1f577be1e980d4ae191981ac83d; diverged 181 ahead/33 behind"
+      ]
+    },
+    {
+      "id": "PT-002",
+      "prerequisites": [],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "doctor_lives/lab_six_organ_session.py; lab_runtime.py; lab_daily_life_cycle.py; tests/test_candidate_b_daily_life.py",
+      "acceptance": "No reserved motor executes on public read-only opens; authorized recovery has one receipt; no extra same-pulse motor; exact head CI",
+      "status": "implemented",
+      "evidence": [
+        "81282b002640158bac3b8e44a3a5593889d894bc; test added but not executed",
+        "7ae4a41 Linux 138713326813: 10 daily, 9 persistent work, 13 native book/rest tests passed; Windows 138713327695 daily step passed. Exact-head final regression still required."
+      ]
+    },
+    {
+      "id": "PT-003",
+      "prerequisites": [
+        "PT-001",
+        "PT-002"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "doctor_lives/lab_native_goal_choice.py; lab_six_organ_session.py; cognition.py; preview_operator.py; doctor_lives/noesis_interoception.py; doctor_lives/noesis_situated_choice.py; tests/test_noesis_interoception.py; tests/test_candidate_b_daily_life.py; doctor_lives/lab_corpus_regulation.py; doctor_lives/lab_daily_life_cycle.py",
+      "acceptance": "Diagnose rest-only native choices from authentic R4 source archive. General state-dependent improvement without forced goal sequence. Three distinct independently witnessed goal kinds and verified consequences.",
+      "status": "failed",
+      "evidence": [
+        "41322140122/124897765190: distinct kinds [rest], eight goals, original world verified, R4 FAIL",
+        "PR #109 comment 7139862968: original R4 SQLite diagnosis; 31 simulated hours in 600 seconds, physical fatigue 0 versus mental fatigue felt .757, hunger/thirst 10. Implemented bounded first-person regulatory pressure on local situated Noesis; navigation and general cycle coupling remain open; tests pending.",
+        "At ccc4abd4: 20 of 22 workflow runs passed, pinned-body fixture failed on both platforms because custom genesis was prohibited; independent R4 again recorded eight rest completions, no other distinct kind. Replaced fixture with original source actions, added transactional physical-fatigue projection to the production native and daily paths, and made daily host use non-actuating six-organ pulse followed by exactly one situated motor. New tests pending.",
+        "5832a234 Linux job 138712074062: full daily-host physical fatigue projection and all other eight regressions passed; domestic fixture reached actual selector and exposed KeyError connect (absent neural tendency). Fixed tea mapping to existing persist, added vocabulary guard, and extended integration to require independently selected tea, food preparation and eating with real finite resources and persisted receipts; pending exact-head tests. Also tightened daily motor completion for every actual world action and prevented cross-policy event ID reuse.",
+        "Linux 7ae4a41 daily-host step 11 succeeded, including expanded real tea/meal/eating fixture. Staged subsequent household navigation in integration/pretorius-v1-domestic-navigation: original situated policy competes over need-relevant kitchen/bedroom travel, source-reviewed route gives one adjacent motor per choice, bound exact op/args; native startup recovers daily reservations before new goals. Real host test now starts away from resources. Not qualified until exact-head tests and integration into release branch.",
+        "6fa5e112 pinned Linux 138715031143 step 11 passed including actual bedroom-to-kitchen travel, meal, tea, eating, source memories and cold reopen. Step 12 persistent work also passed. Added explicit pre-world route crash, target substitution, denied read-only recovery, authorized exactly-once native recovery, and conflicting reservation preflight. New head qualification pending.",
+        "7ae4a41 independent source audit run 45469476744: genuine read_book and work completed, two distinct kinds; rest not observed, R4 still failed. 1095f361 navigation: all 9 triggered workflows passed, all four Linux/Windows physical/life jobs green (45470289610). Promoted exact tested commit to release branch. New dependent recurrent-work increment keeps sealed history, requires distinct original policy and physical viability, enables recurrence in actual preview operator, extends read-only auditor to preserve same activity-kind counting. Qualification pending.",
+        "Staged active commitment competition on dependent branch: actual original Noesis compares a verified active book/work origin against positive perceived need affordances. Cognitive continuation has no motor grant; bodily interruption uses exact existing daily motor, preserves same active goal; book return travel checks original sighting. Actual preview enabled; new end-to-end work interruption, tea, resume test awaits exact-head CI. Bounded .10 persistence engineering prior, not generalized human goal planning.",
+        "Both recurrence and competition passed all platform life/recovery jobs (45482901793, 45483197043); exact cc385837 promoted to completion branch, not main. R4 recurrence trial 45482901657 source-authenticated all 3 types, 6 completions; archive regression had hardcoded negative. Competition trial 45483196418 still 2 types, 3 goals; actual archived source artifact 14965290075 showed nine seek_kitchen interruptions and oscillating return to work, no tea, fatigue 1 thirst 9 at end, finite oil and tea available; source darkness prevented local relief. Added source-perceived prerequisite lighting/cleaning and real nighttime fixture. Archive test now checks unchanged exact 3-kind gate against actual report. Pending qualification.",
+        "Dependent reading continuity increment: original book goal can recur after verified completion; source-qualified lived read pages plus physical catalog feasibility permit a genuinely unread page or adjacent next page, no duplicate origin or old page receipt; prior completion atomically archived, exact target page persisted, witness and independent gate support archived reading without adding distinct activity classes. Product-level two-page cold continuity test awaits qualification. Closed partially read books still need bookmark return handling."
+      ]
+    },
+    {
+      "id": "PT-004",
+      "prerequisites": [
+        "PT-001",
+        "PT-002"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "M6 integration/m6; Candidate B; operator conversation",
+      "acceptance": "Inspect exact path diff and restore reviewed missing M6 communication/semantic changes with no competing canonical state",
+      "status": "in_progress",
+      "evidence": [
+        "Reconciled exact M6 62f372c backup no-replace change into current integration candidate; identified additional restore race where late competing state could be deleted by broad cleanup. New restore stages and hashes complete archives, publishes individual authorities with kernel no-replace (brain last), only removes owned published files on failure. Installed wheel test injects competing empty backup dir and each restore destination. Cross-filesystem multi-authority publish not atomic under hard kill; no unknown path deletion. Pending Windows/Linux wheel qualification. Other M6 observer and daily CLI differences remain under review.",
+        "5b550ba installed Windows race test failed: competing directory assertion fired, likely unresolved Windows temp alias prevented injection (backup resolves destinations). Normalize fixture paths and explicitly witness each injection. Requalification required; no claim of successful race protection until pass.",
+        "Recovered original M6 process observer and tests unchanged from 62f372c4. Reuse existing speech journal in actual interactive terminal; atomic canonical self-observed expression; browser/voice still outstanding."
+      ]
+    },
+    {
+      "id": "PT-005",
+      "prerequisites": [
+        "PT-001",
+        "PT-002"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "organs.py; store.py; evidence_authority.py; laboratory ports",
+      "acceptance": "One authority per state family, authenticated admission and crash replay; 100 negative access and 100 world integrity tests; 30 forced interruptions",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-006",
+      "prerequisites": [
+        "PT-003",
+        "PT-004",
+        "PT-005"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "cognition.py; noesis; memory; donor adapters",
+      "acceptance": "Complete psychology, skills, goals, learning, 30 matched fixture pairs, semantic and provenance gates",
+      "status": "pending",
+      "evidence": [
+        "Unified 9b34d86 pinned real Laboratory CI job 138889993515 ran 12 tests, 11 passed; daily/native combined developmental appraisal test errored on DailyChoice.observation_memory_id (actual field observation_id). Corrected field, preserved all evidence and state assertions. Explicitly close read-only SQLite connections in daily/native Noesis and situated commitment verification. Exact-head CI pending."
+      ]
+    },
+    {
+      "id": "PT-007",
+      "prerequisites": [
+        "PT-005",
+        "PT-006"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "Conclave/Phantasmagorium; Laboratory/Village adapters",
+      "acceptance": "Integrate dreaming, relationships, independent supporting individuals and historical correspondence; no state leakage",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-008",
+      "prerequisites": [
+        "PT-004",
+        "PT-005"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "operator interfaces; provider adapters",
+      "acceptance": "Text, local/hosted inference, grounded images and acknowledged voice; failure and permission fallback",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-009",
+      "prerequisites": [
+        "PT-003",
+        "PT-005",
+        "PT-006",
+        "PT-007",
+        "PT-008"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "tests; workflows; packaging",
+      "acceptance": "30 seeded seven-day runs, 300 annotated claims, 100 semantic cases, 50+50 reconstruction cases, 200 fallback trials, clean installs, resource and security checks",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-010",
+      "prerequisites": [
+        "PT-009"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "release docs; migration; backup; operator controls",
+      "acceptance": "Exact-head green gates, migration rehearsal, installation, recovery; separately identify live device/soak qualification",
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "PT-TOWER-01",
+      "prerequisites": [
+        "PT-005"
+      ],
+      "repository": "Azimn/The-Doctor-Lives",
+      "location": "doctor_lives/small_tower.py; doctor_lives/cli.py; doctor_lives/virtual_world_port.py; tests/test_small_tower.py",
+      "acceptance": "Canonical unprompted Tower run, exactly-once source effect and memory after interruption, platform qualification; separate multiday survival and full lifecycle gates",
+      "status": "implemented",
+      "evidence": [
+        "9b34d86 omitted prior independent Tower runner a2f1a5f; restored its implementation and regression without overwriting unified developmental history. Close actual leaked read connection, not just test cleanup. Exact-head CI pending.",
+        "Integrated optional source-tick-paced original CASCADE + endogenous Mnemosyne private cognition into real bounded Tower lifecycle under same host lock, after durable nonbusy fresh physical receipt. Finite original lease, source-bound wake ID, no renderer or motor, no downtime catch-up; failed wake blocks physical continuation. Actual pinned Tower test requires a background receipt. Exact-head CI pending.",
+        "Persisted canonical CASCADE source-clock watermark and unserved tick debt with atomic physical receipt acknowledgment; cold-start reconciliation uses the original operational wake ledger. Replayed pending source commits count once, completed wakes are not repeated, unfinished wake reservations remain fail-closed. Added split-invocation and recovered-source regression assertions; CI not yet qualified. Prior untracked source ticks cannot be reconstructed by this change.",
+        "Original Noesis now records concrete Tower affordance decisions and first-person intentions in existing canonical policy/thought tables, with original state-policy families reapplied per offer for relevant memory, concerns, relationships and commitments. Host supplies bounded physical cue pressure only. Pinned-world tests assert concrete policy references and controlled canonical commitment contribution. Exact-head CI pending; Laboratory-specific outcome/habit appraisals, learned preferences, and source-backed skill transfer still unresolved."
+      ]
+    }
+  ],
+  "resource_constraints": "GitHub Actions and tool execution limits; no live character database; no device or model provider assumed",
+  "next": "Finish universal first-person coverage, exact imagination donor deployment, three-day ten-organ qualification, then background cognition and developmental learning, donor reconciliation, multimodal social interaction.",
+  "pre_village_world": {
+    "repository": "Azimn/Septimus---Web-Sim",
+    "source_pin": "2e2ffb0658dea77da4b6cece1b783ad236bf30ff",
+    "approved": "Small Tower pre-Village; one canonical Doctor",
+    "candidate_branch": "integration/pretorius-v1-unified-completion",
+    "pr": 124,
+    "migration": "pending; rehearsal only"
+  },
+  "ten_organ_expansion": {
+    "directive": "2026-11-24 owner directive: ten organs; Synthetic Ipseity is the indispensable singular subject and highest-priority product requirement",
+    "pr": 124,
+    "branch": "integration/pretorius-v1-unified-completion",
+    "starting_head": "1b406f75980eadedfc5ad8d7bcf3a68350c9c853",
+    "policy": "All ten are mandatory. Synthetic Ipseity owns conscious first-person experience of the other nine. Continuous natural-language first-person continuity is cognitive input, not a cosmetic output or optional renderer. All conscious observations, sensations, impressions, feelings, memories, thoughts, intentions, imaginations and perceived expression must be admitted and causally usable through the one subject. Latent implementation signals and external evidence authority stay distinct. No second mind, no organ removal, no scope reduction, no lived history reset. Presence is not qualification.",
+    "organs": [
+      {
+        "organ": "Synthetic Ipseity",
+        "role": "linchpin and owning subject; mandatory central experiential authority",
+        "location": "organs.py; tower_ipseity.py; phenomenology.py; models.py; projection.py; chassis.py; ipseity_integration.py; first_person_governance.py; cognition.py",
+        "status": "controlled_causal_behavior_passed_linux; full_no_bypass_pending",
+        "next": "Executed original Tower matched Ipseity commitment-access impairment test passed on Linux at commit 5278b90eb528b5b076e9e03dad698a542cfd6eb4. Intact: rest, goal kept. Impaired: move_library, goal open. Source ingress now commits owned acquisition before cognition in same transaction; local Expression uses recalled own thoughts and present frame. Latest head needs CI; original donor affect, imagination, broader longitudinal and uncoached no-bypass qualification remain. Direct original donor Affectus felt-report admission and Phantasmagorium dream/fancy admission now occur within their canonical transactions; new prospective intentions are admitted atomically at formation. Latest-head verification required; no claim that all raw latent signals are conscious or that every legacy Laboratory path has no bypass. All typed Tower ingress channels now require owned pre-recurrent admission; bound legacy selector and motor bypass rejected; explicit conscious decision context linked to history. New coverage regression pending. Universal coverage not qualified."
+      },
+      {
+        "organ": "Sensus",
+        "location": "organs.py; virtual_world_port.py; tower_sensus.py; data/affectus_donor/sensus_artificialis/core.py",
+        "status": "integration_pending_ci",
+        "next": "Original reviewed Sensus core now binds admitted semantic Tower lines, interoception and spatial perception with persistent working object files, uncertainty and absent channels. Bound uncontested scene feeds actual Noesis and physical cue appraisal. Raw audio/visual sensor inputs and broader uncertainty tests remain."
+      },
+      {
+        "organ": "Corpus",
+        "location": "small_tower.py; virtual_world_port.py; organs.py; tower_corpus.py",
+        "status": "integration_pending_ci",
+        "next": "Canonical fatigue projection now consumes the same authenticated, bound Tower interoceptive scene before original Noesis. Exact world physics and action reservations preserved. Broader bodily regulation, skill transfer and full lifecycle endurance remain."
+      },
+      {
+        "organ": "Affectus",
+        "location": "organs.py; cognition.py; canonical_affectus_weather.py; tower_affectus.py; data/affectus_donor",
+        "status": "integration_pending_ci",
+        "next": "Exact reviewed Spinoza weather donor bundled and consumed in default Tower observation/action/social lifecycle; weather uses original canonical checkpoint and original Noesis/Mnemosyne modulation. Full emotional-development qualification remains pending. Original donor's quantized felt report now becomes natural-language owned feelings, including directional change, and enters actual ordinary Tower decision context."
+      },
+      {
+        "organ": "Mnemosyne",
+        "location": "organs.py; canonical_background.py; cognition.py; source_monitoring.py; small_tower.py; canonical_background.py; tower_procedure.py",
+        "status": "integration_pending_ci",
+        "next": "Original CASCADE heartbeat and endogenous recollection run at committed source-tick boundaries including ongoing physical activities by default. Verify unchanged original physical revision, cursor and busy state after wake; idle-only and zero retained as controls. Longitudinal spontaneous cognition, sleep consolidation and continuous wall-clock cadence remain unqualified. Repeated source-authenticated adjacent successful actions now contribute a bounded, context-dependent procedural preference; failure can suppress it. Physical competence remains in original Tower. Longitudinal positive evidence and material skill generalization remain."
+      },
+      {
+        "organ": "Noesis",
+        "location": "noesis_situated_choice.py; cognition.py; neural.py; tower_development.py",
+        "status": "partial",
+        "next": "Source-verified native Telos outcomes now contribute to bounded same-room concrete action reliability appraisal, using independent memory IDs and diminishing, revisable episode pressure. Distinguish this from material skill gain, neural training and long-horizon task selection. Original source integration and longitudinal tests remain."
+      },
+      {
+        "organ": "Expression",
+        "location": "speech_emission.py; operator_conversation.py; tower_web.py; ipseity_local.py; tools/prepare_expression_corpus.py; tools/train_expression_lora.py",
+        "status": "integration_pending_ci",
+        "next": "Original character expression corpus V19 located in Agent-Pretorius with 279 dialogues / 545 assistant turns. Exact source hash pinned, overlap-grouped train/validation/test split and local assistant-only LoRA training entrypoint added. No trained adapter weights or original base-model config recovered; local training, held-out behavioral qualification, voice and guarded deployment remain."
+      },
+      {
+        "organ": "Telos",
+        "location": "lab_telos.py; noesis_situated_choice.py; tower_telos.py; small_tower.py; tower_prospective.py",
+        "status": "integration_pending_ci",
+        "next": "Protected prospective commitments now arise from a selected journey and prior successfully experienced activities; remembered spatial routes supply bounded competing pressure, interruption does not close goals, actual matching physical outcome closes them. Three simultaneous goals maximum. Still needs positive longitudinal qualification, richer self-generated novel goals, abandonment and developmental prioritization."
+      },
+      {
+        "organ": "Conclave",
+        "location": "conclave.py; lab_conclave_reflection.py; noesis_situated_choice.py",
+        "status": "integration_pending_ci",
+        "next": "R4 Laboratory reading reflection now compiles every available eligible interpretation into one original Noesis decision, preserving per-reading provenance and explicitly documenting excluded withdrawn/ignored readings. No preferred-first mapping; historical v1 reflections preserved. Three-rival action-changing regression and actual source-backed integration test added. Pending exact successor CI."
+      },
+      {
+        "organ": "Phantasmagorium",
+        "location": "phantasmagorium_bridge.py; lab_phantasmagorium.py; tower_phantasmagorium.py; small_tower.py",
+        "status": "integration_pending_donor_backed_ci",
+        "next": "Original v0.5 archive locally recovered and SHA-256 verified. Actual Tower read/rest/sleep now reconcile via dedicated replay-safe cursor; marked waking motifs participate only in original Noesis retrieval. Strict archive-required startup option and no silent removal after activation. Qualify with original archive in end-to-end Tower CI; no claim of full spontaneous imagination or dream qualification. New original donor outputs append marked dreamed/imagined first-person experience to same canonical Ipseity history; donor-backed positive qualification remains blocked on exact archive deployment."
+      }
+    ],
+    "supporting_systems": [
+      {
+        "mechanism": "CASCADE",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Self-Reference Governor",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Endogenous cognition",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Developmental psychology",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Recurrent neural processing",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Source monitoring",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Habit formation",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Procedural learning",
+        "status": "partial"
+      },
+      {
+        "mechanism": "Social cognition",
+        "status": "partial"
+      },
+      {
+        "mechanism": "35 Articles of Artificiality",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Pretorius neural research",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Jelly-Psiduck",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Connectome",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Kurzweil",
+        "status": "reconciliation_required"
+      },
+      {
+        "mechanism": "Inhabitant",
+        "status": "reconciliation_required"
+      }
+    ],
+    "qualification": "Ten-organ owner mandate supersedes former nine-organ classification. All previous failures and acceptance gates remain. Full no-bypass and causal behavior must be demonstrated, not inferred from naming.",
+    "default_background": {
+      "status": "integration_pending_ci",
+      "cadence_source_ticks": 100,
+      "entrypoints": [
+        "tower-run",
+        "run_tower_life"
+      ],
+      "control": "0 explicitly disables; one-shot operator pulse and web endpoint are separate manual paths",
+      "qualification": "Default runner now schedules the existing original CASCADE and Mnemosyne bounded wake; no claim that 100 ticks is an optimal psychological cadence."
+    },
+    "donor_review": [
+      {
+        "repository": "Azimn/Jelly-Psiduck",
+        "ref": "47b5b9e9c5fcc050e63c26a7033185562152bda7",
+        "scope": "README source reconnaissance only",
+        "next": "Recover graded interoception, associative drift, unresolved concern recurrence, deferred inner-ear input and prospective feedback into existing canonical interfaces; no separate Jelly subject store.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/Pretorius-Connectome",
+        "ref": "5ee5c6b28e51ab84161b1956fcfc2329ab6499ea",
+        "scope": "README source reconnaissance only",
+        "next": "Reconcile canonical archive and retrieval cues, preserve provenance and absent-memory rejection; do not treat synthetic overlay or FlyWire pilot as established semantic recall.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/Kurzweil-Brain-Experiments",
+        "ref": "d98086619f1b218742607adb33e611b637484760",
+        "scope": "README source reconnaissance only",
+        "next": "Recover context-dependent developmental learning and matched-rich exposure controls; preserve failure of target-specific attractor and prevent broad creation bias.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/The-Inhabitant-Integrated-Organ-Structure",
+        "ref": "8dbb4ed5b8d7661056d9eecf3fc8bd4e4c269d2e",
+        "scope": "README source reconnaissance only",
+        "next": "Map restricted organ responsibilities, portable expression/voice, commitment lifecycle, evidence classes and interruption survival to the nine-organ directive; draft is not independent release evidence.",
+        "status": "mechanism_level_reconciliation_required"
+      },
+      {
+        "repository": "Azimn/Pretorius-Neural-Network",
+        "ref": "c7d9fc5c9a113aafcda07b7fe8302d3b6dc3fe71",
+        "scope": "README source reconnaissance only",
+        "next": "Audit BioCircuit recurrent mechanisms and phenotype training, identify source-recovery gaps; preserve missing original 30 training records and unreproduced CHIMERA result.",
+        "status": "mechanism_level_reconciliation_required"
+      }
+    ],
+    "affectus_donor": {
+      "source": "Azimn/Sensus-Communis-Artificialis",
+      "commit": "904bf11861700739ccc03d4b0d4340ff3422a7d3",
+      "core_blob": "507cd9f75af04353b5e42d67fb60c147acff5ffb",
+      "affectus_blob": "0bd2394291efe9ff41fd59320ae00d37b3d7f007",
+      "source_readme_blob": "bafbcf0ad0a9446e8e90d020d7476c3aa8e64f05",
+      "status": "verified Git blob bytes before commit"
+    },
+    "latest_r4": {
+      "head": "5bba8adc4eb43703d8113e5fd78fd310218af147",
+      "run": 45548799763,
+      "job": 138988547124,
+      "verdict": "PASS",
+      "observed": [
+        "read_book",
+        "rest",
+        "work"
+      ],
+      "validated_goals": 5,
+      "origin_observations": 33,
+      "observation_seconds": 600,
+      "gate_changed": false
+    },
+    "tower_development": {
+      "source": "noesis_consequences.py",
+      "version": "tower-contextual-consequence-v1",
+      "status": "integration_pending_ci",
+      "scope": "bounded contextual task reliability, not material utility or skill mastery",
+      "weight_success": 0.015,
+      "weight_failure": -0.05,
+      "max_independent_episodes": 4,
+      "absolute_cap": 0.08
+    },
+    "expression_corpus": {
+      "source_repository": "Azimn/Agent-Pretorius",
+      "source_commit": "40837ba0093cff044644c07098450587b968d",
+      "source_path": "resources/lora/pretorius_lora_dataset_v19_279_diversified_prompts.jsonl",
+      "source_blob": "8290de25b9daeb230fb4b519b9383b110e197704",
+      "records": 279,
+      "assistant_turns": 545,
+      "original_adapter_recovered": false,
+      "training_executed": false,
+      "bundled_exact_blob": "doctor_lives/data/expression/pretorius_lora_dataset_v19_279_diversified_prompts.jsonl",
+      "bundle_verified_blob": "8290de25b9daeb230fb4b519b9383b110e197704",
+      "prior_failure": "Cross-repository Actions checkout failed before qualification; exact original Git blob now bundled, no source verification weakened.",
+      "qualification": {
+        "head": "5bba8adc4eb43703d8113e5fd78fd310218af147",
+        "run": 45548799650,
+        "job": 138984734493,
+        "status": "passed",
+        "training_records": 223,
+        "validation_records": 28,
+        "test_records": 28
+      },
+      "next_experiment": "Owner requests approximately 1B base model first; no model selected or trained."
+    },
+    "longitudinal_qualification": {
+      "entrypoint": "tools/qualify_tower_life.py",
+      "minimum_source_ticks": 3000,
+      "mode": "fresh isolated real source; strict exact original imagination donor; actual local guarded written Expression; ten mandatory organs and owned first-person decision history",
+      "status": "recovered_checkpoint_offline_mechanical_pass_reported_fresh_ci_qualification_open",
+      "requires": "original Phantasmagorium archive and available local renderer",
+      "full_release_certified": false,
+      "offline_kit": {
+        "head": "8de5273df907c3818c7cbe0667e06cfbff3934e0",
+        "run": 45556131900,
+        "source_artifact": 14995452754,
+        "renderer_artifact": 14995553230,
+        "model": "smollm2:135m",
+        "model_digest": "9077fe9d2ae1a4a41a868836b56b8163731a8fe16621397028c2c76f838c6907",
+        "donor_sha256": "31e31c0a87e155c072227b086cf012a5f1dcb5aa2de51f676b909ae8255454a8"
+      },
+      "rehearsal_observed": "Original-source uncoached rehearsal reached 1275 persisted source ticks, with 17 original donor fancy events; a command timeout at tick 219 was followed by cold continuation. Repeated walking despite perceived fatigue and repeated rest despite unmet intellectual stimulation identified actual regulatory gaps. Not a complete fresh gate.",
+      "repair": "Use remembered source-admitted exits to appraise feasible routes to rest and intellectual activity; exclude repeated identical actions from procedural sequence bonus. No motor authority or hidden map.",
+      "supply_repair": {
+        "commit": "c857ab97b4f4f2abe97b24f0dbd8bf49f39bf750",
+        "observation": "Low fuel was observed at stores; after departure the regulator discarded the shortage and repeatedly selected kitchen-garden movement.",
+        "authentic_replay": {
+          "policy": "policy_5aef9b046a03457e8e5bfc21299bcbd2",
+          "source_memory": "mem_d88968dd884a4dce8a75042a6b2bb101",
+          "old_gather_pressure": 0,
+          "new_gather_pressure": 0.16
+        },
+        "observed_successor": {
+          "source_ticks_before": 1860,
+          "source_ticks_after": 1884,
+          "choices": [
+            "gather_fuel",
+            "move_kitchen",
+            "move_library"
+          ],
+          "operator_supplied_actions": false
+        }
+      },
+      "harness_repair": "Use ordinary 100 source-tick pulse budget so a 250-tick sleep can expose actual busy activity to the existing 100-tick background cadence; write returned block receipts durably; no reduction of minimum ticks or other gates.",
+      "sleep_repair": {
+        "status": "targeted_live_sleep_and_busy_cognition_pass",
+        "cause": "sleep and rest mapped to same avoid tendency with equal ordinary-fatigue appraisal; repeated successful rest could dominate sleep",
+        "scope": "perceived tiredness and worn-out bands only; bounded pressure, no motor authority, no hidden energy; original physical duration and outcomes unchanged",
+        "checkpoint_recovery": "previous 2255-tick diagnostic remains available, but prior exact brain/world/neural files were not retained between sessions; fresh isolated test required",
+        "baseline_r4": {
+          "head": "ac0fca625942705befaca0900c462ea89b695dad",
+          "run": 45557187901,
+          "job": 139017114330,
+          "status": "FAIL",
+          "reason": "three_distinct_uncoached_activities_not_observed; rest travel still pending at 600 seconds",
+          "validated_goals": 3,
+          "activities": [
+            "read_book",
+            "work"
+          ],
+          "gate_changed": false
+        },
+        "live_test": {
+          "head": "0bac0d773253b695bb4bc642996596e63539d688",
+          "epoch": "fresh local isolated epoch; prior 2255 checkpoint unavailable",
+          "source_ticks": 517,
+          "sleep_policy": "policy_28224e94c79143febf4dc0a00a4dfcbf",
+          "event": "L81",
+          "event_sha256": "811470dfa4f7529f0fdc765036a13b3c513462a3ec9e9206e2fc69557fda829c",
+          "sleep_memory": "mem_509bc710a1db4a8ea3913d16b5cfe6e0",
+          "dream_memory": "mem_d201c95255244b4c8dddaa6f8e2bb0df",
+          "owned_goal": "telos_prospective_policy_f4900849887c4ac190d46cfb66769e12",
+          "goal_status_after_sleep": "kept",
+          "history_entries": 202,
+          "history_sha256": "18435b62fcbc86449d18c3d0deb7ffdaf315f55444f1a6d61976f896ad892e7d",
+          "private_wakes_during_sleep": 2,
+          "physical_revision_unchanged": true,
+          "checkpoint_archive_sha256": "927ae0ffd91fa851da3a8f8f6a37225f818cb782fbd13464e1c5570cfd30c602",
+          "operator_selected_action": false,
+          "qualification": false
+        }
+      },
+      "supply_followup": {
+        "status": "candidate_live_test_underway",
+        "source_ticks": 667,
+        "cause": "cooking when no hunger consumed scarce resources; recently observed absence of feasible tend did not suppress immediate kitchen-garden travel pressure",
+        "fix": "bounded suppressive consumption appraisal when hunger absent, higher direct eat pressure when hungry; remember authentic garden offers and recheck after ordinary 100-tick cadence; only fuel shortage can justify trade; same source world and existing Noesis, no new organ or learning mechanism",
+        "conflict": {
+          "source_ticks": 697,
+          "observed": "After direct travel pressure repair, retained prospective cook and gather-fuel intentions competed with satisfied needs and caused library-kitchen alternation.",
+          "policy": "policy_e825ce57848548048d21515659e5f6e1",
+          "cook_goal": "telos_prospective_policy_70b0b9b3e9944e858dc325532aaa0f21",
+          "fuel_goal": "telos_prospective_policy_66e56dcefe854bb9bf4fc477f9e96a81",
+          "repair": "Existing prospective appraisal defers appetite-satisfied, last-observed-not-low or recently observed unavailable resource goals; no commitment deletion, completion fabrication or new learning; explicit reasons in policy receipt.",
+          "status": "live_retest_underway"
+        }
+      },
+      "attempt_289ed4c": {
+        "head": "289ed4ce900939a2877c94cbdaafafb84e0528eb",
+        "start_ticks": 1197,
+        "end_ticks": 2597,
+        "new_ticks": 1400,
+        "start_history": 522,
+        "start_history_sha256": "6a8c83778b78e33c26b8e6e873e4ec0e3891ff4b44c6c8a468d9d5c049938d55",
+        "original_source_kit": "8de5273 source and renderer; runtime ac0fca6 plus exact four changed blob hashes",
+        "alive": true,
+        "independent_sleep": true,
+        "busy_background": true,
+        "food_harvest": "one to nine actual source stores after own tend",
+        "failure": "owned reading goal routed back to library despite recent missing read offer, produced alternating library/kitchen choices; stopped at reconciled boundary, no pending request",
+        "procedural_positive_use": false,
+        "expression_not_run": true,
+        "qualification": false
+      },
+      "availability_repair": {
+        "status": "candidate",
+        "scope": "same existing prospective appraisal remembers last actual room offers; defer currently unavailable or recently observed unavailable task without deleting ownership; ordinary 100-source-tick recheck; no new organ or learning mechanism",
+        "followup": {
+          "previous_head": "12dcd7cdf2ab9009ddef6da82d8b875f8f9b98f8",
+          "defect": "Live retest demonstrated deferred-owned read commitment still leaked through independent local state-policy commitment family. Source policy 85a540eab94b4bcabacc2aac6575b02c, read goal telos_prospective_policy_f93cb9dc9db24d45a176826405315dde, specific persistence pressure 0.02499673973684476.",
+          "repair": "Keep all owned commitments in conscious capture and abstract decision history; exclude deferred IDs from per-offer action appraisal access only. No new organ or learning."
+        }
+      },
+      "exact_head_attempt_66b106d": {
+        "head": "66b106d0c65453688b701d79e06f465a17012fde",
+        "start_ticks": 2642,
+        "end_ticks": 5672,
+        "additional_ticks": 3030,
+        "receipt_ticks": 3030,
+        "organ_checks": "10/10",
+        "supporting_checks": "8/9",
+        "history_entries": 2295,
+        "initial_history_entries": 1327,
+        "completed_activities": 115,
+        "independent_sleeps": 5,
+        "private_wakes": 25,
+        "busy_wakes": 10,
+        "qualification": false,
+        "missing": "procedural_sequence_positive_use; no eligible distinct-step reuse opportunity after second actual practice",
+        "checkpoint_sha256": "12b6b2492c65745ea00b5d33a4798f88e95cd34e06a975d515205a929797459f",
+        "source_epoch": "p3-sleep-1000c316ce1d438f8f3397942364aa01"
+      },
+      "finite_supply_followup": {
+        "status": "candidate",
+        "cause": "Actual continuation showed the open tea intention reactivated every 100 source ticks even though the last admitted kitchen observation showed low tea and no legal tea offer. Timer-driven pointless return to kitchen.",
+        "repair": "Existing prospective deferral uses the last admitted stores/kettle/low-tea perception and actual relevant replenishment outcomes; fresh feasible offer immediately supersedes deferral. Retain ownership, do not grant action or assert inventory from absence; no new learning mechanism."
+      },
+      "preservation_followup": {
+        "status": "candidate_pending_live_test",
+        "prior_head": "640683e7054aad3d5a07ac5eb0052276cb6a4290",
+        "prior_rehearsal_last_reported_additional_ticks": 2091,
+        "checkpoint_recovery": "prior 3030 evidence archive available, but no transferable brain/world/neural checkpoint from last run located; not a continuation of that individual",
+        "cause": "generic timed availability recheck reactivated blocked preservation intention despite no observed relevant material change",
+        "source_contract": "original actions.js requires six fresh portions, fuel, capacity; original economy.js offers surplus trades for fuel OR tea. No numeric hidden-state read in cognitive appraisal.",
+        "repair": "reuse existing finite-resource deferral for visible stove/stores unavailable preservation, with action-specific witnessed changes; recognize legally offered surplus trade against remembered tea or fuel shortage when food not observed low. Retain ownership, no new organ or learning."
+      },
+      "latest_r4": {
+        "head": "640683e7054aad3d5a07ac5eb0052276cb6a4290",
+        "run": 45582946150,
+        "job": 139103237074,
+        "status": "PASS",
+        "activities": [
+          "read_book",
+          "rest",
+          "work"
+        ],
+        "validated_goals": 5,
+        "origin_observations": 34,
+        "observation_seconds": 600
+      },
+      "rehearsal_61de7b8": {
+        "head": "61de7b899ce6e55aadf6dae064634e90080cbbb3",
+        "source_epoch": "p3-preserve-61de7b8-fresh",
+        "source_ticks": 3363,
+        "receipt_ticks": 3363,
+        "history_entries": 1189,
+        "history_sha256": "567757abfd943bd6e89ed6c5039c6fa9c681e8422f295a6543f15a5c8c474c62",
+        "completed_activities": 134,
+        "organs": "10/10",
+        "supporting": "8/9",
+        "sleep": 5,
+        "busy_wakes": 10,
+        "checkpoint_sha256": "75c7a466634f8e41999e7e151dfb299e3e7082431f30f05f234344b5653477e4",
+        "uninterrupted": false,
+        "prior_checkpoint_recovered": false,
+        "procedural_positive_use": false,
+        "finite_deferral_live_evidence": 0,
+        "trade_live_evidence": 0,
+        "qualification": false
+      },
+      "developmental_repeat_repair": {
+        "status": "candidate",
+        "observed_policy": "policy_c4ccb75c82df419fb27f57df853e8dc7",
+        "actual_walk_score": 0.050493452346145176,
+        "reliability_contribution": 0.028125,
+        "base": 0.02236845234614518,
+        "other_specific_pressure": 0,
+        "source": "same unchanged admitted garden scene and repeated completed walk; no fatigue/hunger cue; 58 walks and 16 conversations across 3363 ticks",
+        "repair": "Remove positive contextual reliability bonus only for immediately repeated, successfully completed action with byte-identical current admitted perception and latest authentic outcome. Retain negative failures, original recency weights, motor authority, other choices, all procedure criteria. Existing appraisal correction, no new mechanism."
+      },
+      "attempt_deace65": {
+        "head": "deace6582fdb96818638abdab8b45788ad625115",
+        "source_epoch": "p3-preserve-61de7b8-fresh",
+        "start_ticks": 3363,
+        "end_ticks": 6615,
+        "additional_ticks": 3252,
+        "returned_receipt_ticks": 3252,
+        "uninterrupted": true,
+        "history_entries": 2202,
+        "initial_history_entries": 1189,
+        "history_sha256": "3af5589f2701c09ac43183c17ce6c630597299000ccec9b8ae2362c161e6a45b",
+        "initial_history_prefix_intact": true,
+        "completed_activities": 120,
+        "private_wakes": 26,
+        "busy_wakes": 10,
+        "independent_sleeps": 5,
+        "organs": "10/10",
+        "supporting": "8/9",
+        "prospective_goals_kept": 15,
+        "checkpoint_sha256": "e57fd4ebf9273ff33a4dfffc78a56bd9d679afbf50bbd143dd9843d6ec1b056f",
+        "live_finite_deferrals": 0,
+        "qualification": false
+      },
+      "procedural_retention_repair": {
+        "status": "offline_mechanical_retest_reported_pass_ci_longitudinal_open",
+        "evidence": "full authenticated replay of 255 original physical outcomes; one genuine eligible opportunity omitted by 64-global-outcome cutoff",
+        "policy": "policy_16cc12f022af492cb0a0919ddb0a7675",
+        "selected_action": "move_kitchen",
+        "cue": "tend",
+        "candidate": "walk",
+        "old_pressure": 0,
+        "new_replayed_pressure": 0.025,
+        "source_memory_ids": [
+          "mem_8fe370c5ae094af3839bc7695d15c62f",
+          "mem_87a543a6ac5a4795a85d426c5ead02bf",
+          "mem_4bd1753a7c8a49f1bb7d9b684732151c",
+          "mem_74d668b82efd4b14b67ec97752988619"
+        ],
+        "physical_cue_pressure_to_kitchen": 0.16,
+        "repair": "Use complete source-authenticated chronological outcomes from same source epoch in one SQLite read snapshot; preserve distinct-step, two practices, last four relevant pairs, failures, feasible offer, and no motor authority. Existing retention fix only."
+      },
+      "latest_offline_mechanical_evidence": {
+        "head": "84bceee23a4043cb645709ffad474a8ea579343b",
+        "provenance": "PR #124 exact-head evidence report; underlying offline archive not independently reopened in this session",
+        "start_ticks": 6615,
+        "end_ticks": 9649,
+        "additional_ticks": 3034,
+        "organs": "10/10",
+        "supporting": "9/9",
+        "completed_activities": 99,
+        "private_wakes": 25,
+        "busy_wakes": 10,
+        "independent_sleeps": 5,
+        "donor_nights": 5,
+        "waking_fancy_operations": 3,
+        "dream_recollections": 5,
+        "prospective_goals_kept": 20,
+        "positive_procedural_decisions": 6,
+        "history_entries": 3080,
+        "checkpoint_sha256": "c94d7884e98f5603453b868acadd457345ba60f8b0d3cb1b575eb27fe8ae4614",
+        "fresh_individual": false,
+        "ci_longitudinal": false,
+        "full_qualification": false
+      }
+    },
+    "ipseity_causal_test": {
+      "path": "tests/test_small_tower.py::test_own_past_commitment_changes_real_tower_action_under_matched_ipseity_impairment",
+      "expected": "real prior rest -> native journey -> prospective first-person rest commitment -> matched intact vs impaired choices -> verified physical consequence and kept/open status",
+      "status": "controlled_causal_pass_linux_at_tested_head",
+      "control": "same pre-state; calibrated identical bounded competition; only withholding owned commitment experience; no fabricated receipts; not uncoached",
+      "observed": {
+        "commit": "5278b90eb528b5b076e9e03dad698a542cfd6eb4",
+        "workflow_run": 45534583152,
+        "job": 138937929940,
+        "artifact": 14985937751,
+        "same_pre_state_sha256": "b1be9e1d483b44efa7640b7750f2d777931c3b6f685f4b59739859a50b68afd4",
+        "origin_policy": "policy_cc5fdfe6833b4946a22d10f858f35f24",
+        "first_person": "I still intend to return to bedchamber to rest.",
+        "intact": {
+          "policy_id": "policy_25a775e09f56401187311d7a72cd9f6d",
+          "action": "rest",
+          "source_event": "L13",
+          "text": "I sat awhile to recover my strength.",
+          "goal_status": "kept"
+        },
+        "impaired": {
+          "policy_id": "policy_22f6eba9860949fab5e8a2c58f74e44a",
+          "action": "move_library",
+          "source_event": "L14",
+          "text": "I reached the adjoining room.",
+          "goal_status": "open"
+        },
+        "calibrated_competing_pressure": {
+          "move_library": 0.12071223089868033,
+          "rest": 0.07928776910131968
+        },
+        "uncoached": false
+      }
+    },
+    "r4_reconciliation": {
+      "baseline_sha": "d2b4a4168188ec93f844952cc75ae8314023e0d9",
+      "baseline_brain_tests": {
+        "run": 45534945083,
+        "job": 138939136182,
+        "discovered": 860,
+        "passed": 589,
+        "skipped": 271,
+        "failed": 0
+      },
+      "baseline_independent_r4": {
+        "run": 45534945094,
+        "job": 138944545710,
+        "status": "passed",
+        "activities": [
+          "read_book",
+          "rest",
+          "work"
+        ]
+      },
+      "specific_defect": "fixed-priority single Conclave reading sent to Noesis; independent baseline R4 pass did not establish multi-reading evaluation",
+      "repair": "all available eligible interpretations, individual provenance, one existing Noesis decision, no new organ or learning mechanism",
+      "status": "repaired_and_exact_head_ci_passed",
+      "baseline_workflows": {
+        "success": 20,
+        "failure": 1
+      },
+      "corpus_checkout_repair": {
+        "commit": "5b41c8565dcb18ea0a10d19a101626f32902830a",
+        "run": 45548520152,
+        "status": "passed",
+        "training_executed": false
+      },
+      "universal_first_person_coverage": "not qualified",
+      "donor_backed_imagination": "open; exact donor deployment and positive qualification outstanding",
+      "qualified_head": "5bba8adc4eb43703d8113e5fd78fd310218af147",
+      "qualified_workflows": 21,
+      "suite": {
+        "run": 45548799732,
+        "discovered": 861,
+        "passed": 590,
+        "skipped": 271,
+        "failed": 0
+      }
+    },
+    "coverage_progress": {
+      "previous_head": "0e937a197a90ff96fa071c53e518c38d633b34a6",
+      "full_suite": {
+        "run": 45553199921,
+        "discovered": 862,
+        "passed": 591,
+        "skipped": 271,
+        "failed": 0
+      },
+      "small_tower": {
+        "run": 45553199894,
+        "status": "failed",
+        "reason": "legacy raw-selector fixture attempted now-prohibited unowned bound choice; actual matched physical causal test passed on both platforms"
+      },
+      "repair": "reject before Conclave writes; preserve positive legacy appraisal on isolated unbound copy and test negative bound product plus actual owned selector",
+      "status": "successor_ci_pending",
+      "universal_coverage": false
+    },
+    "r4_capacity": {
+      "owner_approved": "2026-11-25",
+      "prior_head": "84bceee23a4043cb645709ffad474a8ea579343b",
+      "prior_run": 45613311882,
+      "prior_job": 139208820435,
+      "prior_source_audit": "FAIL: three_distinct_uncoached_activities_not_observed",
+      "operator_error": null,
+      "source_replay": true,
+      "comparison_run": 45582946150,
+      "comparison_job": 139103237074,
+      "comparison_source_audit": "PASS",
+      "comparison_world_receipt_delta": 260,
+      "prior_world_receipt_delta": 179,
+      "comparison_goals": 5,
+      "prior_goals": 3,
+      "comparison_origins": 34,
+      "prior_origins": 21,
+      "forensic_driver_report": {
+        "matching_overlapping_decisions": 30,
+        "compared_decisions": 30,
+        "passing_tick79_seconds": 404.4,
+        "failing_tick79_seconds": 585.7,
+        "passing_rest_intention_tick": 84,
+        "independently_replayed_in_this_session": false
+      },
+      "gate": {
+        "receipt_progress_target": 520,
+        "watchdog_seconds": 3600,
+        "required_source_authenticated_independent_activities": [
+          "read_book",
+          "rest",
+          "work"
+        ],
+        "original_source_replay": true,
+        "zero_operator_errors": true,
+        "missing_activity": "INCONCLUSIVE; nonzero CI exit; no incapacity inference",
+        "motivation_changes": false,
+        "owner_confirmed_parameters": true
+      },
+      "status": "extended_diagnostics_and_profiler_candidate_pending_integration_and_ci",
+      "throughput_profile": {
+        "status": "local controlled single-opportunity profile only; no exact-head full CI profile",
+        "boundary_map": "docs/product-v1/R4_RELIABILITY_PROFILING.md",
+        "tested_bundle_head": "e8f7240d4eea98e2de2af27090ec494ff9defc6e",
+        "unprofiled_seconds": 16.587307909,
+        "profiled_seconds": 15.448492309,
+        "matched_policy_rows": 2,
+        "additional_receipts_each": 4,
+        "world_verification": {
+          "calls": 291,
+          "exclusive_seconds": 12.698287713
+        },
+        "book_verify_local_s": {
+          "old_fail": 7.100498819,
+          "old_pass": 7.62395393,
+          "capacity": 9.507267993
+        },
+        "limitations": "single pair, non-counterbalanced, local Python 3.13 vs sealed CI 3.12; overhead not established, no verification optimization",
+        "model_inference": "original source-only renderer; no model inference invoked in controlled native step"
+      },
+      "capacity_run_evidence": {
+        "head": "e8f7240d4eea98e2de2af27090ec494ff9defc6e",
+        "run": 45659716892,
+        "job": 139372479980,
+        "status": "FAIL",
+        "validated_goals": 9,
+        "independent_origin_observations": 59,
+        "activities": [
+          "read_book",
+          "rest",
+          "work"
+        ],
+        "world_receipts": 492,
+        "live_receipts": 491,
+        "elapsed_seconds": 2177.598,
+        "operator_error": "preview-start: textual signal exceeds bounded capacity",
+        "operator_return_code": 2,
+        "original_physics_replay": true,
+        "source_artifact": 15047263957,
+        "source_artifact_sha256": "77cd1f6fcfb9190362f32b289107b1e19a87369d76c02f822b20272b8c1c9793",
+        "diagnostic_artifact": 15047099203,
+        "diagnostic_artifact_sha256": "2e550ed801193595c863d4fed69aa63768f343dcf1a9c9186c9b981605bdf39a",
+        "rest_receipts": [
+          "ng_eb1e2bef3a39937122198dc5_rest",
+          "ng_5cb8a6455de00f1d4407db54_rest"
+        ],
+        "full_suite": {
+          "run": 45659716927,
+          "job": 139365962259,
+          "discovered": 876,
+          "passed": 605,
+          "skipped": 271,
+          "failed": 0
+        },
+        "workflows": {
+          "passed": 21,
+          "failed": 1
+        },
+        "termination_chronology": {
+          "last_completed_read_ledger_sequence": 66,
+          "last_completed_read_utc": "2026-11-25T17:44:56.316217Z",
+          "last_ledger_sequence": 67,
+          "last_ledger_utc": "2026-11-25T17:45:36.166195Z",
+          "last_policy_id": "policy_ff12b9e5e62544649d23cb0c22e8a917",
+          "last_policy_utc": "2026-11-25T17:46:00.969661Z",
+          "last_live_witness_utc": "2026-11-25T17:45:58.582862Z",
+          "last_live_receipts": 491,
+          "first_dead_witness_utc": "2026-11-25T17:46:01.370564Z",
+          "final_receipts": 492,
+          "exact_failed_frame_retained": false
+        }
+      },
+      "operator_repair": {
+        "donor": "synthetic-ipseity 0.9.11 unchanged",
+        "donor_signal_limit": 1000,
+        "archived_memory": {
+          "id": "mem_1e146627db70499ab0e036e2c5a57f93",
+          "length": 7629,
+          "sha256": "dbcd65645db1e2629d6ae8686bc7ca5c24733d2a64a86397499d2552db8ec1bc"
+        },
+        "scope": "output transport only; lossless bounded fragments through same donor; restart-persistent offsets/digests only; exact reconstructed text before original renderer; no cognitive input or history changes; early-exit diagnostic correction",
+        "status": "candidate; exact-head CI pending",
+        "universal_first_person_coverage": "not qualified; no change to recurrent ingress"
+      },
+      "successor_verified_regressions": {
+        "head": "843f43a09e91cd24a4758d7b758ebe85dbd3b940",
+        "full_suite": {
+          "run": 45671725540,
+          "job": 139408496641,
+          "discovered": 879,
+          "passed": 606,
+          "skipped": 273,
+          "failed": 0,
+          "errored": 0
+        },
+        "donor_suite": {
+          "run": 45671725686,
+          "job": 139408495635,
+          "discovered": 879,
+          "passed": 647,
+          "skipped": 232,
+          "failed": 0,
+          "errored": 0,
+          "transport_tests_passed": 2
+        },
+        "auditor": {
+          "run": 45671725662,
+          "job": 139408497822,
+          "passed": 32,
+          "failed": 0
+        },
+        "r4": {
+          "run": 45671725662,
+          "job": 139415758651,
+          "status": "in_progress_at_candidate_preparation"
+        }
+      }
+    },
+    "character_fidelity_observation": {
+      "status": "unqualified",
+      "after_core_gates": true,
+      "principle": "Psychological coherence including irrationality; physiological needs inform rather than dictate choices; physical consequences remain real; relationship-specific influence.",
+      "examples": "Observe naturally arising anger and shame after dismissal, elation after successful homunculus, obsession and interpersonal differentiation. No scripted events, actions or emotions.",
+      "classification": [
+        "observed",
+        "not observed",
+        "unsupported by current implementation"
+      ],
+      "evidence": [
+        "source event",
+        "organ contributions",
+        "Noesis decision",
+        "first-person history",
+        "physical and interpersonal consequences"
+      ],
+      "absence_is_not_failure": true
+    }
+  },
+  "historical_register_origin": {
+    "branch": "release/pretorius-complete-v1",
+    "pr": 109,
+    "as_of": "2026-11-24"
+  }
+}

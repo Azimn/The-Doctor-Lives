@@ -1,0 +1,89 @@
+"""Bounded one-direction regulatory pressure from admitted Laboratory cues.
+
+Mechanism precedent: DUCK duck/body_v010.py at
+30a11ea8308ebd0fc89a06bb994ab0e23bd02886 separates physical state from
+regulatory pressure. No DUCK body, identity or store is imported.
+The source grammar is Pretorius-Laboratory 6e49795752835d64fa6fd63d16359669a1ca2ba7
+daily_rhythm._perceive. This is not open-domain language comprehension.
+No hidden physical state or motor authority enters this adapter.
+"""
+from __future__ import annotations
+import re
+
+_PREFIX = re.compile(
+    r"^I am in [^.!?\r\n]+\. "
+    r"(?:It is too dark to make out the furnishings clearly\.|"
+    r"There is daylight enough to see\.|The lamp gives me enough light to see\.)"
+)
+# Initial engineering coefficients, not a claim of human equivalence.
+# Maximum contribution equals the existing situated neural prior weight.
+_CUES = (
+    (
+        ("I feel worn out and find it hard to concentrate.", "worn_out",
+         {"rest": 0.18, "sleep": 0.20, "seek_bedroom": 0.18}),
+        ("I am getting tired.", "tired", {"rest": 0.09, "sleep": 0.04, "seek_bedroom": 0.09}),
+    ),
+    (
+        ("I am painfully hungry.", "painfully_hungry",
+         {"eat": 0.20, "prepare_meal": 0.16, "seek_kitchen": 0.18}),
+        ("I could do with something to eat.", "hungry",
+         {"eat": 0.10, "prepare_meal": 0.08, "seek_kitchen": 0.09}),
+    ),
+    (
+        ("My mouth is dry.", "thirsty", {"brew_tea": 0.20, "seek_kitchen": 0.20}),
+    ),
+)
+
+
+def perceived_regulatory_pressure(
+    observation: str, feasible_actions: tuple[str, ...],
+) -> tuple[dict[str, float], tuple[str, ...]]:
+    """Return bounded contributions to already feasible alternatives.
+
+    Match the leading ordered rhythm clauses, not arbitrary quoted text in
+    the rest of the scene. Absent or unknown cues add no pressure. This is
+    a stateless calculation; the original Noesis commits the decision.
+    """
+    scores = {action: 0.0 for action in feasible_actions}
+    cues = []
+    prefix = _PREFIX.match(observation)
+    if prefix is None:
+        return scores, ()
+    remainder = observation[prefix.end():].lstrip()
+    for alternatives in _CUES:
+        for phrase, cue, contributions in alternatives:
+            if remainder == phrase or remainder.startswith(phrase + " "):
+                remainder = remainder[len(phrase):].lstrip()
+                cues.append(cue)
+                for action, pressure in contributions.items():
+                    if action in scores:
+                        scores[action] = min(0.20, scores[action] + pressure)
+                break
+    # A need can require an enabling action before its direct remedy is
+    # feasible. The source itself says whether the room is dark; local
+    # source-feasible alternatives determine whether there is a usable lamp.
+    # This is a means to an existing perceived need, not a new motivation.
+    # No numeric supplies, unseen food or hidden room state enter Noesis.
+    kitchen = observation.startswith("I am in my kitchen. ")
+    dark = "It is too dark to make out the furnishings clearly." in prefix.group(0)
+    relief = max(
+        (0.20 if "thirsty" in cues else 0.0),
+        (0.16 if "painfully_hungry" in cues else 0.08 if "hungry" in cues else 0.0),
+    )
+    if kitchen and dark and "light" in scores and relief:
+        direct = ("brew_tea" in scores and "thirsty" in cues
+                  or "eat" in scores and ("hungry" in cues or "painfully_hungry" in cues)
+                  or "prepare_meal" in scores and ("hungry" in cues or "painfully_hungry" in cues))
+        if not direct:
+            scores["light"] = relief
+    # A witnessed dirty surface is a feasible cleaning offer from the
+    # original physics. Only promote cleaning as a prerequisite when the
+    # visible kitchen has no prepared meal, food is not known exhausted,
+    # and a hungry subject cannot currently prepare or eat it.
+    if (kitchen and not dark and "clean" in scores
+            and ("hungry" in cues or "painfully_hungry" in cues)
+            and remainder.startswith("I have no meal prepared.")
+            and "I have run out of stored food provisions." not in remainder
+            and "prepare_meal" not in scores and "eat" not in scores):
+        scores["clean"] = 0.16 if "painfully_hungry" in cues else 0.08
+    return scores, tuple(cues)

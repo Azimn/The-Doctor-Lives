@@ -45,6 +45,8 @@ from .projection import (
     project_relationship_feeling,
 )
 from .store import BrainStore, clamp, new_id, utc_now
+from .tower_ipseity import LABORATORY_OWNERSHIP, DELIBERATION, TowerIpseity, ownership_required
+from .first_person_governance import require_subject_line, semantic_subject_text
 
 
 class PretoriusBrain:
@@ -60,6 +62,8 @@ class PretoriusBrain:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.evidence = CanonicalEvidenceAuthority(self.state_dir).prepare()
         self.store = BrainStore(self.state_dir / "brain.sqlite3")
+        if ownership_required(self):
+            TowerIpseity(self).verify_history()
         self._bind_canonical_evidence()
         self.neural_path = self.state_dir / "pretorius_recurrent.npz"
         self.bootstrap = json.loads(
@@ -507,9 +511,18 @@ class PretoriusBrain:
             "classifier": "PretoriusBrain.ingest",
         }
 
-    def ingest(self, exp: Experience) -> dict[str, Any]:
+    def ingest(self, exp: Experience, *, projected_event: PhenomenalEvent | None = None) -> dict[str, Any]:
         if not exp.text.strip():
             raise ValueError("experience text is required")
+        subject=None
+        subject_digest=None
+        if ownership_required(self) or exp.source.startswith("laboratory-home:"):
+            # The source-verified Laboratory bridge shares the same owning
+            # subject and pre-recurrent admission transaction as Small Tower.
+            subject=TowerIpseity(self)
+            subject.verify_tail()
+            subject_digest=self.store.digest()
+            subject.validate_ingress(exp, projected_event)
         with self.store.transaction() as conn:
             tick = self.store.advance_tick(conn)
             evidence_class = "external_statement" if exp.external else "lived_runtime_memory"
@@ -530,6 +543,10 @@ class PretoriusBrain:
                 exp.external, exp.confidence, False, base, exp.tags, event_id,
                 classification=classification,
             )
+            if subject is not None:
+                subject.record_ingress(conn,source=exp.source,kind=exp.kind,text=exp.text,
+                    memory_id=memory_id,event_id=event_id,external=exp.external,tick=tick,digest=subject_digest,
+                    projected=projected_event)
             self._update_needs(conn, tick, exp)
             self._update_relationship(conn, tick, exp, event_id)
             self._maybe_add_concern(conn, tick, exp)
@@ -565,12 +582,24 @@ class PretoriusBrain:
             "felt_state": self._felt_state(),
         }
 
+    def _owned_commitment_texts(self):
+        owned = getattr(self, "_ipseity_owned_commitments", None)
+        if owned is None and ownership_required(self):
+            subject = TowerIpseity(self)
+            subject.verify_tail()
+            owned = {rid:event[1].subject_text for rid,event in subject.owned_events()}
+        return owned
+
     def _open_terms(self) -> set[str]:
         terms: set[str] = set()
         for row in self.store.open_concerns():
             terms |= self._tokens(str(row["description"]))
+        owned = self._owned_commitment_texts()
         for row in self.store.open_commitments():
-            terms |= self._tokens(str(row["description"]))
+            if owned is None:
+                terms |= self._tokens(str(row["description"]))
+            elif row["id"] in owned:
+                terms |= self._tokens(owned[row["id"]])
         return terms
 
     def _salience(self, row: dict[str, Any], now_tick: int, open_terms: set[str]) -> float:
@@ -591,6 +620,7 @@ class PretoriusBrain:
         list[tuple[float, dict[str, Any]]],
     ]:
         """Return direct pre-spreading and activated retrieval sets from one retrieval."""
+        from .dream_retention import dream_accessibility
         now = self.store.tick
         open_terms = self._open_terms()
         suppressed_by_canon = self.store.canon_conflict_suppressed_memory_ids()
@@ -598,9 +628,12 @@ class PretoriusBrain:
             row for row in self.store.memories_with_classification()
             if row["id"] not in suppressed_by_canon
         ]
-        query_tokens = self._tokens(query or "")
+        query_tokens = self._tokens(semantic_subject_text(query or ""))
         direct_ranked: list[tuple[float, dict[str, Any]]] = []
         for row in rows:
+            accessibility = dream_accessibility(row, now)
+            if accessibility == 0.0:
+                continue
             score = self._salience(row, now, open_terms)
             if query_tokens:
                 row_tokens = self._tokens(str(row["text"])) | {
@@ -608,7 +641,7 @@ class PretoriusBrain:
                 }
                 overlap = len(query_tokens & row_tokens) / max(1, len(query_tokens))
                 score += min(1.0, 1.0 * overlap)
-            direct_ranked.append((score, row))
+            direct_ranked.append((score * accessibility, row))
         direct_ranked.sort(
             key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]),
             reverse=True,
@@ -633,7 +666,8 @@ class PretoriusBrain:
         if state_before != state_after:
             raise AssertionError("retrieval-time spreading activation mutated canonical state")
 
-        ranked = [(score + bonuses.get(row["id"], 0.0), row) for score, row in direct_ranked]
+        ranked = [(score + bonuses.get(row["id"], 0.0) * dream_accessibility(row, now), row)
+                  for score, row in direct_ranked]
         ranked.sort(
             key=lambda item: (item[0], item[1]["updated_tick"], item[1]["created_tick"], item[1]["id"]),
             reverse=True,
@@ -680,7 +714,7 @@ class PretoriusBrain:
         pre-spreading retrieval operation for this decision. It never scans the
         full store and never consumes spreading-activation bonuses.
         """
-        decision_tokens = self._tokens(decision_text or "")
+        decision_tokens = self._tokens(semantic_subject_text(decision_text or ""))
         if not decision_tokens:
             return []
         candidates: list[tuple[float, dict[str, Any]]] = []
@@ -734,7 +768,7 @@ class PretoriusBrain:
             for key in ("needs", "relationships", "commitments", "history", "concerns")
         }
         source_ids: dict[str, list[str]] = {key: [] for key in families}
-        decision_tokens = self._tokens(decision_text or "")
+        decision_tokens = self._tokens(semantic_subject_text(decision_text or ""))
 
         def add(family: str, action: str, delta: float) -> None:
             families[family][action] += float(delta)
@@ -782,8 +816,11 @@ class PretoriusBrain:
             add("relationships", "challenge", 0.035 * negative)
             add("relationships", "avoid", 0.025 * negative)
 
+        owned = self._owned_commitment_texts()
         for item in self.store.open_commitments():
-            commitment_tokens = self._tokens(str(item["description"]))
+            if owned is not None and item["id"] not in owned:
+                continue
+            commitment_tokens = self._tokens(str(item["description"]) if owned is None else owned[item["id"]])
             if item.get("actor"):
                 commitment_tokens |= self._tokens(str(item["actor"]))
             if not decision_tokens or not (commitment_tokens & decision_tokens):
@@ -902,10 +939,11 @@ class PretoriusBrain:
 
     @staticmethod
     def _view_item(score: float, row: dict[str, Any]) -> ViewItem:
+        from .first_person_governance import first_person_line
         return ViewItem(
             record_id=row["id"],
             source=row["source"],
-            first_person=render_memory_for_workspace(row),
+            first_person=first_person_line(render_memory_for_workspace(row)),
             salience=score,
             provenance=Provenance(
                 evidence_class=row["evidence_class"],
@@ -977,76 +1015,186 @@ class PretoriusBrain:
         decision_text: str | None = None,
         bridge_enabled: bool = True,
     ) -> dict[str, Any]:
-        direct_ranked_all, ranked_all = self._ranked_memory_sets(
-            48, query=decision_text, audit=True
-        )
-        base_scores, scores, state_pressure = self._state_policy_scores(
-            ranked_all,
-            decision_text=decision_text,
-            direct_history_ranked=direct_ranked_all,
-            bridge_enabled=bridge_enabled,
-        )
-        tendency = max(scores, key=scores.get)
-        candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
-        if not candidates:
-            candidates = ranked_all
-        policy_ranked = self._policy_rank(candidates, tendency)
-        chosen_rows = [row for _, row in policy_ranked[:4]]
-        selected = [self._view_item(score, row) for score, row in policy_ranked[:4]]
-        if selected:
-            lead = selected[0].first_person
-            second = selected[1].first_person if len(selected) > 1 else ""
-            text = f"I keep coming back to this thought: {lead}"
-            if second and second != lead:
-                text += f" Another thought pulls at me too: {second}"
+        tower_subject = None
+        tower_bound = self.store.meta("small-tower:world-binding-v1") is not None
+        recollection = trigger == "mnemosyne_private_reflection"
+        laboratory_owned = self.store.meta(LABORATORY_OWNERSHIP) is not None
+        if tower_bound or laboratory_owned or recollection:
+            tower_subject = TowerIpseity(self)
+            tower_subject.verify_tail()
+            if (tower_bound or laboratory_owned) and getattr(self,"_ipseity_owned_commitments",None) is None:
+                owned = {rid:event[1].subject_text for rid,event in tower_subject.owned_events()}
+                with tower_subject.cognitive_access(owned):
+                    return self.think(trigger,decision_text=decision_text,bridge_enabled=bridge_enabled)
+        if recollection and decision_text is not None:
+            # A context-free control evaluates policy without recalled content.
+            # A fresh admitted recollection is required, not merely a caller's
+            # first-person string. Read committed history before policy evaluation.
+            from .tower_ipseity import RECORD
+            history = tower_subject.verify_history()
+            latest = history[-1] if history else None
+            grant = getattr(self, "_pending_recollection_processing", None)
+            self._pending_recollection_processing = None
+            if (latest is None or latest["phase"] != "private_experience"
+                    or not latest["key"].startswith(RECORD + "recollection:")
+                    or len(latest["content"]) != 1 or latest["tick"] != self.store.tick
+                    or grant is None or grant != (latest["sha256"], self.store.tick,
+                                                 self.store.digest(), self.neural.tick)):
+                raise PermissionError("Fresh one-use owned recollection required")
+            item = latest["content"][0]
+            recall_id = latest["key"].removeprefix(RECORD + "recollection:")
+            from .dream_resurfacing import selected_recall_question
+            if selected_recall_question(self, recall_id) is None:
+                raise PermissionError("Recollection lacks a current selected concern")
+            refs = item["source_refs"]
+            valid_refs = (refs == [recall_id] and item["attribution"] == "self_observed"
+                          and item["external"] is False)
+            if (len(refs) == 2 and refs[0] == recall_id
+                    and item["attribution"] == "unknown" and item["external"] is True):
+                from .dream_resurfacing import verify_selected_fragment
+                valid_refs = verify_selected_fragment(self, history, recall_id, refs[1], item["text"])
+            if (item["organ"] != "Mnemosyne" or item["mode"] != "recollection"
+                    or item["text"] != decision_text or not valid_refs):
+                raise PermissionError("Recollection differs from owned admission")
+        if tower_subject is not None and decision_text is not None:
+            line=require_subject_line(decision_text)
+            raw_decision_sha=hashlib.sha256(decision_text.encode("utf-8")).hexdigest()
+            decision_text=line
+            from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+            context_event=tower_subject.event("Noesis",line,PhenomenalMode.INTERNAL_THOUGHT,
+                attribution=SubjectiveSourceKind.UNKNOWN)
+            with self.store.transaction() as db:
+                context_entry=tower_subject.record(db,new_id("thought-context"),(context_event,),
+                                                   phase="thought_context")
+                context_status=DELIBERATION+context_entry["sha256"]
+                self.store.set_meta(context_status,json.dumps({"status":"pending",
+                    "input_sha256":raw_decision_sha},sort_keys=True),db)
         else:
-            text = "I do not feel any particular thought holding my attention right now."
-        record_ids = [item.record_id for item in selected]
-        candidate_ids = [row["id"] for _, row in candidates]
-        checkpoint_sha = self._neural_checkpoint_sha256()
-        policy_version = str(self.evolution_policy["neural_policy_version"])
-        with self.store.transaction() as conn:
-            decision_id = new_id("policy")
-            conn.execute(
-                """INSERT INTO policy_decisions
-                (id,tick,created_at,trigger,selected_action,base_action_scores_json,
-                 state_pressure_json,action_scores_json,candidate_record_ids_json,
-                 selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (
-                    decision_id, self.store.tick, utc_now(), trigger, tendency,
-                    json.dumps(base_scores, sort_keys=True),
-                    json.dumps(state_pressure, sort_keys=True),
-                    json.dumps(scores, sort_keys=True), json.dumps(candidate_ids),
-                    json.dumps(record_ids), int(self.neural.tick), checkpoint_sha, policy_version,
-                ),
+            context_entry=None
+        try:
+            direct_ranked_all, ranked_all = self._ranked_memory_sets(
+                48, query=decision_text, audit=True
             )
-            tid = new_id("thought")
-            conn.execute(
-                """INSERT INTO thoughts
-                (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
-                VALUES(?,?,?,?,?,?,?)""",
-                (
-                    tid, self.store.tick, text, trigger, f"neural_policy:{decision_id}",
-                    json.dumps(record_ids), json.dumps(scores, sort_keys=True),
-                ),
+            base_scores, scores, state_pressure = self._state_policy_scores(
+                ranked_all,
+                decision_text=decision_text,
+                direct_history_ranked=direct_ranked_all,
+                bridge_enabled=bridge_enabled,
             )
-            for rid in record_ids:
-                self.store.rehearse(conn, rid, self.store.tick)
-            self.store.bump_state_version(conn)
-        return {
-            "id": tid,
-            "tick": self.store.tick,
-            "text": text,
-            "source_record_ids": record_ids,
-            "policy_decision_id": decision_id,
-            "selected_action": tendency,
-            "base_action_scores": base_scores,
-            "state_pressure": state_pressure,
-            "action_scores": scores,
-            "neural_checkpoint_sha256": checkpoint_sha,
-            "policy_version": policy_version,
-        }
+            if context_entry is not None:
+                state_pressure["ipseity_context"]={"key":context_entry["key"],"sha256":context_entry["sha256"]}
+                state_pressure["raw_decision_text_sha256"]=raw_decision_sha
+            tendency = max(scores, key=scores.get)
+            candidates = [item for item in ranked_all if item[1]["kind"] != "identity_root"]
+            if not candidates:
+                candidates = ranked_all
+            policy_ranked = self._policy_rank(candidates, tendency)
+            chosen_rows = [row for _, row in policy_ranked[:4]]
+            selected = [self._view_item(score, row) for score, row in policy_ranked[:4]]
+            if selected:
+                lead = selected[0].first_person
+                second = selected[1].first_person if len(selected) > 1 else ""
+                text = f"I keep coming back to this thought: {lead}"
+                if second and second != lead:
+                    text += f" Another thought pulls at me too: {second}"
+            else:
+                text = "I do not feel any particular thought holding my attention right now."
+            record_ids = [item.record_id for item in selected]
+            candidate_ids = [row["id"] for _, row in candidates]
+            checkpoint_sha = self._neural_checkpoint_sha256()
+            policy_version = str(self.evolution_policy["neural_policy_version"])
+            subject_digest = self.store.digest() if tower_subject is not None else None
+            with self.store.transaction() as conn:
+                decision_id = new_id("policy")
+                conn.execute(
+                    """INSERT INTO policy_decisions
+                    (id,tick,created_at,trigger,selected_action,base_action_scores_json,
+                     state_pressure_json,action_scores_json,candidate_record_ids_json,
+                     selected_record_ids_json,neural_tick,neural_checkpoint_sha256,policy_version)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (
+                        decision_id, self.store.tick, utc_now(), trigger, tendency,
+                        json.dumps(base_scores, sort_keys=True),
+                        json.dumps(state_pressure, sort_keys=True),
+                        json.dumps(scores, sort_keys=True), json.dumps(candidate_ids),
+                        json.dumps(record_ids), int(self.neural.tick), checkpoint_sha, policy_version,
+                    ),
+                )
+                tid = new_id("thought")
+                conn.execute(
+                    """INSERT INTO thoughts
+                    (id,tick,text,trigger,generated_by,source_record_ids_json,action_tendencies_json)
+                    VALUES(?,?,?,?,?,?,?)""",
+                    (
+                        tid, self.store.tick, text, trigger, f"neural_policy:{decision_id}",
+                        json.dumps(record_ids), json.dumps(scores, sort_keys=True),
+                    ),
+                )
+                for rid in record_ids:
+                    self.store.rehearse(conn, rid, self.store.tick)
+                if tower_subject is not None:
+                    from .phenomenology import PhenomenalMode, SubjectiveSourceKind
+                    event=tower_subject.event("Noesis",text,PhenomenalMode.INTERNAL_THOUGHT,
+                                              (tid,decision_id,*record_ids),
+                                              attribution=SubjectiveSourceKind.SELF_OBSERVED,digest=subject_digest)
+                    tower_subject.record(conn,"thought:"+tid,(event,),phase="private_thought")
+                if context_entry is not None:
+                    self.store.set_meta(context_status,json.dumps({"status":"completed",
+                        "input_sha256":raw_decision_sha,"policy_id":decision_id,"thought_id":tid},sort_keys=True),conn)
+                self.store.bump_state_version(conn)
+            return {
+                "id": tid,
+                "tick": self.store.tick,
+                "text": text,
+                "source_record_ids": record_ids,
+                "policy_decision_id": decision_id,
+                "selected_action": tendency,
+                "base_action_scores": base_scores,
+                "state_pressure": state_pressure,
+                "action_scores": scores,
+                "neural_checkpoint_sha256": checkpoint_sha,
+                "policy_version": policy_version,
+            }
+        except Exception:
+            if context_entry is not None:
+                # If even this write fails (disk/process interruption), the
+                # durable pending record remains explicitly NOT completed.
+                try:
+                    with self.store.transaction() as conn:
+                        self.store.set_meta(context_status,json.dumps({"status":"failed",
+                            "input_sha256":raw_decision_sha},sort_keys=True),conn)
+                        self.store.bump_state_version(conn)
+                except Exception:
+                    pass
+            raise
+
+
+    def choose_feasible_action(
+        self, *, observation_memory_id: str,
+        eligible_read_memory_ids: tuple[str, ...],
+        feasible_actions: tuple[str, ...],
+        learning_enabled: bool = True, neural_prior_enabled: bool = True,
+        outcome_learning_enabled: bool = False,
+        eligible_outcome_memory_ids: tuple[str, ...] = (),
+        developmental_history_enabled: bool = False,
+    ) -> dict[str, Any]:
+        """Original-brain opt-in choice; no host-owned action selector.
+
+        Uses the one canonical recurrent substrate, first-person BrainStore,
+        and normal policy-decision tables. World opportunity and authorization
+        remain external; this never operates the Laboratory by itself.
+        """
+        from .noesis_situated_choice import select_with_original_noesis
+        return select_with_original_noesis(
+            self, observation_memory_id=observation_memory_id,
+            eligible_read_memory_ids=eligible_read_memory_ids,
+            feasible_actions=feasible_actions,
+            learning_enabled=learning_enabled,
+            neural_prior_enabled=neural_prior_enabled,
+            outcome_learning_enabled=outcome_learning_enabled,
+            eligible_outcome_memory_ids=eligible_outcome_memory_ids,
+            developmental_history_enabled=developmental_history_enabled,
+        )
 
     def add_commitment(self, description: str, actor: str | None = None,
                        due_tick: int | None = None, importance: float = .6) -> str:
@@ -1066,9 +1214,11 @@ class PretoriusBrain:
 
     def resolve_commitment(self, commitment_id: str, outcome: str, kept: bool = True) -> None:
         with self.store.transaction() as conn:
-            row = conn.execute("SELECT id FROM commitments WHERE id=?", (commitment_id,)).fetchone()
+            row = conn.execute("SELECT id,source FROM commitments WHERE id=?", (commitment_id,)).fetchone()
             if row is None:
                 raise KeyError(commitment_id)
+            if row["source"].startswith("telos:native:"):
+                raise PermissionError("Native Telos commitment closes only with its source-verified goal")
             status = "kept" if kept else "released"
             conn.execute(
                 "UPDATE commitments SET status=?,updated_tick=?,outcome=? WHERE id=?",
@@ -1120,23 +1270,26 @@ class PretoriusBrain:
         self.close_concern(concern_id, reason, status="released")
 
     def record_action_outcome(self, action: str, success: bool, reward: float = 1.0) -> None:
+        """Apply scalar reinforcement, not a consciously experienced event.
+
+        This legacy API has no authenticated experiential input. Actual
+        experienced outcomes enter through existing source-verified ingress,
+        which commits their memory and TowerIpseity acquisition together
+        before recurrence. Do not manufacture a second account here or
+        promote numeric feedback into lived evidence.
+        """
         if action not in ACTIONS:
             raise ValueError(f"unknown action {action!r}")
         reward = float(max(-1.0, min(1.0, reward)))
         with self.store.transaction() as conn:
             tick = self.store.advance_tick(conn)
-            event_id = self.store.event(
-                conn, tick, "action_outcome", "self",
-                {"action": action, "success": bool(success), "reward": reward},
-                "lived_runtime_memory", False, 1.0,
-            )
-            text = f"I {'succeeded' if success else 'failed'} after choosing {action}."
-            self.store.add_memory(
-                conn, tick, text, "self", "action_outcome", "lived_runtime_memory",
-                False, 1.0, False, .72, ("action", action), event_id,
-                classification=self._runtime_classification(
-                    "action_outcome", "self", wording="paraphrased"
-                ),
+            # Keep the original scalar audit and learning cadence, but neither
+            # the caller's success claim nor its reward proves a lived event.
+            self.store.event(
+                conn, tick, "action_outcome", "reinforcement:scalar",
+                {"action": action, "success": bool(success), "reward": reward,
+                 "subject_admitted": False},
+                "unconscious_reinforcement", True, 1.0,
             )
             row = conn.execute("SELECT value,uses,successes FROM action_values WHERE action=?", (action,)).fetchone()
             value = .5 if row is None else float(row["value"])
@@ -1156,6 +1309,7 @@ class PretoriusBrain:
         self.neural.save(self.neural_path)
 
     def sleep(self, ticks: int = 12) -> dict[str, Any]:
+        """Unconscious associative replay; never evidence of an experienced dream."""
         if ticks < 1:
             return {"ticks": 0, "fragments": 0, "store_tick": self.store.tick}
         start_tick = self.store.tick
@@ -1168,19 +1322,31 @@ class PretoriusBrain:
             offset = index % len(ranked)
             chosen = [ranked[(offset + j) % len(ranked)][1] for j in range(width)]
             text = " | ".join(str(row["text"]) for row in chosen)
-            self.neural.step(text, self._neural_state_scalars(), reward=0.0, learn=True)
+            replay_id = new_id("replay")
+            # Persist the engineering input record before recurrence. A pending
+            # record is not evidence of a successful step, dream or experience.
             with self.store.transaction() as conn:
-                for row in chosen:
-                    self.store.rehearse(conn, row["id"], start_tick)
                 conn.execute(
                     """INSERT INTO sleep_fragments
                     (id,tick,created_at,trigger,record_ids_json,summary)
                     VALUES(?,?,?,?,?,?)""",
                     (
-                        new_id("dream"), start_tick, utc_now(), "associative_replay",
+                        replay_id, start_tick, utc_now(), "associative_replay_pending",
                         json.dumps([row["id"] for row in chosen]), text[:1000],
                     ),
                 )
+                self.store.bump_state_version(conn)
+            # Preserve full original neural input, learning and rehearsal order.
+            self.neural.step(text, self._neural_state_scalars(), reward=0.0, learn=True)
+            with self.store.transaction() as conn:
+                for row in chosen:
+                    self.store.rehearse(conn, row["id"], start_tick)
+                changed = conn.execute(
+                    "UPDATE sleep_fragments SET trigger='associative_replay' "
+                    "WHERE id=? AND trigger='associative_replay_pending'", (replay_id,),
+                ).rowcount
+                if changed != 1:
+                    raise RuntimeError("Missing or conflicting replay input record")
                 self.store.bump_state_version(conn)
             fragments += 1
         self.neural.save(self.neural_path)
@@ -1331,8 +1497,15 @@ class PretoriusBrain:
                         record_ids=(item.record_id,),
                     ),
                     subjective_source=SubjectiveSourceAttribution(
-                        SubjectiveSourceKind.UNKNOWN,
-                        CertaintyBand.MODERATE,
+                        SubjectiveSourceKind.DREAMED
+                        if item.provenance.evidence_class == "dreamed_not_lived"
+                        else SubjectiveSourceKind.SELF_OBSERVED
+                        if item.provenance.evidence_class == "self_observed_expression"
+                        else SubjectiveSourceKind.UNKNOWN,
+                        CertaintyBand.HIGH
+                        if item.provenance.evidence_class in (
+                            "dreamed_not_lived", "self_observed_expression")
+                        else CertaintyBand.MODERATE,
                     ),
                     source_state_refs=(item.record_id,),
                 )
@@ -1405,6 +1578,12 @@ class PretoriusBrain:
             )
 
         for commitment in view.commitments:
+            if self.store.meta("small-tower:world-binding-v1") is not None:
+                from .tower_ipseity import TowerIpseity
+                owned=TowerIpseity(self).commitment_event(commitment,digest)
+                if owned is not None:
+                    events.append(owned[1])
+                continue
             events.append(
                 project_commitment(
                     context=context,
@@ -1540,7 +1719,11 @@ class PretoriusBrain:
             migration_snapshots = int(conn.execute(
                 "SELECT COUNT(*) FROM archive WHERE reason='deep-history-v2 pre-reclassification snapshot'"
             ).fetchone()[0])
-            dreams = int(conn.execute("SELECT COUNT(*) FROM sleep_fragments").fetchone()[0])
+            # Historical status key dream_fragments counts completed replay
+            # steps, not consciously experienced dreams or pending attempts.
+            dreams = int(conn.execute(
+                "SELECT COUNT(*) FROM sleep_fragments WHERE trigger='associative_replay'"
+            ).fetchone()[0])
             policy_decisions = int(conn.execute("SELECT COUNT(*) FROM policy_decisions").fetchone()[0])
         return {
             "subject": "Doctor Septimus Pretorius",

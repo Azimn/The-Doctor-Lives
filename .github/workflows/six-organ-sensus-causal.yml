@@ -1,0 +1,43 @@
+name: Six-organ pinned Sensus candidate causal acquisition
+on:
+  pull_request:
+    paths:
+      - doctor_lives/sensus_pilot.py
+      - doctor_lives/organs.py
+      - tests/test_six_organ_sensus_pilot.py
+      - .github/workflows/six-organ-sensus-causal.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  donor-causal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 802e459ee68950414347d5fa324484c034f57b81
+          path: pinned-sensus
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install canonical Doctor only
+        run: python -m pip install -e .
+      - name: Assert pinned donor path and execute non-skipped Sensus controls
+        env:
+          PYTHONPATH: pinned-sensus
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from sensus_artificialis import core
+          from doctor_lives.sensus_pilot import _load_verified_donor
+          _load_verified_donor()
+          print("Donor qualified for isolated opt-in test:", Path(core.__file__).resolve())
+          PY
+          python -m unittest discover -s tests -p test_six_organ_sensus_pilot.py -v
+      - name: Original Doctor baseline still passes
+        env:
+          PYTHONPATH: pinned-sensus
+        run: python -m unittest discover -s tests -p test_six_organ_runtime.py -v

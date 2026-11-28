@@ -1,0 +1,85 @@
+name: Experimental original-Noesis hard-kill and cold goal resume
+
+on:
+  pull_request:
+    paths:
+      - tests/test_preview_hard_kill.py
+      - doctor_lives/preview_ledger.py
+      - doctor_lives/lab_endogenous_book_task.py
+      - .github/workflows/preview-hard-kill.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-neural-goal-kill-resume:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Preserve exact Git blob bytes on both operating systems
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Pretorius-Laboratory
+          ref: 6e49795752835d64fa6fd63d16359669a1ca2ba7
+          path: donor-laboratory
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 802e459ee68950414347d5fa324484c034f57b81
+          path: donor-sensus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/Sensus-Communis-Artificialis
+          ref: 904bf11861700739ccc03d4b0d4340ff3422a7d3
+          path: donor-affectus
+      - uses: actions/checkout@v4
+        with:
+          repository: Azimn/synthetic-ipseity
+          ref: e2d1dc3978c952e59d270a29e84704c8a1fe264a
+          path: donor-ipseity
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify immutable donor sources and install original Doctor and Ipseity
+        shell: bash
+        run: |
+          test "$(git -C donor-laboratory rev-parse HEAD)" = "6e49795752835d64fa6fd63d16359669a1ca2ba7"
+          test "$(git -C donor-sensus rev-parse HEAD)" = "802e459ee68950414347d5fa324484c034f57b81"
+          test "$(git -C donor-affectus rev-parse HEAD)" = "904bf11861700739ccc03d4b0d4340ff3422a7d3"
+          test "$(git -C donor-ipseity rev-parse HEAD)" = "e2d1dc3978c952e59d270a29e84704c8a1fe264a"
+          python -m pip install ./donor-ipseity
+          python -m pip install .
+      - name: Real pinned Laboratory and 128-neuron hard kill (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          PRETORIUS_PINNED_AFFECTUS_ROOT: ${{ github.workspace }}/donor-affectus
+          PRETORIUS_PINNED_LAB_FIXTURE: ${{ github.workspace }}/donor-laboratory/fixtures/DEMO_BOOK_007.json
+        run: |
+          cd "$RUNNER_TEMP"
+          PYTHONPATH="$GITHUB_WORKSPACE/donor-laboratory:$GITHUB_WORKSPACE/donor-sensus" \
+          python "$GITHUB_WORKSPACE/tests/test_preview_hard_kill.py" -v
+      - name: Real pinned Laboratory and 128-neuron hard kill (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PRETORIUS_PINNED_AFFECTUS_ROOT: ${{ github.workspace }}/donor-affectus
+          PRETORIUS_PINNED_LAB_FIXTURE: ${{ github.workspace }}/donor-laboratory/fixtures/DEMO_BOOK_007.json
+        run: |
+          $env:PYTHONPATH = (Join-Path $env:GITHUB_WORKSPACE "donor-laboratory") + ";" + (Join-Path $env:GITHUB_WORKSPACE "donor-sensus")
+          Push-Location $env:RUNNER_TEMP
+          try {
+            python (Join-Path $env:GITHUB_WORKSPACE "tests/test_preview_hard_kill.py") -v
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          finally { Pop-Location }
